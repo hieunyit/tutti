@@ -34,6 +34,7 @@
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
   import type { DiffReport } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({ messages: i18nDiffReports });
 
@@ -192,97 +193,105 @@
 
 <template>
   <div class="diff-reports-list-actions">
-    <div class="diff-reports-list-actions__creation">
-      <RouterLink :to="{ name: RouteName.CHORUS_ADD_DIFF_REPORT }">
-        <CButton
-          type="primary"
-          size="medium"
-          ghost
-          class="add-diff-report-button"
-          tag="div"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="IconName.BASE_ADD"
-            />
+    <WriteGate>
+      <div class="diff-reports-list-actions__creation">
+        <RouterLink :to="{ name: RouteName.CHORUS_ADD_DIFF_REPORT }">
+          <CButton
+            type="primary"
+            size="medium"
+            ghost
+            class="add-diff-report-button"
+            tag="div"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+            {{ t('actionCreateDiffReport') }}
+          </CButton>
+        </RouterLink>
+      </div>
+    </WriteGate>
+
+    <WriteGate>
+      <div class="diff-reports-list-actions__selection-actions">
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="actionableReports.length"
+              :max="100"
+            >
+              <CButton
+                secondary
+                :disabled="isActionDisabled"
+                :loading="isRestartSelectedProcessing"
+                size="medium"
+                type="warning"
+                @click="handleDiffReportsRestart"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_REFRESH"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
           </template>
-          {{ t('actionCreateDiffReport') }}
-        </CButton>
-      </RouterLink>
-    </div>
 
-    <div class="diff-reports-list-actions__selection-actions">
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="actionableReports.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isActionDisabled"
-              :loading="isRestartSelectedProcessing"
-              size="medium"
-              type="warning"
-              @click="handleDiffReportsRestart"
+          <template v-if="!isAnyReportsSelected">
+            {{ t('restartDiffReportsRestartAction') }}
+          </template>
+          <template v-else>
+            {{
+              t('restartDiffReportsSelected', {
+                total: actionableReports.length,
+              })
+            }}
+          </template>
+        </CTooltip>
+
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="actionableReports.length"
+              :max="100"
             >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_REFRESH"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
+              <CButton
+                secondary
+                :disabled="isActionDisabled"
+                :loading="isDeleteSelectedProcessing"
+                size="medium"
+                type="error"
+                @click="handleDiffReportsDelete"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_TRASH"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
+          </template>
 
-        <template v-if="!isAnyReportsSelected">
-          {{ t('restartDiffReportsRestartAction') }}
-        </template>
-        <template v-else>
-          {{
-            t('restartDiffReportsSelected', { total: actionableReports.length })
-          }}
-        </template>
-      </CTooltip>
-
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="actionableReports.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isActionDisabled"
-              :loading="isDeleteSelectedProcessing"
-              size="medium"
-              type="error"
-              @click="handleDiffReportsDelete"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TRASH"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
-
-        <template v-if="!isAnyReportsSelected">
-          {{ t('deleteDiffReportsDeleteAction') }}
-        </template>
-        <template v-else>
-          {{
-            t('deleteDiffReportsSelected', { total: actionableReports.length })
-          }}
-        </template>
-      </CTooltip>
-    </div>
+          <template v-if="!isAnyReportsSelected">
+            {{ t('deleteDiffReportsDeleteAction') }}
+          </template>
+          <template v-else>
+            {{
+              t('deleteDiffReportsSelected', {
+                total: actionableReports.length,
+              })
+            }}
+          </template>
+        </CTooltip>
+      </div>
+    </WriteGate>
   </div>
 </template>
 

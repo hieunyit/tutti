@@ -17,6 +17,9 @@
 import { apiClient } from '@/http';
 import { ApiHelper } from '@/utils/helpers/ApiHelper';
 import type {
+  TuttiAccessPolicy,
+  TuttiAccessPolicyListResponse,
+  TuttiProxyAccountListResponse,
   TuttiFailoverEventId,
   TuttiFailoverEventListResponse,
   TuttiFailoverPolicy,
@@ -67,6 +70,36 @@ export abstract class TuttiService {
     await apiClient.put(
       ApiHelper.getChorusAPIUrl('/tutti/failover/events/delete'),
       id,
+    );
+  }
+
+  static async getProxyAccounts(): Promise<TuttiProxyAccountListResponse> {
+    const { data } = await apiClient.get<TuttiProxyAccountListResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
+    );
+
+    return data;
+  }
+
+  static async getAccessPolicies(): Promise<TuttiAccessPolicyListResponse> {
+    const { data } = await apiClient.get<TuttiAccessPolicyListResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
+    );
+
+    return data;
+  }
+
+  static async setAccessPolicy(policy: TuttiAccessPolicy): Promise<void> {
+    await apiClient.post(
+      ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
+      policy,
+    );
+  }
+
+  static async deleteAccessPolicy(user: string): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/access-policies/delete'),
+      { user },
     );
   }
 }

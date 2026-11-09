@@ -55,6 +55,8 @@ export interface TuttiProxyStatus {
   updatedAt?: string;
   storages?: TuttiStorageHealth[];
   settings?: TuttiProxySettings;
+  /** absent for proxies that do not publish traffic stats */
+  stats?: TuttiTrafficStats;
 }
 
 export interface TuttiProxyStatusListResponse {
@@ -111,4 +113,90 @@ export enum TuttiPolicyValidationError {
   TARGET_DUPLICATE = 'TARGET_DUPLICATE',
   AFTER_INVALID = 'AFTER_INVALID',
   MAX_EVENT_LAG_INVALID = 'MAX_EVENT_LAG_INVALID',
+}
+
+export enum TuttiAccessPermission {
+  READ_WRITE = 'read-write',
+  READ_ONLY = 'read-only',
+  WRITE_ONLY = 'write-only',
+}
+
+export interface TuttiAccessPolicy {
+  user: string;
+  permission?: string;
+  /** glob patterns; empty or ["*"] means all buckets */
+  buckets?: string[];
+  description?: string;
+}
+
+export interface TuttiAccessPolicyListResponse {
+  policies?: TuttiAccessPolicy[];
+}
+
+export interface TuttiProxyAccount {
+  user: string;
+  accessKeyIds?: string[];
+  /** parallel to accessKeyIds: "custom" or "storage:<name>" */
+  sources?: string[];
+  /** effective policy (read-write on "*" when none is stored) */
+  policy?: TuttiAccessPolicy;
+  hasPolicy?: boolean;
+}
+
+export interface TuttiProxyAccountListResponse {
+  accounts?: TuttiProxyAccount[];
+}
+
+export interface TuttiAccessKey {
+  accessKeyId: string;
+  source: string;
+}
+
+export interface TuttiAccessPolicyForm {
+  user: string;
+  permission: TuttiAccessPermission;
+  buckets: string[];
+  description: string;
+}
+
+export enum TuttiAccessPolicyValidationError {
+  USER_REQUIRED = 'USER_REQUIRED',
+  PERMISSION_INVALID = 'PERMISSION_INVALID',
+  PATTERN_EMPTY = 'PATTERN_EMPTY',
+  PATTERN_WHITESPACE = 'PATTERN_WHITESPACE',
+  PATTERN_DUPLICATE = 'PATTERN_DUPLICATE',
+}
+
+/** int64 values arrive as strings in protobuf JSON */
+export type TuttiInt64 = string | number;
+
+export interface TuttiLatencyHistogram {
+  count?: TuttiInt64;
+  sumSeconds?: number;
+  boundsSeconds?: number[];
+  /** non-cumulative; the last bucket is +Inf */
+  buckets?: TuttiInt64[];
+}
+
+export interface TuttiTrafficStats {
+  collectedAt?: string;
+  startedAt?: string;
+  requestsTotal?: TuttiInt64;
+  requestsByClass?: Record<string, TuttiInt64>;
+  requestsByStorage?: Record<string, TuttiInt64>;
+  responses2xx?: TuttiInt64;
+  responses3xx?: TuttiInt64;
+  responses4xx?: TuttiInt64;
+  responses5xx?: TuttiInt64;
+  responsesOther?: TuttiInt64;
+  failFast?: TuttiInt64;
+  accessDenied?: TuttiInt64;
+  eventRecordFailed?: TuttiInt64;
+  syncQuorumReached?: TuttiInt64;
+  syncBelowQuorum?: TuttiInt64;
+  syncSkipped?: TuttiInt64;
+  chunkedVerifyFailed?: TuttiInt64;
+  bytesIn?: TuttiInt64;
+  bytesOut?: TuttiInt64;
+  latency?: TuttiLatencyHistogram;
 }

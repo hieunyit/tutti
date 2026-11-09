@@ -71,4 +71,24 @@ describe('TuttiService', () => {
       { user: 'u', bucket: '' },
     ]);
   });
+
+  it('lists proxy accounts and manages access policies', async () => {
+    mocked.get.mockResolvedValue({ data: { accounts: [] } });
+    await TuttiService.getProxyAccounts();
+    expect(mocked.get.mock.calls[0]?.[0]).toContain('/tutti/proxy-accounts');
+
+    mocked.post.mockResolvedValue({ data: {} });
+    await TuttiService.setAccessPolicy({ user: 'u', permission: 'read-only' });
+    expect(mocked.post).toHaveBeenCalledWith(
+      expect.stringContaining('/tutti/access-policies'),
+      { user: 'u', permission: 'read-only' },
+    );
+
+    mocked.put.mockResolvedValue({ data: {} });
+    await TuttiService.deleteAccessPolicy('u');
+    expect(mocked.put).toHaveBeenCalledWith(
+      expect.stringContaining('/tutti/access-policies/delete'),
+      { user: 'u' },
+    );
+  });
 });

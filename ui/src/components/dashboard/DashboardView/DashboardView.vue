@@ -24,6 +24,8 @@
   } from '@clyso/clyso-ui-kit';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
+  import AuthUserMenu from '@/components/auth/AuthUserMenu.vue';
+  import { useAuthStore } from '@/stores/authStore';
   import DashboardNav from '@/components/dashboard/DashboardNav/DashboardNav.vue';
   import DashboardLogo from '@/components/dashboard/DashboardLogo/DashboardLogo.vue';
   import { HAS_LANG_SELECT } from '@/utils/constants/env';
@@ -31,6 +33,8 @@
 
   const { locale } = storeToRefs(useI18nStore());
   const { setLocale } = useI18nStore();
+
+  const { showUserMenu } = storeToRefs(useAuthStore());
 
   const { colorScheme } = storeToRefs(useColorSchemeStore());
   const { setColorScheme } = useColorSchemeStore();
@@ -62,6 +66,8 @@
             :value="colorScheme"
             @update:value="setColorScheme"
           />
+
+          <AuthUserMenu v-if="showUserMenu" />
         </template>
       </CDashboardHeader>
     </template>

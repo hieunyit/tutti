@@ -23,6 +23,7 @@
   import { IconName } from '@/utils/types/icon';
   import ChorusDirectionCell from '@/components/chorus/common/ChorusDirectionCell/ChorusDirectionCell.vue';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({ messages: i18nDiffReportDetail });
   const store = useChorusDiffReportDetailStore();
@@ -103,19 +104,21 @@
         </ChorusDirectionCell>
       </div>
 
-      <CButton
-        type="warning"
-        :loading="isRestartLoading"
-        @click="handleRestart"
-      >
-        <template #icon>
-          <CIcon
-            :is-inline="true"
-            :name="IconName.BASE_REFRESH"
-          />
-        </template>
-        {{ t('restartAction') }}
-      </CButton>
+      <WriteGate>
+        <CButton
+          type="warning"
+          :loading="isRestartLoading"
+          @click="handleRestart"
+        >
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="IconName.BASE_REFRESH"
+            />
+          </template>
+          {{ t('restartAction') }}
+        </CButton>
+      </WriteGate>
     </div>
 
     <p class="diff-report-detail-header__subtitle">

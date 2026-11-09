@@ -23,6 +23,7 @@
   import { IconName } from '@/utils/types/icon';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
   import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nReplications,
@@ -60,20 +61,22 @@
     <p>{{ t(isFiltered ? 'filterNoResultsText' : 'noResultsText') }}</p>
 
     <template #actions>
-      <CButton
-        type="primary"
-        size="large"
-        @click="handleAction"
-      >
-        <template #icon>
-          <CIcon
-            :is-inline="true"
-            :name="isFiltered ? 'close' : IconName.BASE_ADD"
-          />
-        </template>
+      <WriteGate :bypass="isFiltered">
+        <CButton
+          type="primary"
+          size="large"
+          @click="handleAction"
+        >
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="isFiltered ? 'close' : IconName.BASE_ADD"
+            />
+          </template>
 
-        {{ t(isFiltered ? 'filterNoResultsAction' : 'addReplicationAction') }}
-      </CButton>
+          {{ t(isFiltered ? 'filterNoResultsAction' : 'addReplicationAction') }}
+        </CButton>
+      </WriteGate>
     </template>
   </CResult>
 </template>

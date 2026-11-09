@@ -28,6 +28,7 @@
   import type { AddId } from '@/utils/types/helper';
   import { IconName } from '@/utils/types/icon';
   import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({ messages: i18nDiffReports });
 
@@ -181,80 +182,82 @@
 
 <template>
   <div class="diff-reports-actions">
-    <div class="diff-reports-actions__list">
-      <div
-        v-if="DiffReportsHelper.isTwoLocationReport(report)"
-        class="diff-reports-actions__item diff-reports-actions__item--detail"
-      >
-        <CTooltip :delay="1000">
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="info"
-              @click="handleDiffReportDetail"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_EYE"
-                />
-              </template>
-            </CButton>
-          </template>
+    <WriteGate>
+      <div class="diff-reports-actions__list">
+        <div
+          v-if="DiffReportsHelper.isTwoLocationReport(report)"
+          class="diff-reports-actions__item diff-reports-actions__item--detail"
+        >
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="info"
+                @click="handleDiffReportDetail"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_EYE"
+                  />
+                </template>
+              </CButton>
+            </template>
 
-          {{ t('diffReportDetailAction') }}
-        </CTooltip>
-      </div>
-      <div
-        class="diff-reports-actions__item diff-reports-actions__item--restart"
-      >
-        <CTooltip :delay="1000">
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="warning"
-              :loading="isRestartLoading"
-              @click="handleDiffReportRestart"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_REFRESH"
-                />
-              </template>
-            </CButton>
-          </template>
+            {{ t('diffReportDetailAction') }}
+          </CTooltip>
+        </div>
+        <div
+          class="diff-reports-actions__item diff-reports-actions__item--restart"
+        >
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="warning"
+                :loading="isRestartLoading"
+                @click="handleDiffReportRestart"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_REFRESH"
+                  />
+                </template>
+              </CButton>
+            </template>
 
-          {{ t('restartDiffReportRestartAction') }}
-        </CTooltip>
-      </div>
-      <div
-        class="diff-reports-actions__item diff-reports-actions__item--delete"
-      >
-        <CTooltip :delay="1000">
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="error"
-              :loading="isDeleteLoading"
-              @click="handleDiffReportDelete"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TRASH"
-                />
-              </template>
-            </CButton>
-          </template>
+            {{ t('restartDiffReportRestartAction') }}
+          </CTooltip>
+        </div>
+        <div
+          class="diff-reports-actions__item diff-reports-actions__item--delete"
+        >
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="error"
+                :loading="isDeleteLoading"
+                @click="handleDiffReportDelete"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_TRASH"
+                  />
+                </template>
+              </CButton>
+            </template>
 
-          {{ t('deleteDiffReportDeleteAction') }}
-        </CTooltip>
+            {{ t('deleteDiffReportDeleteAction') }}
+          </CTooltip>
+        </div>
       </div>
-    </div>
+    </WriteGate>
   </div>
 </template>
 

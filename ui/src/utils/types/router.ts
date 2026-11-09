@@ -30,4 +30,12 @@ export enum RouteName {
   CHORUS_DIFF_REPORT_DETAIL = 'CHORUS_DIFF_REPORT_DETAIL',
   TUTTI_HEALTH = 'TUTTI_HEALTH',
   TUTTI_FAILOVER = 'TUTTI_FAILOVER',
+  TUTTI_PROXY_ACCOUNTS = 'TUTTI_PROXY_ACCOUNTS',
+}
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Route performs mutations: blocked for read-only (viewer) accounts. */
+    requiresWrite?: boolean;
+  }
 }

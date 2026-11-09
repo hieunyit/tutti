@@ -21,6 +21,10 @@ import '@/styles/styles.scss';
 import { ColorScheme } from '@clyso/clyso-ui-kit';
 import { useI18nStore } from '@/stores/i18nStore';
 import { useColorSchemeStore } from '@/stores/colorSchemeStore';
+import { useAuthStore } from '@/stores/authStore';
+import { installAuthInterceptor } from '@/http/authInterceptor';
+import { apiClient } from '@/http';
+import { RouteName } from '@/utils/types/router';
 import router from '@/router';
 import App from '@/App.vue';
 import { i18n } from '@/i18n';
@@ -28,6 +32,25 @@ import { i18n } from '@/i18n';
 const app = createApp(App);
 
 app.use(createPinia());
+const authStore = useAuthStore();
+
+installAuthInterceptor(apiClient, {
+  getToken: () => authStore.token,
+  onUnauthorized: () => {
+    authStore.handleUnauthorized();
+
+    const current = router.currentRoute.value;
+
+    if (current.name === RouteName.LOGIN) return;
+
+    router.push({
+      name: RouteName.LOGIN,
+      query: { redirect: current.fullPath },
+    });
+  },
+});
+
+// the interceptor must exist before the router starts its first navigation
 app.use(router);
 app.use(i18n);
 

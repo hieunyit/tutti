@@ -29,6 +29,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
   import FailoverPolicyDrawer from './FailoverPolicyDrawer.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import type { TuttiFailoverPolicy } from '@/utils/types/tutti';
@@ -101,24 +102,28 @@
       title: t('columnActions'),
       key: 'actions',
       render: (row) =>
-        h(NSpace, { size: 8 }, () => [
-          h(NButton, { size: 'small', onClick: () => openEdit(row) }, () =>
-            t('edit'),
-          ),
-          h(
-            NPopconfirm,
-            {
-              positiveText: t('deleteConfirmAction'),
-              negativeText: t('cancel'),
-              onPositiveClick: () => remove(row),
-            },
-            {
-              trigger: () =>
-                h(NButton, { size: 'small', type: 'error' }, () => t('delete')),
-              default: () => t('deleteConfirm', { source: row.source }),
-            },
-          ),
-        ]),
+        h(WriteGate, null, () =>
+          h(NSpace, { size: 8 }, () => [
+            h(NButton, { size: 'small', onClick: () => openEdit(row) }, () =>
+              t('edit'),
+            ),
+            h(
+              NPopconfirm,
+              {
+                positiveText: t('deleteConfirmAction'),
+                negativeText: t('cancel'),
+                onPositiveClick: () => remove(row),
+              },
+              {
+                trigger: () =>
+                  h(NButton, { size: 'small', type: 'error' }, () =>
+                    t('delete'),
+                  ),
+                default: () => t('deleteConfirm', { source: row.source }),
+              },
+            ),
+          ]),
+        ),
     },
   ]);
 </script>
@@ -131,13 +136,15 @@
 
     <p class="failover-policies-tile__help">{{ t('help') }}</p>
 
-    <NButton
-      type="primary"
-      class="failover-policies-tile__add"
-      @click="openAdd"
-    >
-      {{ t('addPolicy') }}
-    </NButton>
+    <WriteGate>
+      <NButton
+        type="primary"
+        class="failover-policies-tile__add"
+        @click="openAdd"
+      >
+        {{ t('addPolicy') }}
+      </NButton>
+    </WriteGate>
 
     <NDataTable
       :columns="columns"

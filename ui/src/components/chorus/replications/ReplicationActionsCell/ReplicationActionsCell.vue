@@ -29,6 +29,7 @@
   import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nReplications,
@@ -246,106 +247,108 @@
 
 <template>
   <div class="replication-actions-cell">
-    <div class="actions-list">
-      <!--      TODO: uncomment when Replication Details page is implemented-->
-      <!--      <div class="actions-list__item actions-list__item&#45;&#45;details">-->
-      <!--        <CTooltip :delay="1000">-->
-      <!--          <template #trigger>-->
-      <!--            <RouterLink to="/">-->
-      <!--              <CButton-->
-      <!--                secondary-->
-      <!--                size="tiny"-->
-      <!--                tag="div"-->
-      <!--              >-->
-      <!--                <template #icon>-->
-      <!--                  <CIcon-->
-      <!--                    :is-inline="true"-->
-      <!--                    name="eye"-->
-      <!--                  />-->
-      <!--                </template>-->
-      <!--              </CButton>-->
-      <!--            </RouterLink>-->
-      <!--          </template>-->
+    <WriteGate>
+      <div class="actions-list">
+        <!--      TODO: uncomment when Replication Details page is implemented-->
+        <!--      <div class="actions-list__item actions-list__item&#45;&#45;details">-->
+        <!--        <CTooltip :delay="1000">-->
+        <!--          <template #trigger>-->
+        <!--            <RouterLink to="/">-->
+        <!--              <CButton-->
+        <!--                secondary-->
+        <!--                size="tiny"-->
+        <!--                tag="div"-->
+        <!--              >-->
+        <!--                <template #icon>-->
+        <!--                  <CIcon-->
+        <!--                    :is-inline="true"-->
+        <!--                    name="eye"-->
+        <!--                  />-->
+        <!--                </template>-->
+        <!--              </CButton>-->
+        <!--            </RouterLink>-->
+        <!--          </template>-->
 
-      <!--          {{ t('actionViewDetails') }}-->
-      <!--        </CTooltip>-->
-      <!--      </div>-->
+        <!--          {{ t('actionViewDetails') }}-->
+        <!--        </CTooltip>-->
+        <!--      </div>-->
 
-      <div class="actions-list__item actions-list__item--pause-resume">
-        <CTooltip
-          v-if="replication.isPaused"
-          key="resume"
-          :delay="1000"
-        >
+        <div class="actions-list__item actions-list__item--pause-resume">
+          <CTooltip
+            v-if="replication.isPaused"
+            key="resume"
+            :delay="1000"
+          >
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="info"
+                :loading="isPauseResumeLoading"
+                @click="resumeReplication"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_PLAY"
+                  />
+                </template>
+              </CButton>
+            </template>
+
+            {{ t('actionResume') }}
+          </CTooltip>
+
+          <CTooltip
+            v-else
+            key="pause"
+            :delay="1000"
+          >
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="warning"
+                :loading="isPauseResumeLoading"
+                @click="pauseReplication"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_PAUSE"
+                  />
+                </template>
+              </CButton>
+            </template>
+
+            {{ t('actionPause') }}
+          </CTooltip>
+        </div>
+
+        <CTooltip :delay="1000">
           <template #trigger>
             <CButton
               secondary
               size="tiny"
-              type="info"
-              :loading="isPauseResumeLoading"
-              @click="resumeReplication"
+              type="error"
+              :loading="isDeleteLoading"
+              @click="handleReplicationDelete"
             >
               <template #icon>
                 <CIcon
                   :is-inline="true"
-                  :name="IconName.BASE_PLAY"
+                  :name="
+                    replicationMetadata[replication.replicationType].iconName
+                  "
                 />
               </template>
             </CButton>
           </template>
 
-          {{ t('actionResume') }}
-        </CTooltip>
-
-        <CTooltip
-          v-else
-          key="pause"
-          :delay="1000"
-        >
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="warning"
-              :loading="isPauseResumeLoading"
-              @click="pauseReplication"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_PAUSE"
-                />
-              </template>
-            </CButton>
-          </template>
-
-          {{ t('actionPause') }}
+          {{ t('actionDelete') }}
         </CTooltip>
       </div>
-
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CButton
-            secondary
-            size="tiny"
-            type="error"
-            :loading="isDeleteLoading"
-            @click="handleReplicationDelete"
-          >
-            <template #icon>
-              <CIcon
-                :is-inline="true"
-                :name="
-                  replicationMetadata[replication.replicationType].iconName
-                "
-              />
-            </template>
-          </CButton>
-        </template>
-
-        {{ t('actionDelete') }}
-      </CTooltip>
-    </div>
+    </WriteGate>
   </div>
 </template>
 

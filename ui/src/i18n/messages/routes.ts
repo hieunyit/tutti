@@ -38,6 +38,7 @@ const routes: I18nMessages<Routes> = {
     [RouteName.CHORUS_DIFF_REPORT_DETAIL]: 'Diff Report Detail',
     [RouteName.TUTTI_HEALTH]: 'Storage health',
     [RouteName.TUTTI_FAILOVER]: 'Failover',
+    [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy accounts',
   },
   [I18nLocale.DE]: {
     [RouteName.LOGIN]: 'Login',
@@ -55,6 +56,7 @@ const routes: I18nMessages<Routes> = {
     [RouteName.CHORUS_DIFF_REPORT_DETAIL]: 'Diff-Report Details',
     [RouteName.TUTTI_HEALTH]: 'Speicher-Zustand',
     [RouteName.TUTTI_FAILOVER]: 'Failover',
+    [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy-Konten',
   },
 };
 

@@ -15,6 +15,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router';
+import authGuard from '@/router/guards/auth-guard';
 import metaHook from '@/router/guards/meta-hook';
 import { routes } from '@/router/routes';
 
@@ -41,6 +42,7 @@ const router = createRouter({
   routes,
 });
 
+router.beforeEach(authGuard);
 router.afterEach(metaHook);
 
 export default router;

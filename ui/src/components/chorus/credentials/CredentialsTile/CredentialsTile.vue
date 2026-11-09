@@ -24,6 +24,7 @@
   import { RouteName } from '@/utils/types/router';
   import { IconName } from '@/utils/types/icon';
   import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nCredentials,
@@ -44,28 +45,30 @@
       v-if="storage"
       class="credentials-tile__actions"
     >
-      <RouterLink
-        :to="{
-          name: RouteName.CHORUS_SET_CREDENTIAL,
-          params: { storageName: storage.name },
-        }"
-      >
-        <CButton
-          type="primary"
-          size="medium"
-          ghost
-          tag="div"
+      <WriteGate>
+        <RouterLink
+          :to="{
+            name: RouteName.CHORUS_SET_CREDENTIAL,
+            params: { storageName: storage.name },
+          }"
         >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="IconName.BASE_ADD"
-            />
-          </template>
+          <CButton
+            type="primary"
+            size="medium"
+            ghost
+            tag="div"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
 
-          {{ t('addCredentialAction') }}
-        </CButton>
-      </RouterLink>
+            {{ t('addCredentialAction') }}
+          </CButton>
+        </RouterLink>
+      </WriteGate>
     </div>
 
     <CredentialsList class="credentials-tile__credentials" />

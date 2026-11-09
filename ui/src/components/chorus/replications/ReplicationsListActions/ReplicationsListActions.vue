@@ -30,6 +30,7 @@
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
   import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
   import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nReplications,
@@ -155,135 +156,141 @@
 
 <template>
   <div class="replications-list-actions">
-    <div class="replications-list-actions__creation">
-      <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
-        <CButton
-          type="primary"
-          size="medium"
-          ghost
-          class="add-replication-button"
-          tag="div"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="IconName.BASE_ADD"
-            />
+    <WriteGate>
+      <div class="replications-list-actions__creation">
+        <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
+          <CButton
+            type="primary"
+            size="medium"
+            ghost
+            class="add-replication-button"
+            tag="div"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+
+            {{ t('addReplicationAction') }}
+          </CButton>
+        </RouterLink>
+      </div>
+    </WriteGate>
+
+    <WriteGate>
+      <div class="replications-list-actions__selection-actions">
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedReplicationsForResume.length"
+              :max="100"
+            >
+              <CButton
+                secondary
+                :disabled="isResumeDisabled"
+                :loading="isResumeSelectedProcessing"
+                size="medium"
+                type="info"
+                @click="openResumeConfirmation"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_PLAY"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
           </template>
 
-          {{ t('addReplicationAction') }}
-        </CButton>
-      </RouterLink>
-    </div>
+          <template v-if="isResumeDisabled">
+            {{ t('actionResume') }}
+          </template>
+          <template v-else>
+            {{
+              t('actionResumeSelected', {
+                total: selectedReplicationsForResume.length,
+              })
+            }}
+          </template>
+        </CTooltip>
 
-    <div class="replications-list-actions__selection-actions">
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedReplicationsForResume.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isResumeDisabled"
-              :loading="isResumeSelectedProcessing"
-              size="medium"
-              type="info"
-              @click="openResumeConfirmation"
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedReplicationsForPause.length"
+              :max="100"
             >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_PLAY"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
+              <CButton
+                secondary
+                :disabled="isPauseDisabled"
+                :loading="isPauseSelectedProcessing"
+                size="medium"
+                type="warning"
+                @click="openPauseConfirmation"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_PAUSE"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
+          </template>
 
-        <template v-if="isResumeDisabled">
-          {{ t('actionResume') }}
-        </template>
-        <template v-else>
-          {{
-            t('actionResumeSelected', {
-              total: selectedReplicationsForResume.length,
-            })
-          }}
-        </template>
-      </CTooltip>
+          <template v-if="isPauseDisabled">
+            {{ t('actionPause') }}
+          </template>
+          <template v-else>
+            {{
+              t('actionPauseSelected', {
+                total: selectedReplicationsForPause.length,
+              })
+            }}
+          </template>
+        </CTooltip>
 
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedReplicationsForPause.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isPauseDisabled"
-              :loading="isPauseSelectedProcessing"
-              size="medium"
-              type="warning"
-              @click="openPauseConfirmation"
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedReplications.length"
+              :max="100"
             >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_PAUSE"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
+              <CButton
+                secondary
+                :disabled="isDeleteDisabled"
+                :loading="isDeleteSelectedProcessing"
+                size="medium"
+                type="error"
+                @click="openDeleteConfirmation"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_TRASH"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
+          </template>
 
-        <template v-if="isPauseDisabled">
-          {{ t('actionPause') }}
-        </template>
-        <template v-else>
-          {{
-            t('actionPauseSelected', {
-              total: selectedReplicationsForPause.length,
-            })
-          }}
-        </template>
-      </CTooltip>
-
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedReplications.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isDeleteDisabled"
-              :loading="isDeleteSelectedProcessing"
-              size="medium"
-              type="error"
-              @click="openDeleteConfirmation"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TRASH"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
-
-        <template v-if="isDeleteDisabled">
-          {{ t('actionDelete') }}
-        </template>
-        <template v-else>
-          {{ t('actionDeleteSelected', { total: selectedReplicationsCount }) }}
-        </template>
-      </CTooltip>
-    </div>
+          <template v-if="isDeleteDisabled">
+            {{ t('actionDelete') }}
+          </template>
+          <template v-else>
+            {{
+              t('actionDeleteSelected', { total: selectedReplicationsCount })
+            }}
+          </template>
+        </CTooltip>
+      </div>
+    </WriteGate>
   </div>
 </template>
 

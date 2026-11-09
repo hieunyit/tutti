@@ -32,6 +32,7 @@
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import type { RoutingPolicy } from '@/utils/types/chorus';
   import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { createDialog } = useDialog();
 
@@ -254,107 +255,111 @@
 
 <template>
   <div class="routing-policies-list-actions">
-    <div class="routing-policies-list-actions__creation">
-      <RouterLink :to="{ name: RouteName.CHORUS_ADD_ROUTING_POLICY }">
-        <CButton
-          type="primary"
-          size="medium"
-          ghost
-          class="add-routing-policies-button"
-          tag="div"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="IconName.BASE_ADD"
-            />
+    <WriteGate>
+      <div class="routing-policies-list-actions__creation">
+        <RouterLink :to="{ name: RouteName.CHORUS_ADD_ROUTING_POLICY }">
+          <CButton
+            type="primary"
+            size="medium"
+            ghost
+            class="add-routing-policies-button"
+            tag="div"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+
+            {{ t('actionAddRoutingPolicy') }}
+          </CButton>
+        </RouterLink>
+      </div>
+    </WriteGate>
+
+    <WriteGate>
+      <div class="routing-policies-list-actions__selection-actions">
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedRoutingPoliciesForUnblock.length"
+              :max="100"
+            >
+              <CButton
+                secondary
+                :disabled="isUnblockDisabled"
+                size="medium"
+                type="success"
+                @click="openSetBlockConfirmation(false)"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_LOCK_OPEN"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
           </template>
+          {{ t('actionUnblock') }}
+        </CTooltip>
 
-          {{ t('actionAddRoutingPolicy') }}
-        </CButton>
-      </RouterLink>
-    </div>
-
-    <div class="routing-policies-list-actions__selection-actions">
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedRoutingPoliciesForUnblock.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isUnblockDisabled"
-              size="medium"
-              type="success"
-              @click="openSetBlockConfirmation(false)"
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedRoutingPoliciesForBlock.length"
+              :max="100"
             >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_LOCK_OPEN"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
-        {{ t('actionUnblock') }}
-      </CTooltip>
+              <CButton
+                secondary
+                :disabled="isBlockDisabled"
+                size="medium"
+                type="warning"
+                @click="openSetBlockConfirmation(true)"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_LOCK_CLOSED"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
+          </template>
+          {{ t('actionBlock') }}
+        </CTooltip>
 
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedRoutingPoliciesForBlock.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isBlockDisabled"
-              size="medium"
-              type="warning"
-              @click="openSetBlockConfirmation(true)"
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CBadge
+              :offset="[-4, 0]"
+              :value="selectedRoutingPoliciesForDelete.length"
+              :max="100"
             >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_LOCK_CLOSED"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
-        {{ t('actionBlock') }}
-      </CTooltip>
-
-      <CTooltip :delay="1000">
-        <template #trigger>
-          <CBadge
-            :offset="[-4, 0]"
-            :value="selectedRoutingPoliciesForDelete.length"
-            :max="100"
-          >
-            <CButton
-              secondary
-              :disabled="isDeleteDisabled"
-              :loading="isDeleteSelectedProcessing"
-              size="medium"
-              type="error"
-              @click="openDeleteConfirmation"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TRASH"
-                />
-              </template>
-            </CButton>
-          </CBadge>
-        </template>
-        {{ t('actionDelete') }}
-      </CTooltip>
-    </div>
+              <CButton
+                secondary
+                :disabled="isDeleteDisabled"
+                :loading="isDeleteSelectedProcessing"
+                size="medium"
+                type="error"
+                @click="openDeleteConfirmation"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_TRASH"
+                  />
+                </template>
+              </CButton>
+            </CBadge>
+          </template>
+          {{ t('actionDelete') }}
+        </CTooltip>
+      </div>
+    </WriteGate>
   </div>
 </template>
 

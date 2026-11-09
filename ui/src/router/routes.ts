@@ -31,8 +31,15 @@ import ChorusAddDiffReportPage from '@/pages/ChorusAddDiffReportPage/ChorusAddDi
 import ChorusDiffReportDetailPage from '@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue';
 import TuttiHealthPage from '@/pages/TuttiHealthPage/TuttiHealthPage.vue';
 import TuttiFailoverPage from '@/pages/TuttiFailoverPage/TuttiFailoverPage.vue';
+import TuttiProxyAccountsPage from '@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue';
+import LoginPage from '@/pages/LoginPage/LoginPage.vue';
 
 export const routes: RouteRecordRaw[] = [
+  {
+    path: '/login',
+    name: RouteName.LOGIN,
+    component: LoginPage,
+  },
   {
     path: '/',
     component: DashboardView,
@@ -50,6 +57,7 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'replication/add',
+        meta: { requiresWrite: true },
         name: RouteName.CHORUS_ADD_REPLICATION,
         component: ChorusAddReplicationPage,
       },
@@ -60,6 +68,7 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'diff-reports/add',
+        meta: { requiresWrite: true },
         name: RouteName.CHORUS_ADD_DIFF_REPORT,
         component: ChorusAddDiffReportPage,
       },
@@ -91,6 +100,7 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'routing-policies/add',
+        meta: { requiresWrite: true },
         name: RouteName.CHORUS_ADD_ROUTING_POLICY,
         component: ChorusAddRoutingPolicyPage,
       },
@@ -100,12 +110,18 @@ export const routes: RouteRecordRaw[] = [
         component: TuttiHealthPage,
       },
       {
+        path: 'proxy-accounts',
+        name: RouteName.TUTTI_PROXY_ACCOUNTS,
+        component: TuttiProxyAccountsPage,
+      },
+      {
         path: 'failover',
         name: RouteName.TUTTI_FAILOVER,
         component: TuttiFailoverPage,
       },
       {
         path: 'storages/:storageName/credentials/:alias?',
+        meta: { requiresWrite: true },
         name: RouteName.CHORUS_SET_CREDENTIAL,
         component: ChorusSetCredentialPage,
         props: true,

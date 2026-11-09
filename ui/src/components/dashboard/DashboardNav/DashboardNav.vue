@@ -57,6 +57,10 @@
       label: t(RouteName.TUTTI_FAILOVER),
     },
     {
+      name: RouteName.TUTTI_PROXY_ACCOUNTS,
+      label: t(RouteName.TUTTI_PROXY_ACCOUNTS),
+    },
+    {
       name: RouteName.CHORUS_MONITORING,
       label: t(RouteName.CHORUS_MONITORING),
     },

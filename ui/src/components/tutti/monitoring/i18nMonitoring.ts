@@ -1,0 +1,185 @@
+/*
+ * Copyright © 2026 hieunyit
+ *
+ *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
+
+export default <I18nMessages>{
+  [I18nLocale.EN]: {
+    sinceStartNote:
+      'Counters are cumulative since each proxy started and reset when a proxy restarts. Rates are calculated from consecutive 10 s snapshots; the charts keep the last 30 minutes in this browser tab.',
+    prometheusHint:
+      'Long-term uptime history is available on the Home page (Prometheus).',
+    prometheusLink: 'Open Home',
+    errorTitle: 'Failed to load monitoring data',
+    errorText: 'The proxy statistics could not be loaded.',
+    retry: 'Retry',
+    noProxiesTitle: 'No live proxies',
+    noProxiesText:
+      'No proxy has reported to the worker yet. Statistics appear as soon as a proxy is running.',
+    noStatsText:
+      'These proxies do not publish traffic statistics: {proxies}. Upgrade them to see data.',
+    warmingUp:
+      'Collecting the first samples. Rates appear after the second snapshot (about 10 s).',
+    restartNote: 'A proxy restart resets its counters and series.',
+    kpiRequests: 'Requests/s',
+    kpiErrors4xx: 'Client errors (4xx)',
+    kpiErrors5xx: 'Server errors (5xx)',
+    kpiLatencyAvg: 'Avg latency',
+    kpiLatencyP95: 'p95 latency',
+    kpiThroughputIn: 'Throughput in',
+    kpiThroughputOut: 'Throughput out',
+    kpiFailFast: 'Fail-fast/s',
+    kpiAccessDenied: 'Access denied/s',
+    kpiNoData: '-',
+    chartRequestsByClass: 'Requests/s by class',
+    chartLatency: 'Latency',
+    chartThroughput: 'Throughput',
+    chartErrors: 'Errors/s',
+    chartNoData: 'Waiting for data...',
+    seriesRead: 'read',
+    seriesWrite: 'write',
+    seriesExists: 'exists',
+    seriesManage: 'manage',
+    seriesOther: 'other',
+    seriesAvg: 'avg',
+    seriesP95: 'p95',
+    seriesIn: 'in',
+    seriesOut: 'out',
+    series4xx: '4xx',
+    series5xx: '5xx',
+    seriesFailFast: 'fail-fast',
+    seriesAccessDenied: 'access denied',
+    proxiesTitle: 'Per proxy',
+    storagesTitle: 'Per storage',
+    columnProxy: 'Proxy',
+    columnStorage: 'Storage',
+    columnStarted: 'Started',
+    columnRequests: 'Requests (total)',
+    columnRate: 'Rate',
+    columnErrors4xx: '4xx (total)',
+    columnErrors5xx: '5xx (total)',
+    columnBytesIn: 'Bytes in',
+    columnBytesOut: 'Bytes out',
+    columnFailFast: 'Fail-fast',
+    columnAccessDenied: 'Denied',
+    noRows: 'No data.',
+    syncTitle: 'Synchronous replication outcomes',
+    syncQuorumReached: 'Quorum reached',
+    syncBelowQuorum: 'Below quorum',
+    syncSkipped: 'Skipped',
+    syncHint:
+      'Totals since proxy start (all proxies). Below quorum means fewer copies than the configured write quorum were stored.',
+    backlogTitle: 'Replication backlog',
+    backlogError: 'Replication data could not be loaded.',
+    backlogEmpty: 'No replications configured.',
+    columnReplication: 'Replication',
+    columnEvents: 'Events',
+    columnEventsDone: 'Done',
+    columnLag: 'Lag',
+    columnInitSync: 'Initial sync',
+    columnState: 'State',
+    statePaused: 'paused',
+    stateActive: 'active',
+    initDone: 'done',
+    lagWarning: 'Lag persists for several polls',
+    lagWarningText:
+      '{count} replication(s) have had a non-zero event lag for several consecutive polls. Check the replication agents.',
+    rateUnit: '/s',
+  },
+  [I18nLocale.DE]: {
+    sinceStartNote:
+      'Zähler sind kumulativ seit dem Start des jeweiligen Proxys und werden bei einem Neustart zurückgesetzt. Raten werden aus aufeinanderfolgenden 10-s-Snapshots berechnet; die Diagramme halten die letzten 30 Minuten in diesem Browser-Tab.',
+    prometheusHint:
+      'Die langfristige Verfügbarkeit finden Sie auf der Startseite (Prometheus).',
+    prometheusLink: 'Startseite öffnen',
+    errorTitle: 'Monitoring-Daten konnten nicht geladen werden',
+    errorText: 'Die Proxy-Statistiken konnten nicht geladen werden.',
+    retry: 'Erneut versuchen',
+    noProxiesTitle: 'Keine aktiven Proxys',
+    noProxiesText:
+      'Noch kein Proxy hat sich beim Worker gemeldet. Statistiken erscheinen, sobald ein Proxy läuft.',
+    noStatsText:
+      'Diese Proxys veröffentlichen keine Traffic-Statistiken: {proxies}. Aktualisieren Sie sie, um Daten zu sehen.',
+    warmingUp:
+      'Die ersten Messwerte werden gesammelt. Raten erscheinen nach dem zweiten Snapshot (ca. 10 s).',
+    restartNote:
+      'Ein Neustart des Proxys setzt dessen Zähler und Verläufe zurück.',
+    kpiRequests: 'Anfragen/s',
+    kpiErrors4xx: 'Client-Fehler (4xx)',
+    kpiErrors5xx: 'Server-Fehler (5xx)',
+    kpiLatencyAvg: 'Ø Latenz',
+    kpiLatencyP95: 'p95-Latenz',
+    kpiThroughputIn: 'Durchsatz ein',
+    kpiThroughputOut: 'Durchsatz aus',
+    kpiFailFast: 'Fail-fast/s',
+    kpiAccessDenied: 'Zugriff verweigert/s',
+    kpiNoData: '-',
+    chartRequestsByClass: 'Anfragen/s nach Klasse',
+    chartLatency: 'Latenz',
+    chartThroughput: 'Durchsatz',
+    chartErrors: 'Fehler/s',
+    chartNoData: 'Warte auf Daten...',
+    seriesRead: 'Lesen',
+    seriesWrite: 'Schreiben',
+    seriesExists: 'Existenz',
+    seriesManage: 'Verwaltung',
+    seriesOther: 'Sonstige',
+    seriesAvg: 'Ø',
+    seriesP95: 'p95',
+    seriesIn: 'ein',
+    seriesOut: 'aus',
+    series4xx: '4xx',
+    series5xx: '5xx',
+    seriesFailFast: 'Fail-fast',
+    seriesAccessDenied: 'Zugriff verweigert',
+    proxiesTitle: 'Pro Proxy',
+    storagesTitle: 'Pro Speicher',
+    columnProxy: 'Proxy',
+    columnStorage: 'Speicher',
+    columnStarted: 'Gestartet',
+    columnRequests: 'Anfragen (gesamt)',
+    columnRate: 'Rate',
+    columnErrors4xx: '4xx (gesamt)',
+    columnErrors5xx: '5xx (gesamt)',
+    columnBytesIn: 'Bytes ein',
+    columnBytesOut: 'Bytes aus',
+    columnFailFast: 'Fail-fast',
+    columnAccessDenied: 'Verweigert',
+    noRows: 'Keine Daten.',
+    syncTitle: 'Ergebnisse der synchronen Replikation',
+    syncQuorumReached: 'Quorum erreicht',
+    syncBelowQuorum: 'Unter Quorum',
+    syncSkipped: 'Übersprungen',
+    syncHint:
+      'Summen seit Proxy-Start (alle Proxys). Unter Quorum bedeutet, dass weniger Kopien als das konfigurierte Schreib-Quorum gespeichert wurden.',
+    backlogTitle: 'Replikations-Rückstand',
+    backlogError: 'Replikationsdaten konnten nicht geladen werden.',
+    backlogEmpty: 'Keine Replikationen konfiguriert.',
+    columnReplication: 'Replikation',
+    columnEvents: 'Ereignisse',
+    columnEventsDone: 'Erledigt',
+    columnLag: 'Rückstand',
+    columnInitSync: 'Erstsynchronisation',
+    columnState: 'Status',
+    statePaused: 'pausiert',
+    stateActive: 'aktiv',
+    initDone: 'fertig',
+    lagWarning: 'Rückstand besteht über mehrere Abfragen',
+    lagWarningText:
+      '{count} Replikation(en) haben seit mehreren Abfragen in Folge einen Ereignis-Rückstand. Prüfen Sie die Replikations-Agenten.',
+    rateUnit: '/s',
+  },
+};

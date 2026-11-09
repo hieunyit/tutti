@@ -25,6 +25,7 @@
   import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { IconName } from '@/utils/types/icon';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nRoutingPolicies,
@@ -167,86 +168,88 @@
 
 <template>
   <div class="routing-policy-actions">
-    <div class="routing-policy-actions__list">
-      <div
-        class="routing-policy-actions__item routing-policy-actions__item--block"
-      >
-        <CTooltip
-          v-if="routingPolicy.isBlocked"
-          :delay="1000"
+    <WriteGate>
+      <div class="routing-policy-actions__list">
+        <div
+          class="routing-policy-actions__item routing-policy-actions__item--block"
         >
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="success"
-              :loading="isBlockLoading"
-              @click="() => setRoutingPolicyBlocked(false)"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_LOCK_OPEN"
-                />
-              </template>
-            </CButton>
-          </template>
-          {{ t('actionUnblock') }}
-        </CTooltip>
+          <CTooltip
+            v-if="routingPolicy.isBlocked"
+            :delay="1000"
+          >
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="success"
+                :loading="isBlockLoading"
+                @click="() => setRoutingPolicyBlocked(false)"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_LOCK_OPEN"
+                  />
+                </template>
+              </CButton>
+            </template>
+            {{ t('actionUnblock') }}
+          </CTooltip>
 
-        <CTooltip
-          v-else
-          :delay="1000"
+          <CTooltip
+            v-else
+            :delay="1000"
+          >
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="warning"
+                :loading="isBlockLoading"
+                @click="() => setRoutingPolicyBlocked(true)"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_LOCK_CLOSED"
+                  />
+                </template>
+              </CButton>
+            </template>
+            {{ t('actionBlock') }}
+          </CTooltip>
+        </div>
+
+        <div
+          class="routing-policy-actions__item routing-policy-actions__item--delete"
         >
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="warning"
-              :loading="isBlockLoading"
-              @click="() => setRoutingPolicyBlocked(true)"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_LOCK_CLOSED"
-                />
-              </template>
-            </CButton>
-          </template>
-          {{ t('actionBlock') }}
-        </CTooltip>
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                type="error"
+                :loading="isDeleteLoading"
+                :disabled="routingPolicy.isBlocked"
+                @click="handleRoutingPolicyDelete"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_TRASH"
+                  />
+                </template>
+              </CButton>
+            </template>
+            {{
+              routingPolicy.isBlocked
+                ? t('actionDeleteBlocked')
+                : t('actionDelete')
+            }}
+          </CTooltip>
+        </div>
       </div>
-
-      <div
-        class="routing-policy-actions__item routing-policy-actions__item--delete"
-      >
-        <CTooltip :delay="1000">
-          <template #trigger>
-            <CButton
-              secondary
-              size="tiny"
-              type="error"
-              :loading="isDeleteLoading"
-              :disabled="routingPolicy.isBlocked"
-              @click="handleRoutingPolicyDelete"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TRASH"
-                />
-              </template>
-            </CButton>
-          </template>
-          {{
-            routingPolicy.isBlocked
-              ? t('actionDeleteBlocked')
-              : t('actionDelete')
-          }}
-        </CTooltip>
-      </div>
-    </div>
+    </WriteGate>
   </div>
 </template>
 

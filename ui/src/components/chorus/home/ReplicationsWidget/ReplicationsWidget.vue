@@ -35,6 +35,7 @@
   import ReplicationsWidgetStatusChart from '@/components/chorus/home/ReplicationsWidget/ReplicationsWidgetStatusChart.vue';
   import ReplicationsWidgetProgressChart from '@/components/chorus/home/ReplicationsWidget/ReplicationsWidgetProgressChart.vue';
   import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: {
@@ -189,11 +190,13 @@
         :to="{ name: RouteName.CHORUS_REPLICATION }"
         :tooltip-text="t('replicationsGoToList')"
       />
-      <HomeWidgetAction
-        :icon-name="IconName.BASE_ADD"
-        :to="{ name: RouteName.CHORUS_ADD_REPLICATION }"
-        :tooltip-text="t('replicationsAdd')"
-      />
+      <WriteGate>
+        <HomeWidgetAction
+          :icon-name="IconName.BASE_ADD"
+          :to="{ name: RouteName.CHORUS_ADD_REPLICATION }"
+          :tooltip-text="t('replicationsAdd')"
+        />
+      </WriteGate>
     </template>
 
     <div class="replications-widget__content chart-block">
@@ -312,22 +315,24 @@
       {{ t('replicationsEmptyText') }}
     </template>
     <template #empty-actions>
-      <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
-        <CButton
-          type="primary"
-          ghost
-          size="medium"
-          tag="div"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="IconName.BASE_ADD"
-            />
-          </template>
-          {{ t('replicationsEmptyButton') }}
-        </CButton>
-      </RouterLink>
+      <WriteGate>
+        <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
+          <CButton
+            type="primary"
+            ghost
+            size="medium"
+            tag="div"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+            {{ t('replicationsEmptyButton') }}
+          </CButton>
+        </RouterLink>
+      </WriteGate>
     </template>
 
     <template #loading-content>

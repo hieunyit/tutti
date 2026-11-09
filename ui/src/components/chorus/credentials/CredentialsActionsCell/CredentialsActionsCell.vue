@@ -23,6 +23,7 @@
   import { IconName } from '@/utils/types/icon';
   import type { ChorusCredential } from '@/utils/types/chorus';
   import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nCredentials,
@@ -37,40 +38,42 @@
 
 <template>
   <div class="credentials-actions-cell">
-    <div class="actions-list">
-      <div
-        v-if="storage"
-        class="actions-list__item actions-list__item--edit"
-      >
-        <CTooltip :delay="1000">
-          <template #trigger>
-            <RouterLink
-              :to="{
-                name: RouteName.CHORUS_SET_CREDENTIAL,
-                params: {
-                  storageName: storage.name,
-                  alias: props.credential.alias,
-                },
-              }"
-            >
-              <CButton
-                secondary
-                size="tiny"
-                type="primary"
-                tag="div"
+    <WriteGate>
+      <div class="actions-list">
+        <div
+          v-if="storage"
+          class="actions-list__item actions-list__item--edit"
+        >
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <RouterLink
+                :to="{
+                  name: RouteName.CHORUS_SET_CREDENTIAL,
+                  params: {
+                    storageName: storage.name,
+                    alias: props.credential.alias,
+                  },
+                }"
               >
-                <template #icon>
-                  <CIcon
-                    :is-inline="true"
-                    :name="IconName.BASE_CREATE"
-                  />
-                </template>
-              </CButton>
-            </RouterLink>
-          </template>
-          {{ t('actionEdit') }}
-        </CTooltip>
+                <CButton
+                  secondary
+                  size="tiny"
+                  type="primary"
+                  tag="div"
+                >
+                  <template #icon>
+                    <CIcon
+                      :is-inline="true"
+                      :name="IconName.BASE_CREATE"
+                    />
+                  </template>
+                </CButton>
+              </RouterLink>
+            </template>
+            {{ t('actionEdit') }}
+          </CTooltip>
+        </div>
       </div>
-    </div>
+    </WriteGate>
   </div>
 </template>

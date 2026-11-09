@@ -26,6 +26,7 @@
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
@@ -77,24 +78,26 @@
       title: t('columnActions'),
       key: 'actions',
       render: (row) =>
-        h(
-          NPopconfirm,
-          {
-            positiveText: t('acknowledge'),
-            negativeText: t('cancel'),
-            onPositiveClick: () => acknowledge(row),
-          },
-          {
-            trigger: () =>
-              h(NButton, { size: 'small' }, () => t('acknowledge')),
-            default: () =>
-              t('acknowledgeConfirm', {
-                user: row.user,
-                bucket: bucketLabel(row),
-                from: row.from,
-                to: row.to,
-              }),
-          },
+        h(WriteGate, null, () =>
+          h(
+            NPopconfirm,
+            {
+              positiveText: t('acknowledge'),
+              negativeText: t('cancel'),
+              onPositiveClick: () => acknowledge(row),
+            },
+            {
+              trigger: () =>
+                h(NButton, { size: 'small' }, () => t('acknowledge')),
+              default: () =>
+                t('acknowledgeConfirm', {
+                  user: row.user,
+                  bucket: bucketLabel(row),
+                  from: row.from,
+                  to: row.to,
+                }),
+            },
+          ),
         ),
     },
   ]);
