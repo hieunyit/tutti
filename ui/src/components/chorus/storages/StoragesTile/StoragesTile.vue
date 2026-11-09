@@ -15,13 +15,14 @@
   -->
 
 <script setup lang="ts">
-  import { CSkeleton, CTile } from '@clyso/clyso-ui-kit';
+  import { CResult, CSkeleton, CTile } from '@clyso/clyso-ui-kit';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import i18nStorages from '@/components/chorus/storages/i18nStorages';
   import { useChorusStoragesStore } from '@/stores/chorusStoragesStore';
   import { RouteName } from '@/utils/types/router';
+  import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({
     messages: i18nStorages,
@@ -37,10 +38,6 @@
     :is-loading="isLoading"
     class="storages-tile"
   >
-    <template #title>
-      {{ t('storagesTitle') }}
-    </template>
-
     <div class="storages-tile__content">
       <div class="storages-blocks-list">
         <div
@@ -73,7 +70,24 @@
             {{ t('followersStoragesTitle') }}
           </h2>
 
-          <div class="storage-block__storages">
+          <CResult
+            v-if="followerStorages.length === 0"
+            class="storage-block__empty"
+            type="empty"
+            size="small"
+            :icon-name="IconName.BASE_CYLINDER"
+            :max-width="480"
+          >
+            <template #title>
+              {{ t('noFollowersTitle') }}
+            </template>
+
+            <p>{{ t('noFollowersText') }}</p>
+          </CResult>
+          <div
+            v-else
+            class="storage-block__storages"
+          >
             <RouterLink
               v-for="follower in followerStorages"
               :key="follower.name"

@@ -285,6 +285,7 @@
                 size="tiny"
                 type="info"
                 :loading="isPauseResumeLoading"
+                :aria-label="t('actionResume')"
                 @click="resumeReplication"
               >
                 <template #icon>
@@ -310,6 +311,7 @@
                 size="tiny"
                 type="warning"
                 :loading="isPauseResumeLoading"
+                :aria-label="t('actionPause')"
                 @click="pauseReplication"
               >
                 <template #icon>
@@ -332,6 +334,7 @@
               size="tiny"
               type="error"
               :loading="isDeleteLoading"
+              :aria-label="t('actionDelete')"
               @click="handleReplicationDelete"
             >
               <template #icon>

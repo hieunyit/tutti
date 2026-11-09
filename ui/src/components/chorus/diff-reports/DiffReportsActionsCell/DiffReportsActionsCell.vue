@@ -182,32 +182,33 @@
 
 <template>
   <div class="diff-reports-actions">
-    <WriteGate>
-      <div class="diff-reports-actions__list">
-        <div
-          v-if="DiffReportsHelper.isTwoLocationReport(report)"
-          class="diff-reports-actions__item diff-reports-actions__item--detail"
-        >
-          <CTooltip :delay="1000">
-            <template #trigger>
-              <CButton
-                secondary
-                size="tiny"
-                type="info"
-                @click="handleDiffReportDetail"
-              >
-                <template #icon>
-                  <CIcon
-                    :is-inline="true"
-                    :name="IconName.BASE_EYE"
-                  />
-                </template>
-              </CButton>
-            </template>
+    <div class="diff-reports-actions__list">
+      <div
+        v-if="DiffReportsHelper.isTwoLocationReport(report)"
+        class="diff-reports-actions__item diff-reports-actions__item--detail"
+      >
+        <CTooltip :delay="1000">
+          <template #trigger>
+            <CButton
+              secondary
+              size="tiny"
+              type="info"
+              :aria-label="t('diffReportDetailAction')"
+              @click="handleDiffReportDetail"
+            >
+              <template #icon>
+                <CIcon
+                  :is-inline="true"
+                  :name="IconName.BASE_EYE"
+                />
+              </template>
+            </CButton>
+          </template>
 
-            {{ t('diffReportDetailAction') }}
-          </CTooltip>
-        </div>
+          {{ t('diffReportDetailAction') }}
+        </CTooltip>
+      </div>
+      <WriteGate>
         <div
           class="diff-reports-actions__item diff-reports-actions__item--restart"
         >
@@ -218,6 +219,7 @@
                 size="tiny"
                 type="warning"
                 :loading="isRestartLoading"
+                :aria-label="t('restartDiffReportRestartAction')"
                 @click="handleDiffReportRestart"
               >
                 <template #icon>
@@ -242,6 +244,7 @@
                 size="tiny"
                 type="error"
                 :loading="isDeleteLoading"
+                :aria-label="t('deleteDiffReportDeleteAction')"
                 @click="handleDiffReportDelete"
               >
                 <template #icon>
@@ -256,8 +259,8 @@
             {{ t('deleteDiffReportDeleteAction') }}
           </CTooltip>
         </div>
-      </div>
-    </WriteGate>
+      </WriteGate>
+    </div>
   </div>
 </template>
 

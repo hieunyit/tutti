@@ -16,12 +16,32 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import { CResult } from '@clyso/clyso-ui-kit';
+  import { CResult, CIcon, CButton } from '@clyso/clyso-ui-kit';
+  import { storeToRefs } from 'pinia';
+  import { useRouter } from 'vue-router';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
+  import { IconName } from '@/utils/types/icon';
+  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nDiffReports,
   });
+
+  const { isFiltered } = storeToRefs(useChorusDiffReportsStore());
+  const { clearFilters } = useChorusDiffReportsStore();
+  const router = useRouter();
+
+  function handleAction() {
+    if (!isFiltered.value) {
+      router.push({ name: RouteName.CHORUS_ADD_DIFF_REPORT });
+
+      return;
+    }
+
+    clearFilters();
+  }
 </script>
 
 <template>
@@ -29,12 +49,40 @@
     class="diff-reports-empty"
     type="empty"
     size="large"
+    :icon-name="IconName.BASE_DOCUMENT"
     :max-width="600"
   >
     <template #title>
-      {{ t('noResultsTitle') }}
+      {{ t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle') }}
     </template>
 
-    <p>{{ t('noResultsText') }}</p>
+    <p>{{ t(isFiltered ? 'filterNoResultsText' : 'noResultsText') }}</p>
+
+    <template #actions>
+      <WriteGate :bypass="isFiltered">
+        <CButton
+          type="primary"
+          size="large"
+          @click="handleAction"
+        >
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="isFiltered ? 'close' : IconName.BASE_ADD"
+            />
+          </template>
+
+          {{ t(isFiltered ? 'filterNoResultsAction' : 'noResultsAction') }}
+        </CButton>
+      </WriteGate>
+    </template>
   </CResult>
 </template>
+
+<style lang="scss" scoped>
+  .diff-reports-empty {
+    p {
+      white-space: pre-line;
+    }
+  }
+</style>

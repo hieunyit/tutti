@@ -15,10 +15,18 @@
   -->
 
 <script setup lang="ts">
-  import { onBeforeMount, onUnmounted } from 'vue';
+  import { onUnmounted, onBeforeMount } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import ReplicationsTile from '@/components/chorus/replications/ReplicationsTile/ReplicationsTile.vue';
+  import i18nReplications from '@/components/chorus/replications/i18nReplications';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { IconName } from '@/utils/types/icon';
+  import { RouteName } from '@/utils/types/router';
 
+  const { t } = useI18n({ messages: i18nReplications });
   const { initReplicationsPage, $reset } = useChorusReplicationsStore();
 
   onBeforeMount(() => {
@@ -32,13 +40,36 @@
 
 <template>
   <div class="replication-page">
+    <PageHeader
+      :title="t('replicationsTitle')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <WriteGate>
+          <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
+            <CButton
+              type="primary"
+              tag="div"
+            >
+              <template #icon>
+                <CIcon
+                  :is-inline="true"
+                  :name="IconName.BASE_ADD"
+                />
+              </template>
+
+              {{ t('addReplicationAction') }}
+            </CButton>
+          </RouterLink>
+        </WriteGate>
+      </template>
+    </PageHeader>
+
     <ReplicationsTile />
   </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .replication-page {
     height: 100%;
   }

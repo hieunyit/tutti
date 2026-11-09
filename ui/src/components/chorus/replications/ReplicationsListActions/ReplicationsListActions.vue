@@ -29,7 +29,6 @@
   import { IconName } from '@/utils/types/icon';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
   import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
-  import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
@@ -157,29 +156,6 @@
 <template>
   <div class="replications-list-actions">
     <WriteGate>
-      <div class="replications-list-actions__creation">
-        <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
-          <CButton
-            type="primary"
-            size="medium"
-            ghost
-            class="add-replication-button"
-            tag="div"
-          >
-            <template #icon>
-              <CIcon
-                :is-inline="true"
-                :name="IconName.BASE_ADD"
-              />
-            </template>
-
-            {{ t('addReplicationAction') }}
-          </CButton>
-        </RouterLink>
-      </div>
-    </WriteGate>
-
-    <WriteGate>
       <div class="replications-list-actions__selection-actions">
         <CTooltip :delay="1000">
           <template #trigger>
@@ -194,6 +170,7 @@
                 :loading="isResumeSelectedProcessing"
                 size="medium"
                 type="info"
+                :aria-label="t('actionResume')"
                 @click="openResumeConfirmation"
               >
                 <template #icon>
@@ -231,6 +208,7 @@
                 :loading="isPauseSelectedProcessing"
                 size="medium"
                 type="warning"
+                :aria-label="t('actionPause')"
                 @click="openPauseConfirmation"
               >
                 <template #icon>
@@ -268,6 +246,7 @@
                 :loading="isDeleteSelectedProcessing"
                 size="medium"
                 type="error"
+                :aria-label="t('actionDelete')"
                 @click="openDeleteConfirmation"
               >
                 <template #icon>
@@ -299,8 +278,7 @@
 
   .replications-list-actions {
     display: flex;
-    flex-direction: row-reverse;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: utils.unit(2);
 
     &__selection-actions {

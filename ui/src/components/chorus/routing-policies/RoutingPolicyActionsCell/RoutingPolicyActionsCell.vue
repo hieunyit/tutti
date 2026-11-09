@@ -180,6 +180,7 @@
               <CButton
                 secondary
                 size="tiny"
+                :aria-label="t('actionEdit')"
                 @click="isEditShown = true"
               >
                 <template #icon>
@@ -207,6 +208,7 @@
                 size="tiny"
                 type="success"
                 :loading="isBlockLoading"
+                :aria-label="t('actionUnblock')"
                 @click="() => setRoutingPolicyBlocked(false)"
               >
                 <template #icon>
@@ -230,6 +232,7 @@
                 size="tiny"
                 type="warning"
                 :loading="isBlockLoading"
+                :aria-label="t('actionBlock')"
                 @click="() => setRoutingPolicyBlocked(true)"
               >
                 <template #icon>
@@ -255,6 +258,7 @@
                 type="error"
                 :loading="isDeleteLoading"
                 :disabled="routingPolicy.isBlocked"
+                :aria-label="t('actionDelete')"
                 @click="handleRoutingPolicyDelete"
               >
                 <template #icon>

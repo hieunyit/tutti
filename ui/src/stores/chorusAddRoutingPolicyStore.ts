@@ -18,7 +18,7 @@ import useVuelidate from '@vuelidate/core';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { helpers } from '@vuelidate/validators';
-import { useI18n } from 'vue-i18n';
+import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
   ChorusStorage,
   RoutingPolicyAddRequest,
@@ -68,7 +68,7 @@ export const useChorusAddRoutingPolicyStore = defineStore(
   () => {
     const state = reactive<ChorusAddRoutingPolicyState>(getInitialState());
 
-    const { t } = useI18n({
+    const { t } = useStoreI18n({
       messages: i18nAddRoutingPolicy,
     });
 

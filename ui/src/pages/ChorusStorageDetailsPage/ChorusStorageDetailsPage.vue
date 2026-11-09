@@ -17,19 +17,16 @@
 <script setup lang="ts">
   import { onBeforeMount, onUnmounted } from 'vue';
   import { storeToRefs } from 'pinia';
-  import {
-    CBreadcrumb,
-    CBreadcrumbItem,
-    CDashboardPage,
-    CSkeleton,
-  } from '@clyso/clyso-ui-kit';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
   import { useI18n } from 'vue-i18n';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import StorageDetailsError from '@/components/chorus/storage-details/StorageDetailsError/StorageDetailsError.vue';
   import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
   import { RouteName } from '@/utils/types/router';
+  import { IconName } from '@/utils/types/icon';
   import i18nStorageDetails from '@/components/chorus/storage-details/i18nStorageDetails';
   import StorageGeneral from '@/components/chorus/storage-details/StorageGeneral/StorageGeneral.vue';
-  import ChorusStorageProvider from '@/components/chorus/common/ChorusStorageProvider/ChorusStorageProvider.vue';
   import CredentialsTile from '@/components/chorus/credentials/CredentialsTile/CredentialsTile.vue';
 
   const props = defineProps<{
@@ -40,9 +37,7 @@
     messages: i18nStorageDetails,
   });
 
-  const { hasError, isLoading, storage } = storeToRefs(
-    useChorusStorageDetailsStore(),
-  );
+  const { hasError, storage } = storeToRefs(useChorusStorageDetailsStore());
   const { initStorageDetails, $reset } = useChorusStorageDetailsStore();
 
   onBeforeMount(() => {
@@ -55,54 +50,48 @@
 </script>
 
 <template>
-  <CDashboardPage class="storage-details-page">
-    <template #breadcrumbs>
-      <CBreadcrumb class="storage-details-page__breadcrumb">
-        <CBreadcrumbItem :to="{ name: RouteName.CHORUS_STORAGES }">
-          {{ t('storagesBreadcrumb') }}
-        </CBreadcrumbItem>
-        <CBreadcrumbItem :is-active="true">
-          {{ t('storageDetailsBreadcrumb') }}
-        </CBreadcrumbItem>
-      </CBreadcrumb>
-    </template>
+  <div class="storage-details-page">
+    <PageHeader
+      :title="storageName"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <RouterLink :to="{ name: RouteName.CHORUS_STORAGES }">
+          <CButton tag="div">
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ARROW_BACK"
+              />
+            </template>
 
-    <template #title>
-      <Transition
-        name="opacity"
-        mode="out-in"
-      >
-        <div
-          v-if="isLoading"
-          key="loading"
-          class="storage-details-page__title storage-details-page__title--loading"
-        >
-          <CSkeleton
-            :height="24"
-            :width="24"
-            :border-radius="24"
-          />
-          <CSkeleton
-            :height="17"
-            :width="220"
-            :padding-block="10"
-            :border-radius="4"
-          />
-        </div>
-        <div
-          v-else
-          key="name"
-          class="storage-details-page__title"
-        >
-          <ChorusStorageProvider
-            v-if="storage?.provider"
-            :storage-provider="storage.provider"
-            :has-tooltip="false"
-          />
-          {{ storageName }}
-        </div>
-      </Transition>
-    </template>
+            {{ t('backToStorages') }}
+          </CButton>
+        </RouterLink>
+        <WriteGate v-if="storage && !hasError">
+          <RouterLink
+            :to="{
+              name: RouteName.CHORUS_SET_CREDENTIAL,
+              params: { storageName: storage.name },
+            }"
+          >
+            <CButton
+              type="primary"
+              tag="div"
+            >
+              <template #icon>
+                <CIcon
+                  :is-inline="true"
+                  :name="IconName.BASE_ADD"
+                />
+              </template>
+
+              {{ t('addCredentialAction') }}
+            </CButton>
+          </RouterLink>
+        </WriteGate>
+      </template>
+    </PageHeader>
 
     <StorageDetailsError
       v-if="hasError"
@@ -116,21 +105,13 @@
       <StorageGeneral class="storage-details-page__general" />
       <CredentialsTile class="storage-details-page__credentials" />
     </div>
-  </CDashboardPage>
+  </div>
 </template>
 
 <style lang="scss" scoped>
   @use '@/styles/utils' as utils;
 
   .storage-details-page {
-    padding: 0;
-
-    &__title {
-      display: flex;
-      align-items: center;
-      gap: utils.unit(3);
-    }
-
     &__general {
       margin-bottom: utils.unit(3);
     }

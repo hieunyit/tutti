@@ -110,7 +110,7 @@
           v-for="index in 5"
           :key="index"
           :height="20"
-          :width="500"
+          width="100%"
           :padding-block="4"
           :border-radius="8"
         />

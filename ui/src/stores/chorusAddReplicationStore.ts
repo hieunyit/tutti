@@ -16,11 +16,11 @@
 
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { useI18n } from 'vue-i18n';
 import type { Step } from '@clyso/clyso-ui-kit';
 import useVuelidate from '@vuelidate/core';
 import { useNotification } from '@clyso/clyso-ui-kit';
 import { useRouter } from 'vue-router';
+import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   AddReplicationStepName,
   type ChorusBucketListRequest,
@@ -98,7 +98,7 @@ export const useChorusAddReplicationStore = defineStore(
       }
     }
 
-    const { t } = useI18n({
+    const { t } = useStoreI18n({
       messages: i18nAddReplication,
     });
 

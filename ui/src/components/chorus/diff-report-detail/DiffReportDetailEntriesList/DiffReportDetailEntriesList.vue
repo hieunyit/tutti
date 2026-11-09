@@ -87,6 +87,7 @@
   <div class="diff-report-entries-list">
     <div class="diff-report-entries-list__container">
       <CDataTable
+        class="diff-report-entries-list__table"
         :columns="columns"
         :data="computedReportObjects"
         :is-controlled="true"
@@ -136,6 +137,17 @@
 
 <style lang="scss" scoped>
   .diff-report-entries-list {
+    min-width: 0;
+
+    &__container {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    &__table {
+      min-width: 680px;
+    }
+
     &__version {
       color: var(--text-color-3);
     }

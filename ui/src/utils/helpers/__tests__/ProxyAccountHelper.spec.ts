@@ -72,9 +72,39 @@ describe('ProxyAccountHelper', () => {
     });
 
     expect(keys).toEqual([
-      { accessKeyId: 'A', source: 'custom' },
-      { accessKeyId: 'C', source: 'storage:s3' },
+      { accessKeyId: 'A', source: 'config' },
+      { accessKeyId: 'C', source: 'config' },
     ]);
+  });
+
+  it('does not zip independent source and key sets or drop static keys', () => {
+    expect(
+      ProxyAccountHelper.getStaticKeys({
+        user: 'u',
+        accessKeyIds: ['A', 'B', 'DYNAMIC'],
+        sources: ['custom', 'dynamic'],
+        dynamicKeys: [{ accessKeyId: 'DYNAMIC', status: 'active' }],
+      }),
+    ).toEqual([
+      { accessKeyId: 'A', source: 'custom' },
+      { accessKeyId: 'B', source: 'custom' },
+    ]);
+  });
+
+  it('lists static keys before dynamic ones', () => {
+    const dynamicKey = { accessKeyId: 'B', status: 'active' };
+    const rows = ProxyAccountHelper.getKeyRows({
+      user: 'u',
+      accessKeyIds: ['A', 'B'],
+      sources: ['custom', 'dynamic'],
+      dynamicKeys: [dynamicKey],
+    });
+
+    expect(rows).toEqual([
+      { accessKeyId: 'A', source: 'custom' },
+      { accessKeyId: 'B', source: 'dynamic', dynamicKey },
+    ]);
+    expect(ProxyAccountHelper.getKeyRows({ user: 'empty' })).toEqual([]);
   });
 
   it('checks timestamps', () => {

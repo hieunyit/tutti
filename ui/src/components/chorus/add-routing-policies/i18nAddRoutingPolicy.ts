@@ -18,9 +18,9 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    breadcrumbRoutingPolicies: 'Routing Policies',
+    backToRoutingPolicies: 'Routing policies',
     breadcrumbAddRoutingPolicy: 'Add Routing Policy',
-    addRoutingPolicyTitle: 'Add Routing Policy',
+    addRoutingPolicyTitle: 'Add routing policy',
     addRoutingPolicyHeader:
       'Create a new routing policy to control traffic direction within the proxy.',
     userSelectionTitle: 'User',
@@ -85,9 +85,9 @@ export default <I18nMessages>{
       'Blocking the newly created routing policy failed, and rolling back the creation also failed. The routing policy was created but is not blocked. Please block it manually.',
   },
   [I18nLocale.DE]: {
-    breadcrumbRoutingPolicies: 'Routing-Richtlinien',
-    breadcrumbAddRoutingPolicy: 'Routing-Richtlinie Hinzufügen',
-    addRoutingPolicyTitle: 'Routing-Richtlinie Hinzufügen',
+    backToRoutingPolicies: 'Routing-Richtlinien',
+    breadcrumbAddRoutingPolicy: 'Routing-Richtlinie hinzufügen',
+    addRoutingPolicyTitle: 'Routing-Richtlinie hinzufügen',
     addRoutingPolicyHeader:
       'Neue Routing-Richtlinie erstellen, um den Datenverkehr im Proxy zu steuern.',
     userSelectionTitle: 'Benutzer',

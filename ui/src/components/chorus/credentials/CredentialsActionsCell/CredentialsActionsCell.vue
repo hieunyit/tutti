@@ -47,6 +47,7 @@
           <CTooltip :delay="1000">
             <template #trigger>
               <RouterLink
+                :aria-label="t('actionEdit')"
                 :to="{
                   name: RouteName.CHORUS_SET_CREDENTIAL,
                   params: {

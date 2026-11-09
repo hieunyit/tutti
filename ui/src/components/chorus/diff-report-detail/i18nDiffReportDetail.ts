@@ -18,7 +18,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    breadcrumbDiffReports: 'Diff Reports',
+    backToDiffReports: 'Diff reports',
     errorTitle: 'Error',
     errorText:
       'An error occurred while loading the diff report.\nPlease try again.',
@@ -30,7 +30,7 @@ export default <I18nMessages>{
     invalidLocationsAction: 'Back to Diff Reports',
     notFoundAction: 'Back to Diff Reports',
     // Header
-    detailTitle: 'Diff Report:',
+    detailTitle: 'Diff report',
     detailSubtitle:
       'Diff report comparing objects between the source and destination locations.',
     // Overview
@@ -86,7 +86,7 @@ export default <I18nMessages>{
     versionIdx: 'version idx {idx}',
   },
   [I18nLocale.DE]: {
-    breadcrumbDiffReports: 'Diff-Reports',
+    backToDiffReports: 'Diff-Reports',
     errorTitle: 'Fehler',
     errorText:
       'Beim Laden des Diff-Reports ist ein Fehler aufgetreten.\nBitte versuchen Sie es erneut.',
@@ -98,7 +98,7 @@ export default <I18nMessages>{
     invalidLocationsAction: 'Zurück zu Diff-Reports',
     notFoundAction: 'Zurück zu Diff-Reports',
     // Header
-    detailTitle: 'Diff-Report:',
+    detailTitle: 'Diff-Report',
     detailSubtitle:
       'Diff-Report zum Vergleich von Objekten zwischen Quell- und Ziel-Standorten.',
     // Overview

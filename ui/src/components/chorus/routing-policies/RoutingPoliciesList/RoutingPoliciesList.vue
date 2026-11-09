@@ -29,6 +29,7 @@
   import RoutingPolicyStorageCell from '../RoutingPolicyStorageCell/RoutingPolicyStorageCell.vue';
   import RoutingPolicyActionsCell from '../RoutingPolicyActionsCell/RoutingPolicyActionsCell.vue';
   import RoutingPolicyBucketCell from '../RoutingPolicyBucketCell/RoutingPolicyBucketCell.vue';
+  import RoutingPoliciesEmpty from '../RoutingPoliciesEmpty/RoutingPoliciesEmpty.vue';
   import type { RoutingPolicy } from '@/utils/types/chorus';
   import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
 
@@ -144,7 +145,19 @@
         <template #actions="{ rowData }">
           <RoutingPolicyActionsCell :routing-policy="rowData" />
         </template>
+
+        <template #empty>
+          <RoutingPoliciesEmpty class="routing-policies-list__result" />
+        </template>
       </CDataTable>
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+  .routing-policies-list {
+    &__result {
+      min-height: 400px;
+    }
+  }
+</style>

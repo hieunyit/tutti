@@ -16,24 +16,14 @@
 
 <script setup lang="ts">
   import { CTile } from '@clyso/clyso-ui-kit';
-  import { useI18n } from 'vue-i18n';
-  import i18nRoutingPolicies from '../i18nRoutingPolicies';
   import RoutingPoliciesList from '../RoutingPoliciesList/RoutingPoliciesList.vue';
   import RoutingPoliciesFilters from '../RoutingPoliciesFilters/RoutingPoliciesFilters.vue';
   import RoutingPoliciesListActions from '../RoutingPoliciesListActions/RoutingPoliciesListActions.vue';
   import RoutingPoliciesListTags from '@/components/chorus/routing-policies/RoutingPoliciesListTags/RoutingPoliciesListTags.vue';
-
-  const { t } = useI18n({
-    messages: i18nRoutingPolicies,
-  });
 </script>
 
 <template>
   <CTile class="routing-policies-tile">
-    <template #title>
-      {{ t('routingPoliciesTitle') }}
-    </template>
-
     <RoutingPoliciesFilters class="routing-policies-tile__filters" />
 
     <RoutingPoliciesListTags class="routing-policies-tile__tags" />

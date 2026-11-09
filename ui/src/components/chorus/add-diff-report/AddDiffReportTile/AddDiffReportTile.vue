@@ -49,16 +49,6 @@
 
 <template>
   <CTile class="add-diff-report-tile">
-    <template #title>
-      {{ t('addDiffReportTitle') }}
-    </template>
-    <template
-      #header
-      v-if="!hasError && hasEnoughStorages && !isLoading"
-    >
-      {{ t('addDiffReportDescription') }}
-    </template>
-
     <CResult
       v-if="hasError || (!hasEnoughStorages && !isLoading)"
       key="error"

@@ -15,10 +15,18 @@
   -->
 
 <script setup lang="ts">
-  import { onBeforeMount, onUnmounted } from 'vue';
+  import { onUnmounted, onBeforeMount } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import DiffReportsTile from '@/components/chorus/diff-reports/DiffReportsTile/DiffReportsTile.vue';
+  import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { IconName } from '@/utils/types/icon';
+  import { RouteName } from '@/utils/types/router';
 
+  const { t } = useI18n({ messages: i18nDiffReports });
   const { initDiffReportPage, $reset } = useChorusDiffReportsStore();
 
   onBeforeMount(() => {
@@ -32,6 +40,31 @@
 
 <template>
   <div class="diff-reports-page">
+    <PageHeader
+      :title="t('diffReportTitle')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <WriteGate>
+          <RouterLink :to="{ name: RouteName.CHORUS_ADD_DIFF_REPORT }">
+            <CButton
+              type="primary"
+              tag="div"
+            >
+              <template #icon>
+                <CIcon
+                  :is-inline="true"
+                  :name="IconName.BASE_ADD"
+                />
+              </template>
+
+              {{ t('actionCreateDiffReport') }}
+            </CButton>
+          </RouterLink>
+        </WriteGate>
+      </template>
+    </PageHeader>
+
     <DiffReportsTile />
   </div>
 </template>

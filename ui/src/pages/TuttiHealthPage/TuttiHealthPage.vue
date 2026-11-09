@@ -15,8 +15,7 @@
   -->
 
 <script setup lang="ts">
-  import { CButton } from '@clyso/clyso-ui-kit';
-  import { NEmpty } from 'naive-ui';
+  import { CButton, CResult, CTile } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { onBeforeMount, onBeforeUnmount } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -25,6 +24,7 @@
   import ProxyHealthCard from '@/components/tutti/health/ProxyHealthCard.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import { useTuttiHealthStore } from '@/stores/tuttiHealthStore';
+  import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({ messages: i18nHealth });
   const store = useTuttiHealthStore();
@@ -36,7 +36,10 @@
 
 <template>
   <div class="tutti-health-page">
-    <PageHeader :title="t('title')">
+    <PageHeader
+      :title="t('title')"
+      :description="t('pageDescription')"
+    >
       <template #actions>
         <CButton
           :loading="isLoading"
@@ -54,10 +57,26 @@
       :action-text="t('retry')"
       @retry="store.loadProxies(true)"
     />
-    <NEmpty
-      v-else-if="!isLoading && hasNoData"
-      :description="t('empty')"
-    />
+    <CTile v-else-if="!isLoading && hasNoData">
+      <CResult
+        type="empty"
+        size="medium"
+        :icon-name="IconName.BASE_SERVER"
+        :max-width="520"
+      >
+        <template #title>
+          {{ t('emptyTitle') }}
+        </template>
+
+        <p>{{ t('empty') }}</p>
+
+        <template #actions>
+          <CButton @click="store.loadProxies(true)">
+            {{ t('refresh') }}
+          </CButton>
+        </template>
+      </CResult>
+    </CTile>
     <ProxyHealthCard
       v-for="proxy in proxies"
       :key="proxy.appId"

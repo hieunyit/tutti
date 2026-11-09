@@ -15,17 +15,15 @@
   -->
 
 <script setup lang="ts">
-  import {
-    CBreadcrumb,
-    CBreadcrumbItem,
-    CDashboardPage,
-  } from '@clyso/clyso-ui-kit';
   import { onBeforeMount, onUnmounted } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import { RouteName } from '@/utils/types/router';
+  import { IconName } from '@/utils/types/icon';
   import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
-  import AddRoutingPolicyTile from '@/components/chorus/add-routing-policies/AddRoutingPolicyTile/AddRoutingPolicyTile.vue';
   import i18nAddRoutingPolicy from '@/components/chorus/add-routing-policies/i18nAddRoutingPolicy';
+  import AddRoutingPolicyTile from '@/components/chorus/add-routing-policies/AddRoutingPolicyTile/AddRoutingPolicyTile.vue';
 
   const { t } = useI18n({ messages: i18nAddRoutingPolicy });
   const { initAddRoutingPolicyPage, $reset } = useChorusAddRoutingPolicyStore();
@@ -40,18 +38,27 @@
 </script>
 
 <template>
-  <CDashboardPage class="chorus-add-routing-policy-page">
-    <template #breadcrumbs>
-      <CBreadcrumb>
-        <CBreadcrumbItem :to="{ name: RouteName.CHORUS_ROUTING_POLICIES }">
-          {{ t('breadcrumbRoutingPolicies') }}
-        </CBreadcrumbItem>
-        <CBreadcrumbItem :is-active="true">
-          {{ t('breadcrumbAddRoutingPolicy') }}
-        </CBreadcrumbItem>
-      </CBreadcrumb>
-    </template>
+  <div class="chorus-add-routing-policy-page">
+    <PageHeader
+      :title="t('addRoutingPolicyTitle')"
+      :description="t('addRoutingPolicyHeader')"
+    >
+      <template #actions>
+        <RouterLink :to="{ name: RouteName.CHORUS_ROUTING_POLICIES }">
+          <CButton tag="div">
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ARROW_BACK"
+              />
+            </template>
+
+            {{ t('backToRoutingPolicies') }}
+          </CButton>
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <AddRoutingPolicyTile />
-  </CDashboardPage>
+  </div>
 </template>

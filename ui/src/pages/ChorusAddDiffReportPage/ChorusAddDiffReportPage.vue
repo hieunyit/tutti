@@ -15,14 +15,12 @@
   -->
 
 <script setup lang="ts">
-  import {
-    CBreadcrumb,
-    CBreadcrumbItem,
-    CDashboardPage,
-  } from '@clyso/clyso-ui-kit';
   import { onBeforeMount, onUnmounted } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import { RouteName } from '@/utils/types/router';
+  import { IconName } from '@/utils/types/icon';
   import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
   import AddDiffReportTile from '@/components/chorus/add-diff-report/AddDiffReportTile/AddDiffReportTile.vue';
@@ -40,18 +38,27 @@
 </script>
 
 <template>
-  <CDashboardPage class="chorus-add-diff-report-page">
-    <template #breadcrumbs>
-      <CBreadcrumb>
-        <CBreadcrumbItem :to="{ name: RouteName.CHORUS_DIFF_REPORTS }">
-          {{ t('breadcrumbDiffReports') }}
-        </CBreadcrumbItem>
-        <CBreadcrumbItem :is-active="true">
-          {{ t('breadcrumbCreateDiffReport') }}
-        </CBreadcrumbItem>
-      </CBreadcrumb>
-    </template>
+  <div class="chorus-add-diff-report-page">
+    <PageHeader
+      :title="t('addDiffReportTitle')"
+      :description="t('addDiffReportDescription')"
+    >
+      <template #actions>
+        <RouterLink :to="{ name: RouteName.CHORUS_DIFF_REPORTS }">
+          <CButton tag="div">
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ARROW_BACK"
+              />
+            </template>
+
+            {{ t('backToDiffReports') }}
+          </CButton>
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <AddDiffReportTile />
-  </CDashboardPage>
+  </div>
 </template>

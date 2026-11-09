@@ -15,10 +15,9 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
+  import { CButton, CIcon, CResult, CTile } from '@clyso/clyso-ui-kit';
   import {
     NAlert,
-    NButton,
     NDataTable,
     NPopconfirm,
     NSpace,
@@ -31,24 +30,25 @@
   import i18nAccounts from './i18nAccounts';
   import AccessPolicyDrawer from './AccessPolicyDrawer.vue';
   import ProxyAccountCreateModal from './ProxyAccountCreateModal.vue';
+  import ProxyAccountKeysTable from './ProxyAccountKeysTable.vue';
   import ProxyKeyRotateModal from './ProxyKeyRotateModal.vue';
   import ProxySecretModal from './ProxySecretModal.vue';
+  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
-  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
+  import { IconName } from '@/utils/types/icon';
   import {
     TuttiAccessPermission,
-    type TuttiDynamicKey,
     type TuttiProxyAccount,
     type TuttiProxyAccountSecret,
   } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { accounts } = storeToRefs(store);
+  const { accounts, isLoading } = storeToRefs(store);
   const { createNotification } = useChorusNotification();
 
   const showDrawer = ref(false);
@@ -92,6 +92,9 @@
 
   const userNames = computed(() => accounts.value.map((a) => a.user));
 
+  // the primary "Create account" action lives in the page header
+  defineExpose({ openCreate: () => (showCreate.value = true) });
+
   function onCreated(secret: TuttiProxyAccountSecret) {
     shownSecretKind.value = 'created';
     shownSecret.value = secret;
@@ -103,132 +106,29 @@
     shownSecret.value = secret;
   }
 
-  function reportError(error: unknown) {
-    createNotification({
-      type: 'error',
-      title: ProxyAccountHelper.isNotConfigured(error)
-        ? t('notConfigured')
-        : (ProxyAccountHelper.getMessage(error) ?? t('actionUnknownError')),
-      duration: 8000,
-    });
-  }
+  function keysSummary(account: TuttiProxyAccount): string {
+    const keys = ProxyAccountHelper.getKeyRows(account);
+    const dynamic = keys.filter((key) => key.dynamicKey).length;
+    const total = t('keysCount', { count: keys.length }, keys.length);
 
-  async function toggleStatus(key: TuttiDynamicKey) {
-    try {
-      await store.setKeyStatus(
-        key.accessKeyId,
-        ProxyAccountHelper.isDisabled(key) ? 'active' : 'disabled',
-      );
-    } catch (error: unknown) {
-      reportError(error);
-    }
-  }
-
-  async function removeKey(key: TuttiDynamicKey) {
-    try {
-      await store.deleteKey(key.accessKeyId);
-    } catch (error: unknown) {
-      reportError(error);
-    }
-  }
-
-  function renderDynamicKey(key: TuttiDynamicKey) {
-    const disabled = ProxyAccountHelper.isDisabled(key);
-    const times: string[] = [];
-
-    if (ProxyAccountHelper.hasTime(key.createdAt)) {
-      times.push(`${t('keyCreated')}: ${formatDateTime(key.createdAt)}`);
-    }
-
-    if (ProxyAccountHelper.hasTime(key.rotatedAt)) {
-      times.push(`${t('keyRotated')}: ${formatDateTime(key.rotatedAt)}`);
-    }
-
-    if (ProxyAccountHelper.hasTime(key.previousSecretExpiresAt)) {
-      times.push(
-        `${t('keyPreviousValid')}: ${formatDateTime(key.previousSecretExpiresAt)}`,
-      );
-    }
-
-    return h('div', { class: 'accounts-tile__key', key: key.accessKeyId }, [
-      h(NSpace, { size: 4, align: 'center' }, () => [
-        h('code', key.accessKeyId),
-        h(
-          NTag,
-          { size: 'tiny', round: true, type: disabled ? 'warning' : 'success' },
-          () => (disabled ? t('statusDisabled') : t('statusActive')),
-        ),
-      ]),
-      key.description
-        ? h('div', { class: 'accounts-tile__hint' }, key.description)
-        : null,
-      times.length > 0
-        ? h('div', { class: 'accounts-tile__hint' }, times.join(' | '))
-        : null,
-      h(WriteGate, null, () =>
-        h(NSpace, { size: 4 }, () => [
-          h(
-            NButton,
-            {
-              size: 'tiny',
-              onClick: () => {
-                rotateKeyId.value = key.accessKeyId;
-              },
-            },
-            () => t('rotateSecret'),
-          ),
-          h(NButton, { size: 'tiny', onClick: () => toggleStatus(key) }, () =>
-            disabled ? t('enableKey') : t('disableKey'),
-          ),
-          h(
-            NPopconfirm,
-            {
-              positiveText: t('deleteKeyAction'),
-              negativeText: t('cancel'),
-              onPositiveClick: () => removeKey(key),
-            },
-            {
-              trigger: () =>
-                h(NButton, { size: 'tiny', type: 'error' }, () =>
-                  t('deleteKey'),
-                ),
-              default: () => t('deleteKeyConfirm', { key: key.accessKeyId }),
-            },
-          ),
-        ]),
-      ),
-    ]);
-  }
-
-  function sourceLabel(source: string): string {
-    return source === 'custom' ? t('sourceCustom') : source;
+    return dynamic > 0
+      ? `${total} (${t('keysDynamic', { count: dynamic })})`
+      : total;
   }
 
   const columns = computed<DataTableColumns<TuttiProxyAccount>>(() => [
-    { title: t('columnUser'), key: 'user' },
     {
-      title: t('columnKeys'),
-      key: 'keys',
-      render: (row) =>
-        h(NSpace, { vertical: true, size: 6 }, () => [
-          ...ProxyAccountHelper.getStaticKeys(row).map((key) =>
-            h(
-              NSpace,
-              { size: 2, key: key.accessKeyId, align: 'center' },
-              () => [
-                h('code', key.accessKeyId),
-                h(NTag, { size: 'tiny', round: true }, () =>
-                  sourceLabel(key.source),
-                ),
-                h(NTag, { size: 'tiny', round: true, type: 'info' }, () =>
-                  t('badgeConfig'),
-                ),
-              ],
-            ),
-          ),
-          ...(row.dynamicKeys ?? []).map(renderDynamicKey),
-        ]),
+      type: 'expand',
+      expandable: (row) => ProxyAccountHelper.getKeyRows(row).length > 0,
+      renderExpand: (row) =>
+        h(ProxyAccountKeysTable, {
+          account: row,
+          onRotate: (accessKeyId: string) => {
+            rotateKeyId.value = accessKeyId;
+          },
+        }),
     },
+    { title: t('columnUser'), key: 'user' },
     {
       title: t('columnPermission'),
       key: 'permission',
@@ -260,27 +160,38 @@
             ),
     },
     {
+      title: t('columnKeys'),
+      key: 'keys',
+      render: (row) => keysSummary(row),
+    },
+    {
       title: t('columnActions'),
       key: 'actions',
       render: (row) =>
         h(WriteGate, null, () =>
-          h(NSpace, { size: 8 }, () => [
-            h(NButton, { size: 'small', onClick: () => openEdit(row) }, () =>
-              row.hasPolicy ? t('editPolicy') : t('createPolicy'),
-            ),
+          h('span', { class: 'accounts-tile__actions' }, [
+            h(RowActionButton, {
+              label: row.hasPolicy ? t('editPolicy') : t('createPolicy'),
+              icon: IconName.BASE_CREATE,
+              type: 'primary',
+              onClick: () => openEdit(row),
+            }),
             row.hasPolicy
               ? h(
                   NPopconfirm,
                   {
                     positiveText: t('removeConfirmAction'),
                     negativeText: t('cancel'),
+                    positiveButtonProps: { type: 'error' },
                     onPositiveClick: () => remove(row),
                   },
                   {
                     trigger: () =>
-                      h(NButton, { size: 'small', type: 'error' }, () =>
-                        t('removePolicy'),
-                      ),
+                      h(RowActionButton, {
+                        label: t('removePolicy'),
+                        icon: IconName.BASE_REMOVE_CIRCLE,
+                        type: 'error',
+                      }),
                     default: () => t('removeConfirm', { user: row.user }),
                   },
                 )
@@ -293,10 +204,6 @@
 
 <template>
   <CTile class="accounts-tile">
-    <template #title>
-      {{ t('title') }}
-    </template>
-
     <NAlert
       type="info"
       class="accounts-tile__banner"
@@ -304,24 +211,47 @@
       {{ t('banner') }}
     </NAlert>
 
-    <div class="accounts-tile__toolbar">
-      <WriteGate>
-        <NButton
-          type="primary"
-          @click="showCreate = true"
-        >
-          {{ t('createAccount') }}
-        </NButton>
-      </WriteGate>
-    </div>
-
     <NDataTable
       :columns="columns"
       :data="accounts"
+      :loading="isLoading"
       :bordered="false"
+      :scroll-x="880"
       :row-key="(row: TuttiProxyAccount) => row.user"
     >
-      <template #empty>{{ t('noAccounts') }}</template>
+      <template #empty>
+        <CResult
+          class="accounts-tile__empty"
+          type="empty"
+          size="medium"
+          :icon-name="IconName.BASE_KEY"
+          :max-width="480"
+        >
+          <template #title>
+            {{ t('emptyTitle') }}
+          </template>
+
+          <p>{{ t('emptyText') }}</p>
+
+          <template #actions>
+            <WriteGate>
+              <CButton
+                type="primary"
+                @click="showCreate = true"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_ADD"
+                  />
+                </template>
+
+                {{ t('createAccount') }}
+              </CButton>
+            </WriteGate>
+          </template>
+        </CResult>
+      </template>
     </NDataTable>
 
     <ProxyAccountCreateModal
@@ -353,21 +283,19 @@
       margin-bottom: 16px;
     }
 
-    &__toolbar {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 12px;
+    &__empty {
+      padding: 24px 0;
     }
 
-    :deep(.accounts-tile__key) {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    :deep(.accounts-tile__actions) {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     :deep(.accounts-tile__hint) {
       font-size: 12px;
-      opacity: 0.7;
+      color: var(--text-color-3);
     }
   }
 </style>

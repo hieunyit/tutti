@@ -18,11 +18,11 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    breadcrumbStorages: 'Storages',
+    backToStorages: 'Storages',
     breadcrumbAddCredential: 'Add Credential',
     breadcrumbEditCredential: 'Edit Credential: {alias}',
-    setCredentialTitleAdd: 'Add Credential',
-    setCredentialTitleEdit: 'Edit Credential: {user}',
+    setCredentialTitleAdd: 'Add credential',
+    setCredentialTitleEdit: 'Edit credential: {user}',
     setCredentialHeader:
       'Provide the credential details for storage "{storage}".',
     fieldUserLabel: 'User',
@@ -56,7 +56,7 @@ export default <I18nMessages>{
       'Cannot save credentials: no storage is selected.',
   },
   [I18nLocale.DE]: {
-    breadcrumbStorages: 'Speicher',
+    backToStorages: 'Speicher',
     breadcrumbAddCredential: 'Zugangsdaten hinzufügen',
     breadcrumbEditCredential: 'Zugangsdaten bearbeiten: {alias}',
     setCredentialTitleAdd: 'Zugangsdaten hinzufügen',

@@ -52,10 +52,6 @@
 
 <template>
   <CTile class="add-replication-tile">
-    <template #title>
-      {{ t('addReplicationTitle') }}
-    </template>
-
     <CResult
       v-if="hasError"
       key="error"

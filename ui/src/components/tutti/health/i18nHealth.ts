@@ -17,13 +17,16 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    pageDescription:
+      'Live availability of every storage as seen by each proxy, with the effective proxy settings.',
     title: 'Storage health',
     refresh: 'Refresh',
     proxy: 'Proxy',
     startedAt: 'Started',
     updatedAt: 'Last report',
     emptyTitle: 'No proxy data',
-    empty: 'No proxy has reported status in the last 30 s.',
+    empty:
+      'No proxy has reported status in the last 30 s. Check that the proxies are running and can reach the Redis instance.',
     errorTitle: 'Failed to load storage health',
     errorText: 'The status of the proxies could not be loaded.',
     retry: 'Retry',
@@ -49,13 +52,16 @@ export default <I18nMessages>{
     no: 'no',
   },
   [I18nLocale.DE]: {
+    pageDescription:
+      'Aktuelle Verfügbarkeit jedes Speichers aus Sicht der einzelnen Proxys, mit den wirksamen Proxy-Einstellungen.',
     title: 'Speicher-Zustand',
     refresh: 'Aktualisieren',
     proxy: 'Proxy',
     startedAt: 'Gestartet',
     updatedAt: 'Letzte Meldung',
     emptyTitle: 'Keine Proxy-Daten',
-    empty: 'Kein Proxy hat in den letzten 30 s einen Status gemeldet.',
+    empty:
+      'Kein Proxy hat in den letzten 30 s einen Status gemeldet. Prüfen Sie, ob die Proxys laufen und die Redis-Instanz erreichen.',
     errorTitle: 'Speicher-Zustand konnte nicht geladen werden',
     errorText: 'Der Status der Proxys konnte nicht geladen werden.',
     retry: 'Erneut versuchen',

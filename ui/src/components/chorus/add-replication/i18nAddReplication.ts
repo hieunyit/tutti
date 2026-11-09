@@ -18,9 +18,11 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    breadcrumbReplication: 'Replication',
+    pageDescription:
+      'Choose a source and destination storage, a user and the buckets to replicate. Existing objects are copied first, then changes are kept in sync.',
+    backToReplication: 'Replication',
     breadcrumbAddReplication: 'Add Replication',
-    addReplicationTitle: 'Add Replication',
+    addReplicationTitle: 'Add replication',
     step1Title: 'Source Storage',
     step1Description: 'Select storage to replicate from',
     step2Title: 'Destination Storage',
@@ -73,7 +75,9 @@ export default <I18nMessages>{
     createReplicationErrorUnknown: 'Unknown Error',
   },
   [I18nLocale.DE]: {
-    breadcrumbReplication: 'Replikation',
+    pageDescription:
+      'Wählen Sie Quell- und Zielspeicher, einen Benutzer und die zu replizierenden Buckets. Vorhandene Objekte werden zuerst kopiert, danach werden Änderungen synchron gehalten.',
+    backToReplication: 'Replikation',
     breadcrumbAddReplication: 'Replikation hinzufügen',
     addReplicationTitle: 'Replikation hinzufügen',
     step1Title: 'Quellspeicher',

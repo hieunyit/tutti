@@ -15,10 +15,18 @@
   -->
 
 <script setup lang="ts">
-  import { onBeforeMount, onUnmounted } from 'vue';
+  import { onUnmounted, onBeforeMount } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import RoutingPoliciesTile from '@/components/chorus/routing-policies/RoutingPoliciesTile/RoutingPoliciesTile.vue';
+  import i18nRoutingPolicies from '@/components/chorus/routing-policies/i18nRoutingPolicies';
   import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { IconName } from '@/utils/types/icon';
+  import { RouteName } from '@/utils/types/router';
 
+  const { t } = useI18n({ messages: i18nRoutingPolicies });
   const { initRoutingPoliciesPage, $reset } = useChorusRoutingPoliciesStore();
 
   onBeforeMount(() => {
@@ -32,6 +40,31 @@
 
 <template>
   <div class="routing-policies-page">
+    <PageHeader
+      :title="t('routingPoliciesTitle')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <WriteGate>
+          <RouterLink :to="{ name: RouteName.CHORUS_ADD_ROUTING_POLICY }">
+            <CButton
+              type="primary"
+              tag="div"
+            >
+              <template #icon>
+                <CIcon
+                  :is-inline="true"
+                  :name="IconName.BASE_ADD"
+                />
+              </template>
+
+              {{ t('actionAddRoutingPolicy') }}
+            </CButton>
+          </RouterLink>
+        </WriteGate>
+      </template>
+    </PageHeader>
+
     <RoutingPoliciesTile />
   </div>
 </template>

@@ -15,17 +15,15 @@
   -->
 
 <script setup lang="ts">
-  import {
-    CBreadcrumb,
-    CBreadcrumbItem,
-    CDashboardPage,
-  } from '@clyso/clyso-ui-kit';
   import { onBeforeMount, onUnmounted } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import { RouteName } from '@/utils/types/router';
-  import AddReplicationTile from '@/components/chorus/add-replication/AddReplicationTile/AddReplicationTile.vue';
+  import { IconName } from '@/utils/types/icon';
   import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
+  import AddReplicationTile from '@/components/chorus/add-replication/AddReplicationTile/AddReplicationTile.vue';
 
   const { t } = useI18n({ messages: i18nAddReplication });
   const { initAddReplicationPage, $reset } = useChorusAddReplicationStore();
@@ -40,18 +38,27 @@
 </script>
 
 <template>
-  <CDashboardPage class="chorus-add-replication-page">
-    <template #breadcrumbs>
-      <CBreadcrumb>
-        <CBreadcrumbItem :to="{ name: RouteName.CHORUS_REPLICATION }">
-          {{ t('breadcrumbReplication') }}
-        </CBreadcrumbItem>
-        <CBreadcrumbItem :is-active="true">
-          {{ t('breadcrumbAddReplication') }}
-        </CBreadcrumbItem>
-      </CBreadcrumb>
-    </template>
+  <div class="chorus-add-replication-page">
+    <PageHeader
+      :title="t('addReplicationTitle')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <RouterLink :to="{ name: RouteName.CHORUS_REPLICATION }">
+          <CButton tag="div">
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ARROW_BACK"
+              />
+            </template>
+
+            {{ t('backToReplication') }}
+          </CButton>
+        </RouterLink>
+      </template>
+    </PageHeader>
 
     <AddReplicationTile />
-  </CDashboardPage>
+  </div>
 </template>

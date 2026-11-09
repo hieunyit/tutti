@@ -19,14 +19,18 @@
     DataTableBaseColumn,
     DataTableSortState,
   } from '@clyso/clyso-ui-kit';
-  import { CDataTable } from '@clyso/clyso-ui-kit';
+  import { CButton, CDataTable, CIcon, CResult } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
+  import { RouterLink } from 'vue-router';
   import i18nCredentials from '../i18nCredentials';
   import CredentialsActionsCell from '../CredentialsActionsCell/CredentialsActionsCell.vue';
   import type { ChorusCredential } from '@/utils/types/chorus';
   import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { IconName } from '@/utils/types/icon';
+  import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nCredentials,
@@ -41,6 +45,7 @@
     credentialsPageSize,
     credentialsPagination,
     computedCredentials,
+    credentialsFilterAliases,
   } = storeToRefs(useChorusStorageDetailsStore());
   const { initStorageDetails } = useChorusStorageDetailsStore();
 
@@ -114,6 +119,64 @@
         <template #actions="{ rowData }">
           <CredentialsActionsCell :credential="rowData as ChorusCredential" />
         </template>
+
+        <template #empty>
+          <CResult
+            class="credentials-list__result"
+            type="empty"
+            size="medium"
+            :icon-name="IconName.BASE_KEY"
+            :max-width="480"
+          >
+            <template #title>
+              {{
+                t(
+                  credentialsFilterAliases.length
+                    ? 'filterNoResultsTitle'
+                    : 'noCredentialsTitle',
+                )
+              }}
+            </template>
+
+            <p>
+              {{
+                t(
+                  credentialsFilterAliases.length
+                    ? 'filterNoResultsText'
+                    : 'noCredentialsText',
+                )
+              }}
+            </p>
+
+            <template
+              v-if="storage && !credentialsFilterAliases.length"
+              #actions
+            >
+              <WriteGate>
+                <RouterLink
+                  :to="{
+                    name: RouteName.CHORUS_SET_CREDENTIAL,
+                    params: { storageName: storage.name },
+                  }"
+                >
+                  <CButton
+                    type="primary"
+                    tag="div"
+                  >
+                    <template #icon>
+                      <CIcon
+                        :is-inline="true"
+                        :name="IconName.BASE_ADD"
+                      />
+                    </template>
+
+                    {{ t('addCredentialAction') }}
+                  </CButton>
+                </RouterLink>
+              </WriteGate>
+            </template>
+          </CResult>
+        </template>
       </CDataTable>
     </div>
   </div>
@@ -129,6 +192,10 @@
 
     &__table {
       min-width: 600px;
+    }
+
+    &__result {
+      min-height: 280px;
     }
   }
 </style>

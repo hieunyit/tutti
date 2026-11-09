@@ -18,7 +18,14 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    diffReportTitle: 'Diff Reports',
+    pageDescription:
+      'Compare the contents of buckets across storages and review the differences between them.',
+    noResultsAction: 'New diff report',
+    filterNoResultsTitle: 'No diff reports found',
+    filterNoResultsText:
+      'There is no diff report matching your filter criteria.',
+    filterNoResultsAction: 'Clear filters',
+    diffReportTitle: 'Diff reports',
     columnBucket: 'Buckets Pair',
     columnDirection: 'Direction',
     columnProgress: 'Progress',
@@ -47,7 +54,7 @@ export default <I18nMessages>{
     filterStatusChecking: 'Checking',
     filterStatusConsistent: 'Consistent',
     filterStatusInconsistent: 'Inconsistent',
-    actionCreateDiffReport: 'Create Diff Report',
+    actionCreateDiffReport: 'New diff report',
     noResultsTitle: 'No Diff Reports yet',
     noResultsText: 'There are no diff reports available at the moment.',
     errorTitle: 'Error',
@@ -116,6 +123,12 @@ export default <I18nMessages>{
     restartDiffReportsSelected: 'Restart {total} selected',
   },
   [I18nLocale.DE]: {
+    pageDescription:
+      'Vergleichen Sie die Inhalte von Buckets über Speicher hinweg und prüfen Sie die Unterschiede.',
+    noResultsAction: 'Diff-Report erstellen',
+    filterNoResultsTitle: 'Keine Diff-Reports gefunden',
+    filterNoResultsText: 'Kein Diff-Report entspricht Ihren Filterkriterien.',
+    filterNoResultsAction: 'Filter zurücksetzen',
     diffReportTitle: 'Diff-Reports',
     columnBucket: 'Bucket Paare',
     columnDirection: 'Richtung',

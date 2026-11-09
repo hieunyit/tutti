@@ -24,8 +24,8 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
-  import { GeneralHelper } from '../../../../utils/helpers/GeneralHelper';
   import ReplicationBucketCell from '../ReplicationBucketCell/ReplicationBucketCell.vue';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import type { ChorusReplication } from '@/utils/types/chorus';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
@@ -139,7 +139,7 @@
         </template>
 
         <template #createdAt="{ rowData }">
-          {{ GeneralHelper.formatDateTime(rowData.createdAt) }}
+          {{ formatDateTime(rowData.createdAt) }}
         </template>
 
         <template #direction="{ rowData }">

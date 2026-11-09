@@ -19,10 +19,10 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     // Breadcrumbs
-    breadcrumbDiffReports: 'Diff Reports',
+    backToDiffReports: 'Diff reports',
     breadcrumbCreateDiffReport: 'Add Diff Report',
     // Page / tile
-    addDiffReportTitle: 'Add Diff Report',
+    addDiffReportTitle: 'New diff report',
     addDiffReportDescription:
       'Run an on-demand verification check between two storage locations. Select a source and target storage/bucket pair with optional validation criteria.',
     // Wizard
@@ -110,9 +110,9 @@ export default <I18nMessages>{
     createDiffReportError: 'An error occurred while creating the diff report.',
   },
   [I18nLocale.DE]: {
-    breadcrumbDiffReports: 'Diff-Reports',
+    backToDiffReports: 'Diff-Reports',
     breadcrumbCreateDiffReport: 'Diff-Report hinzufügen',
-    addDiffReportTitle: 'Diff-Report hinzufügen',
+    addDiffReportTitle: 'Diff-Report erstellen',
     addDiffReportDescription:
       'Führen Sie eine On-Demand-Prüfung zwischen zwei Storage-Standorten durch. Wählen Sie ein Quell- und Ziel-Storage-/Bucket-Paar mit optionalen Validierungskriterien.',
     step1Title: 'Diff-Report Quelle',

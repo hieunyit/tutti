@@ -31,7 +31,6 @@
   import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import type { RoutingPolicy } from '@/utils/types/chorus';
-  import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { createDialog } = useDialog();
@@ -256,29 +255,6 @@
 <template>
   <div class="routing-policies-list-actions">
     <WriteGate>
-      <div class="routing-policies-list-actions__creation">
-        <RouterLink :to="{ name: RouteName.CHORUS_ADD_ROUTING_POLICY }">
-          <CButton
-            type="primary"
-            size="medium"
-            ghost
-            class="add-routing-policies-button"
-            tag="div"
-          >
-            <template #icon>
-              <CIcon
-                :is-inline="true"
-                :name="IconName.BASE_ADD"
-              />
-            </template>
-
-            {{ t('actionAddRoutingPolicy') }}
-          </CButton>
-        </RouterLink>
-      </div>
-    </WriteGate>
-
-    <WriteGate>
       <div class="routing-policies-list-actions__selection-actions">
         <CTooltip :delay="1000">
           <template #trigger>
@@ -292,6 +268,7 @@
                 :disabled="isUnblockDisabled"
                 size="medium"
                 type="success"
+                :aria-label="t('actionUnblock')"
                 @click="openSetBlockConfirmation(false)"
               >
                 <template #icon>
@@ -318,6 +295,7 @@
                 :disabled="isBlockDisabled"
                 size="medium"
                 type="warning"
+                :aria-label="t('actionBlock')"
                 @click="openSetBlockConfirmation(true)"
               >
                 <template #icon>
@@ -345,6 +323,7 @@
                 :loading="isDeleteSelectedProcessing"
                 size="medium"
                 type="error"
+                :aria-label="t('actionDelete')"
                 @click="openDeleteConfirmation"
               >
                 <template #icon>
@@ -368,8 +347,7 @@
 
   .routing-policies-list-actions {
     display: flex;
-    flex-direction: row-reverse;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: utils.unit(2);
 
     &__selection-actions {

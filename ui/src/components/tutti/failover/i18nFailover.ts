@@ -17,6 +17,16 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    pageDescription:
+      'Define which storages take over when a source storage becomes unavailable, and acknowledge events after a manual failback.',
+    statusOn: 'on',
+    statusOff: 'off',
+    policiesEmptyTitle: 'No failover policies yet',
+    policiesEmptyText:
+      'Add a policy to define which storages take over when a source storage becomes unavailable.',
+    eventsEmptyTitle: 'No failover events',
+    eventsEmptyText:
+      'Events appear here when a proxy has failed over to a target storage and is waiting for a manual failback.',
     title: 'Failover',
     refresh: 'Refresh',
     policiesTitle: 'Failover policies',
@@ -42,7 +52,6 @@ export default <I18nMessages>{
     deleteConfirmAction: 'Delete',
     cancel: 'Cancel',
     save: 'Save',
-    noPolicies: 'No failover policies configured.',
     deleteFailed: 'Could not delete the policy.',
     saveFailed: 'Could not save the policy.',
     saveUnknownError: 'Unknown error while saving the policy.',
@@ -78,11 +87,20 @@ export default <I18nMessages>{
     acknowledgeConfirm:
       'Acknowledge the failover of "{user}" ({bucket}) from {from} to {to}? Do this only after the manual failback is complete.',
     acknowledgeFailed: 'Could not acknowledge the event.',
-    noEvents: 'No failover events.',
     eventsHint:
       'After repairing the source, perform the manual failback and then acknowledge the event. See docs/failover.md.',
   },
   [I18nLocale.DE]: {
+    pageDescription:
+      'Legen Sie fest, welche Speicher übernehmen, wenn ein Quellspeicher ausfällt, und bestätigen Sie Ereignisse nach einem manuellen Failback.',
+    statusOn: 'an',
+    statusOff: 'aus',
+    policiesEmptyTitle: 'Noch keine Failover-Richtlinien',
+    policiesEmptyText:
+      'Fügen Sie eine Richtlinie hinzu, um festzulegen, welche Speicher übernehmen, wenn ein Quellspeicher ausfällt.',
+    eventsEmptyTitle: 'Keine Failover-Ereignisse',
+    eventsEmptyText:
+      'Ereignisse erscheinen hier, wenn ein Proxy auf einen Zielspeicher umgeschaltet hat und auf ein manuelles Failback wartet.',
     title: 'Failover',
     refresh: 'Aktualisieren',
     policiesTitle: 'Failover-Richtlinien',
@@ -108,7 +126,6 @@ export default <I18nMessages>{
     deleteConfirmAction: 'Löschen',
     cancel: 'Abbrechen',
     save: 'Speichern',
-    noPolicies: 'Keine Failover-Richtlinien konfiguriert.',
     deleteFailed: 'Die Richtlinie konnte nicht gelöscht werden.',
     saveFailed: 'Die Richtlinie konnte nicht gespeichert werden.',
     saveUnknownError: 'Unbekannter Fehler beim Speichern der Richtlinie.',
@@ -146,7 +163,6 @@ export default <I18nMessages>{
     acknowledgeConfirm:
       'Failover von "{user}" ({bucket}) von {from} nach {to} bestätigen? Tun Sie dies erst nach abgeschlossenem manuellem Failback.',
     acknowledgeFailed: 'Das Ereignis konnte nicht bestätigt werden.',
-    noEvents: 'Keine Failover-Ereignisse.',
     eventsHint:
       'Führen Sie nach der Reparatur der Quelle das manuelle Failback durch und bestätigen Sie dann das Ereignis. Siehe docs/failover.md.',
   },

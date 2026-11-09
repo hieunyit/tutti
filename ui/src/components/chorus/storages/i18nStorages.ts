@@ -18,6 +18,12 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    pageDescription:
+      'The storage backends behind the proxy. Open a storage to see its details and manage the credentials of its users.',
+    refresh: 'Refresh',
+    noFollowersTitle: 'No follower storages',
+    noFollowersText:
+      'Only the main storage is configured. Add follower storages in the configuration to replicate to them.',
     storagesTitle: 'Storages',
     mainStorageTitle: 'Main',
     followersStoragesTitle: 'Followers',
@@ -37,7 +43,13 @@ export default <I18nMessages>{
     storageBrowserTitle: 'Storage Explorer',
   },
   [I18nLocale.DE]: {
-    replicationsTitle: 'Speicher',
+    pageDescription:
+      'Die Speicher-Backends hinter dem Proxy. Öffnen Sie einen Speicher, um Details einzusehen und die Zugangsdaten seiner Benutzer zu verwalten.',
+    refresh: 'Aktualisieren',
+    noFollowersTitle: 'Keine Follower-Speicher',
+    noFollowersText:
+      'Es ist nur der Hauptspeicher konfiguriert. Fügen Sie Follower-Speicher in der Konfiguration hinzu, um dorthin zu replizieren.',
+    storagesTitle: 'Speicher',
     mainStorageTitle: 'Hauptspeicher',
     followersStoragesTitle: 'Follower',
     storagesErrorTitle: 'Fehler bei Storages',

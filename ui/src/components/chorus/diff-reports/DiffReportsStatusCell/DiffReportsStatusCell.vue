@@ -39,7 +39,7 @@
       v-if="!isReady"
       :bordered="false"
       size="small"
-      type="info"
+      type="warning"
       round
     >
       {{ t('statusChecking') }}

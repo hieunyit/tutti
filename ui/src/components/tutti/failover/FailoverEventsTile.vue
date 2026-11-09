@@ -15,18 +15,15 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
-  import {
-    NButton,
-    NDataTable,
-    NPopconfirm,
-    type DataTableColumns,
-  } from 'naive-ui';
+  import { CResult, CTile } from '@clyso/clyso-ui-kit';
+  import { NDataTable, NPopconfirm, type DataTableColumns } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
+  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
@@ -87,7 +84,11 @@
             },
             {
               trigger: () =>
-                h(NButton, { size: 'small' }, () => t('acknowledge')),
+                h(RowActionButton, {
+                  label: t('acknowledge'),
+                  icon: IconName.BASE_CHECKMARK,
+                  type: 'success',
+                }),
               default: () =>
                 t('acknowledgeConfirm', {
                   user: row.user,
@@ -114,8 +115,25 @@
       :columns="columns"
       :data="events"
       :bordered="false"
+      :scroll-x="720"
       :row-key="(row: TuttiFailoverEvent) => `${row.user}::${row.bucket ?? ''}`"
-    />
+    >
+      <template #empty>
+        <CResult
+          class="failover-events-tile__empty"
+          type="empty"
+          size="medium"
+          :icon-name="IconName.BASE_CHECKMARK"
+          :max-width="480"
+        >
+          <template #title>
+            {{ t('eventsEmptyTitle') }}
+          </template>
+
+          <p>{{ t('eventsEmptyText') }}</p>
+        </CResult>
+      </template>
+    </NDataTable>
   </CTile>
 </template>
 
@@ -123,7 +141,11 @@
   .failover-events-tile {
     &__hint {
       margin: 0 0 16px;
-      opacity: 0.8;
+      color: var(--text-color-3);
+    }
+
+    &__empty {
+      padding: 24px 0;
     }
   }
 </style>

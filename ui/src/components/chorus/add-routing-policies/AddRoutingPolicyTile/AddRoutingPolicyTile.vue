@@ -47,12 +47,6 @@
 
 <template>
   <CTile class="add-routing-policy-tile">
-    <template #title>
-      {{ t('addRoutingPolicyTitle') }}
-    </template>
-    <template #header>
-      {{ t('addRoutingPolicyHeader') }}
-    </template>
     <div class="add-routing-policy-tile__content">
       <UserSelection />
       <StorageSelection />

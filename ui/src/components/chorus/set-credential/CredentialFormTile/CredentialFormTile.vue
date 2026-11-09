@@ -23,13 +23,13 @@
   import i18nSetCredential from '@/components/chorus/set-credential/i18nSetCredential';
   import CredentialFormField from '@/components/chorus/set-credential/CredentialFormField/CredentialFormField.vue';
 
+  defineOptions({ inheritAttrs: false });
+
   const { t } = useI18n({
     messages: i18nSetCredential,
   });
 
   const {
-    storage,
-    user,
     isEditMode,
     isS3,
     isSwift,
@@ -51,21 +51,10 @@
 
 <template>
   <CTile
+    v-bind="$attrs"
     class="credential-form-tile"
     :is-processing="isSubmitting"
   >
-    <template #title>
-      {{
-        isEditMode
-          ? t('setCredentialTitleEdit', { user })
-          : t('setCredentialTitleAdd')
-      }}
-    </template>
-
-    <template #header>
-      {{ t('setCredentialHeader', { storage: storage?.name }) }}
-    </template>
-
     <div class="credential-form-tile__content">
       <CredentialFormField
         field-name="user"

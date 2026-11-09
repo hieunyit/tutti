@@ -18,6 +18,10 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    pageDescription:
+      'Connection details and the user credentials the proxy uses for this storage.',
+    backToStorages: 'Storages',
+    addCredentialAction: 'Add credential',
     storageDetailsErrorTitle: 'Storage Details Error',
     storageDetailsErrorText:
       'An error occurred while retrieving storage details.\nPlease try again.',
@@ -26,6 +30,10 @@ export default <I18nMessages>{
     storageDetailsBreadcrumb: 'Storage Details',
   },
   [I18nLocale.DE]: {
+    pageDescription:
+      'Verbindungsdetails und die Benutzer-Zugangsdaten, die der Proxy für diesen Speicher verwendet.',
+    backToStorages: 'Speicher',
+    addCredentialAction: 'Zugangsdaten hinzufügen',
     storageDetailsErrorTitle: 'Fehler bei den Speicherdetails',
     storageDetailsErrorText:
       'Beim Abrufen der Speicherdetails ist ein Fehler aufgetreten.\nBitte versuchen Sie es erneut.',

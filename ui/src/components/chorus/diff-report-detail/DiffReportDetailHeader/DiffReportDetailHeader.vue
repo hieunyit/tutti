@@ -17,10 +17,13 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import { CButton, CIcon, CTag, useDialog } from '@clyso/clyso-ui-kit';
+  import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { IconName } from '@/utils/types/icon';
+  import { RouteName } from '@/utils/types/router';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import ChorusDirectionCell from '@/components/chorus/common/ChorusDirectionCell/ChorusDirectionCell.vue';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -30,7 +33,12 @@
   const { createNotification, createRetryNotification } =
     useChorusNotification();
   const { createDialog } = useDialog();
-  const { locations, isRestartLoading } = storeToRefs(store);
+  const { locations, isRestartLoading, hasError, isNotFound } =
+    storeToRefs(store);
+
+  const canRestart = computed(
+    () => locations.value.length === 2 && !hasError.value && !isNotFound.value,
+  );
 
   async function restartDiffReport() {
     try {
@@ -69,42 +77,24 @@
 </script>
 
 <template>
-  <div
-    class="diff-report-detail-header"
-    v-if="locations[0] && locations[1]"
+  <PageHeader
+    :title="t('detailTitle')"
+    :description="t('detailSubtitle')"
   >
-    <div class="diff-report-detail-header__top">
-      <div class="diff-report-detail-header__title">
-        <h4>{{ t('detailTitle') }}</h4>
-        <ChorusDirectionCell
-          :from-text="locations[0].storage"
-          :to-text="locations[1].storage"
-          to-type="warning"
-        >
-          <template #from-extra>
-            <CTag
-              :bordered="false"
-              round
-              size="small"
-              type="primary"
-            >
-              {{ locations[0].bucket }}
-            </CTag>
+    <template #actions>
+      <RouterLink :to="{ name: RouteName.CHORUS_DIFF_REPORTS }">
+        <CButton tag="div">
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="IconName.BASE_ARROW_BACK"
+            />
           </template>
-          <template #to-extra>
-            <CTag
-              :bordered="false"
-              round
-              size="small"
-              type="primary"
-            >
-              {{ locations[1].bucket }}
-            </CTag>
-          </template>
-        </ChorusDirectionCell>
-      </div>
 
-      <WriteGate>
+          {{ t('backToDiffReports') }}
+        </CButton>
+      </RouterLink>
+      <WriteGate v-if="canRestart">
         <CButton
           type="warning"
           :loading="isRestartLoading"
@@ -116,31 +106,42 @@
               :name="IconName.BASE_REFRESH"
             />
           </template>
+
           {{ t('restartAction') }}
         </CButton>
       </WriteGate>
-    </div>
+    </template>
 
-    <p class="diff-report-detail-header__subtitle">
-      {{ t('detailSubtitle') }}
-    </p>
-  </div>
+    <template
+      v-if="locations[0] && locations[1]"
+      #extra
+    >
+      <ChorusDirectionCell
+        :from-text="locations[0].storage"
+        :to-text="locations[1].storage"
+        to-type="warning"
+      >
+        <template #from-extra>
+          <CTag
+            :bordered="false"
+            round
+            size="small"
+            type="primary"
+          >
+            {{ locations[0].bucket }}
+          </CTag>
+        </template>
+        <template #to-extra>
+          <CTag
+            :bordered="false"
+            round
+            size="small"
+            type="primary"
+          >
+            {{ locations[1].bucket }}
+          </CTag>
+        </template>
+      </ChorusDirectionCell>
+    </template>
+  </PageHeader>
 </template>
-
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
-  .diff-report-detail-header {
-    &__top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    &__title {
-      display: flex;
-      align-items: center;
-      gap: utils.unit(3);
-    }
-  }
-</style>

@@ -18,6 +18,15 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    pageDescription:
+      'Decide which storage serves the requests of a user or bucket, and block access to a target when needed.',
+    noResultsTitle: 'No routing policies yet',
+    noResultsText:
+      'Routing policies send the requests of a user or bucket to a specific storage.\nAdd one to get started.',
+    filterNoResultsTitle: 'No routing policies found',
+    filterNoResultsText:
+      'There is no routing policy matching your filter criteria.',
+    filterNoResultsAction: 'Clear filters',
     actionEdit: 'Change target storage',
     editTitle: 'Change target storage',
     editDescription: 'Select the new target storage for this routing policy.',
@@ -30,7 +39,7 @@ export default <I18nMessages>{
     editLoadError: 'The storage list could not be loaded.',
     editUnknownError: 'The routing policy could not be updated.',
     editSuccessTitle: 'Routing policy updated',
-    routingPoliciesTitle: 'Routing Policies',
+    routingPoliciesTitle: 'Routing policies',
     columnUser: 'User',
     columnBucket: 'Bucket',
     columnStorage: 'Storage',
@@ -107,9 +116,18 @@ export default <I18nMessages>{
       'The following {total} routing policies have been allowed:',
     unblockSelectedErrorContent:
       'An error occurred while allowing the following {total} routing policies:',
-    actionAddRoutingPolicy: 'Add Routing Policy',
+    actionAddRoutingPolicy: 'Add routing policy',
   },
   [I18nLocale.DE]: {
+    pageDescription:
+      'Legen Sie fest, welcher Speicher die Anfragen eines Benutzers oder Buckets bedient, und sperren Sie bei Bedarf den Zugriff auf ein Ziel.',
+    noResultsTitle: 'Noch keine Routing-Richtlinien',
+    noResultsText:
+      'Routing-Richtlinien leiten die Anfragen eines Benutzers oder Buckets an einen bestimmten Speicher.\nFügen Sie eine hinzu, um zu beginnen.',
+    filterNoResultsTitle: 'Keine Routing-Richtlinien gefunden',
+    filterNoResultsText:
+      'Keine Routing-Richtlinie entspricht Ihren Filterkriterien.',
+    filterNoResultsAction: 'Filter zurücksetzen',
     actionEdit: 'Zielspeicher ändern',
     editTitle: 'Zielspeicher ändern',
     editDescription:

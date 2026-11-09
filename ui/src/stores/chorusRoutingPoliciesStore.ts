@@ -18,7 +18,7 @@ import { type DataTablePaginationObject } from '@clyso/clyso-ui-kit';
 import type { DataTableSortState } from 'naive-ui';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useStoreI18n } from '@/i18n/useStoreI18n';
 import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
 import {
   RoutingPolicyStatusFilter,
@@ -81,7 +81,7 @@ export const useChorusRoutingPoliciesStore = defineStore(
   () => {
     const state = reactive<ChorusRoutingPoliciesState>(getInitialState());
 
-    const { t } = useI18n({
+    const { t } = useStoreI18n({
       messages: i18nRoutingPolicies,
     });
 

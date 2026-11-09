@@ -21,7 +21,7 @@ import type {
   DataTableSortState,
 } from '@clyso/clyso-ui-kit';
 import { useNotification } from '@clyso/clyso-ui-kit';
-import { useI18n } from 'vue-i18n';
+import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
   ChorusReplication,
   ChorusReplicationId,
@@ -107,7 +107,7 @@ export const useChorusReplicationsStore = defineStore(
 
     const { createNotification, removeNotification } = useNotification();
 
-    const { t } = useI18n({
+    const { t } = useStoreI18n({
       messages: i18nReplications,
     });
 

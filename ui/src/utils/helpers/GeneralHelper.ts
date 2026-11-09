@@ -77,24 +77,6 @@ export abstract class GeneralHelper {
     );
   }
 
-  static formatDateTime(date: string | Date, hasTimezone = false): string {
-    const { locale } = storeToRefs(useI18nStore());
-    const dateToFormat = typeof date === 'string' ? new Date(date) : date;
-
-    return dateToFormat.toLocaleDateString(
-      locale.value === 'en' ? 'en-Gb' : 'de',
-      {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: hasTimezone ? 'short' : undefined,
-      },
-    );
-  }
-
   static formatDateDistance(date: string | Date, baseDate: string | Date) {
     const { locale } = storeToRefs(useI18nStore());
     const dateComputed = typeof date === 'string' ? new Date(date) : date;

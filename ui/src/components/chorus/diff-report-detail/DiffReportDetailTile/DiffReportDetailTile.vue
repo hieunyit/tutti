@@ -51,48 +51,53 @@
 </script>
 
 <template>
-  <CTile class="diff-report-detail-tile">
-    <CResult
-      v-if="errorType"
-      status="error"
-      type="error"
-      size="large"
-      :max-width="600"
-      @positive-click="
-        errorType === 'error' ? initDiffReportDetailsPage() : handleBackToList()
-      "
-      class="diff-report-detail-tile__error"
-    >
-      <template #title>
-        {{ t(`${errorType}Title`) }}
-      </template>
+  <div class="diff-report-detail">
+    <DiffReportDetailHeader />
 
-      <p>{{ t(`${errorType}Text`) }}</p>
+    <CTile class="diff-report-detail-tile">
+      <CResult
+        v-if="errorType"
+        status="error"
+        type="error"
+        size="large"
+        :max-width="600"
+        @positive-click="
+          errorType === 'error'
+            ? initDiffReportDetailsPage()
+            : handleBackToList()
+        "
+        class="diff-report-detail-tile__error"
+      >
+        <template #title>
+          {{ t(`${errorType}Title`) }}
+        </template>
 
-      <template #positive-text>
-        {{ t(`${errorType}Action`) }}
-      </template>
-    </CResult>
+        <p>{{ t(`${errorType}Text`) }}</p>
 
-    <template v-else>
-      <div class="diff-report-detail-tile__content">
-        <DiffReportDetailHeader />
-        <DiffReportDetailOverview />
-        <div class="diff-report-detail-tile__progress-row">
-          <DiffReportDetailProgress
-            type="diff"
-            class="diff-report-detail-tile__progress-item"
-          />
-          <DiffReportDetailProgress
-            v-if="hasFixActivity"
-            type="fix"
-            class="diff-report-detail-tile__progress-item"
-          />
+        <template #positive-text>
+          {{ t(`${errorType}Action`) }}
+        </template>
+      </CResult>
+
+      <template v-else>
+        <div class="diff-report-detail-tile__content">
+          <DiffReportDetailOverview />
+          <div class="diff-report-detail-tile__progress-row">
+            <DiffReportDetailProgress
+              type="diff"
+              class="diff-report-detail-tile__progress-item"
+            />
+            <DiffReportDetailProgress
+              v-if="hasFixActivity"
+              type="fix"
+              class="diff-report-detail-tile__progress-item"
+            />
+          </div>
+          <DiffReportDetailEntries />
         </div>
-        <DiffReportDetailEntries />
-      </div>
-    </template>
-  </CTile>
+      </template>
+    </CTile>
+  </div>
 </template>
 
 <style lang="scss" scoped>
@@ -103,16 +108,19 @@
 
     &__content {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: utils.unit(8);
     }
 
     &__progress-item {
       flex: 1;
+      min-width: 0;
       max-width: 500px;
     }
 
     &__progress-row {
       display: flex;
+      min-width: 0;
 
       @include utils.mobile {
         flex-direction: column;

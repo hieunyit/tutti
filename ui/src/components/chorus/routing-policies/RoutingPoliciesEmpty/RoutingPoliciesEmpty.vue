@@ -1,0 +1,90 @@
+<!--
+  - Copyright © 2026 hieunyit
+  -
+  -  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
+  -  you may not use this file except in compliance with the License.
+  -  You may obtain a copy of the License at
+  -
+  -  https://www.gnu.org/licenses/agpl-3.0.html
+  -
+  -  Unless required by applicable law or agreed to in writing, software
+  -  distributed under the License is distributed on an "AS IS" BASIS,
+  -  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  -  See the License for the specific language governing permissions and
+  -  limitations under the License.
+  -->
+
+<script setup lang="ts">
+  import { useI18n } from 'vue-i18n';
+  import { CResult, CIcon, CButton } from '@clyso/clyso-ui-kit';
+  import { storeToRefs } from 'pinia';
+  import { useRouter } from 'vue-router';
+  import i18nRoutingPolicies from '../i18nRoutingPolicies';
+  import { IconName } from '@/utils/types/icon';
+  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { RouteName } from '@/utils/types/router';
+  import WriteGate from '@/components/auth/WriteGate.vue';
+
+  const { t } = useI18n({
+    messages: i18nRoutingPolicies,
+  });
+
+  const { isFiltered } = storeToRefs(useChorusRoutingPoliciesStore());
+  const { clearFilters } = useChorusRoutingPoliciesStore();
+  const router = useRouter();
+
+  function handleAction() {
+    if (!isFiltered.value) {
+      router.push({ name: RouteName.CHORUS_ADD_ROUTING_POLICY });
+
+      return;
+    }
+
+    clearFilters();
+  }
+</script>
+
+<template>
+  <CResult
+    class="routing-policies-empty"
+    type="empty"
+    size="large"
+    :icon-name="IconName.BASE_ARROW_FORWARD"
+    :max-width="600"
+  >
+    <template #title>
+      {{ t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle') }}
+    </template>
+
+    <p>{{ t(isFiltered ? 'filterNoResultsText' : 'noResultsText') }}</p>
+
+    <template #actions>
+      <WriteGate :bypass="isFiltered">
+        <CButton
+          type="primary"
+          size="large"
+          @click="handleAction"
+        >
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="isFiltered ? 'close' : IconName.BASE_ADD"
+            />
+          </template>
+
+          {{
+            t(isFiltered ? 'filterNoResultsAction' : 'actionAddRoutingPolicy')
+          }}
+        </CButton>
+      </WriteGate>
+    </template>
+  </CResult>
+</template>
+
+<style lang="scss" scoped>
+  .routing-policies-empty {
+    p {
+      white-space: pre-line;
+    }
+  }
+</style>

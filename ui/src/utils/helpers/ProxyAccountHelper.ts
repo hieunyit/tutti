@@ -30,6 +30,15 @@ export interface TuttiGraceOption {
   value: string;
 }
 
+/** One row of the nested keys table of a proxy account. */
+export interface ProxyAccountKeyRow {
+  accessKeyId: string;
+  /** Config source when unambiguous, otherwise "config"; "dynamic" for managed keys. */
+  source: string;
+  /** set for dynamic keys only; static keys are managed in the config */
+  dynamicKey?: TuttiDynamicKey;
+}
+
 export abstract class ProxyAccountHelper {
   static readonly DEFAULT_GRACE_ID: TuttiGraceOption['id'] = 'hour';
 
@@ -79,15 +88,18 @@ export abstract class ProxyAccountHelper {
     const dynamic = new Set(
       (account.dynamicKeys ?? []).map((k) => k.accessKeyId),
     );
+    // The API returns independently sorted sets, not parallel arrays per key.
+    const sources = (account.sources ?? []).filter(
+      (source) => source !== 'dynamic',
+    );
+    const source = sources.length === 1 ? (sources[0] ?? 'config') : 'config';
 
     return (account.accessKeyIds ?? [])
-      .map((accessKeyId, index) => ({
+      .filter((accessKeyId) => !dynamic.has(accessKeyId))
+      .map((accessKeyId) => ({
         accessKeyId,
-        source: account.sources?.[index] ?? '',
-      }))
-      .filter(
-        (key) => key.source !== 'dynamic' && !dynamic.has(key.accessKeyId),
-      );
+        source,
+      }));
   }
 
   static isDisabled(key: TuttiDynamicKey): boolean {
@@ -101,5 +113,20 @@ export abstract class ProxyAccountHelper {
     const time = Date.parse(value);
 
     return !Number.isNaN(time) && time > Date.UTC(1971, 0, 1);
+  }
+
+  /** Static (config) keys first, then the dynamic ones, as one list. */
+  static getKeyRows(account: TuttiProxyAccount): ProxyAccountKeyRow[] {
+    return [
+      ...ProxyAccountHelper.getStaticKeys(account).map((key) => ({
+        accessKeyId: key.accessKeyId,
+        source: key.source,
+      })),
+      ...(account.dynamicKeys ?? []).map((dynamicKey) => ({
+        accessKeyId: dynamicKey.accessKeyId,
+        source: 'dynamic',
+        dynamicKey,
+      })),
+    ];
   }
 }

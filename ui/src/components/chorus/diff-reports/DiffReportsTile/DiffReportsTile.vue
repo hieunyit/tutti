@@ -16,24 +16,14 @@
 
 <script setup lang="ts">
   import { CTile } from '@clyso/clyso-ui-kit';
-  import { useI18n } from 'vue-i18n';
-  import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import DiffReportsList from '@/components/chorus/diff-reports/DiffReportsList/DiffReportsList.vue';
   import DiffReportsFilters from '@/components/chorus/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
   import DiffReportsListActions from '@/components/chorus/diff-reports/DiffReportsListActions/DiffReportsListActions.vue';
   import DiffReportsListTags from '@/components/chorus/diff-reports/DiffReportsListTags/DiffReportsListTags.vue';
-
-  const { t } = useI18n({
-    messages: i18nDiffReports,
-  });
 </script>
 
 <template>
   <CTile class="diff-reports-tile">
-    <template #title>
-      {{ t('diffReportTitle') }}
-    </template>
-
     <DiffReportsFilters class="diff-reports-tile__filters" />
 
     <DiffReportsListTags class="diff-reports-tile__tags" />

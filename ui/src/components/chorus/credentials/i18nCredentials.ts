@@ -18,15 +18,25 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    noCredentialsTitle: 'No credentials yet',
+    noCredentialsText:
+      'Add credentials so the proxy can access this storage on behalf of a user.',
+    filterNoResultsTitle: 'No credentials found',
+    filterNoResultsText: 'There is no credential matching your filter.',
     credentialsTitle: 'Credentials',
     columnUserAlias: 'User Alias',
     columnAccessKey: 'Access Key',
     columnActions: 'Actions',
     filterByUserAliasPlaceholder: 'Filter by User Alias',
     actionEdit: 'Edit',
-    addCredentialAction: 'Add Credential',
+    addCredentialAction: 'Add credential',
   },
   [I18nLocale.DE]: {
+    noCredentialsTitle: 'Noch keine Zugangsdaten',
+    noCredentialsText:
+      'Fügen Sie Zugangsdaten hinzu, damit der Proxy im Namen eines Benutzers auf diesen Speicher zugreifen kann.',
+    filterNoResultsTitle: 'Keine Zugangsdaten gefunden',
+    filterNoResultsText: 'Keine Zugangsdaten entsprechen Ihrem Filter.',
     credentialsTitle: 'Zugangsdaten',
     columnUserAlias: 'Benutzeralias',
     columnAccessKey: 'Zugriffsschlüssel',

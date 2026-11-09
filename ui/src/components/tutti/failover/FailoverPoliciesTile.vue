@@ -15,9 +15,8 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
+  import { CButton, CIcon, CResult, CTile } from '@clyso/clyso-ui-kit';
   import {
-    NButton,
     NDataTable,
     NPopconfirm,
     NSpace,
@@ -29,7 +28,9 @@
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
   import FailoverPolicyDrawer from './FailoverPolicyDrawer.vue';
+  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import type { TuttiFailoverPolicy } from '@/utils/types/tutti';
@@ -73,8 +74,8 @@
       render: (row) =>
         h(
           NTag,
-          { type: row.enabled ? 'success' : 'default', size: 'small' },
-          () => (row.enabled ? 'on' : 'off'),
+          { type: row.enabled ? 'success' : 'warning', size: 'small' },
+          () => (row.enabled ? t('statusOn') : t('statusOff')),
         ),
     },
     {
@@ -106,22 +107,28 @@
       key: 'actions',
       render: (row) =>
         h(WriteGate, null, () =>
-          h(NSpace, { size: 8 }, () => [
-            h(NButton, { size: 'small', onClick: () => openEdit(row) }, () =>
-              t('edit'),
-            ),
+          h('span', { class: 'failover-policies-tile__actions' }, [
+            h(RowActionButton, {
+              label: t('edit'),
+              icon: IconName.BASE_CREATE,
+              type: 'primary',
+              onClick: () => openEdit(row),
+            }),
             h(
               NPopconfirm,
               {
                 positiveText: t('deleteConfirmAction'),
                 negativeText: t('cancel'),
+                positiveButtonProps: { type: 'error' },
                 onPositiveClick: () => remove(row),
               },
               {
                 trigger: () =>
-                  h(NButton, { size: 'small', type: 'error' }, () =>
-                    t('delete'),
-                  ),
+                  h(RowActionButton, {
+                    label: t('delete'),
+                    icon: IconName.BASE_TRASH,
+                    type: 'error',
+                  }),
                 default: () => t('deleteConfirm', { source: row.source }),
               },
             ),
@@ -141,8 +148,43 @@
       :columns="columns"
       :data="policies"
       :bordered="false"
+      :scroll-x="760"
       :row-key="(row: TuttiFailoverPolicy) => row.source"
-    />
+    >
+      <template #empty>
+        <CResult
+          class="failover-policies-tile__empty"
+          type="empty"
+          size="medium"
+          :icon-name="IconName.BASE_REFRESH"
+          :max-width="480"
+        >
+          <template #title>
+            {{ t('policiesEmptyTitle') }}
+          </template>
+
+          <p>{{ t('policiesEmptyText') }}</p>
+
+          <template #actions>
+            <WriteGate>
+              <CButton
+                type="primary"
+                @click="openAdd"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_ADD"
+                  />
+                </template>
+
+                {{ t('addPolicy') }}
+              </CButton>
+            </WriteGate>
+          </template>
+        </CResult>
+      </template>
+    </NDataTable>
 
     <FailoverPolicyDrawer
       v-model:show="showDrawer"
@@ -150,3 +192,17 @@
     />
   </CTile>
 </template>
+
+<style lang="scss" scoped>
+  .failover-policies-tile {
+    &__empty {
+      padding: 24px 0;
+    }
+
+    :deep(.failover-policies-tile__actions) {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+</style>

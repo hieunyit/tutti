@@ -15,8 +15,8 @@
   -->
 
 <script setup lang="ts">
-  import { CButton } from '@clyso/clyso-ui-kit';
-  import { NAlert, NButton } from 'naive-ui';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import { NAlert } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -27,6 +27,7 @@
   import WriteGate from '@/components/auth/WriteGate.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
+  import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({ messages: i18nFailover });
   const store = useTuttiFailoverStore();
@@ -44,7 +45,7 @@
   <div class="tutti-failover-page">
     <PageHeader
       :title="t('title')"
-      :description="t('help')"
+      :description="t('pageDescription')"
     >
       <template #actions>
         <CButton
@@ -54,12 +55,19 @@
           {{ t('refresh') }}
         </CButton>
         <WriteGate v-if="!hasError">
-          <NButton
+          <CButton
             type="primary"
             @click="policiesTile?.openAdd()"
           >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+
             {{ t('addPolicy') }}
-          </NButton>
+          </CButton>
         </WriteGate>
       </template>
     </PageHeader>
@@ -72,6 +80,12 @@
       @retry="store.init()"
     />
     <template v-else>
+      <NAlert
+        type="info"
+        class="tutti-failover-page__warning"
+      >
+        {{ t('help') }}
+      </NAlert>
       <NAlert
         v-if="proxiesWithFailoverDisabled > 0"
         type="warning"

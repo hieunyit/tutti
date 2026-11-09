@@ -85,7 +85,7 @@
         <CTag
           :bordered="false"
           size="small"
-          :type="replication.isPaused ? 'warning' : 'info'"
+          :type="replication.isPaused ? 'warning' : 'success'"
         >
           {{ t(replication.isPaused ? 'statusPaused' : 'statusActive') }}
         </CTag>

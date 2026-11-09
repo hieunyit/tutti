@@ -136,7 +136,7 @@ export interface TuttiAccessPolicyListResponse {
 export interface TuttiProxyAccount {
   user: string;
   accessKeyIds?: string[];
-  /** parallel to accessKeyIds: "custom" or "storage:<name>" */
+  /** Independent source set (not parallel to accessKeyIds): "custom", "storage:<name>", or "dynamic". */
   sources?: string[];
   /** effective policy (read-write on "*" when none is stored) */
   policy?: TuttiAccessPolicy;

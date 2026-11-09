@@ -123,6 +123,8 @@
   @use '@/styles/utils' as utils;
 
   .diff-report-detail-progress {
+    min-width: 0;
+
     h5 {
       margin-bottom: utils.unit(3);
     }
@@ -138,6 +140,13 @@
     :deep(.c-description-item__label) {
       min-width: 160px;
       color: var(--text-color-3);
+    }
+
+    @include utils.mobile {
+      :deep(.c-description-item) {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: utils.unit(1);
+      }
     }
   }
 </style>

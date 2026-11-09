@@ -21,6 +21,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nHealth from './i18nHealth';
   import {
+    EMPTY_DATE_TEXT,
     formatDateTime,
     formatRelative,
   } from '@/utils/helpers/DateTimeHelper';
@@ -55,7 +56,7 @@
     {
       title: t('columnLastError'),
       key: 'lastError',
-      render: (row) => row.lastError || '-',
+      render: (row) => row.lastError || EMPTY_DATE_TEXT,
     },
     {
       title: t('columnLastChange'),
@@ -79,12 +80,12 @@
 
     return [
       [t('syncReplication'), onOff(sync?.enabled)],
-      [t('writeQuorum'), sync?.writeQuorum ?? '-'],
-      [t('syncTimeout'), sync?.timeout ?? '-'],
-      [t('onQuorumFailure'), sync?.onQuorumFailure || '-'],
+      [t('writeQuorum'), sync?.writeQuorum ?? EMPTY_DATE_TEXT],
+      [t('syncTimeout'), sync?.timeout ?? EMPTY_DATE_TEXT],
+      [t('onQuorumFailure'), sync?.onQuorumFailure || EMPTY_DATE_TEXT],
       [t('failover'), onOff(s?.failover?.enabled)],
-      [t('failureThreshold'), s?.health?.failureThreshold ?? '-'],
-      [t('openDuration'), s?.health?.openDuration ?? '-'],
+      [t('failureThreshold'), s?.health?.failureThreshold ?? EMPTY_DATE_TEXT],
+      [t('openDuration'), s?.health?.openDuration ?? EMPTY_DATE_TEXT],
       [
         t('requireSignedContentType'),
         s?.requireSignedContentType ? t('yes') : t('no'),

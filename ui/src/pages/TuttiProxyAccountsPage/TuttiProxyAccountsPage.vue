@@ -15,17 +15,23 @@
   -->
 
 <script setup lang="ts">
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { onBeforeMount, onBeforeUnmount } from 'vue';
+  import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from '@/components/tutti/accounts/i18nAccounts';
   import ProxyAccountsTile from '@/components/tutti/accounts/ProxyAccountsTile.vue';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
+  import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { hasError } = storeToRefs(store);
+  const { hasError, isLoading } = storeToRefs(store);
+
+  const accountsTile = ref<InstanceType<typeof ProxyAccountsTile> | null>(null);
 
   onBeforeMount(() => store.init());
   onBeforeUnmount(() => store.$reset());
@@ -33,6 +39,35 @@
 
 <template>
   <div class="tutti-proxy-accounts-page">
+    <PageHeader
+      :title="t('title')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <CButton
+          :loading="isLoading"
+          @click="store.init()"
+        >
+          {{ t('refresh') }}
+        </CButton>
+        <WriteGate v-if="!hasError">
+          <CButton
+            type="primary"
+            @click="accountsTile?.openCreate()"
+          >
+            <template #icon>
+              <CIcon
+                :is-inline="true"
+                :name="IconName.BASE_ADD"
+              />
+            </template>
+
+            {{ t('createAccount') }}
+          </CButton>
+        </WriteGate>
+      </template>
+    </PageHeader>
+
     <ChorusListError
       v-if="hasError"
       :title="t('errorTitle')"
@@ -40,6 +75,9 @@
       :action-text="t('retry')"
       @retry="store.init()"
     />
-    <ProxyAccountsTile v-else />
+    <ProxyAccountsTile
+      v-else
+      ref="accountsTile"
+    />
   </div>
 </template>

@@ -17,9 +17,9 @@
 import type { Step } from '@clyso/clyso-ui-kit';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { helpers } from '@vuelidate/validators';
 import useVuelidate from '@vuelidate/core';
+import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   AddDiffReportStepName,
   type ChorusStorage,
@@ -86,7 +86,7 @@ export const useChorusAddDiffReportStore = defineStore(
   'chorusAddDiffReport',
   () => {
     const state = reactive<ChorusAddDiffReportState>(getInitialState());
-    const { t } = useI18n({
+    const { t } = useStoreI18n({
       messages: i18nAddDiffReport,
     });
     const hasEnoughStorages = computed(() => state.storages.length >= 2);

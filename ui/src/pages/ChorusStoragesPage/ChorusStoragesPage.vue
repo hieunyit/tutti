@@ -17,11 +17,16 @@
 <script setup lang="ts">
   import { onBeforeMount, onBeforeUnmount } from 'vue';
   import { storeToRefs } from 'pinia';
+  import { useI18n } from 'vue-i18n';
+  import { CButton } from '@clyso/clyso-ui-kit';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import StoragesTile from '@/components/chorus/storages/StoragesTile/StoragesTile.vue';
+  import i18nStorages from '@/components/chorus/storages/i18nStorages';
   import { useChorusStoragesStore } from '@/stores/chorusStoragesStore';
   import StoragesError from '@/components/chorus/storages/StoragesError/StoragesError.vue';
 
-  const { hasError } = storeToRefs(useChorusStoragesStore());
+  const { t } = useI18n({ messages: i18nStorages });
+  const { hasError, isLoading } = storeToRefs(useChorusStoragesStore());
   const { initStorages, $reset } = useChorusStoragesStore();
 
   onBeforeMount(() => initStorages());
@@ -30,6 +35,20 @@
 
 <template>
   <div class="storages-page">
+    <PageHeader
+      :title="t('storagesTitle')"
+      :description="t('pageDescription')"
+    >
+      <template #actions>
+        <CButton
+          :loading="isLoading"
+          @click="initStorages()"
+        >
+          {{ t('refresh') }}
+        </CButton>
+      </template>
+    </PageHeader>
+
     <StoragesError
       v-if="hasError"
       key="error"
