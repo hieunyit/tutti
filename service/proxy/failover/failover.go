@@ -339,7 +339,7 @@ func (c *Controller) evaluate(s scope, targets []string, maxLag int, status map[
 				why = "destination unavailable"
 			case cand.status.ReplicationStatus != nil && cand.status.IsArchived:
 				why = "replication archived"
-			case cand.status.IsPaused:
+			case cand.status.IsPaused && (cand.status.ReplicationStatus == nil || !cand.status.FailoverPending):
 				why = "replication paused"
 			case cand.status.Switch != nil:
 				why = "replication switch in progress"

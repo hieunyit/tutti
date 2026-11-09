@@ -18,8 +18,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/store"
 )
 
 // FailoverSvc switches the routing of a replication scope to the replication destination.
@@ -43,12 +46,24 @@ func (r *policySvc) FailoverReplication(ctx context.Context, id entity.Universal
 	if routeTo != id.FromStorage() {
 		return fmt.Errorf("%w: failover: %s is routed to %s, not to replication source %s", dom.ErrInvalidArg, id.AsString(), routeTo, id.FromStorage())
 	}
-	// Pause first: if the routing update below fails, the next attempt is idempotent.
-	if err := r.PauseReplication(ctx, id); err != nil {
+	info, err := r.GetReplicationPolicyInfoExtended(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failover: get replication status: %w", err)
+	}
+	if info.IsPaused && !info.FailoverPending {
+		return fmt.Errorf("%w: failover: replication was paused by an operator", dom.ErrFailedPrecondition)
+	}
+	// Persist ownership before pausing so another process can finish after a crash
+	// or Redis failure. Ordinary operator-paused replications remain ineligible.
+	if err := r.setFailoverPending(ctx, id, true); err != nil {
+		return err
+	}
+	if err := r.pauseReplicationQueues(ctx, id); err != nil {
 		return fmt.Errorf("failover: %w", err)
 	}
 	tx := r.userRoutingStore.TxExecutor()
 	r.routeToNewInTx(ctx, tx, id)
+	_ = r.setFailoverPendingInTx(ctx, tx, id, false)
 	if _, isUser := id.AsUserID(); isUser {
 		// explicit bucket routings of the user override the user routing: move those pointing to the failed storage too
 		buckets, err := r.bucketRoutingStore.ListRoutesOp(ctx, id.User()).Get()
@@ -65,4 +80,21 @@ func (r *policySvc) FailoverReplication(ctx context.Context, id entity.Universal
 		return fmt.Errorf("failover: unable to update routing: %w", err)
 	}
 	return nil
+}
+
+func (r *policySvc) setFailoverPending(ctx context.Context, id entity.UniversalReplicationID, pending bool) error {
+	tx := r.userRoutingStore.TxExecutor()
+	_ = r.setFailoverPendingInTx(ctx, tx, id, pending)
+	if err := tx.Exec(ctx); err != nil {
+		return fmt.Errorf("failover: update pending state: %w", err)
+	}
+	return nil
+}
+
+func (r *policySvc) setFailoverPendingInTx(ctx context.Context, tx store.Executor[redis.Pipeliner], id entity.UniversalReplicationID, pending bool) store.OperationStatus {
+	if userID, ok := id.AsUserID(); ok {
+		return r.userReplicationStatusStore.WithExecutor(tx).SetFailoverPendingOp(ctx, userID, pending)
+	}
+	bucketID, _ := id.AsBucketID()
+	return r.bucketReplicationStatusStore.WithExecutor(tx).SetFailoverPendingOp(ctx, bucketID, pending)
 }

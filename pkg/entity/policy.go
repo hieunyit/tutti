@@ -106,6 +106,8 @@ type ReplicationStatus struct {
 	EventSource string `redis:"event_source,omitempty"`
 
 	IsArchived bool `redis:"archived"`
+	// FailoverPending identifies a pause owned by an unfinished automatic failover.
+	FailoverPending bool `redis:"failover_pending"`
 }
 
 func StatusFromOptions(opts ReplicationOptions) ReplicationStatus {

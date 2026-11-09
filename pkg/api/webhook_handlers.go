@@ -18,6 +18,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -75,6 +76,9 @@ func (h *webhookHandlers) SwiftEvents(ctx context.Context, req *pb.SwiftEventsRe
 			return nil, err
 		}
 		if err := h.processSwiftEvent(ctx, logger, req.Storage, evt); err != nil {
+			if !errors.Is(err, dom.ErrInvalidArg) {
+				return nil, fmt.Errorf("swift webhook event %d: %w", i, err)
+			}
 			logger.Warn().Err(err).Int("event_index", i).Msg("skip swift event")
 		}
 	}
@@ -83,7 +87,7 @@ func (h *webhookHandlers) SwiftEvents(ctx context.Context, req *pb.SwiftEventsRe
 }
 
 func (h *webhookHandlers) processSwiftEvent(ctx context.Context, logger *zerolog.Logger, storage string, evt *pb.SwiftEvent) error {
-	if evt.Account == "" {
+	if evt == nil || evt.Account == "" {
 		return fmt.Errorf("%w: account is required", dom.ErrInvalidArg)
 	}
 
@@ -184,7 +188,7 @@ func (h *webhookHandlers) S3Notifications(ctx context.Context, req *pb.S3Notific
 	}
 	groups := make(map[bucketKey][]s3RecordInfo)
 	for i, record := range req.Records {
-		if record.S3 == nil || record.S3.ConfigurationId == "" {
+		if record == nil || record.S3 == nil || record.S3.ConfigurationId == "" {
 			logger.Warn().Int("record_index", i).Msg("skip s3 notification record: missing s3 payload or configuration_id")
 			continue
 		}
@@ -211,14 +215,16 @@ func (h *webhookHandlers) S3Notifications(ctx context.Context, req *pb.S3Notific
 		}
 		evtCtx, err := h.policySvc.BuildAgentContext(ctx, key.user, key.bucket)
 		if err != nil {
-			logger.Warn().Err(err).Str("user", key.user).Str("bucket", key.bucket).Msg("skip s3 notification group: build agent context failed")
-			continue
+			return nil, fmt.Errorf("s3 webhook build agent context: %w", err)
 		}
 		for _, ri := range records {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
 			if err := h.processS3Record(evtCtx, logger, req.Storage, key.bucket, ri.record); err != nil {
+				if !errors.Is(err, dom.ErrInvalidArg) {
+					return nil, fmt.Errorf("s3 webhook record %d: %w", ri.index, err)
+				}
 				logger.Warn().Err(err).Int("record_index", ri.index).Msg("skip s3 notification record")
 			}
 		}

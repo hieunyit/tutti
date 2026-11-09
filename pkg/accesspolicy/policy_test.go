@@ -149,6 +149,7 @@ func TestStoreAndCache(t *testing.T) {
 func TestCacheNeverLoaded(t *testing.T) {
 	st := NewStore(redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", MaxRetries: -1, DialTimeout: 100 * time.Millisecond}))
 	c := NewCache(st, time.Second)
-	_, ok := c.Lookup(context.Background(), "u")
-	require.False(t, ok)
+	p, ok := c.Lookup(context.Background(), "u")
+	require.True(t, ok)
+	require.ErrorIs(t, p.Authorize(Request{Method: s3.GetObject, Bucket: "bucket"}), dom.ErrAuth)
 }

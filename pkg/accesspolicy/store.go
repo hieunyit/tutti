@@ -113,8 +113,8 @@ func (s *Store) Delete(ctx context.Context, user string) error {
 const DefaultTTL = 5 * time.Second
 
 // Cache serves policies from memory and reloads them from the Store when older than ttl.
-// If Redis fails, the last known policies are kept. If none were ever loaded, no account is restricted
-// (as when no policy exists) and a warning is logged.
+// If Redis fails, the last known policies are kept. Until the first successful
+// load, all accounts are denied: an unknown policy must never grant full access.
 type Cache struct {
 	store *Store
 	ttl   time.Duration
@@ -145,6 +145,12 @@ func (c *Cache) Lookup(ctx context.Context, user string) (Policy, bool) {
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	if !c.loaded {
+		// A lookup concurrent with the initial load, or following a failed load,
+		// must not look like an account known to have no policy. An empty
+		// permission is rejected by Policy.Authorize.
+		return Policy{User: user}, true
+	}
 	p, ok := c.policies[user]
 	return p, ok
 }
@@ -161,7 +167,7 @@ func (c *Cache) reload(ctx context.Context) {
 		if c.loaded {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("access policies: reload failed, using last known policies")
 		} else {
-			zerolog.Ctx(ctx).Warn().Err(err).Msg("access policies: never loaded, accounts are unrestricted until redis is reachable")
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("access policies: never loaded, accounts are denied until redis is reachable")
 		}
 		return
 	}

@@ -88,8 +88,17 @@ func (m *middleware) doesSignatureV4Match(hashedPayload string, r *http.Request)
 	}
 
 	t, e := time.Parse(iso8601Format, date)
+	if e != nil && req.Header.Get(s3.AmzDate) == "" {
+		t, e = http.ParseTime(date)
+	}
 	if e != nil {
 		return "", nil, fmt.Errorf("%w: invalid signature: %q - %q invalid date format", dom.ErrAuth, s3.AmzDate, date)
+	}
+	if err := checkHeaderTime(t, time.Now().UTC()); err != nil {
+		return "", nil, err
+	}
+	if t.UTC().Format(yyyymmdd) != signV4Values.Credential.Scope.Date.UTC().Format(yyyymmdd) {
+		return "", nil, fmt.Errorf("%w: credential scope date does not match request date", dom.ErrAuth)
 	}
 	queryStr := req.URL.Query().Encode()
 	canonicalRequest := getCanonicalV4Request(extractedSignedHeaders, hashedPayload, queryStr, req.URL.Path, req.Method)

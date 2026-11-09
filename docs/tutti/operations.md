@@ -121,7 +121,7 @@ Targets are tried in the operator's order; the first that passes all checks wins
 
 - it exists for that scope (bucket-level for bucket scopes, else user-level) and the destination bucket name equals the source bucket name;
 - the target is not the source and the target's breaker is closed;
-- the replication is not archived, not paused, has no replication switch in progress, and its initial migration is done;
+- the replication is not archived, has no replication switch in progress, and its initial migration is done; an operator pause blocks promotion, while a pause belonging to an unfinished automatic failover may be resumed;
 - unprocessed replication events (queued event tasks) <= `maxEventLag`.
 
 Only storages listed in `targets` are considered, even if other replications exist. If nothing qualifies, a warning with the reasons is logged once per scope per outage and routing is unchanged.
@@ -134,8 +134,8 @@ The controller takes a Redis lock `tutti:failover-lock:<failed storage>` (lock D
 
 Per failed-over scope:
 
-1. The replication source -> promoted target is **paused** (done first, so a retry is idempotent).
-2. Routing for the scope is pointed to the target (user routing, or bucket routing). For a user-level scope, explicit bucket routings of that user that point to the failed storage are moved to the target too.
+1. The replication status records `failover_pending=true`, then the source -> promoted target replication is **paused**. If a later step fails, another controller can resume the attempt from this persisted state after a restart.
+2. Routing for the scope is pointed to the target (user routing, or bucket routing), and `failover_pending` is removed in the same Redis transaction. For a user-level scope, explicit bucket routings of that user that point to the failed storage are moved to the target too. Explicit operator pause/resume clears the pending marker and cancels recovery ownership.
 3. A failover event is stored: `tutti:failover:user:<user>` or `tutti:failover:bucket:<user>:<bucket>`, JSON `{user, bucket, from, to, time, eventLag}`.
 
 Other replications from the failed storage (for example main -> f2 when f1 was promoted) are not paused, but requests routed to the promoted storage only carry replications whose source is the routed storage, so they do not record events against the failed side.

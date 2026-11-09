@@ -36,4 +36,4 @@ npm run test:unit -- --run
 npm run build
 ```
 
-The earlier backend security/replication fixes remain separate from the J2/J3 UI commits.
+The earlier backend security/replication fixes are committed separately from the J2/J3 UI commits; see [review-fixes-2026-11-09.md](../review-fixes-2026-11-09.md).

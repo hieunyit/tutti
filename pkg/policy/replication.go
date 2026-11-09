@@ -55,6 +55,14 @@ func (r *policySvc) PauseReplication(ctx context.Context, id entity.UniversalRep
 	if err := id.Validate(); err != nil {
 		return fmt.Errorf("pause replication: unable to validate replication status id: %w", err)
 	}
+	// An explicit operator action cancels automatic failover recovery ownership.
+	if err := r.setFailoverPending(ctx, id, false); err != nil {
+		return err
+	}
+	return r.pauseReplicationQueues(ctx, id)
+}
+
+func (r *policySvc) pauseReplicationQueues(ctx context.Context, id entity.UniversalReplicationID) error {
 	for _, queue := range tasks.AllReplicationQueues(id) {
 		err := r.queueSvc.Pause(ctx, queue)
 		if err != nil {
@@ -72,6 +80,9 @@ func (r *policySvc) PauseReplication(ctx context.Context, id entity.UniversalRep
 func (r *policySvc) ResumeReplication(ctx context.Context, id entity.UniversalReplicationID) error {
 	if err := id.Validate(); err != nil {
 		return fmt.Errorf("resume replication: unable to validate replication status id: %w", err)
+	}
+	if err := r.setFailoverPending(ctx, id, false); err != nil {
+		return err
 	}
 	for _, queue := range tasks.AllReplicationQueues(id) {
 		err := r.queueSvc.Resume(ctx, queue)

@@ -153,8 +153,8 @@ func TestRunChecks_PeriodNotStretchedAndFailuresCounted(t *testing.T) {
 	var calls atomic.Int32
 	probe := func(ctx context.Context) error {
 		calls.Add(1)
-		time.Sleep(time.Second) // ignores ctx and blocks longer than the timeout
-		return nil
+		<-ctx.Done()
+		return ctx.Err()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -167,7 +167,7 @@ func TestRunChecks_PeriodNotStretchedAndFailuresCounted(t *testing.T) {
 	cancel()
 	<-done
 	r.GreaterOrEqual(int(calls.Load()), 3)
-	// a stretched period (waiting 1s per probe) could not reach 3 calls in well under 1s
+	// Cooperative timed-out probes free their slot for the next fixed-rate tick.
 	st := reg.Snapshot()[0]
 	r.False(st.Available)
 	r.Contains(st.LastError, "deadline")

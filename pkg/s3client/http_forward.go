@@ -94,7 +94,7 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 	if req.ContentLength != 0 {
 		body = io.NopCloser(req.Body)
 	}
-	newReq, err = http.NewRequest(req.Method, url.String(), body)
+	newReq, err = http.NewRequestWithContext(ctx, req.Method, url.String(), body)
 	if err != nil {
 		copyReqSpan.End()
 		return nil, false, err

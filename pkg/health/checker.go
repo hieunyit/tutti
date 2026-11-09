@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -51,39 +50,51 @@ func (r *Registry) runTarget(ctx context.Context, t Target) {
 		interval = DefaultProbeInterval
 	}
 	timeout := probeTimeout(interval)
-	var inFlight atomic.Bool
-	tick := func() {
-		if !inFlight.CompareAndSwap(false, true) {
-			return // previous probe is still running: skip this tick
+	var result <-chan error
+	var deadline <-chan struct{}
+	var cancelProbe context.CancelFunc
+	timedOut := false
+	defer func() {
+		if cancelProbe != nil {
+			cancelProbe()
 		}
-		go func() {
-			defer inFlight.Store(false)
-			pctx, cancel := context.WithTimeout(ctx, timeout)
-			defer cancel()
-			done := make(chan error, 1)
-			go func() { done <- t.Probe(pctx) }()
-			var err error
-			select {
-			case err = <-done:
-			case <-pctx.Done():
-				// probe ignored its context: the bound still applies
-				err = pctx.Err()
-			}
-			if errors.Is(err, ErrSkipProbe) || ctx.Err() != nil {
-				return
-			}
-			r.Observe(t.Storage, err)
-		}()
+	}()
+	start := func() {
+		pctx, cancel := context.WithTimeout(ctx, timeout)
+		cancelProbe = cancel
+		done := make(chan error, 1)
+		result = done
+		deadline = pctx.Done()
+		timedOut = false
+		go func() { done <- t.Probe(pctx) }()
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	tick()
+	start()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case err := <-result:
+			cancelProbe()
+			result, deadline = nil, nil
+			if !timedOut && !errors.Is(err, ErrSkipProbe) && ctx.Err() == nil {
+				r.Observe(t.Storage, err)
+			}
+		case <-deadline:
+			deadline = nil
+			timedOut = true
+			if ctx.Err() == nil {
+				r.Observe(t.Storage, context.DeadlineExceeded)
+			}
 		case <-ticker.C:
-			tick()
+			if result == nil {
+				start()
+			} else if timedOut && ctx.Err() == nil {
+				// Keep reporting a stuck probe as unavailable without creating
+				// more goroutines. A late result must not count as a success.
+				r.Observe(t.Storage, context.DeadlineExceeded)
+			}
 		}
 	}
 }

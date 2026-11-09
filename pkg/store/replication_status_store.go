@@ -27,7 +27,7 @@ import (
 
 /*
 Replication status stores historical information about replication jobs.
-- Status is NOT USED by chorus business logic, it is only used for monitoring and reporting purposes.
+- Status stores monitoring fields and the durable pending marker used to recover interrupted failover.
 - Status cannot be changed directly - it is updated by replication workers during replication process.
 - Status cannot be deleted, it can only be overwritten if user recreates replication policy with the same parameters.
   When replication policy is deleted, status is kept, but marked as archived.
@@ -87,6 +87,13 @@ func (r *BucketReplicationStatusStore) TxExecutor() Executor[redis.Pipeliner] {
 
 func (r *BucketReplicationStatusStore) GetOp(ctx context.Context, id entity.BucketReplicationPolicy) OperationResult[entity.ReplicationStatus] {
 	return r.status.GetOp(ctx, id)
+}
+
+func (r *BucketReplicationStatusStore) SetFailoverPendingOp(ctx context.Context, id entity.BucketReplicationPolicy, pending bool) OperationStatus {
+	if !pending {
+		return r.status.DelFieldOp(ctx, id, "failover_pending").Status()
+	}
+	return r.status.SetFieldOp(ctx, id, "failover_pending", true).Status()
 }
 
 func (r *BucketReplicationStatusStore) List(ctx context.Context, user string) (map[entity.BucketReplicationPolicy]entity.ReplicationStatus, error) {
@@ -173,6 +180,13 @@ func (r *UserReplicationStatusStore) TxExecutor() Executor[redis.Pipeliner] {
 
 func (r *UserReplicationStatusStore) GetOp(ctx context.Context, id entity.UserReplicationPolicy) OperationResult[entity.ReplicationStatus] {
 	return r.status.GetOp(ctx, id)
+}
+
+func (r *UserReplicationStatusStore) SetFailoverPendingOp(ctx context.Context, id entity.UserReplicationPolicy, pending bool) OperationStatus {
+	if !pending {
+		return r.status.DelFieldOp(ctx, id, "failover_pending").Status()
+	}
+	return r.status.SetFieldOp(ctx, id, "failover_pending", true).Status()
 }
 
 func (r *UserReplicationStatusStore) List(ctx context.Context) (map[entity.UserReplicationPolicy]entity.ReplicationStatus, error) {

@@ -171,6 +171,13 @@ func (s *Service) Authenticate(ctx context.Context, token string) (*Session, err
 	if err := json.Unmarshal(data, &sess); err != nil {
 		return nil, ErrInvalidSession
 	}
+	u, ok := s.users[sess.Username]
+	if !ok {
+		return nil, ErrInvalidSession
+	}
+	// Sessions survive process restarts in Redis, but authorization must use
+	// the current configuration rather than the role recorded at login.
+	sess.Role = u.Role
 	return &sess, nil
 }
 

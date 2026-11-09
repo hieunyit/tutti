@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -120,6 +121,12 @@ func (s *ObjectSyncer) objectDelete(ctx context.Context, p tasks.ObjectSyncPaylo
 	if err == nil {
 		zerolog.Ctx(ctx).Warn().Msg("skip obj delete: obj still exists in source storage")
 		return nil
+	}
+	// A failed existence check is not evidence of deletion. Only an explicit
+	// NoSuchKey/NoSuchVersion response permits removing the replica.
+	missing := mclient.ToErrorResponse(err)
+	if missing.StatusCode != http.StatusNotFound || (missing.Code != "NoSuchKey" && missing.Code != "NoSuchVersion") {
+		return fmt.Errorf("unable to confirm source object deletion: %w", err)
 	}
 
 	_, toBucket := p.ID.FromToBuckets(p.Object.Bucket)

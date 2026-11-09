@@ -88,8 +88,13 @@ func (o ReplicationOptions) withDefaults() ReplicationOptions {
 // The deadline is shared by all tasks of a request, so a request producing many tasks
 // (e.g. DeleteObjects with 1000 keys) is still bounded by a single retry budget.
 func replicateWithRetry(ctx context.Context, svc replication.Service, storage string, task tasks.ReplicationTask, deadline time.Time) error {
+	ctx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
 	delay := eventRetryInitialDelay
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		err := svc.Replicate(ctx, storage, task)
 		if err == nil {
 			return nil
@@ -271,6 +276,9 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 						Str("on_event_error", replOpts.OnEventError).
 						Msg("unable to handle replication")
 					recordErr = replErr
+					if retryCtx.Err() != nil || !time.Now().Before(deadline) {
+						break
+					}
 				}
 			}
 			if recordErr != nil && replOpts.OnEventError == OnEventErrorFail {

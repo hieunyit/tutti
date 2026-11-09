@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	mclient "github.com/minio/minio-go/v7"
 
@@ -82,6 +83,21 @@ func isRequestSignatureV2(r *http.Request) bool {
 }
 
 func (m *middleware) doesSignatureV2Match(r *http.Request) (string, error) {
+	date := r.Header.Get(s3.AmzDate)
+	if date == "" {
+		date = r.Header.Get(s3.Date)
+	}
+	t, err := http.ParseTime(date)
+	if err != nil {
+		// Some S3 clients use the ISO8601 x-amz-date form with V2.
+		t, err = time.Parse(iso8601Format, date)
+	}
+	if err != nil {
+		return "", fmt.Errorf("%w: invalid or missing request date", dom.ErrAuth)
+	}
+	if err := checkHeaderTime(t, time.Now().UTC()); err != nil {
+		return "", err
+	}
 	accessKey, err := getReqAccessKeyV2(r)
 	if err != nil {
 		return "", err
