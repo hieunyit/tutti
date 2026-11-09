@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -88,6 +89,24 @@ func Allowed(role, method string) bool {
 	return false
 }
 
+// Stable machine-readable markers of the "password change required" rejection.
+const (
+	PasswordChangeRequiredMessage = "password change required"
+	PasswordChangeRequiredReason  = "PASSWORD_CHANGE_REQUIRED"
+	PasswordChangeRequiredDomain  = "tutti.auth"
+)
+
+// PasswordChangeRequiredError is the PermissionDenied status returned to users that must change their password first.
+// Through grpc-gateway it renders as HTTP 403 {"code":7,"message":"password change required","details":[{"@type":
+// ".../google.rpc.ErrorInfo","reason":"PASSWORD_CHANGE_REQUIRED","domain":"tutti.auth"}]}.
+func PasswordChangeRequiredError() error {
+	st := status.New(codes.PermissionDenied, PasswordChangeRequiredMessage)
+	if d, err := st.WithDetails(&errdetails.ErrorInfo{Reason: PasswordChangeRequiredReason, Domain: PasswordChangeRequiredDomain}); err == nil {
+		st = d
+	}
+	return st.Err()
+}
+
 func bearerFromMD(ctx context.Context) string {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -111,6 +130,10 @@ func (s *Service) check(ctx context.Context, method string) (context.Context, er
 			return ctx, status.Error(codes.Unauthenticated, "authentication required: missing, invalid or expired token")
 		}
 		return ctx, status.Error(codes.Unavailable, "unable to verify session")
+	}
+	if sess.MustChangePassword {
+		// Only /auth/me, /auth/password and /auth/logout (plain HTTP handlers, not gRPC) are usable until the password is changed.
+		return ctx, PasswordChangeRequiredError()
 	}
 	if !Allowed(sess.Role, method) {
 		return ctx, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s", sess.Role, method)
