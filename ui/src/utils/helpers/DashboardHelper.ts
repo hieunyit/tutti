@@ -20,17 +20,12 @@ import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
   TuttiProxyStatus,
+  TuttiTrafficRates,
 } from '@/utils/types/tutti';
-import {
-  TrafficStatsHelper,
-  type TrafficRates,
-  type TrafficSnapshot,
-} from '@/utils/helpers/TrafficStatsHelper';
+import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
 /** A proxy that has not reported for longer than this needs attention. */
 export const DASHBOARD_PROXY_STALE_MS = 60_000;
-/** Rates are only shown when the two newest snapshots are this close. */
-export const DASHBOARD_RATE_MAX_GAP_MS = 120_000;
 
 export type DashboardSeverity = 'error' | 'warning';
 
@@ -95,14 +90,14 @@ export interface DashboardSources {
 }
 
 export interface TrafficSummary {
-  /** current requests/s, null while only one snapshot per proxy exists */
-  requestsPerSecond: number | null;
-  /** total requests since proxy start (sum over proxies) */
-  requestsTotal: number;
-  /** 5xx share in percent: current rate if known, else since start */
+  /** requests/s over the last 10 s, all proxies */
+  requestsPerSecond: number;
+  /** share of 5xx responses in percent (status5xx / requests, last 10 s) */
   errorPercent5xx: number;
-  /** true when errorPercent5xx is based on the current rate */
-  isErrorPercentCurrent: boolean;
+  /** p95 latency in ms: the maximum over proxies (an upper bound) */
+  p95Ms: number | null;
+  /** requests/s by storage name */
+  byStorage: Record<string, number>;
 }
 
 export abstract class DashboardHelper {
@@ -260,75 +255,21 @@ export abstract class DashboardHelper {
     };
   }
 
-  /** Newest rates per proxy from the last two snapshots of each window. */
-  static getCurrentRates(
-    windows: Record<string, TrafficSnapshot[]>,
-    maxGapMs = DASHBOARD_RATE_MAX_GAP_MS,
-    now = Date.now(),
-  ): TrafficRates | null {
-    const list: TrafficRates[] = [];
-
-    Object.values(windows).forEach((window) => {
-      const prev = window[window.length - 2];
-      const last = window[window.length - 1];
-
-      if (
-        !prev ||
-        !last ||
-        last.collectedAt - prev.collectedAt > maxGapMs ||
-        now - last.collectedAt > DASHBOARD_PROXY_STALE_MS ||
-        last.collectedAt - now > DASHBOARD_PROXY_STALE_MS
-      ) {
-        return;
-      }
-
-      const rates = TrafficStatsHelper.computeRates(prev, last);
-
-      if (rates) list.push(rates);
-    });
-
-    return TrafficStatsHelper.sumRates(list);
-  }
-
+  /** Summary of the proxies' own live rates; null when none are published. */
   static getTrafficSummary(
-    windows: Record<string, TrafficSnapshot[]>,
-    now = Date.now(),
-  ): TrafficSummary {
-    const rates = DashboardHelper.getCurrentRates(
-      windows,
-      DASHBOARD_RATE_MAX_GAP_MS,
-      now,
-    );
-    const latest = Object.values(windows)
-      .map((window) => window[window.length - 1])
-      .filter((s): s is TrafficSnapshot => s !== undefined);
-    const requestsTotal = latest.reduce((n, s) => n + s.requestsTotal, 0);
-    const responses = latest.reduce(
-      (n, s) =>
-        n +
-        s.responses2xx +
-        s.responses3xx +
-        s.responses4xx +
-        s.responses5xx +
-        s.responsesOther,
-      0,
-    );
-    const total5xx = latest.reduce((n, s) => n + s.responses5xx, 0);
+    totalRates: TuttiTrafficRates | null | undefined,
+  ): TrafficSummary | null {
+    if (!totalRates) return null;
 
-    if (rates && TrafficStatsHelper.responseRate(rates) > 0) {
-      return {
-        requestsPerSecond: rates.requests,
-        requestsTotal,
-        errorPercent5xx: TrafficStatsHelper.errorPercent(rates, 'responses5xx'),
-        isErrorPercentCurrent: true,
-      };
-    }
+    const requests = TrafficStatsHelper.toNumber(totalRates.requestsPerSec);
+    const e5 = TrafficStatsHelper.toNumber(totalRates.status5xxPerSec);
+    const p95 = TrafficStatsHelper.toNumber(totalRates.latencyP95Ms);
 
     return {
-      requestsPerSecond: rates ? rates.requests : null,
-      requestsTotal,
-      errorPercent5xx: responses > 0 ? (total5xx / responses) * 100 : 0,
-      isErrorPercentCurrent: false,
+      requestsPerSecond: requests,
+      errorPercent5xx: requests > 0 ? Math.min(100, (e5 / requests) * 100) : 0,
+      p95Ms: requests > 0 && p95 > 0 ? p95 : null,
+      byStorage: totalRates.requestsByStorage ?? {},
     };
   }
 

@@ -15,53 +15,94 @@
   -->
 
 <script setup lang="ts">
-  import { computed } from 'vue';
-  import { useRoute } from 'vue-router';
+  import { computed, defineAsyncComponent } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useRoute } from 'vue-router';
+  import DocsGuides from '@/components/tutti/docs/DocsGuides.vue';
+  import i18nDocs from '@/components/tutti/docs/i18nDocs';
   import PageHeader from '@/components/layout/PageHeader.vue';
-  import SectionCard from '@/components/ui/SectionCard.vue';
   import { RouteName } from '@/utils/types/router';
 
-  // Placeholder: the documentation and API reference content is added later.
-  const { t } = useI18n({
-    messages: {
-      en: {
-        docsTitle: 'Documentation',
-        docsDescription: 'Guides for configuring and operating Tutti.',
-        apiTitle: 'API reference',
-        apiDescription: 'Endpoints of the Tutti management API.',
-        soon: 'This page is being prepared.',
-      },
-      de: {
-        docsTitle: 'Dokumentation',
-        docsDescription:
-          'Anleitungen zur Konfiguration und zum Betrieb von Tutti.',
-        apiTitle: 'API-Referenz',
-        apiDescription: 'Endpunkte der Tutti-Management-API.',
-        soon: 'Diese Seite wird gerade vorbereitet.',
-      },
-    },
-  });
+  // Swagger UI and the spec are only fetched on the API reference route
+  const DocsApiReference = defineAsyncComponent(
+    () => import('@/components/tutti/docs/DocsApiReference.vue'),
+  );
+
+  const { t } = useI18n({ messages: i18nDocs });
   const route = useRoute();
   const isApi = computed(() => route.name === RouteName.TUTTI_API_REFERENCE);
+  const slug = computed(() =>
+    typeof route.params.slug === 'string' ? route.params.slug : undefined,
+  );
 </script>
 
 <template>
   <div class="docs-page">
     <PageHeader
-      :title="isApi ? t('apiTitle') : t('docsTitle')"
-      :description="isApi ? t('apiDescription') : t('docsDescription')"
+      :title="t('title')"
+      :description="isApi ? t('apiDescription') : t('description')"
+    >
+      <template #actions>
+        <nav
+          class="docs-page__tabs"
+          :aria-label="t('sections')"
+        >
+          <RouterLink
+            class="docs-page__tab"
+            :to="{ name: RouteName.TUTTI_DOCS }"
+            :aria-current="isApi ? undefined : 'page'"
+            :class="{ 'docs-page__tab--active': !isApi }"
+          >
+            {{ t('tabGuides') }}
+          </RouterLink>
+          <RouterLink
+            class="docs-page__tab"
+            :to="{ name: RouteName.TUTTI_API_REFERENCE }"
+            :aria-current="isApi ? 'page' : undefined"
+            :class="{ 'docs-page__tab--active': isApi }"
+          >
+            {{ t('tabApi') }}
+          </RouterLink>
+        </nav>
+      </template>
+    </PageHeader>
+
+    <DocsApiReference v-if="isApi" />
+    <DocsGuides
+      v-else
+      :slug="slug"
     />
-    <SectionCard :title="isApi ? t('apiTitle') : t('docsTitle')">
-      <p class="docs-page__soon">{{ t('soon') }}</p>
-    </SectionCard>
   </div>
 </template>
 
 <style lang="scss" scoped>
-  .docs-page__soon {
-    margin: 0;
-    font-size: 14px;
-    color: var(--tt-text-2);
+  .docs-page {
+    max-width: 1600px;
+
+    &__tabs {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      background-color: var(--tt-disabled-bg);
+      border-radius: 10px;
+    }
+
+    &__tab {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 14px;
+      font-size: 13px;
+      color: var(--tt-text-2);
+      text-decoration: none;
+      border-radius: var(--tt-radius-control);
+
+      &--active {
+        font-weight: 600;
+        color: var(--tt-text);
+        background-color: var(--tt-surface);
+        box-shadow: var(--tt-shadow);
+      }
+    }
   }
 </style>

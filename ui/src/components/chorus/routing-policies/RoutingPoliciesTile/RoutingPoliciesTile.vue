@@ -15,39 +15,29 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
+  import { useI18n } from 'vue-i18n';
   import RoutingPoliciesList from '../RoutingPoliciesList/RoutingPoliciesList.vue';
   import RoutingPoliciesFilters from '../RoutingPoliciesFilters/RoutingPoliciesFilters.vue';
   import RoutingPoliciesListActions from '../RoutingPoliciesListActions/RoutingPoliciesListActions.vue';
+  import i18nRoutingPolicies from '@/components/chorus/routing-policies/i18nRoutingPolicies';
+  import ListCard from '@/components/tutti/common/ListCard.vue';
   import RoutingPoliciesListTags from '@/components/chorus/routing-policies/RoutingPoliciesListTags/RoutingPoliciesListTags.vue';
+
+  const { t } = useI18n({ messages: i18nRoutingPolicies });
 </script>
 
 <template>
-  <CTile class="routing-policies-tile">
-    <RoutingPoliciesFilters class="routing-policies-tile__filters" />
+  <ListCard :title="t('routingListTitle')">
+    <template #filters>
+      <RoutingPoliciesFilters />
+    </template>
+    <template #tags>
+      <RoutingPoliciesListTags />
+    </template>
+    <template #actions>
+      <RoutingPoliciesListActions />
+    </template>
 
-    <RoutingPoliciesListTags class="routing-policies-tile__tags" />
-
-    <RoutingPoliciesListActions class="routing-policies-tile__actions" />
-
-    <RoutingPoliciesList class="routing-policies-tile__routing-policies" />
-  </CTile>
+    <RoutingPoliciesList />
+  </ListCard>
 </template>
-
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
-  .routing-policies-tile {
-    &__filters {
-      margin-bottom: utils.unit(6);
-    }
-
-    &__tags {
-      margin-bottom: utils.unit(4);
-    }
-
-    &__actions {
-      margin-bottom: utils.unit(4);
-    }
-  }
-</style>

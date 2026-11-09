@@ -34,7 +34,7 @@
   import DiffReportsDirectionCell from '@/components/chorus/diff-reports/DiffReportsDirectionCell/DiffReportsDirectionCell.vue';
   import DiffReportsStatusCell from '@/components/chorus/diff-reports/DiffReportsStatusCell/DiffReportsStatusCell.vue';
   import DiffReportsConfigsCell from '@/components/chorus/diff-reports/DiffReportsConfigsCell/DiffReportsConfigsCell.vue';
-  import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
+  import ErrorState from '@/components/tutti/common/ErrorState.vue';
   import DiffReportsActionsCell from '@/components/chorus/diff-reports/DiffReportsActionsCell/DiffReportsActionsCell.vue';
   import ChorusDiffReportsProgress from '@/components/chorus/common/ChorusDiffReportProgress/ChorusDiffReportsProgress.vue';
 
@@ -187,11 +187,11 @@
         </template>
 
         <template #error>
-          <ChorusListError
+          <ErrorState
             class="diff-reports-list__result"
             :title="t('errorTitle')"
             :text="t('errorText')"
-            :action-text="t('errorAction')"
+            :action-label="t('errorAction')"
             @retry="initDiffReportPage"
           />
         </template>
@@ -217,7 +217,7 @@
     }
 
     &__result {
-      min-height: 400px;
+      min-height: 200px;
     }
   }
 </style>

@@ -15,9 +15,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { FailoverHelper } from '../FailoverHelper';
+import type { ChorusReplication } from '@/utils/types/chorus';
 import {
   TuttiPolicyValidationError as E,
+  type TuttiFailoverPolicy,
   type TuttiFailoverPolicyForm,
+  type TuttiProxyStatus,
 } from '@/utils/types/tutti';
 
 const form = (
@@ -165,5 +168,125 @@ describe('FailoverHelper form <-> policy', () => {
       after: '30',
       maxEventLag: 0,
     });
+  });
+});
+
+describe('FailoverHelper readiness and trigger evaluation', () => {
+  const NOW = Date.parse('2026-11-10T10:00:00Z');
+  const proxy = (enabled: boolean, appId = 'p1'): TuttiProxyStatus => ({
+    appId,
+    address: 'http://p',
+    updatedAt: '2026-11-10T09:59:55Z',
+    settings: { failover: { enabled, checkInterval: '5s', maxEventLag: 0 } },
+  });
+  const policy = (over: Partial<TuttiFailoverPolicy> = {}) => ({
+    source: 'main',
+    enabled: true,
+    targets: ['follower'],
+    ...over,
+  });
+  const repl = (over: Record<string, unknown> = {}) =>
+    ({
+      id: { user: 'u', fromStorage: 'main', toStorage: 'follower' },
+      isPaused: false,
+      isArchived: false,
+      eventLag: '0',
+      ...over,
+    }) as unknown as ChorusReplication;
+
+  it('says no when a reporting proxy has failover off', () => {
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy(),
+        [proxy(true), proxy(false, 'p2')],
+        [repl()],
+        NOW,
+      ),
+    ).toEqual({ state: 'no', reason: 'proxiesOff' });
+  });
+
+  it('says no when target replication is paused or lagging', () => {
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy(),
+        [proxy(true)],
+        [repl({ isPaused: true })],
+        NOW,
+      ),
+    ).toEqual({ state: 'no', reason: 'replication' });
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy({ maxEventLag: 2 }),
+        [proxy(true)],
+        [repl({ eventLag: '5' })],
+        NOW,
+      ),
+    ).toEqual({ state: 'no', reason: 'replication' });
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy({ maxEventLag: 5 }),
+        [proxy(true)],
+        [repl({ eventLag: '5' })],
+        NOW,
+      ),
+    ).toEqual({ state: 'yes' });
+  });
+
+  it('uses the proxy default lag when the policy has none', () => {
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy(),
+        [proxy(true)],
+        [repl({ eventLag: '1' })],
+        NOW,
+      ),
+    ).toEqual({ state: 'no', reason: 'replication' });
+  });
+
+  it('says yes with a healthy replication, disabled for disabled policies', () => {
+    expect(
+      FailoverHelper.evaluatePolicy(policy(), [proxy(true)], [repl()], NOW),
+    ).toEqual({ state: 'yes' });
+    expect(
+      FailoverHelper.evaluatePolicy(
+        policy({ enabled: false }),
+        [proxy(false)],
+        [],
+        NOW,
+      ),
+    ).toEqual({ state: 'disabled' });
+    expect(
+      FailoverHelper.evaluatePolicy(policy(), [proxy(true)], null, NOW),
+    ).toEqual({ state: 'yes' });
+  });
+
+  it('builds the readiness row and the banner flag', () => {
+    const r = FailoverHelper.getReadiness(
+      [policy(), policy({ source: 'x', enabled: false })],
+      [proxy(true), proxy(false, 'p2')],
+      [repl({ isPaused: true })],
+      NOW,
+    );
+
+    expect(r.total).toBe(2);
+    expect(r.on).toBe(1);
+    expect(r.off.map((p) => p.appId)).toEqual(['p2']);
+    expect(r.enabledPolicies).toBe(1);
+    expect(r.replication).toBe('paused');
+    expect(r.willNotTrigger).toBe(true);
+  });
+
+  it('shows no banner without enabled policies or when all proxies are on', () => {
+    expect(
+      FailoverHelper.getReadiness([], [proxy(false)], [], NOW).willNotTrigger,
+    ).toBe(false);
+    expect(
+      FailoverHelper.getReadiness([policy()], [proxy(true)], [repl()], NOW)
+        .willNotTrigger,
+    ).toBe(false);
+    expect(
+      FailoverHelper.getReadiness([policy()], [proxy(true)], [repl()], NOW)
+        .replication,
+    ).toBe('inSync');
   });
 });

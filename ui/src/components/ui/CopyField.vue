@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-  import { onBeforeUnmount, ref } from 'vue';
+  import { computed, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nUi from './i18nUi';
 
@@ -24,12 +24,18 @@
       value: string;
       /** accessible name of the value and the button, e.g. "S3 endpoint" */
       label?: string;
+      /** mask the value until "Show" is pressed; copying always copies the real value */
+      secret?: boolean;
     }>(),
-    { label: undefined },
+    { label: undefined, secret: false },
   );
 
   const { t } = useI18n({ messages: i18nUi });
   const state = ref<'idle' | 'copied' | 'failed'>('idle');
+  const revealed = ref(false);
+  const shown = computed(() =>
+    props.secret && !revealed.value ? '•'.repeat(24) : props.value,
+  );
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function copy() {
@@ -54,8 +60,20 @@
     <code
       class="tt-copy__value"
       :aria-label="label"
-      >{{ value }}</code
+      >{{ shown }}</code
     >
+    <button
+      v-if="secret"
+      type="button"
+      class="tt-copy__button"
+      :aria-pressed="revealed"
+      :aria-label="
+        label ? `${revealed ? t('hide') : t('show')}: ${label}` : undefined
+      "
+      @click="revealed = !revealed"
+    >
+      {{ revealed ? t('hide') : t('show') }}
+    </button>
     <button
       type="button"
       class="tt-copy__button"

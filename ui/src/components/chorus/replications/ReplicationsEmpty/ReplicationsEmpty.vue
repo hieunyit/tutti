@@ -16,10 +16,11 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import { CResult, CIcon, CButton } from '@clyso/clyso-ui-kit';
+  import { CIcon, CButton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { useRouter } from 'vue-router';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
+  import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
   import { RouteName } from '@/utils/types/router';
@@ -30,10 +31,8 @@
   });
 
   const { isFiltered } = storeToRefs(useChorusReplicationsStore());
-
-  const router = useRouter();
-
   const { clearFilters } = useChorusReplicationsStore();
+  const router = useRouter();
 
   function handleAction() {
     if (!isFiltered.value) {
@@ -47,46 +46,25 @@
 </script>
 
 <template>
-  <CResult
-    class="replications-empty"
-    type="empty"
-    size="large"
-    :icon-name="IconName.BASE_SWAP_HORIZONTAL"
-    :max-width="600"
+  <EmptyState
+    :icon="IconName.BASE_SWAP_HORIZONTAL"
+    :title="t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle')"
+    :text="t(isFiltered ? 'filterNoResultsText' : 'noResultsText')"
   >
-    <template #title>
-      {{ t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle') }}
-    </template>
+    <WriteGate :bypass="isFiltered">
+      <CButton
+        :type="isFiltered ? 'default' : 'primary'"
+        @click="handleAction"
+      >
+        <template #icon>
+          <CIcon
+            :is-inline="true"
+            :name="isFiltered ? 'close' : IconName.BASE_ADD"
+          />
+        </template>
 
-    <p>{{ t(isFiltered ? 'filterNoResultsText' : 'noResultsText') }}</p>
-
-    <template #actions>
-      <WriteGate :bypass="isFiltered">
-        <CButton
-          type="primary"
-          size="large"
-          @click="handleAction"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="isFiltered ? 'close' : IconName.BASE_ADD"
-            />
-          </template>
-
-          {{ t(isFiltered ? 'filterNoResultsAction' : 'addReplicationAction') }}
-        </CButton>
-      </WriteGate>
-    </template>
-  </CResult>
+        {{ t(isFiltered ? 'filterNoResultsAction' : 'addReplicationAction') }}
+      </CButton>
+    </WriteGate>
+  </EmptyState>
 </template>
-
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
-  .replications-empty {
-    p {
-      white-space: pre-line;
-    }
-  }
-</style>

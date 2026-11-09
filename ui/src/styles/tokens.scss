@@ -76,6 +76,15 @@
   --tt-neutral-border: #e4e7ec;
   --tt-neutral-solid: #98a2b3;
 
+  // chart series: blue and orange differ in lightness as well as hue
+  --tt-chart-1: #2952cc;
+  --tt-chart-2: #e8590c;
+  --tt-chart-3: #0e9384;
+  --tt-chart-4: #7a5af8;
+  --tt-chart-5: #667085;
+  --tt-chart-grid: #eef0f3;
+  --tt-chart-axis: #d0d5dd;
+
   --tt-nav-bg: #0b1220;
   --tt-nav-text: #cbd5e1;
   --tt-nav-muted: #94a3b8;
@@ -133,6 +142,14 @@ body.color-scheme-dark {
   --tt-neutral-bg: #1b2740;
   --tt-neutral-border: #2c3a58;
   --tt-neutral-solid: #66728b;
+
+  --tt-chart-1: #6e95ff;
+  --tt-chart-2: #fb923c;
+  --tt-chart-3: #2ed3b7;
+  --tt-chart-4: #a48afb;
+  --tt-chart-5: #8d99b0;
+  --tt-chart-grid: #1c2943;
+  --tt-chart-axis: #3a4a6b;
 
   --tt-nav-bg: #070c17;
   --tt-nav-border: #17213a;

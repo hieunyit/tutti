@@ -240,7 +240,7 @@
           <CTooltip :delay="1000">
             <template #trigger>
               <CButton
-                secondary
+                ghost
                 size="tiny"
                 type="error"
                 :loading="isDeleteLoading"

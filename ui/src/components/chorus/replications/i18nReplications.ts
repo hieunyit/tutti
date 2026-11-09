@@ -18,6 +18,9 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    statusInitial: 'Initial sync',
+    statusLagging: 'Behind',
+    replicationsListTitle: 'Replication jobs',
     pageDescription:
       'Continuously copy objects from a source storage to a destination, for a single bucket or for all buckets of a user.',
     replicationsTitle: 'Replication',
@@ -150,6 +153,9 @@ export default <I18nMessages>{
     filterByTypePlaceholder: 'Filter by Type',
   },
   [I18nLocale.DE]: {
+    statusInitial: 'Erstsynchronisation',
+    statusLagging: 'Im Rückstand',
+    replicationsListTitle: 'Replikationsjobs',
     pageDescription:
       'Kopiert Objekte fortlaufend von einem Quellspeicher in ein Ziel, für einen einzelnen Bucket oder alle Buckets eines Benutzers.',
     replicationsTitle: 'Replikation',

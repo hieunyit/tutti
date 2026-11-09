@@ -34,7 +34,7 @@
   import ReplicationsEmpty from '@/components/chorus/replications/ReplicationsEmpty/ReplicationsEmpty.vue';
   import ReplicationDirectionCell from '@/components/chorus/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
   import ReplicationActionsCell from '@/components/chorus/replications/ReplicationActionsCell/ReplicationActionsCell.vue';
-  import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
+  import ErrorState from '@/components/tutti/common/ErrorState.vue';
 
   const { t } = useI18n({
     messages: i18nReplications,
@@ -161,11 +161,11 @@
         </template>
 
         <template #error>
-          <ChorusListError
+          <ErrorState
             class="replications-list__result"
             :title="t('errorTitle')"
             :text="t('errorText')"
-            :action-text="t('errorAction')"
+            :action-label="t('errorAction')"
             @retry="initReplicationsPage"
           />
         </template>
@@ -187,11 +187,11 @@
     }
 
     &__table {
-      min-width: 1100px;
+      min-width: 960px;
     }
 
     &__result {
-      min-height: 400px;
+      min-height: 200px;
     }
   }
 </style>

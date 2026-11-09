@@ -16,9 +16,9 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import { CIcon, CTag, CTooltip } from '@clyso/clyso-ui-kit';
+  import { CTooltip } from '@clyso/clyso-ui-kit';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
-  import { IconName } from '@/utils/types/icon';
+  import StatusTag from '@/components/ui/StatusTag.vue';
   import type { RoutingPolicy } from '@/utils/types/chorus';
 
   const { t } = useI18n({
@@ -34,29 +34,13 @@
   <div class="routing-policy-status-cell">
     <CTooltip :delay="500">
       <template #trigger>
-        <CTag
-          :bordered="false"
-          round
-          size="small"
-          class="routing-policy-status-cell__status"
-          :type="routingPolicy.isBlocked ? 'error' : 'success'"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="
-                routingPolicy.isBlocked
-                  ? IconName.BASE_CLOSE_CIRCLE
-                  : IconName.BASE_CHECKMARK
-              "
-            />
-          </template>
+        <StatusTag :variant="routingPolicy.isBlocked ? 'danger' : 'success'">
           {{
             routingPolicy.isBlocked ? t('statusBlocked') : t('statusAllowed')
           }}
-        </CTag>
+        </StatusTag>
       </template>
-      <span class="routing-policy-status-cell__status-tooltip">
+      <span>
         <strong>{{
           routingPolicy.isBlocked ? t('statusBlocked') : t('statusAllowed')
         }}</strong

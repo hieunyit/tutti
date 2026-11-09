@@ -21,10 +21,14 @@ export default <I18nMessages>{
     copy: 'Copy',
     copied: 'Copied',
     copyFailed: 'Copy failed',
+    show: 'Show',
+    hide: 'Hide',
   },
   [I18nLocale.DE]: {
     copy: 'Kopieren',
     copied: 'Kopiert',
     copyFailed: 'Kopieren fehlgeschlagen',
+    show: 'Anzeigen',
+    hide: 'Verbergen',
   },
 };

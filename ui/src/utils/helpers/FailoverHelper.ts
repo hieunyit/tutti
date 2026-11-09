@@ -15,11 +15,38 @@
  */
 
 import axios from 'axios';
+import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
+import type { ChorusReplication } from '@/utils/types/chorus';
 import {
   TuttiPolicyValidationError,
   type TuttiFailoverPolicy,
   type TuttiFailoverPolicyForm,
+  type TuttiProxyStatus,
 } from '@/utils/types/tutti';
+
+export type FailoverTrigger =
+  | { state: 'yes' }
+  | { state: 'disabled' }
+  | { state: 'no'; reason: 'proxiesOff' | 'replication' };
+
+export type TargetReplicationState = 'none' | 'inSync' | 'lagging' | 'paused';
+
+export interface FailoverProxyOff {
+  appId: string;
+  address?: string;
+  checkInterval?: string;
+}
+
+export interface FailoverReadiness {
+  /** reporting proxies that publish their failover setting */
+  total: number;
+  on: number;
+  off: FailoverProxyOff[];
+  enabledPolicies: number;
+  replication: TargetReplicationState;
+  /** true when at least one enabled policy exists and a proxy has it off */
+  willNotTrigger: boolean;
+}
 
 const UNIT_SECONDS: Record<string, number> = { s: 1, m: 60, h: 3600 };
 
@@ -157,6 +184,156 @@ export abstract class FailoverHelper {
       targets: [...(policy.targets ?? [])],
       after: FailoverHelper.fromProtoDuration(policy.after),
       maxEventLag: policy.maxEventLag ?? null,
+    };
+  }
+
+  private static reportingProxies(
+    proxies: TuttiProxyStatus[] | null,
+    now: number,
+  ): TuttiProxyStatus[] {
+    return (proxies ?? []).filter(
+      (proxy) =>
+        DashboardHelper.isProxyReporting(proxy, now) &&
+        proxy.settings?.failover?.enabled !== undefined,
+    );
+  }
+
+  /** Effective max event lag: the policy value, else the largest proxy default. */
+  static effectiveMaxLag(
+    policy: TuttiFailoverPolicy,
+    proxies: TuttiProxyStatus[] | null,
+  ): number {
+    if (policy.maxEventLag !== undefined && policy.maxEventLag !== null) {
+      return policy.maxEventLag;
+    }
+
+    return Math.max(
+      0,
+      ...(proxies ?? []).map(
+        (proxy) => proxy.settings?.failover?.maxEventLag ?? 0,
+      ),
+    );
+  }
+
+  /** Replications source -> target (not archived). */
+  private static replicationsTowards(
+    source: string,
+    target: string,
+    replications: ChorusReplication[],
+  ): ChorusReplication[] {
+    return DashboardHelper.activeReplications(replications).filter(
+      (replication) =>
+        replication.id.fromStorage === source &&
+        replication.id.toStorage === target,
+    );
+  }
+
+  /** State of the replications from the source towards one target. */
+  static targetReplicationState(
+    source: string,
+    target: string,
+    replications: ChorusReplication[],
+    maxLag: number,
+  ): TargetReplicationState {
+    const list = FailoverHelper.replicationsTowards(
+      source,
+      target,
+      replications,
+    );
+
+    if (list.length === 0) return 'none';
+
+    if (list.some((replication) => replication.isPaused)) return 'paused';
+
+    if (
+      list.some((replication) => DashboardHelper.eventLag(replication) > maxLag)
+    ) {
+      return 'lagging';
+    }
+
+    return 'inSync';
+  }
+
+  /**
+   * Will this policy actually trigger? No when a reporting proxy has failover
+   * off, or when no target is replicated, running and within the lag limit.
+   * Unknown replications (null) are not held against the policy.
+   */
+  static evaluatePolicy(
+    policy: TuttiFailoverPolicy,
+    proxies: TuttiProxyStatus[] | null,
+    replications: ChorusReplication[] | null,
+    now = Date.now(),
+  ): FailoverTrigger {
+    if (policy.enabled === false) return { state: 'disabled' };
+
+    if (
+      FailoverHelper.reportingProxies(proxies, now).some(
+        (proxy) => proxy.settings?.failover?.enabled === false,
+      )
+    ) {
+      return { state: 'no', reason: 'proxiesOff' };
+    }
+
+    if (replications === null) return { state: 'yes' };
+
+    const maxLag = FailoverHelper.effectiveMaxLag(policy, proxies);
+    const ready = (policy.targets ?? []).some(
+      (target) =>
+        FailoverHelper.targetReplicationState(
+          policy.source,
+          target,
+          replications,
+          maxLag,
+        ) === 'inSync',
+    );
+
+    return ready ? { state: 'yes' } : { state: 'no', reason: 'replication' };
+  }
+
+  static getReadiness(
+    policies: TuttiFailoverPolicy[],
+    proxies: TuttiProxyStatus[] | null,
+    replications: ChorusReplication[] | null,
+    now = Date.now(),
+  ): FailoverReadiness {
+    const reporting = FailoverHelper.reportingProxies(proxies, now);
+    const off = reporting
+      .filter((proxy) => proxy.settings?.failover?.enabled === false)
+      .map((proxy) => ({
+        appId: proxy.appId,
+        address: proxy.address,
+        checkInterval: proxy.settings?.failover?.checkInterval,
+      }));
+    const enabled = policies.filter((policy) => policy.enabled !== false);
+    let replication: TargetReplicationState = 'none';
+
+    if (replications !== null) {
+      const states = enabled.flatMap((policy) => {
+        const maxLag = FailoverHelper.effectiveMaxLag(policy, proxies);
+
+        return (policy.targets ?? []).map((target) =>
+          FailoverHelper.targetReplicationState(
+            policy.source,
+            target,
+            replications,
+            maxLag,
+          ),
+        );
+      });
+
+      if (states.includes('paused')) replication = 'paused';
+      else if (states.includes('lagging')) replication = 'lagging';
+      else if (states.includes('inSync')) replication = 'inSync';
+    }
+
+    return {
+      total: reporting.length,
+      on: reporting.length - off.length,
+      off,
+      enabledPolicies: enabled.length,
+      replication,
+      willNotTrigger: enabled.length > 0 && off.length > 0,
     };
   }
 

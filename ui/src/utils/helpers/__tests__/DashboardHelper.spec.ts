@@ -16,9 +16,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { DashboardHelper, DASHBOARD_PROXY_STALE_MS } from '../DashboardHelper';
-import { TrafficStatsHelper } from '../TrafficStatsHelper';
 import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
-import type { TuttiProxyStatus, TuttiTrafficStats } from '@/utils/types/tutti';
+import type { TuttiProxyStatus } from '@/utils/types/tutti';
 import { RouteName } from '@/utils/types/router';
 
 const NOW = Date.parse('2026-01-01T00:10:00Z');
@@ -303,72 +302,36 @@ describe('DashboardHelper', () => {
   });
 
   describe('getTrafficSummary', () => {
-    const snapshot = (collectedAt: string, requests: number, e5: number) =>
-      TrafficStatsHelper.normalize({
-        collectedAt,
-        startedAt: '2026-01-01T00:00:00Z',
-        requestsTotal: requests,
-        responses2xx: requests - e5,
-        responses5xx: e5,
-      } as TuttiTrafficStats)!;
-
-    it('has no rate with a single snapshot but still reports totals', () => {
-      const summary = DashboardHelper.getTrafficSummary(
-        {
-          p1: [snapshot('2026-01-01T00:01:00Z', 100, 10)],
-        },
-        Date.parse('2026-01-01T00:01:00Z'),
-      );
-
-      expect(summary.requestsPerSecond).toBeNull();
-      expect(summary.requestsTotal).toBe(100);
-      expect(summary.errorPercent5xx).toBeCloseTo(10);
-      expect(summary.isErrorPercentCurrent).toBe(false);
+    it('is null without published rates', () => {
+      expect(DashboardHelper.getTrafficSummary(undefined)).toBeNull();
+      expect(DashboardHelper.getTrafficSummary(null)).toBeNull();
     });
 
-    it('computes the rate from the two newest snapshots', () => {
-      const summary = DashboardHelper.getTrafficSummary(
-        {
-          p1: [
-            snapshot('2026-01-01T00:01:00Z', 100, 0),
-            snapshot('2026-01-01T00:01:30Z', 400, 30),
-          ],
-        },
-        Date.parse('2026-01-01T00:01:30Z'),
-      );
+    it('uses the live rates of the proxies', () => {
+      const summary = DashboardHelper.getTrafficSummary({
+        requestsPerSec: 40,
+        status5xxPerSec: 2,
+        latencyP95Ms: 48.1,
+        requestsByStorage: { main: 38, follower: 2 },
+      });
 
-      expect(summary.requestsPerSecond).toBeCloseTo(10);
-      expect(summary.errorPercent5xx).toBeCloseTo(10);
-      expect(summary.isErrorPercentCurrent).toBe(true);
+      expect(summary?.requestsPerSecond).toBe(40);
+      expect(summary?.errorPercent5xx).toBeCloseTo(5);
+      expect(summary?.p95Ms).toBeCloseTo(48.1);
+      expect(summary?.byStorage).toEqual({ main: 38, follower: 2 });
     });
 
-    it('ignores snapshot pairs that are too far apart', () => {
-      const summary = DashboardHelper.getTrafficSummary(
-        {
-          p1: [
-            snapshot('2026-01-01T00:01:00Z', 100, 0),
-            snapshot('2026-01-01T00:20:00Z', 400, 0),
-          ],
-        },
-        Date.parse('2026-01-01T00:20:00Z'),
-      );
+    it('has no error share and no p95 without requests', () => {
+      const summary = DashboardHelper.getTrafficSummary({
+        requestsPerSec: 0,
+        status5xxPerSec: 0,
+        latencyP95Ms: 0,
+      });
 
-      expect(summary.requestsPerSecond).toBeNull();
-    });
-
-    it('expires a formerly current rate after proxy updates stop', () => {
-      const summary = DashboardHelper.getTrafficSummary(
-        {
-          p1: [
-            snapshot('2026-01-01T00:01:00Z', 100, 0),
-            snapshot('2026-01-01T00:01:30Z', 400, 0),
-          ],
-        },
-        NOW,
-      );
-
-      expect(summary.requestsPerSecond).toBeNull();
-      expect(summary.requestsTotal).toBe(400);
+      expect(summary?.requestsPerSecond).toBe(0);
+      expect(summary?.errorPercent5xx).toBe(0);
+      expect(summary?.p95Ms).toBeNull();
+      expect(summary?.byStorage).toEqual({});
     });
   });
 });

@@ -16,10 +16,11 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import { CResult, CIcon, CButton } from '@clyso/clyso-ui-kit';
+  import { CIcon, CButton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { useRouter } from 'vue-router';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
+  import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
   import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
   import { RouteName } from '@/utils/types/router';
@@ -45,44 +46,25 @@
 </script>
 
 <template>
-  <CResult
-    class="diff-reports-empty"
-    type="empty"
-    size="large"
-    :icon-name="IconName.BASE_DOCUMENT"
-    :max-width="600"
+  <EmptyState
+    :icon="IconName.BASE_DOCUMENT"
+    :title="t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle')"
+    :text="t(isFiltered ? 'filterNoResultsText' : 'noResultsText')"
   >
-    <template #title>
-      {{ t(isFiltered ? 'filterNoResultsTitle' : 'noResultsTitle') }}
-    </template>
+    <WriteGate :bypass="isFiltered">
+      <CButton
+        :type="isFiltered ? 'default' : 'primary'"
+        @click="handleAction"
+      >
+        <template #icon>
+          <CIcon
+            :is-inline="true"
+            :name="isFiltered ? 'close' : IconName.BASE_ADD"
+          />
+        </template>
 
-    <p>{{ t(isFiltered ? 'filterNoResultsText' : 'noResultsText') }}</p>
-
-    <template #actions>
-      <WriteGate :bypass="isFiltered">
-        <CButton
-          type="primary"
-          size="large"
-          @click="handleAction"
-        >
-          <template #icon>
-            <CIcon
-              :is-inline="true"
-              :name="isFiltered ? 'close' : IconName.BASE_ADD"
-            />
-          </template>
-
-          {{ t(isFiltered ? 'filterNoResultsAction' : 'noResultsAction') }}
-        </CButton>
-      </WriteGate>
-    </template>
-  </CResult>
+        {{ t(isFiltered ? 'filterNoResultsAction' : 'noResultsAction') }}
+      </CButton>
+    </WriteGate>
+  </EmptyState>
 </template>
-
-<style lang="scss" scoped>
-  .diff-reports-empty {
-    p {
-      white-space: pre-line;
-    }
-  }
-</style>

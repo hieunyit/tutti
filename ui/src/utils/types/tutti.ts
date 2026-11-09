@@ -57,10 +57,46 @@ export interface TuttiProxyStatus {
   settings?: TuttiProxySettings;
   /** absent for proxies that do not publish traffic stats */
   stats?: TuttiTrafficStats;
+  /** live rates computed by the proxy (window of about 10 s) */
+  rates?: TuttiTrafficRates;
 }
 
 export interface TuttiProxyStatusListResponse {
   proxies?: TuttiProxyStatus[];
+  /** rates summed over the listed proxies */
+  totalRates?: TuttiTrafficRates;
+}
+
+/** Per-second rates; latencies in milliseconds. */
+export interface TuttiTrafficRates {
+  windowSeconds?: number;
+  requestsPerSec?: number;
+  /** read, write, exists, manage, other */
+  requestsByClass?: Record<string, number>;
+  requestsByStorage?: Record<string, number>;
+  bytesInPerSec?: number;
+  bytesOutPerSec?: number;
+  status4xxPerSec?: number;
+  status5xxPerSec?: number;
+  failFastPerSec?: number;
+  accessDeniedPerSec?: number;
+  latencyAvgMs?: number;
+  /** upper bound when combined over proxies */
+  latencyP95Ms?: number;
+}
+
+export type TuttiStatsRange = '5m' | '15m' | '1h' | '6h';
+
+export interface TuttiStatsHistoryPoint {
+  time: string;
+  rates?: TuttiTrafficRates;
+}
+
+export interface TuttiStatsHistory {
+  range?: string;
+  bucket?: string;
+  points?: TuttiStatsHistoryPoint[];
+  proxies?: { appId: string; time?: string; rates?: TuttiTrafficRates }[];
 }
 
 export interface TuttiFailoverPolicy {
@@ -164,8 +200,15 @@ export interface TuttiProxyAccountSecret {
   previousSecretExpiresAt?: string;
 }
 
+export interface TuttiDynamicAccountsAvailability {
+  /** false when the worker cannot seal secrets (no master password) */
+  available?: boolean;
+  reason?: string;
+}
+
 export interface TuttiProxyAccountListResponse {
   accounts?: TuttiProxyAccount[];
+  dynamicAccounts?: TuttiDynamicAccountsAvailability;
 }
 
 export interface TuttiAccessKey {

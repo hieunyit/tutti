@@ -18,6 +18,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    diffListTitle: 'Reports',
     pageDescription:
       'Compare the contents of buckets across storages and review the differences between them.',
     noResultsAction: 'New diff report',
@@ -123,6 +124,7 @@ export default <I18nMessages>{
     restartDiffReportsSelected: 'Restart {total} selected',
   },
   [I18nLocale.DE]: {
+    diffListTitle: 'Berichte',
     pageDescription:
       'Vergleichen Sie die Inhalte von Buckets über Speicher hinweg und prüfen Sie die Unterschiede.',
     noResultsAction: 'Diff-Report erstellen',

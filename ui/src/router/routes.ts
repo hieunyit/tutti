@@ -178,7 +178,8 @@ export const routes: RouteRecordRaw[] = [
         component: TuttiFailoverPage,
       },
       {
-        path: 'docs',
+        // /docs/api (API reference) is matched first: static segments win
+        path: 'docs/:slug?',
         meta: { navGroup: 'help', navSection: RouteName.TUTTI_DOCS },
         name: RouteName.TUTTI_DOCS,
         component: DocsPage,

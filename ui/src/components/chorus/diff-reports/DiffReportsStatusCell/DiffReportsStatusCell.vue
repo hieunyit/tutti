@@ -16,9 +16,9 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import { CTag } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
+  import StatusTag from '@/components/ui/StatusTag.vue';
   import type { DiffReport } from '@/utils/types/chorus';
 
   const props = defineProps<{
@@ -29,38 +29,22 @@
     messages: i18nDiffReports,
   });
 
-  const isReady = computed<boolean>(() => props.report.ready);
-  const isConsistent = computed<boolean>(() => props.report.consistent);
+  const status = computed(() => {
+    if (!props.report.ready) {
+      return { variant: 'warning' as const, label: t('statusChecking') };
+    }
+
+    return props.report.consistent
+      ? { variant: 'success' as const, label: t('statusConsistent') }
+      : { variant: 'danger' as const, label: t('statusInconsistent') };
+  });
 </script>
 
 <template>
   <div class="diff-reports-status-cell">
-    <CTag
-      v-if="!isReady"
-      :bordered="false"
-      size="small"
-      type="warning"
-      round
-    >
-      {{ t('statusChecking') }}
-    </CTag>
-    <CTag
-      v-else-if="isConsistent"
-      :bordered="false"
-      size="small"
-      type="success"
-      round
-    >
-      {{ t('statusConsistent') }}
-    </CTag>
-    <CTag
-      v-else
-      :bordered="false"
-      size="small"
-      type="error"
-      round
-    >
-      {{ t('statusInconsistent') }}
-    </CTag>
+    <StatusTag
+      :variant="status.variant"
+      :label="status.label"
+    />
   </div>
 </template>

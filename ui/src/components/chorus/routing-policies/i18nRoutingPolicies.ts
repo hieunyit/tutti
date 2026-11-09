@@ -18,6 +18,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    routingListTitle: 'Routing rules',
     pageDescription:
       'Decide which storage serves the requests of a user or bucket, and block access to a target when needed.',
     noResultsTitle: 'No routing policies yet',
@@ -119,6 +120,7 @@ export default <I18nMessages>{
     actionAddRoutingPolicy: 'Add routing policy',
   },
   [I18nLocale.DE]: {
+    routingListTitle: 'Routing-Regeln',
     pageDescription:
       'Legen Sie fest, welcher Speicher die Anfragen eines Benutzers oder Buckets bedient, und sperren Sie bei Bedarf den Zugriff auf ein Ziel.',
     noResultsTitle: 'Noch keine Routing-Richtlinien',

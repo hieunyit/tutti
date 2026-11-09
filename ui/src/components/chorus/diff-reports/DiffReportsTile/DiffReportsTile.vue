@@ -15,39 +15,29 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
+  import { useI18n } from 'vue-i18n';
+  import ListCard from '@/components/tutti/common/ListCard.vue';
+  import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import DiffReportsList from '@/components/chorus/diff-reports/DiffReportsList/DiffReportsList.vue';
   import DiffReportsFilters from '@/components/chorus/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
   import DiffReportsListActions from '@/components/chorus/diff-reports/DiffReportsListActions/DiffReportsListActions.vue';
   import DiffReportsListTags from '@/components/chorus/diff-reports/DiffReportsListTags/DiffReportsListTags.vue';
+
+  const { t } = useI18n({ messages: i18nDiffReports });
 </script>
 
 <template>
-  <CTile class="diff-reports-tile">
-    <DiffReportsFilters class="diff-reports-tile__filters" />
+  <ListCard :title="t('diffListTitle')">
+    <template #filters>
+      <DiffReportsFilters />
+    </template>
+    <template #tags>
+      <DiffReportsListTags />
+    </template>
+    <template #actions>
+      <DiffReportsListActions />
+    </template>
 
-    <DiffReportsListTags class="diff-reports-tile__tags" />
-
-    <DiffReportsListActions class="diff-reports-tile__actions" />
-
-    <DiffReportsList class="diff-reports-tile__diff-reports" />
-  </CTile>
+    <DiffReportsList />
+  </ListCard>
 </template>
-
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
-  .diff-reports-tile {
-    &__filters {
-      margin-bottom: utils.unit(6);
-    }
-
-    &__tags {
-      margin-bottom: utils.unit(4);
-    }
-
-    &__actions {
-      margin-bottom: utils.unit(4);
-    }
-  }
-</style>

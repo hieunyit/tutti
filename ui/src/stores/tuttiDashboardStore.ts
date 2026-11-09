@@ -20,15 +20,12 @@ import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
 import { useAuthStore } from '@/stores/authStore';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-import {
-  TrafficStatsHelper,
-  type TrafficSnapshot,
-} from '@/utils/helpers/TrafficStatsHelper';
 import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
   TuttiProxyStatus,
+  TuttiTrafficRates,
 } from '@/utils/types/tutti';
 
 export const DASHBOARD_REFRESH_INTERVAL_MS = 30_000;
@@ -49,8 +46,8 @@ interface DashboardState {
   policies: TuttiFailoverPolicy[] | null;
   /** sources whose last request failed (403 is not an error) */
   failed: Record<SourceKey, boolean>;
-  /** rolling snapshots per proxy, kept across page visits for rates */
-  windows: Record<string, TrafficSnapshot[]>;
+  /** live rates summed over the proxies (computed by the proxies) */
+  totalRates: TuttiTrafficRates | null;
   timer: ReturnType<typeof setInterval> | null;
 }
 
@@ -70,7 +67,7 @@ function getInitialState(): DashboardState {
       proxies: false,
       events: false,
     },
-    windows: {},
+    totalRates: null,
     timer: null,
   };
 }
@@ -92,23 +89,6 @@ export const useTuttiDashboardStore = defineStore('tuttiDashboard', () => {
       state.proxies === null &&
       failedSources.value.some((source) => source !== 'events'),
   );
-
-  function ingestProxies(proxies: TuttiProxyStatus[]) {
-    const windows: Record<string, TrafficSnapshot[]> = {};
-
-    proxies.forEach((proxy) => {
-      const snapshot = TrafficStatsHelper.normalize(proxy.stats);
-
-      if (!snapshot) return;
-
-      windows[proxy.appId] = TrafficStatsHelper.appendSnapshot(
-        state.windows[proxy.appId] ?? [],
-        snapshot,
-      );
-    });
-
-    state.windows = windows;
-  }
 
   async function refresh() {
     if (state.isRefreshing) return;
@@ -146,7 +126,7 @@ export const useTuttiDashboardStore = defineStore('tuttiDashboard', () => {
 
     if (proxies.status === 'fulfilled') {
       state.proxies = proxies.value.proxies ?? [];
-      ingestProxies(state.proxies);
+      state.totalRates = proxies.value.totalRates ?? null;
       delivered = true;
     }
 

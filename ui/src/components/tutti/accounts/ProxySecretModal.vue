@@ -15,22 +15,28 @@
   -->
 
 <script setup lang="ts">
-  import { NAlert, NButton, NInput, NModal, NSpace } from 'naive-ui';
-  import { computed } from 'vue';
+  import { CButton } from '@clyso/clyso-ui-kit';
+  import { NCheckbox, NModal } from 'naive-ui';
+  import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
-  import CopyButton from '@/components/chorus/common/CopyButton/CopyButton.vue';
+  import Callout from '@/components/ui/Callout.vue';
+  import CopyField from '@/components/ui/CopyField.vue';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
 
   /*
    * One-time display of a secret. The secret only lives in the props of this
-   * component; it is not stored, logged or persisted anywhere.
+   * component; it is not stored, logged or persisted anywhere. The dialog
+   * cannot be dismissed (outside click, Esc) until the user confirmed that
+   * the secret was stored.
    */
   const props = defineProps<{
     secret: TuttiProxyAccountSecret | null;
     kind: 'created' | 'rotated';
+    /** proxy address for the AWS_ENDPOINT_URL line of the .env download */
+    endpoint?: string;
   }>();
 
   const emit = defineEmits<{
@@ -38,12 +44,42 @@
   }>();
 
   const { t } = useI18n({ messages: i18nAccounts });
+  const stored = ref(false);
+
+  watch(
+    () => props.secret,
+    () => {
+      stored.value = false;
+    },
+  );
 
   const expiry = computed(() =>
     ProxyAccountHelper.hasTime(props.secret?.previousSecretExpiresAt)
       ? formatDateTime(props.secret?.previousSecretExpiresAt)
       : null,
   );
+
+  /** Builds the file in the browser; nothing is sent or stored. */
+  function downloadEnv() {
+    if (!props.secret) return;
+
+    const content = ProxyAccountHelper.buildEnvFile(
+      props.secret.accessKeyId,
+      props.secret.secretAccessKey ?? '',
+      props.endpoint || 'http://<proxy-address>',
+    );
+    const url = URL.createObjectURL(
+      new Blob([content], { type: 'text/plain;charset=utf-8' }),
+    );
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = `${props.secret.accessKeyId}.env`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <template>
@@ -53,70 +89,109 @@
     :title="
       kind === 'created' ? t('secretTitleCreated') : t('secretTitleRotated')
     "
-    :style="{ width: '560px', maxWidth: '95vw' }"
+    role="dialog"
+    :style="{ width: '540px', maxWidth: '95vw' }"
     :mask-closable="false"
     :close-on-esc="false"
     :closable="false"
   >
-    <NSpace
+    <div
       v-if="secret"
-      vertical
-      :size="12"
+      class="secret-modal"
     >
-      <NAlert type="warning">
+      <Callout
+        tone="warning"
+        class="secret-modal__warning"
+      >
         {{ t('secretWarning') }}
-      </NAlert>
+      </Callout>
 
-      <div>
-        <div>{{ t('secretAccessKeyId') }}</div>
-        <NSpace
-          align="center"
-          :wrap="false"
-        >
-          <NInput
-            readonly
-            :value="secret.accessKeyId"
-            :style="{ minWidth: '320px' }"
-          />
-          <CopyButton :text="secret.accessKeyId" />
-        </NSpace>
+      <div class="secret-modal__field">
+        <span class="secret-modal__label">{{ t('secretAccessKeyId') }}</span>
+        <CopyField
+          :value="secret.accessKeyId"
+          :label="t('secretAccessKeyId')"
+        />
       </div>
 
-      <div>
-        <div>{{ t('secretSecret') }}</div>
-        <NSpace
-          align="center"
-          :wrap="false"
-        >
-          <NInput
-            readonly
-            type="password"
-            show-password-on="click"
-            autocomplete="off"
-            :value="secret.secretAccessKey ?? ''"
-            :style="{ minWidth: '320px' }"
-          />
-          <CopyButton :text="secret.secretAccessKey ?? ''" />
-        </NSpace>
+      <div class="secret-modal__field">
+        <span class="secret-modal__label">{{ t('secretSecret') }}</span>
+        <CopyField
+          :value="secret.secretAccessKey ?? ''"
+          :label="t('secretSecret')"
+          secret
+        />
       </div>
 
-      <NAlert
+      <Callout
         v-if="expiry"
-        type="info"
+        tone="info"
       >
         {{ t('secretPreviousExpires', { time: expiry }) }}
-      </NAlert>
-    </NSpace>
+      </Callout>
+
+      <div class="secret-modal__env">
+        <CButton
+          secondary
+          @click="downloadEnv"
+        >
+          {{ t('secretDownloadEnv') }}
+        </CButton>
+        <span class="secret-modal__hint">{{ t('secretEnvHint') }}</span>
+      </div>
+
+      <NCheckbox v-model:checked="stored">
+        {{ t('secretStored') }}
+      </NCheckbox>
+    </div>
 
     <template #footer>
-      <NSpace justify="end">
-        <NButton
+      <div class="secret-modal__footer">
+        <CButton
           type="primary"
+          :disabled="!stored"
           @click="emit('close')"
         >
           {{ t('secretConfirm') }}
-        </NButton>
-      </NSpace>
+        </CButton>
+      </div>
     </template>
   </NModal>
 </template>
+
+<style lang="scss" scoped>
+  .secret-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    &__field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    &__label {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    &__env {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    &__hint {
+      font-size: 12px;
+      color: var(--tt-text-3);
+    }
+
+    &__footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+</style>

@@ -57,22 +57,10 @@
   @use '@/styles/utils' as utils;
 
   .diff-reports-filters {
-    padding: 24px 16px;
-    border-radius: 12px;
-    background-color: var(--filters-card-color);
-    border: 1px solid var(--border-color);
-
-    @include utils.mobile {
-      padding: 0;
-      border-radius: 0;
-      background-color: unset;
-      border: 0;
-    }
-
     &__list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: utils.unit(5) utils.unit(3);
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: utils.unit(2) utils.unit(3);
       align-items: start;
     }
   }

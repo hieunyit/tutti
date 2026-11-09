@@ -29,6 +29,11 @@ interface TuttiAccessPolicyState {
   isLoading: boolean;
   hasError: boolean;
   accounts: TuttiProxyAccount[];
+  /** false when the worker cannot create managed keys */
+  dynamicAvailable: boolean;
+  dynamicReason: string;
+  /** address of a proxy, used for the .env download; empty when unknown */
+  proxyAddress: string;
   isSaving: boolean;
   /** backend validation message, or 'unknown' */
   saveError: string | null;
@@ -39,6 +44,9 @@ function getInitialState(): TuttiAccessPolicyState {
     isLoading: false,
     hasError: false,
     accounts: [],
+    dynamicAvailable: true,
+    dynamicReason: '',
+    proxyAddress: '',
     isSaving: false,
     saveError: null,
   };
@@ -53,6 +61,21 @@ export const useTuttiAccessPolicyStore = defineStore(
       const res = await TuttiService.getProxyAccounts();
 
       state.accounts = res.accounts ?? [];
+      // older workers do not report it: assume available
+      state.dynamicAvailable = res.dynamicAccounts?.available !== false;
+      state.dynamicReason = res.dynamicAccounts?.reason ?? '';
+    }
+
+    /** Best effort: the .env download needs the proxy address. */
+    async function loadProxyAddress() {
+      try {
+        const res = await TuttiService.getProxies();
+
+        state.proxyAddress =
+          (res.proxies ?? []).find((proxy) => proxy.address)?.address ?? '';
+      } catch {
+        state.proxyAddress = '';
+      }
     }
 
     async function init() {
@@ -60,7 +83,7 @@ export const useTuttiAccessPolicyStore = defineStore(
       state.hasError = false;
 
       try {
-        await reloadAccounts();
+        await Promise.all([reloadAccounts(), loadProxyAddress()]);
       } catch {
         state.hasError = true;
       } finally {

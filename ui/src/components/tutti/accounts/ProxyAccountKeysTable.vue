@@ -17,29 +17,25 @@
 <script setup lang="ts">
   /**
    * Nested table (expanded row) with every access key of one proxy account.
-   * Static keys come from the config and are read-only; dynamic keys can be
+   * Static keys come from the config and are read-only; managed keys can be
    * rotated, disabled/enabled and deleted.
    */
-  import {
-    NDataTable,
-    NPopconfirm,
-    NTag,
-    type DataTableColumns,
-  } from 'naive-ui';
-  import { computed, h } from 'vue';
+  import { CButton } from '@clyso/clyso-ui-kit';
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
   import CopyButton from '@/components/chorus/common/CopyButton/CopyButton.vue';
-  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
+  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import { EMPTY_VALUE } from '@/components/ui/status';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
-  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
+  import { formatDateTime, formatTime } from '@/utils/helpers/DateTimeHelper';
   import {
     ProxyAccountHelper,
     type ProxyAccountKeyRow,
   } from '@/utils/helpers/ProxyAccountHelper';
-  import { IconName } from '@/utils/types/icon';
   import type { TuttiProxyAccount } from '@/utils/types/tutti';
 
   const props = defineProps<{
@@ -55,6 +51,8 @@
   const { createNotification } = useChorusNotification();
 
   const rows = computed(() => ProxyAccountHelper.getKeyRows(props.account));
+  const deleting = ref<ProxyAccountKeyRow | null>(null);
+  const isDeleting = ref(false);
 
   function reportError(error: unknown) {
     createNotification({
@@ -79,180 +77,237 @@
     }
   }
 
-  async function removeKey(row: ProxyAccountKeyRow) {
+  async function confirmDelete() {
+    if (!deleting.value) return;
+
+    isDeleting.value = true;
+
     try {
-      await store.deleteKey(row.accessKeyId);
+      await store.deleteKey(deleting.value.accessKeyId);
+      deleting.value = null;
     } catch (error: unknown) {
       reportError(error);
+    } finally {
+      isDeleting.value = false;
     }
   }
 
   function sourceLabel(source: string): string {
-    if (source === 'custom' || source === 'config') return t('badgeConfig');
+    if (source === 'dynamic') return t('sourceManaged');
 
-    if (source === 'dynamic') return t('sourceDynamic');
+    if (source.startsWith('storage:')) {
+      return t('sourceConfigStorage', {
+        name: source.slice('storage:'.length),
+      });
+    }
 
-    return source;
+    return t('sourceConfig');
   }
 
-  const muted = (text: string) =>
-    h('span', { class: 'keys-table__muted' }, text);
-
-  const dateCell = (value?: string) =>
-    ProxyAccountHelper.hasTime(value)
+  function dateCell(value?: string): string {
+    return ProxyAccountHelper.hasTime(value)
       ? formatDateTime(value)
-      : muted(formatDateTime(undefined));
+      : EMPTY_VALUE;
+  }
 
-  const columns = computed<DataTableColumns<ProxyAccountKeyRow>>(() => [
-    {
-      title: t('columnAccessKeyId'),
-      key: 'accessKeyId',
-      render: (row) =>
-        h('span', { class: 'keys-table__key-id' }, [
-          h('code', row.accessKeyId),
-          h(CopyButton, { text: row.accessKeyId }),
-        ]),
-    },
-    {
-      title: t('columnSource'),
-      key: 'source',
-      render: (row) =>
-        h(
-          NTag,
-          {
-            size: 'small',
-            round: true,
-            type: row.dynamicKey ? 'info' : 'default',
-          },
-          () => sourceLabel(row.source),
-        ),
-    },
-    {
-      title: t('columnStatus'),
-      key: 'status',
-      render: (row) => {
-        const disabled =
-          row.dynamicKey !== undefined &&
-          ProxyAccountHelper.isDisabled(row.dynamicKey);
+  /** "old secret valid until HH:MM:SS", only while it is still valid */
+  function oldSecretNote(row: ProxyAccountKeyRow): string | null {
+    const expires = row.dynamicKey?.previousSecretExpiresAt;
 
-        return h(
-          NTag,
-          {
-            size: 'small',
-            round: true,
-            type: disabled ? 'warning' : 'success',
-          },
-          () => (disabled ? t('statusDisabled') : t('statusActive')),
-        );
-      },
-    },
-    {
-      title: t('columnDescription'),
-      key: 'description',
-      render: (row) =>
-        row.dynamicKey?.description
-          ? row.dynamicKey.description
-          : muted(formatDateTime(undefined)),
-    },
-    {
-      title: t('columnCreated'),
-      key: 'createdAt',
-      render: (row) => dateCell(row.dynamicKey?.createdAt),
-    },
-    {
-      title: t('columnRotated'),
-      key: 'rotatedAt',
-      render: (row) => dateCell(row.dynamicKey?.rotatedAt),
-    },
-    {
-      title: t('columnPreviousValid'),
-      key: 'previousSecretExpiresAt',
-      render: (row) => dateCell(row.dynamicKey?.previousSecretExpiresAt),
-    },
-    {
-      title: t('columnActions'),
-      key: 'actions',
-      render: (row) => {
-        if (!row.dynamicKey) return muted(t('managedInConfig'));
+    if (!ProxyAccountHelper.hasTime(expires)) return null;
 
-        const disabled = ProxyAccountHelper.isDisabled(row.dynamicKey);
-
-        return h(WriteGate, null, () =>
-          h('span', { class: 'keys-table__actions' }, [
-            h(RowActionButton, {
-              label: t('rotateSecret'),
-              icon: IconName.BASE_REFRESH,
-              onClick: () => emit('rotate', row.accessKeyId),
-            }),
-            h(RowActionButton, {
-              label: disabled ? t('enableKey') : t('disableKey'),
-              icon: disabled ? IconName.BASE_PLAY : IconName.BASE_PAUSE,
-              type: disabled ? 'success' : 'warning',
-              onClick: () => toggleStatus(row),
-            }),
-            h(
-              NPopconfirm,
-              {
-                positiveText: t('deleteKeyAction'),
-                negativeText: t('cancel'),
-                positiveButtonProps: { type: 'error' },
-                onPositiveClick: () => removeKey(row),
-              },
-              {
-                trigger: () =>
-                  h(RowActionButton, {
-                    label: t('deleteKey'),
-                    icon: IconName.BASE_TRASH,
-                    type: 'error',
-                  }),
-                default: () => t('deleteKeyConfirm', { key: row.accessKeyId }),
-              },
-            ),
-          ]),
-        );
-      },
-    },
-  ]);
+    return Date.parse(expires as string) > Date.now()
+      ? t('oldSecretValidUntil', { time: formatTime(expires) })
+      : null;
+  }
 </script>
 
 <template>
   <div class="keys-table">
-    <NDataTable
-      :columns="columns"
-      :data="rows"
-      :bordered="false"
-      size="small"
-      :scroll-x="1040"
-      :row-key="(row: ProxyAccountKeyRow) => row.accessKeyId"
+    <p
+      v-if="rows.length === 0"
+      class="keys-table__none"
     >
-      <template #empty>{{ t('noKeys') }}</template>
-    </NDataTable>
+      {{ t('noKeys') }}
+    </p>
+    <div
+      v-else
+      class="tt-table-wrap keys-table__wrap"
+    >
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('columnAccessKeyId') }}</th>
+            <th scope="col">{{ t('columnSource') }}</th>
+            <th scope="col">{{ t('columnStatus') }}</th>
+            <th scope="col">{{ t('columnDescription') }}</th>
+            <th scope="col">{{ t('columnCreated') }}</th>
+            <th scope="col">{{ t('columnRotated') }}</th>
+            <th scope="col">
+              <span class="tt-sr-only">{{ t('columnActions') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in rows"
+            :key="row.accessKeyId"
+          >
+            <td>
+              <span class="keys-table__id">
+                <code>{{ row.accessKeyId }}</code>
+                <CopyButton :text="row.accessKeyId" />
+              </span>
+            </td>
+            <td>
+              <span class="keys-table__source">{{
+                sourceLabel(row.source)
+              }}</span>
+            </td>
+            <td>
+              <StatusTag
+                :variant="
+                  row.dynamicKey &&
+                  ProxyAccountHelper.isDisabled(row.dynamicKey)
+                    ? 'neutral'
+                    : 'success'
+                "
+                :label="
+                  row.dynamicKey &&
+                  ProxyAccountHelper.isDisabled(row.dynamicKey)
+                    ? t('statusDisabled')
+                    : t('statusActive')
+                "
+              />
+            </td>
+            <td>{{ row.dynamicKey?.description || EMPTY_VALUE }}</td>
+            <td>{{ dateCell(row.dynamicKey?.createdAt) }}</td>
+            <td>
+              <span class="keys-table__stack">
+                <span>{{ dateCell(row.dynamicKey?.rotatedAt) }}</span>
+                <span
+                  v-if="oldSecretNote(row)"
+                  class="keys-table__warn"
+                  >{{ oldSecretNote(row) }}</span
+                >
+              </span>
+            </td>
+            <td class="keys-table__actions">
+              <span
+                v-if="!row.dynamicKey"
+                class="keys-table__muted"
+                >{{ t('managedInConfig') }}</span
+              >
+              <WriteGate v-else>
+                <span class="keys-table__buttons">
+                  <CButton
+                    secondary
+                    size="small"
+                    @click="emit('rotate', row.accessKeyId)"
+                  >
+                    {{ t('rotate') }}
+                  </CButton>
+                  <CButton
+                    secondary
+                    size="small"
+                    @click="toggleStatus(row)"
+                  >
+                    {{
+                      ProxyAccountHelper.isDisabled(row.dynamicKey)
+                        ? t('enableKey')
+                        : t('disableKey')
+                    }}
+                  </CButton>
+                  <CButton
+                    type="error"
+                    ghost
+                    size="small"
+                    @click="deleting = row"
+                  >
+                    {{ t('deleteKey') }}
+                  </CButton>
+                </span>
+              </WriteGate>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ConfirmDialog
+      :show="deleting !== null"
+      :title="t('deleteKeyDialogTitle')"
+      :text="t('deleteKeyConfirm', { key: deleting?.accessKeyId ?? '' })"
+      :confirm-label="t('deleteKeyAction')"
+      :cancel-label="t('cancel')"
+      :loading="isDeleting"
+      danger
+      @update:show="deleting = null"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 
 <style lang="scss" scoped>
   .keys-table {
-    padding: 4px 0 8px;
+    background-color: var(--tt-surface);
+    border: 1px solid var(--tt-border);
+    border-radius: 10px;
+    overflow: hidden;
 
-    :deep(.keys-table__key-id) {
+    :deep(.tt-table th),
+    :deep(.tt-table td) {
+      padding-inline: 10px;
+    }
+
+    &__none {
+      margin: 0;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--tt-text-3);
+    }
+
+    &__id {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      white-space: nowrap;
+      gap: 6px;
 
       code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-family: var(--tt-mono);
+        font-size: 12px;
       }
     }
 
-    :deep(.keys-table__actions) {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+    &__source {
+      padding: 1px 8px;
+      font-size: 12px;
+      color: var(--tt-text-2);
+      border: 1px solid var(--tt-border-strong);
+      border-radius: var(--tt-radius-tag);
     }
 
-    :deep(.keys-table__muted) {
-      color: var(--text-color-3);
+    &__stack {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__warn {
+      font-size: 12px;
+      color: var(--tt-warning);
+    }
+
+    &__muted {
+      font-size: 12px;
+      color: var(--tt-text-3);
+    }
+
+    &__actions {
+      text-align: right;
+    }
+
+    &__buttons {
+      display: inline-flex;
+      gap: 6px;
     }
   }
 </style>

@@ -19,4 +19,5 @@ export enum LocalStorageItem {
   I18N_LOCALE = 'chorus-locale',
   COLOR_SCHEME = 'chorus-color-scheme',
   SIDEBAR_COLLAPSED = 'tutti-sidebar-collapsed',
+  MONITORING_RANGE = 'tutti-monitoring-range',
 }

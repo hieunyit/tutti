@@ -241,7 +241,7 @@
               :max="100"
             >
               <CButton
-                secondary
+                ghost
                 :disabled="isDeleteDisabled"
                 :loading="isDeleteSelectedProcessing"
                 size="medium"

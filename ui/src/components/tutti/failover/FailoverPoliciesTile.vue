@@ -15,33 +15,36 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CIcon, CResult, CTile } from '@clyso/clyso-ui-kit';
-  import {
-    NDataTable,
-    NPopconfirm,
-    NSpace,
-    NTag,
-    type DataTableColumns,
-  } from 'naive-ui';
+  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { computed, h, ref } from 'vue';
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
   import FailoverPolicyDrawer from './FailoverPolicyDrawer.vue';
-  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
+  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import SectionCard from '@/components/ui/SectionCard.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import EmptyState from '@/components/ui/EmptyState.vue';
+  import { EMPTY_VALUE } from '@/components/ui/status';
   import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import {
+    FailoverHelper,
+    type FailoverTrigger,
+  } from '@/utils/helpers/FailoverHelper';
   import type { TuttiFailoverPolicy } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nFailover });
   const store = useTuttiFailoverStore();
-  const { policies } = storeToRefs(store);
+  const { policies, proxies, replications } = storeToRefs(store);
   const { createNotification } = useChorusNotification();
 
   const showDrawer = ref(false);
   const editedPolicy = ref<TuttiFailoverPolicy | null>(null);
+  const deleting = ref<TuttiFailoverPolicy | null>(null);
+  const isDeleting = ref(false);
 
   function openAdd() {
     editedPolicy.value = null;
@@ -56,153 +59,266 @@
     showDrawer.value = true;
   }
 
-  async function remove(policy: TuttiFailoverPolicy) {
-    if (!(await store.deletePolicy(policy.source))) {
-      createNotification({
-        type: 'error',
-        title: t('deleteFailed'),
-        duration: 6000,
-      });
+  async function confirmDelete() {
+    if (!deleting.value) return;
+
+    isDeleting.value = true;
+
+    const ok = await store.deletePolicy(deleting.value.source);
+
+    isDeleting.value = false;
+
+    if (ok) {
+      deleting.value = null;
+
+      return;
     }
+
+    createNotification({
+      type: 'error',
+      title: t('deleteFailed'),
+      duration: 6000,
+    });
   }
 
-  const columns = computed<DataTableColumns<TuttiFailoverPolicy>>(() => [
-    { title: t('columnSource'), key: 'source' },
-    {
-      title: t('columnEnabled'),
-      key: 'enabled',
-      render: (row) =>
-        h(
-          NTag,
-          { type: row.enabled ? 'success' : 'warning', size: 'small' },
-          () => (row.enabled ? t('statusOn') : t('statusOff')),
-        ),
-    },
-    {
-      title: t('columnTargets'),
-      key: 'targets',
-      render: (row) =>
-        h(NSpace, { size: 4 }, () =>
-          (row.targets ?? []).map((target, index) =>
-            h(
-              NTag,
-              { size: 'small', key: target },
-              () => `${index + 1}. ${target}`,
-            ),
-          ),
-        ),
-    },
-    {
-      title: t('columnAfter'),
-      key: 'after',
-      render: (row) => row.after ?? t('defaultValue'),
-    },
-    {
-      title: t('columnMaxEventLag'),
-      key: 'maxEventLag',
-      render: (row) => String(row.maxEventLag ?? t('defaultValue')),
-    },
-    {
-      title: t('columnActions'),
-      key: 'actions',
-      render: (row) =>
-        h(WriteGate, null, () =>
-          h('span', { class: 'failover-policies-tile__actions' }, [
-            h(RowActionButton, {
-              label: t('edit'),
-              icon: IconName.BASE_CREATE,
-              type: 'primary',
-              onClick: () => openEdit(row),
-            }),
-            h(
-              NPopconfirm,
-              {
-                positiveText: t('deleteConfirmAction'),
-                negativeText: t('cancel'),
-                positiveButtonProps: { type: 'error' },
-                onPositiveClick: () => remove(row),
-              },
-              {
-                trigger: () =>
-                  h(RowActionButton, {
-                    label: t('delete'),
-                    icon: IconName.BASE_TRASH,
-                    type: 'error',
-                  }),
-                default: () => t('deleteConfirm', { source: row.source }),
-              },
-            ),
-          ]),
-        ),
-    },
-  ]);
+  const defaultAfter = computed(
+    () =>
+      proxies.value.find((proxy) => proxy.settings?.failover?.after)?.settings
+        ?.failover?.after,
+  );
+
+  function seconds(duration?: string): string | null {
+    const value = duration
+      ? FailoverHelper.parseDurationSeconds(duration)
+      : null;
+
+    return value === null ? null : `${value} s`;
+  }
+
+  function afterText(policy: TuttiFailoverPolicy): string {
+    const own = seconds(policy.after);
+
+    if (own) return own;
+
+    const fallback = seconds(defaultAfter.value);
+
+    return fallback ? t('defaultSuffix', { value: fallback }) : EMPTY_VALUE;
+  }
+
+  function lagText(policy: TuttiFailoverPolicy): string {
+    if (policy.maxEventLag !== undefined && policy.maxEventLag !== null) {
+      return String(policy.maxEventLag);
+    }
+
+    return t('defaultSuffix', {
+      value: FailoverHelper.effectiveMaxLag(policy, proxies.value),
+    });
+  }
+
+  const rows = computed(() =>
+    policies.value.map((policy) => ({
+      policy,
+      trigger: FailoverHelper.evaluatePolicy(
+        policy,
+        proxies.value,
+        replications.value,
+      ),
+    })),
+  );
+
+  function triggerText(trigger: FailoverTrigger): string {
+    if (trigger.state === 'yes') return t('triggerYes');
+
+    if (trigger.state === 'disabled') return EMPTY_VALUE;
+
+    return trigger.reason === 'proxiesOff'
+      ? t('triggerNoProxies')
+      : t('triggerNoReplication');
+  }
 </script>
 
 <template>
-  <CTile class="failover-policies-tile">
-    <template #title>
-      {{ t('policiesTitle') }}
-    </template>
-
-    <NDataTable
-      :columns="columns"
-      :data="policies"
-      :bordered="false"
-      :scroll-x="760"
-      :row-key="(row: TuttiFailoverPolicy) => row.source"
+  <SectionCard
+    class="failover-policies-tile"
+    :title="t('policiesTitle')"
+    flush
+  >
+    <EmptyState
+      v-if="policies.length === 0"
+      :icon="IconName.BASE_REFRESH"
+      :title="t('policiesEmptyTitle')"
+      :text="t('policiesEmptyText')"
     >
-      <template #empty>
-        <CResult
-          class="failover-policies-tile__empty"
-          type="empty"
-          size="medium"
-          :icon-name="IconName.BASE_REFRESH"
-          :max-width="480"
+      <WriteGate>
+        <CButton
+          type="primary"
+          @click="openAdd"
         >
-          <template #title>
-            {{ t('policiesEmptyTitle') }}
+          <template #icon>
+            <CIcon
+              :is-inline="true"
+              :name="IconName.BASE_ADD"
+            />
           </template>
 
-          <p>{{ t('policiesEmptyText') }}</p>
+          {{ t('addPolicy') }}
+        </CButton>
+      </WriteGate>
+    </EmptyState>
 
-          <template #actions>
-            <WriteGate>
-              <CButton
-                type="primary"
-                @click="openAdd"
+    <div
+      v-else
+      class="tt-table-wrap"
+    >
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('columnSourceStorage') }}</th>
+            <th scope="col">{{ t('columnStatus') }}</th>
+            <th scope="col">{{ t('columnTargetsOrder') }}</th>
+            <th
+              scope="col"
+              class="tt-num"
+            >
+              {{ t('columnAfterLong') }}
+            </th>
+            <th
+              scope="col"
+              class="tt-num"
+            >
+              {{ t('columnMaxEventLag') }}
+            </th>
+            <th scope="col">{{ t('columnTrigger') }}</th>
+            <th scope="col">
+              <span class="tt-sr-only">{{ t('columnActions') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="{ policy, trigger } in rows"
+            :key="policy.source"
+          >
+            <td>
+              <strong>{{ policy.source }}</strong>
+            </td>
+            <td>
+              <StatusTag
+                :variant="policy.enabled === false ? 'neutral' : 'success'"
+                :label="
+                  policy.enabled === false
+                    ? t('statusDisabled')
+                    : t('statusEnabled')
+                "
+              />
+            </td>
+            <td>
+              <span class="failover-policies-tile__chips">
+                <span
+                  v-for="(target, index) in policy.targets ?? []"
+                  :key="target"
+                  class="failover-policies-tile__chip"
+                  >{{ index + 1 }} · {{ target }}</span
+                >
+                <template v-if="!(policy.targets ?? []).length">{{
+                  EMPTY_VALUE
+                }}</template>
+              </span>
+            </td>
+            <td class="tt-num">{{ afterText(policy) }}</td>
+            <td class="tt-num">{{ lagText(policy) }}</td>
+            <td>
+              <span
+                class="failover-policies-tile__trigger"
+                :class="`failover-policies-tile__trigger--${trigger.state}`"
+                >{{ triggerText(trigger) }}</span
               >
-                <template #icon>
-                  <CIcon
-                    :is-inline="true"
-                    :name="IconName.BASE_ADD"
-                  />
-                </template>
-
-                {{ t('addPolicy') }}
-              </CButton>
-            </WriteGate>
-          </template>
-        </CResult>
-      </template>
-    </NDataTable>
+            </td>
+            <td>
+              <WriteGate>
+                <span class="failover-policies-tile__actions">
+                  <CButton
+                    secondary
+                    size="small"
+                    @click="openEdit(policy)"
+                  >
+                    {{ t('edit') }}
+                  </CButton>
+                  <CButton
+                    type="error"
+                    ghost
+                    size="small"
+                    @click="deleting = policy"
+                  >
+                    {{ t('delete') }}
+                  </CButton>
+                </span>
+              </WriteGate>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <FailoverPolicyDrawer
       v-model:show="showDrawer"
       :policy="editedPolicy"
     />
-  </CTile>
+
+    <ConfirmDialog
+      :show="deleting !== null"
+      :title="t('deleteDialogTitle', { source: deleting?.source ?? '' })"
+      :text="t('deleteConfirm', { source: deleting?.source ?? '' })"
+      :confirm-label="t('deleteConfirmAction')"
+      :cancel-label="t('cancel')"
+      :loading="isDeleting"
+      danger
+      @update:show="deleting = null"
+      @confirm="confirmDelete"
+    />
+  </SectionCard>
 </template>
 
 <style lang="scss" scoped>
   .failover-policies-tile {
-    &__empty {
-      padding: 24px 0;
+    strong {
+      font-weight: 600;
     }
 
-    :deep(.failover-policies-tile__actions) {
+    &__chips {
       display: inline-flex;
-      align-items: center;
+      flex-wrap: wrap;
       gap: 4px;
+    }
+
+    &__chip {
+      padding: 1px 8px;
+      font-size: 12px;
+      border: 1px solid var(--tt-border-strong);
+      border-radius: var(--tt-radius-tag);
+    }
+
+    &__trigger {
+      font-size: 12px;
+      font-weight: 600;
+
+      &--yes {
+        color: var(--tt-success);
+      }
+
+      &--no {
+        color: var(--tt-danger);
+      }
+
+      &--disabled {
+        color: var(--tt-text-3);
+      }
+    }
+
+    &__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
     }
   }
 </style>

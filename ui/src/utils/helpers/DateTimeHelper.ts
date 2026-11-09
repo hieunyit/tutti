@@ -76,6 +76,19 @@ export function formatTime(value: DateTimeInput, locale?: string): string {
   }).format(date);
 }
 
+/** "13:15", 24h (chart axis labels). */
+export function formatClock(value: DateTimeInput, locale?: string): string {
+  const date = parseDateTime(value);
+
+  if (!date) return EMPTY_DATE_TEXT;
+
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date);
+}
+
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 24 * 3600],
   ['month', 30 * 24 * 3600],

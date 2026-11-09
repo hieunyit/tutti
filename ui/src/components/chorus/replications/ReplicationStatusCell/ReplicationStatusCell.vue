@@ -16,19 +16,12 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import {
-    CTag,
-    CDescriptionList,
-    CDescriptionItem,
-    CTooltip,
-    CIcon,
-    CProgress,
-  } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import type { StatusVariant } from '@/components/ui/status';
   import type { ChorusReplication } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
-  import { IconName } from '@/utils/types/icon';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
   import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
 
@@ -40,224 +33,71 @@
     replication: AddId<ChorusReplication>;
   }>();
 
-  const initPercentage = computed<number>(() => {
-    const { isInitDone, initObjListed, initObjDone } = props.replication;
-
-    if (+initObjListed === 0) {
-      return isInitDone ? 100 : 0;
-    }
-
-    const percentage = Math.ceil((+initObjDone / +initObjListed) * 100);
-
-    if (percentage >= 100) {
-      return 99;
-    }
-
-    return percentage;
-  });
-
-  const lastEmittedDateString = computed<string>(() => {
-    const { eventLag } = props.replication;
-
-    return eventLag ? GeneralHelper.formatDurationSeconds(eventLag) : '—';
-  });
-
-  const isLiveReplicationBehind = computed<boolean>(() =>
-    ReplicationsHelper.isLiveReplicationBehind(props.replication),
-  );
-
-  const liveReplicationDistance = computed<number>(() =>
+  const behind = computed<number>(() =>
     ReplicationsHelper.getLiveReplicationEventsDifference(props.replication),
   );
+
+  /** one primary status: paused beats initial sync beats lag */
+  const primary = computed<{ variant: StatusVariant; label: string }>(() => {
+    const { isPaused, isInitDone } = props.replication;
+
+    if (isPaused) return { variant: 'warning', label: t('statusPaused') };
+
+    if (!isInitDone) return { variant: 'info', label: t('statusInitial') };
+
+    return behind.value > 0
+      ? { variant: 'warning', label: t('statusLagging') }
+      : { variant: 'success', label: t('statusUptodate') };
+  });
+
+  const initialText = computed<string>(() => {
+    const { isInitDone, initObjDone, initObjListed } = props.replication;
+
+    return isInitDone
+      ? `${t('initialReplication')}: ${t('statusDone')}`
+      : `${t('initialReplication')}: ${initObjDone} / ${initObjListed} ${t('labelObjects').toLowerCase()}`;
+  });
+
+  const liveText = computed<string | null>(() => {
+    const { isInitDone, eventLag } = props.replication;
+
+    if (!isInitDone) return null;
+
+    const lag = eventLag ? GeneralHelper.formatDurationSeconds(eventLag) : null;
+    const base =
+      behind.value > 0
+        ? `${behind.value} ${t('statusBehind').toLowerCase()}`
+        : t('statusUptodate').toLowerCase();
+
+    return `${t('liveReplication')}: ${base}${lag ? ` · ${t('labelReplicationLatency').toLowerCase()} ${lag}` : ''}`;
+  });
 </script>
 
 <template>
   <div class="replication-status-cell">
-    <CDescriptionList
-      class="status-list"
-      label-placement="left"
-      :columns="1"
-      size="small"
+    <StatusTag
+      :variant="primary.variant"
+      :label="primary.label"
+    />
+    <span class="replication-status-cell__secondary">{{ initialText }}</span>
+    <span
+      v-if="liveText"
+      class="replication-status-cell__secondary"
+      >{{ liveText }}</span
     >
-      <CDescriptionItem class="status-list__item status-list__item--status">
-        <template #label> {{ t('columnStatus') }}: </template>
-
-        <CTag
-          :bordered="false"
-          size="small"
-          :type="replication.isPaused ? 'warning' : 'success'"
-        >
-          {{ t(replication.isPaused ? 'statusPaused' : 'statusActive') }}
-        </CTag>
-      </CDescriptionItem>
-
-      <CDescriptionItem class="status-list__item status-list__item--initial">
-        <template #label> {{ t('initialReplication') }}: </template>
-
-        <CTooltip>
-          <template #trigger>
-            <CTag
-              v-if="replication.isInitDone"
-              :bordered="false"
-              size="small"
-              round
-              type="success"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_CHECKMARK"
-                />
-              </template>
-              {{ t('statusDone') }}
-            </CTag>
-            <CProgress
-              v-else
-              type="line"
-              class="test"
-              :percentage="initPercentage"
-              size="small"
-              :height="2"
-              :processing="initPercentage !== 100"
-              indicator-placement="outside"
-            />
-          </template>
-
-          <div class="details-popup">
-            <span class="details-popup__title">
-              {{ t('replicationDetails') }}
-            </span>
-            <CDescriptionList
-              class="details-popup__list"
-              label-placement="left"
-              :columns="1"
-              size="small"
-            >
-              <CDescriptionItem class="details-popup__item">
-                <template #label> {{ t('labelObjects') }}: </template>
-
-                {{ replication.initObjDone }} / {{ replication.initObjListed }}
-              </CDescriptionItem>
-            </CDescriptionList>
-          </div>
-        </CTooltip>
-      </CDescriptionItem>
-
-      <CDescriptionItem
-        v-if="replication.isInitDone"
-        class="status-list__item status-list__item--live"
-      >
-        <template #label> {{ t('liveReplication') }}: </template>
-
-        <CTooltip>
-          <template #trigger>
-            <CTag
-              v-if="isLiveReplicationBehind"
-              :bordered="false"
-              size="small"
-              round
-              type="warning"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_TIMER"
-                />
-              </template>
-              {{ liveReplicationDistance }} {{ t('statusBehind') }}
-            </CTag>
-            <CTag
-              v-else
-              :bordered="false"
-              size="small"
-              round
-              type="success"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_CHECKMARK"
-                />
-              </template>
-
-              {{ t('statusUptodate') }}
-            </CTag>
-          </template>
-
-          <div class="details-popup">
-            <span class="details-popup__title">
-              {{ t('replicationDetails') }}
-            </span>
-            <CDescriptionList
-              class="details-popup__list"
-              label-placement="left"
-              :columns="1"
-              size="small"
-            >
-              <CDescriptionItem class="details-popup__item">
-                <template #label> {{ t('labelEvents') }}: </template>
-
-                {{ replication.eventsDone }} / {{ replication.events }}
-              </CDescriptionItem>
-              <CDescriptionItem class="details-popup__item">
-                <template #label>
-                  {{ t('labelReplicationLatency') }}:
-                </template>
-
-                {{ lastEmittedDateString }}
-              </CDescriptionItem>
-            </CDescriptionList>
-          </div>
-        </CTooltip>
-      </CDescriptionItem>
-    </CDescriptionList>
   </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .replication-status-cell {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
 
-    ::v-deep(
-      .c-progress.c-progress--line .c-progress-icon.c-progress-icon--as-text
-    ) {
-      @include utils.apply-styles(utils.$text-caption);
-    }
-  }
-
-  .status-list {
-    gap: utils.unit(1);
-
-    &__item {
-      align-items: center;
-    }
-
-    ::v-deep(.c-description-item__label) {
-      font-weight: 400;
-      white-space: nowrap;
-    }
-
-    ::v-deep(.c-icon) {
-      width: 12px;
-      height: 12px;
-    }
-  }
-
-  .details-popup {
-    &__title {
-      @include utils.apply-styles(utils.$text-small);
-      font-weight: utils.$font-weight-semibold;
-      margin-bottom: utils.unit(1);
-    }
-
-    &__list {
-      gap: 0;
-    }
-
-    ::v-deep(.c-description-item__label) {
-      font-weight: 400;
+    &__secondary {
+      font-size: 12px;
+      color: var(--tt-text-3);
     }
   }
 </style>

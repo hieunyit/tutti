@@ -1,5 +1,17 @@
+# Optional build contexts with the repository docs and the OpenAPI spec, bundled into the
+# Documentation and API reference pages. Pass them with
+#   docker build --build-context docs=docs --build-context proto=proto -f ui/Dockerfile ui
+# (docker-compose does this). Without them these empty stages are used and the pages say
+# the content is not part of this build.
+FROM scratch AS docs
+FROM scratch AS proto
+
 # Build stage
 FROM --platform=$BUILDPLATFORM node:20 as build-stage
+# The UI imports ../docs and ../proto relative to the repository root, so place them at
+# /docs and /proto next to /app.
+COPY --from=docs / /docs/
+COPY --from=proto / /proto/
 WORKDIR /app
 
 # Install dependencies

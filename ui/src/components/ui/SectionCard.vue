@@ -71,6 +71,8 @@
 
 <style lang="scss" scoped>
   .tt-section {
+    // containing block for absolutely positioned .tt-sr-only cells of inner tables
+    position: relative;
     min-width: 0;
     overflow: hidden;
     background-color: var(--tt-surface);

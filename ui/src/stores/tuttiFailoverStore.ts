@@ -18,6 +18,7 @@ import { computed, reactive, toRefs } from 'vue';
 import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
 import { FailoverHelper } from '@/utils/helpers/FailoverHelper';
+import type { ChorusReplication } from '@/utils/types/chorus';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -31,6 +32,8 @@ interface TuttiFailoverState {
   policies: TuttiFailoverPolicy[];
   events: TuttiFailoverEvent[];
   proxies: TuttiProxyStatus[];
+  /** null when the list could not be loaded (readiness is then unknown) */
+  replications: ChorusReplication[] | null;
   storageNames: string[];
   isSaving: boolean;
   saveError: string | null;
@@ -43,6 +46,7 @@ function getInitialState(): TuttiFailoverState {
     policies: [],
     events: [],
     proxies: [],
+    replications: null,
     storageNames: [],
     isSaving: false,
     saveError: null,
@@ -64,12 +68,20 @@ export const useTuttiFailoverStore = defineStore('tuttiFailover', () => {
     state.hasError = false;
 
     try {
-      const [policies, events, proxies, storages] = await Promise.all([
-        TuttiService.getFailoverPolicies(),
-        TuttiService.getFailoverEvents(),
-        TuttiService.getProxies(),
-        ChorusService.getStorages(),
-      ]);
+      const [policies, events, proxies, storages, replications] =
+        await Promise.all([
+          TuttiService.getFailoverPolicies(),
+          TuttiService.getFailoverEvents(),
+          TuttiService.getProxies(),
+          ChorusService.getStorages(),
+          // best effort: only needed for the "will it trigger" evaluation
+          Promise.resolve()
+            .then(() => ChorusService.getReplications())
+            .then((res) => res.replications ?? [])
+            .catch(() => null),
+        ]);
+
+      state.replications = replications;
 
       state.policies = policies.policies ?? [];
       state.events = events.events ?? [];
@@ -81,6 +93,14 @@ export const useTuttiFailoverStore = defineStore('tuttiFailover', () => {
       state.isLoading = false;
     }
   }
+
+  const readiness = computed(() =>
+    FailoverHelper.getReadiness(
+      state.policies,
+      state.proxies,
+      state.replications,
+    ),
+  );
 
   async function reloadPolicies() {
     const res = await TuttiService.getFailoverPolicies();
@@ -145,6 +165,7 @@ export const useTuttiFailoverStore = defineStore('tuttiFailover', () => {
   return {
     ...toRefs(state),
     proxiesWithFailoverDisabled,
+    readiness,
     init,
     savePolicy,
     deletePolicy,

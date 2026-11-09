@@ -27,6 +27,8 @@ import type {
   TuttiFailoverPolicy,
   TuttiFailoverPolicyListResponse,
   TuttiProxyStatusListResponse,
+  TuttiStatsHistory,
+  TuttiStatsRange,
 } from '@/utils/types/tutti';
 
 export abstract class TuttiService {
@@ -36,6 +38,18 @@ export abstract class TuttiService {
     const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
       ApiHelper.getChorusAPIUrl('/tutti/proxies'),
       { signal },
+    );
+
+    return data;
+  }
+
+  static async getStatsHistory(
+    range: TuttiStatsRange,
+    signal?: AbortSignal,
+  ): Promise<TuttiStatsHistory> {
+    const { data } = await apiClient.get<TuttiStatsHistory>(
+      ApiHelper.getChorusAPIUrl('/tutti/stats/history'),
+      { params: { range }, signal },
     );
 
     return data;

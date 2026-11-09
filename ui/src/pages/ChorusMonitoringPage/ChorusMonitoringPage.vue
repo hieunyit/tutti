@@ -15,29 +15,32 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CResult } from '@clyso/clyso-ui-kit';
-  import { NAlert, NSpin } from 'naive-ui';
+  import { CButton, CSkeleton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nMonitoring from '@/components/tutti/monitoring/i18nMonitoring';
-  import MonitoringKpiTiles from '@/components/tutti/monitoring/MonitoringKpiTiles.vue';
   import MonitoringBreakdown from '@/components/tutti/monitoring/MonitoringBreakdown.vue';
+  import MonitoringKpiTiles from '@/components/tutti/monitoring/MonitoringKpiTiles.vue';
   import MonitoringReplication from '@/components/tutti/monitoring/MonitoringReplication.vue';
   import TrafficLineChart, {
     type TrafficChartLine,
   } from '@/components/tutti/monitoring/TrafficLineChart.vue';
-  import PageHeader from '@/components/layout/PageHeader.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import EmptyState from '@/components/ui/EmptyState.vue';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
   import { useNow } from '@/utils/composables/useNow';
-  import { HAS_PROMETHEUS } from '@/utils/constants/env';
+  import { formatRelative } from '@/utils/helpers/DateTimeHelper';
   import {
-    formatDateTime,
-    formatRelative,
-  } from '@/utils/helpers/DateTimeHelper';
+    RANGE_BUCKET_MS,
+    RANGE_MS,
+    STATS_RANGES,
+    buildSeries,
+    hasValues,
+    pickers,
+  } from '@/utils/helpers/MonitoringHelper';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
-  import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nMonitoring });
   const store = useTuttiMonitoringStore();
@@ -46,113 +49,214 @@
     isPaused,
     lastUpdated,
     hasError,
+    historyError,
+    range,
+    windowEnd,
+    points,
     proxies,
-    proxiesWithoutStats,
-    hasStats,
-    isWarmingUp,
-    current,
-    aggregatedSeries,
+    totalRates,
   } = storeToRefs(store);
 
   const now = useNow(1000);
 
-  const statusText = computed(() => {
-    if (lastUpdated.value === null) return t('waitingStatus');
-
-    const time = formatRelative(lastUpdated.value, undefined, now.value);
-
-    if (hasError.value) return t('staleStatus', { time });
-
-    return isPaused.value
-      ? t('pausedStatus', { time })
-      : t('liveStatus', { time });
-  });
-
-  onBeforeMount(() => store.startPolling());
+  onBeforeMount(() => store.start());
   onBeforeUnmount(() => store.$reset());
 
-  const classLine = (
-    cls: string,
+  const showError = computed(
+    () => historyError.value && points.value.length === 0,
+  );
+
+  const liveState = computed<'live' | 'paused' | 'failing'>(() => {
+    if (isPaused.value) return 'paused';
+
+    return hasError.value ? 'failing' : 'live';
+  });
+
+  const liveText = computed(() => {
+    if (liveState.value === 'paused') return t('pausedStatus');
+
+    if (liveState.value === 'live') return t('liveStatus');
+
+    return lastUpdated.value === null
+      ? t('failingStatusNever')
+      : t('failingStatus', {
+          time: formatRelative(lastUpdated.value, undefined, now.value),
+        });
+  });
+
+  const windowStart = computed(() => windowEnd.value - RANGE_MS[range.value]);
+  const bucketMs = computed(() => RANGE_BUCKET_MS[range.value]);
+  const rangeLabel = computed(() => t(`rangeText${range.value}`));
+  const baseLabel = computed(() => t(`rangeAgo${range.value}`));
+
+  const line = (
+    key: string,
     label: string,
     colorVar: string,
     fallbackColor: string,
-  ): TrafficChartLine => ({
-    label,
-    colorVar,
-    fallbackColor,
-    pick: (r) => r.byClass[cls] ?? 0,
+    dash: number[],
+    pick: TrafficChartLine['pick'],
+  ): TrafficChartLine => ({ key, label, colorVar, fallbackColor, dash, pick });
+
+  const SOLID: number[] = [];
+  const DASHED = [6, 3];
+  const DOTTED = [2, 3];
+  const DASH_DOT = [8, 3, 2, 3];
+
+  /** read and write always; other classes only when they have traffic */
+  const classLines = computed<TrafficChartLine[]>(() => {
+    const all = [
+      line(
+        'read',
+        t('seriesRead'),
+        '--tt-chart-1',
+        '#2952cc',
+        SOLID,
+        pickers.byClass('read'),
+      ),
+      line(
+        'write',
+        t('seriesWrite'),
+        '--tt-chart-2',
+        '#e8590c',
+        DASHED,
+        pickers.byClass('write'),
+      ),
+      line(
+        'exists',
+        t('seriesExists'),
+        '--tt-chart-3',
+        '#0e9384',
+        DOTTED,
+        pickers.byClass('exists'),
+      ),
+      line(
+        'manage',
+        t('seriesManage'),
+        '--tt-chart-4',
+        '#7a5af8',
+        DASH_DOT,
+        pickers.byClass('manage'),
+      ),
+      line(
+        'other',
+        t('seriesOther'),
+        '--tt-chart-5',
+        '#667085',
+        [1, 3],
+        pickers.byClass('other'),
+      ),
+    ];
+
+    return all.filter(
+      (l, i) =>
+        i < 2 || hasValues(buildSeries(points.value, l.pick, bucketMs.value)),
+    );
   });
 
-  const classLines = computed<TrafficChartLine[]>(() => [
-    classLine('read', t('seriesRead'), '--info-color', '#2080f0'),
-    classLine('write', t('seriesWrite'), '--success-color', '#18a058'),
-    classLine('exists', t('seriesExists'), '--primary-color', '#7c5cff'),
-    classLine('manage', t('seriesManage'), '--warning-color', '#f0a020'),
-    classLine('other', t('seriesOther'), '--text-color-3', '#999999'),
-  ]);
-
   const latencyLines = computed<TrafficChartLine[]>(() => [
-    {
-      label: t('seriesAvg'),
-      colorVar: '--info-color',
-      fallbackColor: '#2080f0',
-      pick: (r) => {
-        const v = TrafficStatsHelper.averageLatency(r);
-
-        return v === null ? null : v;
-      },
-    },
-    {
-      label: t('seriesP95'),
-      colorVar: '--warning-color',
-      fallbackColor: '#f0a020',
-      pick: (r) => TrafficStatsHelper.p95Latency(r),
-    },
+    line(
+      'avg',
+      t('seriesAvg'),
+      '--tt-chart-1',
+      '#2952cc',
+      SOLID,
+      pickers.latencyAvg,
+    ),
+    line(
+      'p95',
+      t('seriesP95'),
+      '--tt-chart-2',
+      '#e8590c',
+      DASHED,
+      pickers.latencyP95,
+    ),
   ]);
 
   const throughputLines = computed<TrafficChartLine[]>(() => [
-    {
-      label: t('seriesIn'),
-      colorVar: '--success-color',
-      fallbackColor: '#18a058',
-      pick: (r) => r.bytesIn,
-    },
-    {
-      label: t('seriesOut'),
-      colorVar: '--info-color',
-      fallbackColor: '#2080f0',
-      pick: (r) => r.bytesOut,
-    },
+    line(
+      'out',
+      t('seriesOut'),
+      '--tt-chart-1',
+      '#2952cc',
+      SOLID,
+      pickers.bytesOut,
+    ),
+    line(
+      'in',
+      t('seriesIn'),
+      '--tt-chart-2',
+      '#e8590c',
+      DASHED,
+      pickers.bytesIn,
+    ),
   ]);
 
   const errorLines = computed<TrafficChartLine[]>(() => [
-    {
-      label: t('series4xx'),
-      colorVar: '--warning-color',
-      fallbackColor: '#f0a020',
-      pick: (r) => r.responses4xx,
-    },
-    {
-      label: t('series5xx'),
-      colorVar: '--error-color',
-      fallbackColor: '#d03050',
-      pick: (r) => r.responses5xx,
-    },
-    {
-      label: t('seriesFailFast'),
-      colorVar: '--primary-color',
-      fallbackColor: '#7c5cff',
-      pick: (r) => r.failFast,
-    },
-    {
-      label: t('seriesAccessDenied'),
-      colorVar: '--text-color-3',
-      fallbackColor: '#999999',
-      pick: (r) => r.accessDenied,
-    },
+    line(
+      '5xx',
+      t('series5xx'),
+      '--tt-danger',
+      '#b42318',
+      SOLID,
+      pickers.status5xx,
+    ),
+    line(
+      'ff',
+      t('seriesFailFast'),
+      '--tt-chart-2',
+      '#e8590c',
+      DASHED,
+      pickers.failFast,
+    ),
+    line(
+      '4xx',
+      t('series4xx'),
+      '--tt-chart-1',
+      '#2952cc',
+      DOTTED,
+      pickers.status4xx,
+    ),
+    line(
+      'denied',
+      t('seriesAccessDenied'),
+      '--tt-chart-5',
+      '#667085',
+      DASH_DOT,
+      pickers.accessDenied,
+    ),
   ]);
 
-  const formatRate = (v: number) => TrafficStatsHelper.formatRate(v);
+  const charts = computed(() => [
+    {
+      key: 'requests',
+      title: t('chartRequestsByClass'),
+      lines: classLines.value,
+      kind: 'rate' as const,
+      format: TrafficStatsHelper.formatRate,
+    },
+    {
+      key: 'latency',
+      title: t('chartLatency'),
+      lines: latencyLines.value,
+      kind: 'latency' as const,
+      format: TrafficStatsHelper.formatLatencyMs,
+    },
+    {
+      key: 'throughput',
+      title: t('chartThroughput'),
+      lines: throughputLines.value,
+      kind: 'bytes' as const,
+      format: TrafficStatsHelper.formatBytesPerSecond,
+    },
+    {
+      key: 'errors',
+      title: t('chartErrors'),
+      lines: errorLines.value,
+      kind: 'rate' as const,
+      format: TrafficStatsHelper.formatRate,
+    },
+  ]);
 </script>
 
 <template>
@@ -161,226 +265,184 @@
       :title="t('title')"
       :description="t('description')"
     >
-      <template
-        v-if="!isLoading && !(hasError && !hasStats)"
-        #actions
-      >
+      <template #live>
         <span
-          class="monitoring-page__status"
-          :class="{
-            'monitoring-page__status--paused': isPaused,
-            'monitoring-page__status--stale': hasError,
-          }"
-          :title="formatDateTime(lastUpdated)"
-          aria-live="off"
+          class="monitoring-page__dot"
+          :class="`monitoring-page__dot--${liveState}`"
+          aria-hidden="true"
+        />
+        {{ liveText }}
+      </template>
+
+      <template #actions>
+        <div
+          class="monitoring-page__range"
+          role="group"
+          :aria-label="t('rangeLabel')"
         >
-          <span
-            class="monitoring-page__dot"
-            aria-hidden="true"
-          />
-          {{ statusText }}
-        </span>
+          <button
+            v-for="r in STATS_RANGES"
+            :key="r"
+            type="button"
+            class="monitoring-page__range-button"
+            :aria-pressed="r === range"
+            @click="store.setRange(r)"
+          >
+            {{ t(`range${r}`) }}
+          </button>
+        </div>
         <CButton @click="isPaused ? store.resume() : store.pause()">
           {{ isPaused ? t('resume') : t('pause') }}
         </CButton>
       </template>
-
-      <template
-        v-if="!isLoading && !(hasError && !hasStats)"
-        #extra
-      >
-        <details class="monitoring-page__about">
-          <summary>{{ t('aboutTitle') }}</summary>
-          <p>
-            {{ t('sinceStartNote') }} {{ t('restartNote') }}
-            <template v-if="HAS_PROMETHEUS">
-              {{ t('prometheusHint') }}
-              <RouterLink :to="{ name: RouteName.CHORUS_HOME }">
-                {{ t('prometheusLink') }}
-              </RouterLink>
-            </template>
-          </p>
-        </details>
-      </template>
     </PageHeader>
 
     <ChorusListError
-      v-if="hasError && !hasStats"
+      v-if="showError"
       :title="t('errorTitle')"
       :text="t('errorText')"
       :action-text="t('retry')"
-      @retry="store.startPolling()"
+      @retry="store.start()"
     />
 
     <div
       v-else-if="isLoading"
-      class="monitoring-page__loading"
+      class="monitoring-page__sections"
     >
-      <NSpin size="large" />
+      <div class="monitoring-page__skeleton">
+        <CSkeleton
+          v-for="n in 3"
+          :key="n"
+          :height="110"
+          :border-radius="12"
+        />
+      </div>
+      <div class="monitoring-page__charts">
+        <CSkeleton
+          v-for="n in 4"
+          :key="n"
+          :height="280"
+          :border-radius="12"
+        />
+      </div>
     </div>
 
-    <template v-else>
-      <NAlert
-        v-if="hasError"
-        type="warning"
-        class="monitoring-page__note"
-      >
-        {{ t('errorText') }}
-      </NAlert>
-
-      <NAlert
-        v-if="proxiesWithoutStats.length > 0"
-        type="warning"
-        class="monitoring-page__note"
-      >
-        {{ t('noStatsText', { proxies: proxiesWithoutStats.join(', ') }) }}
-      </NAlert>
-
-      <CResult
-        v-if="proxies.length === 0"
-        type="info"
-        size="large"
-        :max-width="600"
-      >
-        <template #title>{{ t('noProxiesTitle') }}</template>
-        {{ t('noProxiesText') }}
-      </CResult>
+    <div
+      v-else
+      class="monitoring-page__sections"
+    >
+      <EmptyState
+        v-if="proxies.length === 0 && points.length === 0"
+        :title="t('noProxiesTitle')"
+        :text="t('noProxiesText')"
+      />
 
       <template v-else>
-        <NAlert
-          v-if="isWarmingUp"
-          type="default"
-          class="monitoring-page__note"
-        >
-          {{ t('warmingUp') }}
-        </NAlert>
-
         <MonitoringKpiTiles
-          class="monitoring-page__section"
-          :rates="current"
+          :current="totalRates ?? points[points.length - 1]?.rates ?? null"
+          :points="points"
+          :base-label="baseLabel"
         />
 
-        <div class="monitoring-page__charts monitoring-page__section">
+        <section
+          class="monitoring-page__charts"
+          :aria-label="t('chartsSection')"
+        >
           <TrafficLineChart
-            :title="t('chartRequestsByClass')"
-            :series="aggregatedSeries"
-            :lines="classLines"
-            :format-value="formatRate"
+            v-for="chart in charts"
+            :key="chart.key"
+            :title="chart.title"
+            :points="points"
+            :lines="chart.lines"
+            :kind="chart.kind"
+            :format-value="chart.format"
+            :window-start="windowStart"
+            :window-end="windowEnd"
+            :bucket-ms="bucketMs"
+            :range-label="rangeLabel"
           />
-          <TrafficLineChart
-            :title="t('chartLatency')"
-            :series="aggregatedSeries"
-            :lines="latencyLines"
-            :format-value="TrafficStatsHelper.formatLatency"
-          />
-          <TrafficLineChart
-            :title="t('chartThroughput')"
-            :series="aggregatedSeries"
-            :lines="throughputLines"
-            :format-value="TrafficStatsHelper.formatBytesPerSecond"
-          />
-          <TrafficLineChart
-            :title="t('chartErrors')"
-            :series="aggregatedSeries"
-            :lines="errorLines"
-            :format-value="formatRate"
-          />
-        </div>
+        </section>
 
-        <MonitoringBreakdown class="monitoring-page__section" />
+        <MonitoringBreakdown />
       </template>
 
-      <MonitoringReplication class="monitoring-page__section" />
-    </template>
+      <MonitoringReplication />
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
   .monitoring-page {
-    max-width: 1800px;
-    container-type: inline-size;
+    max-width: 1600px;
 
-    &__loading {
+    &__sections {
       display: flex;
-      justify-content: center;
-      padding: 64px 0;
+      flex-direction: column;
+      gap: 20px;
     }
 
-    &__note {
-      margin-bottom: 16px;
+    &__skeleton {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 16px;
     }
 
-    &__section {
-      margin-bottom: 16px;
-    }
+    &__charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
 
-    &__status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-color-3);
-      font-variant-numeric: tabular-nums;
+      @media (width <= 900px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
 
     &__dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: var(--success-color);
-      animation: monitoring-pulse 2s ease-in-out infinite;
+      background-color: var(--tt-success-solid);
 
-      @media (prefers-reduced-motion: reduce) {
-        animation: none;
+      &--paused {
+        background-color: var(--tt-neutral-solid);
+      }
+
+      &--failing {
+        background-color: var(--tt-warning-solid);
       }
     }
 
-    &__status--paused &__dot {
-      background-color: var(--text-color-3);
-      animation: none;
-    }
-
-    &__status--stale &__dot {
-      background-color: var(--warning-color);
-      animation: none;
-    }
-
-    &__about {
+    &__range {
+      display: flex;
+      overflow: hidden;
       font-size: 13px;
-      color: var(--text-color-3);
-
-      summary {
-        cursor: pointer;
-        width: fit-content;
-        color: var(--primary-color);
-      }
-
-      p {
-        margin: 8px 0 0;
-        max-width: 90ch;
-        line-height: 20px;
-      }
+      background-color: var(--tt-surface);
+      border: 1px solid var(--tt-border-strong);
+      border-radius: var(--tt-radius-control);
     }
 
-    &__charts {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
+    &__range-button {
+      height: 34px;
+      padding: 0 12px;
+      font: inherit;
+      color: var(--tt-text);
+      cursor: pointer;
+      background-color: var(--tt-surface);
+      border: 0;
 
-      @container (min-width: 860px) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      & + & {
+        border-left: 1px solid var(--tt-border-strong);
       }
-    }
-  }
 
-  @keyframes monitoring-pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
+      &:hover {
+        background-color: var(--tt-hover);
+      }
 
-    50% {
-      opacity: 0.35;
+      &[aria-pressed='true'] {
+        font-weight: 600;
+        background-color: var(--tt-accent-subtle);
+        color: var(--tt-accent);
+      }
     }
   }
 </style>

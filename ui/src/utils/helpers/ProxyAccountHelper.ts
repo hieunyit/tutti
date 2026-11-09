@@ -129,4 +129,21 @@ export abstract class ProxyAccountHelper {
       })),
     ];
   }
+
+  /**
+   * Contents of a client-side ".env" download. Built in the browser from the
+   * one-time secret and never stored.
+   */
+  static buildEnvFile(
+    accessKeyId: string,
+    secretAccessKey: string,
+    endpoint: string,
+  ): string {
+    return [
+      `AWS_ACCESS_KEY_ID=${accessKeyId}`,
+      `AWS_SECRET_ACCESS_KEY=${secretAccessKey}`,
+      `AWS_ENDPOINT_URL=${endpoint}`,
+      '',
+    ].join('\n');
+  }
 }

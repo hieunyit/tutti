@@ -113,3 +113,13 @@ describe('ProxyAccountHelper', () => {
     expect(ProxyAccountHelper.hasTime('2026-01-01T00:00:00Z')).toBe(true);
   });
 });
+
+describe('ProxyAccountHelper.buildEnvFile', () => {
+  it('writes the three client variables and ends with a newline', () => {
+    expect(
+      ProxyAccountHelper.buildEnvFile('TUTABC', 's3cr3t', 'http://p:9879'),
+    ).toBe(
+      'AWS_ACCESS_KEY_ID=TUTABC\nAWS_SECRET_ACCESS_KEY=s3cr3t\nAWS_ENDPOINT_URL=http://p:9879\n',
+    );
+  });
+});

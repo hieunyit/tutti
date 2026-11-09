@@ -15,7 +15,7 @@
  */
 
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueDevTools from 'vite-plugin-vue-devtools';
 import path from 'path';
@@ -65,6 +65,14 @@ export default defineConfig({
   ],
   server: {
     port: 8081,
+    fs: {
+      // the guides and the OpenAPI spec live next to ui/ in the repository
+      allow: [
+        searchForWorkspaceRoot(process.cwd()),
+        path.resolve(process.cwd(), '../docs'),
+        path.resolve(process.cwd(), '../proto'),
+      ],
+    },
     proxy: {
       '/api': {
         target: API_TARGET,

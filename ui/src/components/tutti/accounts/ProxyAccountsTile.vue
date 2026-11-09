@@ -15,17 +15,9 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CIcon, CResult, CTile } from '@clyso/clyso-ui-kit';
-  import {
-    NAlert,
-    NDataTable,
-    NPopconfirm,
-    NSpace,
-    NTag,
-    type DataTableColumns,
-  } from 'naive-ui';
+  import { CButton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { computed, h, ref } from 'vue';
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
   import AccessPolicyDrawer from './AccessPolicyDrawer.vue';
@@ -33,8 +25,14 @@
   import ProxyAccountKeysTable from './ProxyAccountKeysTable.vue';
   import ProxyKeyRotateModal from './ProxyKeyRotateModal.vue';
   import ProxySecretModal from './ProxySecretModal.vue';
-  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import SectionCard from '@/components/ui/SectionCard.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import EmptyState from '@/components/ui/EmptyState.vue';
+  import type { StatusVariant } from '@/components/ui/status';
+  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
+  import FilterBar from '@/components/tutti/common/FilterBar.vue';
+  import SearchInput from '@/components/tutti/common/SearchInput.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
@@ -48,41 +46,71 @@
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { accounts, isLoading } = storeToRefs(store);
+  const { accounts, proxyAddress } = storeToRefs(store);
   const { createNotification } = useChorusNotification();
 
+  const query = ref('');
+  const expanded = ref<Set<string>>(new Set());
   const showDrawer = ref(false);
   const editedAccount = ref<TuttiProxyAccount | null>(null);
+  const removing = ref<TuttiProxyAccount | null>(null);
 
   function openEdit(account: TuttiProxyAccount) {
     editedAccount.value = account;
     showDrawer.value = true;
   }
 
-  async function remove(account: TuttiProxyAccount) {
-    if (!(await store.removePolicy(account.user))) {
-      createNotification({
-        type: 'error',
-        title: t('removeFailed'),
-        duration: 6000,
-      });
+  async function confirmRemove() {
+    const account = removing.value;
+
+    if (!account) return;
+
+    if (await store.removePolicy(account.user)) {
+      removing.value = null;
+
+      return;
     }
+
+    createNotification({
+      type: 'error',
+      title: t('removeFailed'),
+      duration: 6000,
+    });
   }
 
-  const permissionMeta = computed(() => ({
+  function toggle(user: string) {
+    const next = new Set(expanded.value);
+
+    if (next.has(user)) next.delete(user);
+    else next.add(user);
+
+    expanded.value = next;
+  }
+
+  const permissionMeta = computed<
+    Record<string, { variant: StatusVariant; label: string }>
+  >(() => ({
     [TuttiAccessPermission.READ_WRITE]: {
-      type: 'success' as const,
+      variant: 'success',
       label: t('permissionReadWrite'),
     },
     [TuttiAccessPermission.READ_ONLY]: {
-      type: 'info' as const,
+      variant: 'info',
       label: t('permissionReadOnly'),
     },
     [TuttiAccessPermission.WRITE_ONLY]: {
-      type: 'warning' as const,
+      variant: 'warning',
       label: t('permissionWriteOnly'),
     },
   }));
+
+  function permissionOf(account: TuttiProxyAccount) {
+    return (
+      permissionMeta.value[
+        account.policy?.permission ?? TuttiAccessPermission.READ_WRITE
+      ] ?? permissionMeta.value[TuttiAccessPermission.READ_WRITE]!
+    );
+  }
 
   const showCreate = ref(false);
   const rotateKeyId = ref<string | null>(null);
@@ -92,7 +120,21 @@
 
   const userNames = computed(() => accounts.value.map((a) => a.user));
 
-  // the primary "Create account" action lives in the page header
+  const visibleAccounts = computed(() => {
+    const needle = query.value.trim().toLowerCase();
+
+    if (!needle) return accounts.value;
+
+    return accounts.value.filter(
+      (account) =>
+        account.user.toLowerCase().includes(needle) ||
+        (account.accessKeyIds ?? []).some((id) =>
+          id.toLowerCase().includes(needle),
+        ),
+    );
+  });
+
+  // the primary "Create access key" action lives in the page header
   defineExpose({ openCreate: () => (showCreate.value = true) });
 
   function onCreated(secret: TuttiProxyAccountSecret) {
@@ -108,151 +150,169 @@
 
   function keysSummary(account: TuttiProxyAccount): string {
     const keys = ProxyAccountHelper.getKeyRows(account);
-    const dynamic = keys.filter((key) => key.dynamicKey).length;
+    const managed = keys.filter((key) => key.dynamicKey).length;
     const total = t('keysCount', { count: keys.length }, keys.length);
 
-    return dynamic > 0
-      ? `${total} (${t('keysDynamic', { count: dynamic })})`
-      : total;
+    return managed > 0
+      ? t('keysSummaryManaged', { keys: total, managed })
+      : t('keysSummaryConfig', { keys: total });
   }
-
-  const columns = computed<DataTableColumns<TuttiProxyAccount>>(() => [
-    {
-      type: 'expand',
-      expandable: (row) => ProxyAccountHelper.getKeyRows(row).length > 0,
-      renderExpand: (row) =>
-        h(ProxyAccountKeysTable, {
-          account: row,
-          onRotate: (accessKeyId: string) => {
-            rotateKeyId.value = accessKeyId;
-          },
-        }),
-    },
-    { title: t('columnUser'), key: 'user' },
-    {
-      title: t('columnPermission'),
-      key: 'permission',
-      render: (row) => {
-        const meta =
-          permissionMeta.value[
-            (row.policy?.permission as TuttiAccessPermission) ??
-              TuttiAccessPermission.READ_WRITE
-          ] ?? permissionMeta.value[TuttiAccessPermission.READ_WRITE];
-
-        return h(NSpace, { size: 4, align: 'center' }, () => [
-          h(NTag, { type: meta.type, size: 'small' }, () => meta.label),
-          row.hasPolicy
-            ? null
-            : h('span', { class: 'accounts-tile__hint' }, t('noPolicyHint')),
-        ]);
-      },
-    },
-    {
-      title: t('columnBuckets'),
-      key: 'buckets',
-      render: (row) =>
-        AccessPolicyHelper.isAllBuckets(row.policy?.buckets)
-          ? h(NTag, { size: 'small' }, () => t('allBuckets'))
-          : h(NSpace, { size: 4 }, () =>
-              (row.policy?.buckets ?? []).map((bucket) =>
-                h(NTag, { size: 'small', key: bucket }, () => bucket),
-              ),
-            ),
-    },
-    {
-      title: t('columnKeys'),
-      key: 'keys',
-      render: (row) => keysSummary(row),
-    },
-    {
-      title: t('columnActions'),
-      key: 'actions',
-      render: (row) =>
-        h(WriteGate, null, () =>
-          h('span', { class: 'accounts-tile__actions' }, [
-            h(RowActionButton, {
-              label: row.hasPolicy ? t('editPolicy') : t('createPolicy'),
-              icon: IconName.BASE_CREATE,
-              type: 'primary',
-              onClick: () => openEdit(row),
-            }),
-            row.hasPolicy
-              ? h(
-                  NPopconfirm,
-                  {
-                    positiveText: t('removeConfirmAction'),
-                    negativeText: t('cancel'),
-                    positiveButtonProps: { type: 'error' },
-                    onPositiveClick: () => remove(row),
-                  },
-                  {
-                    trigger: () =>
-                      h(RowActionButton, {
-                        label: t('removePolicy'),
-                        icon: IconName.BASE_REMOVE_CIRCLE,
-                        type: 'error',
-                      }),
-                    default: () => t('removeConfirm', { user: row.user }),
-                  },
-                )
-              : null,
-          ]),
-        ),
-    },
-  ]);
 </script>
 
 <template>
-  <CTile class="accounts-tile">
-    <NAlert
-      type="info"
-      class="accounts-tile__banner"
-    >
-      {{ t('banner') }}
-    </NAlert>
-
-    <NDataTable
-      :columns="columns"
-      :data="accounts"
-      :loading="isLoading"
-      :bordered="false"
-      :scroll-x="880"
-      :row-key="(row: TuttiProxyAccount) => row.user"
-    >
-      <template #empty>
-        <CResult
-          class="accounts-tile__empty"
-          type="empty"
-          size="medium"
-          :icon-name="IconName.BASE_KEY"
-          :max-width="480"
-        >
-          <template #title>
-            {{ t('emptyTitle') }}
-          </template>
-
-          <p>{{ t('emptyText') }}</p>
-
-          <template #actions>
-            <WriteGate>
-              <CButton
-                type="primary"
-                @click="showCreate = true"
-              >
-                <template #icon>
-                  <CIcon
-                    :is-inline="true"
-                    :name="IconName.BASE_ADD"
-                  />
-                </template>
-
-                {{ t('createAccount') }}
-              </CButton>
-            </WriteGate>
-          </template>
-        </CResult>
+  <SectionCard
+    class="accounts-tile"
+    :title="t('title')"
+    flush
+  >
+    <FilterBar>
+      <SearchInput
+        v-model="query"
+        :placeholder="t('filterPlaceholder')"
+        :label="t('filterLabel')"
+      />
+      <template #note>
+        {{ t('filterNote') }}
       </template>
-    </NDataTable>
+    </FilterBar>
+
+    <EmptyState
+      v-if="accounts.length === 0"
+      :icon="IconName.BASE_KEY"
+      :title="t('emptyTitle')"
+      :text="t('emptyText')"
+    />
+    <EmptyState
+      v-else-if="visibleAccounts.length === 0"
+      :title="t('noResultsTitle')"
+      :text="t('noResultsText')"
+    >
+      <CButton @click="query = ''">{{ t('noResultsAction') }}</CButton>
+    </EmptyState>
+
+    <div
+      v-else
+      class="tt-table-wrap"
+    >
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              class="accounts-tile__expand"
+            >
+              <span class="tt-sr-only">{{ t('expandColumn') }}</span>
+            </th>
+            <th scope="col">{{ t('columnStorageUser') }}</th>
+            <th scope="col">{{ t('columnPermission') }}</th>
+            <th scope="col">{{ t('columnBuckets') }}</th>
+            <th scope="col">{{ t('columnAccessKeys') }}</th>
+            <th scope="col">
+              <span class="tt-sr-only">{{ t('columnActions') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <template
+            v-for="account in visibleAccounts"
+            :key="account.user"
+          >
+            <tr>
+              <td class="accounts-tile__expand">
+                <button
+                  type="button"
+                  class="accounts-tile__toggle"
+                  :aria-expanded="expanded.has(account.user)"
+                  :aria-label="
+                    expanded.has(account.user)
+                      ? t('collapse', { user: account.user })
+                      : t('expand', { user: account.user })
+                  "
+                  @click="toggle(account.user)"
+                >
+                  {{ expanded.has(account.user) ? '▾' : '▸' }}
+                </button>
+              </td>
+              <td>
+                <strong>{{ account.user }}</strong>
+              </td>
+              <td>
+                <StatusTag
+                  :variant="permissionOf(account).variant"
+                  :label="permissionOf(account).label"
+                  no-dot
+                />
+              </td>
+              <td>
+                <template
+                  v-if="
+                    AccessPolicyHelper.isAllBuckets(account.policy?.buckets)
+                  "
+                >
+                  {{ t('allBucketsNoPolicy') }}
+                  <span
+                    v-if="!account.hasPolicy"
+                    class="accounts-tile__muted"
+                    >{{ t('noPolicyShort') }}</span
+                  >
+                </template>
+                <span
+                  v-else
+                  class="accounts-tile__chips"
+                >
+                  <span
+                    v-for="bucket in account.policy?.buckets ?? []"
+                    :key="bucket"
+                    class="accounts-tile__chip"
+                    >{{ bucket }}</span
+                  >
+                </span>
+              </td>
+              <td>{{ keysSummary(account) }}</td>
+              <td class="accounts-tile__actions">
+                <WriteGate>
+                  <span class="accounts-tile__buttons">
+                    <CButton
+                      secondary
+                      size="small"
+                      @click="openEdit(account)"
+                    >
+                      {{
+                        account.hasPolicy
+                          ? t('editPermissions')
+                          : t('setPermissions')
+                      }}
+                    </CButton>
+                    <CButton
+                      v-if="account.hasPolicy"
+                      type="error"
+                      ghost
+                      size="small"
+                      @click="removing = account"
+                    >
+                      {{ t('removePolicyAction') }}
+                    </CButton>
+                  </span>
+                </WriteGate>
+              </td>
+            </tr>
+            <tr
+              v-if="expanded.has(account.user)"
+              class="accounts-tile__nested"
+            >
+              <td colspan="6">
+                <div class="accounts-tile__nested-inner">
+                  <ProxyAccountKeysTable
+                    :account="account"
+                    @rotate="rotateKeyId = $event"
+                  />
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
 
     <ProxyAccountCreateModal
       v-model:show="showCreate"
@@ -267,6 +327,7 @@
     <ProxySecretModal
       :secret="shownSecret"
       :kind="shownSecretKind"
+      :endpoint="proxyAddress"
       @close="shownSecret = null"
     />
 
@@ -274,28 +335,82 @@
       v-model:show="showDrawer"
       :account="editedAccount"
     />
-  </CTile>
+
+    <ConfirmDialog
+      :show="removing !== null"
+      :title="t('removePolicyAction')"
+      :text="t('removeConfirm', { user: removing?.user ?? '' })"
+      :confirm-label="t('removeConfirmAction')"
+      :cancel-label="t('cancel')"
+      danger
+      @update:show="removing = null"
+      @confirm="confirmRemove"
+    />
+  </SectionCard>
 </template>
 
 <style lang="scss" scoped>
   .accounts-tile {
-    &__banner {
-      margin-bottom: 16px;
+    strong {
+      font-weight: 600;
     }
 
-    &__empty {
-      padding: 24px 0;
+    &__expand {
+      width: 32px;
+      padding-right: 0;
     }
 
-    :deep(.accounts-tile__actions) {
+    &__toggle {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      font: inherit;
+      color: var(--tt-text-2);
+      background: var(--tt-surface);
+      border: 1px solid var(--tt-border-strong);
+      border-radius: var(--tt-radius-control);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--tt-subtle);
+      }
+    }
+
+    &__muted {
+      font-size: 12px;
+      color: var(--tt-text-3);
+    }
+
+    &__chips {
       display: inline-flex;
-      align-items: center;
+      flex-wrap: wrap;
       gap: 4px;
     }
 
-    :deep(.accounts-tile__hint) {
+    &__chip {
+      font-family: var(--tt-mono);
       font-size: 12px;
-      color: var(--text-color-3);
+    }
+
+    // width 0 + min-width 100%: the nested table scrolls inside the cell and
+    // never widens the users table
+    &__nested-inner {
+      width: 0;
+      min-width: 100%;
+    }
+
+    &__nested td {
+      padding: 4px 16px 16px 40px;
+      background-color: var(--tt-subtle);
+    }
+
+    &__actions {
+      text-align: right;
+    }
+
+    &__buttons {
+      display: inline-flex;
+      gap: 6px;
     }
   }
 </style>

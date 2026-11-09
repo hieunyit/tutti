@@ -48,7 +48,7 @@
     proxies,
     events,
     policies,
-    windows,
+    totalRates,
     failedSources,
     hasFatalError,
   } = storeToRefs(store);
@@ -78,18 +78,6 @@
         }),
   );
 
-  const rates = computed(() =>
-    DashboardHelper.getCurrentRates(windows.value, undefined, now.value),
-  );
-  const storageRates = computed(() => rates.value?.byStorage ?? null);
-  const p95 = computed(() => {
-    const value = rates.value
-      ? TrafficStatsHelper.p95Latency(rates.value)
-      : null;
-
-    return value === null ? '' : TrafficStatsHelper.formatLatency(value);
-  });
-
   const storageRows = computed(() =>
     storages.value
       ? DashboardHelper.getStorageHealth(
@@ -110,9 +98,13 @@
       : null,
   );
   const traffic = computed(() =>
-    Object.keys(windows.value).length > 0
-      ? DashboardHelper.getTrafficSummary(windows.value, now.value)
-      : null,
+    DashboardHelper.getTrafficSummary(totalRates.value),
+  );
+  const storageRates = computed(() => traffic.value?.byStorage ?? null);
+  const p95 = computed(() =>
+    traffic.value?.p95Ms == null
+      ? ''
+      : TrafficStatsHelper.formatLatencyMs(traffic.value.p95Ms),
   );
   const attention = computed(() =>
     DashboardHelper.getAttentionItems(

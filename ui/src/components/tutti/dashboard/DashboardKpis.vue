@@ -102,20 +102,11 @@
   const requestsCard = computed(() => {
     const tr = props.traffic;
 
-    if (!tr) return { label: t('kpiRequests'), value: none.value, hint: '' };
-
-    if (tr.requestsPerSecond !== null) {
-      return {
-        label: t('kpiRequests'),
-        value: TrafficStatsHelper.formatRate(tr.requestsPerSecond),
-        hint: t('kpiRequestsTotalHint', { n: number(tr.requestsTotal) }),
-      };
-    }
+    if (!tr) return { value: none.value, hint: '' };
 
     return {
-      label: t('kpiRequestsTotalLabel'),
-      value: number(tr.requestsTotal),
-      hint: t('kpiRequestsWarmingUp'),
+      value: TrafficStatsHelper.formatRate(tr.requestsPerSecond),
+      hint: t('kpiRequestsHint'),
     };
   });
 
@@ -126,9 +117,7 @@
 
     return {
       value: percent(tr.errorPercent5xx),
-      hint: tr.isErrorPercentCurrent
-        ? t('kpiErrorsCurrent')
-        : t('kpiErrorsSinceStart'),
+      hint: t('kpiErrorsCurrent'),
       tone: (tr.errorPercent5xx >= 5
         ? 'danger'
         : tr.errorPercent5xx >= 1
@@ -177,7 +166,7 @@
       :to="{ name: RouteName.CHORUS_REPLICATION }"
     />
     <KpiCard
-      :label="requestsCard.label"
+      :label="t('kpiRequests')"
       :value="requestsCard.value"
       :sub="requestsCard.hint"
       :to="{ name: RouteName.CHORUS_MONITORING }"

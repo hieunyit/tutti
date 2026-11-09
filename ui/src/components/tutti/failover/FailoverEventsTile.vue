@@ -15,14 +15,16 @@
   -->
 
 <script setup lang="ts">
-  import { CResult, CTile } from '@clyso/clyso-ui-kit';
-  import { NDataTable, NPopconfirm, type DataTableColumns } from 'naive-ui';
+  import { CButton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { computed, h } from 'vue';
+  import { ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nFailover from './i18nFailover';
-  import RowActionButton from '@/components/tutti/common/RowActionButton.vue';
+  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import SectionCard from '@/components/ui/SectionCard.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
@@ -34,118 +36,131 @@
   const { events } = storeToRefs(store);
   const { createNotification } = useChorusNotification();
 
-  function bucketLabel(event: TuttiFailoverEvent): string {
-    return event.bucket || t('allBuckets');
+  const acknowledging = ref<TuttiFailoverEvent | null>(null);
+  const isSaving = ref(false);
+
+  function scope(event: TuttiFailoverEvent): string {
+    return event.bucket
+      ? t('scopeBucket', { user: event.user, bucket: event.bucket })
+      : t('scopeAllBuckets', { user: event.user });
   }
 
-  async function acknowledge(event: TuttiFailoverEvent) {
-    if (!(await store.acknowledgeEvent(event))) {
-      createNotification({
-        type: 'error',
-        title: t('acknowledgeFailed'),
-        duration: 6000,
-      });
+  async function confirmAcknowledge() {
+    if (!acknowledging.value) return;
+
+    isSaving.value = true;
+
+    const ok = await store.acknowledgeEvent(acknowledging.value);
+
+    isSaving.value = false;
+
+    if (ok) {
+      acknowledging.value = null;
+
+      return;
     }
-  }
 
-  const columns = computed<DataTableColumns<TuttiFailoverEvent>>(() => [
-    { title: t('columnUser'), key: 'user' },
-    {
-      title: t('columnBucket'),
-      key: 'bucket',
-      render: (row) => bucketLabel(row),
-    },
-    {
-      title: t('columnFromTo'),
-      key: 'fromTo',
-      render: (row) => `${row.from} → ${row.to}`,
-    },
-    {
-      title: t('columnTime'),
-      key: 'time',
-      render: (row) => formatDateTime(row.time),
-    },
-    {
-      title: t('columnEventLag'),
-      key: 'eventLag',
-      render: (row) => String(row.eventLag ?? 0),
-    },
-    {
-      title: t('columnActions'),
-      key: 'actions',
-      render: (row) =>
-        h(WriteGate, null, () =>
-          h(
-            NPopconfirm,
-            {
-              positiveText: t('acknowledge'),
-              negativeText: t('cancel'),
-              onPositiveClick: () => acknowledge(row),
-            },
-            {
-              trigger: () =>
-                h(RowActionButton, {
-                  label: t('acknowledge'),
-                  icon: IconName.BASE_CHECKMARK,
-                  type: 'success',
-                }),
-              default: () =>
-                t('acknowledgeConfirm', {
-                  user: row.user,
-                  bucket: bucketLabel(row),
-                  from: row.from,
-                  to: row.to,
-                }),
-            },
-          ),
-        ),
-    },
-  ]);
+    createNotification({
+      type: 'error',
+      title: t('acknowledgeFailed'),
+      duration: 6000,
+    });
+  }
 </script>
 
 <template>
-  <CTile class="failover-events-tile">
-    <template #title>
-      {{ t('eventsTitle') }}
-    </template>
+  <SectionCard
+    class="failover-events-tile"
+    :title="t('eventsTitle')"
+    :meta="t('eventsHintShort')"
+    flush
+  >
+    <EmptyState
+      v-if="events.length === 0"
+      :icon="IconName.BASE_CHECKMARK"
+      :title="t('eventsEmptyTitle')"
+      :text="t('eventsEmptyText')"
+    />
 
-    <p class="failover-events-tile__hint">{{ t('eventsHint') }}</p>
-
-    <NDataTable
-      :columns="columns"
-      :data="events"
-      :bordered="false"
-      :scroll-x="720"
-      :row-key="(row: TuttiFailoverEvent) => `${row.user}::${row.bucket ?? ''}`"
+    <div
+      v-else
+      class="tt-table-wrap"
     >
-      <template #empty>
-        <CResult
-          class="failover-events-tile__empty"
-          type="empty"
-          size="medium"
-          :icon-name="IconName.BASE_CHECKMARK"
-          :max-width="480"
-        >
-          <template #title>
-            {{ t('eventsEmptyTitle') }}
-          </template>
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('columnWhen') }}</th>
+            <th scope="col">{{ t('columnScope') }}</th>
+            <th scope="col">{{ t('columnFromTo') }}</th>
+            <th
+              scope="col"
+              class="tt-num"
+            >
+              {{ t('columnLag') }}
+            </th>
+            <th scope="col">{{ t('columnStatus') }}</th>
+            <th scope="col">
+              <span class="tt-sr-only">{{ t('columnActions') }}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="event in events"
+            :key="`${event.user}::${event.bucket ?? ''}`"
+          >
+            <td>{{ formatDateTime(event.time) }}</td>
+            <td>{{ scope(event) }}</td>
+            <td>{{ event.from }} → {{ event.to }}</td>
+            <td class="tt-num">{{ event.eventLag ?? 0 }}</td>
+            <td>
+              <StatusTag
+                variant="warning"
+                :label="t('statusOpen')"
+              />
+            </td>
+            <td class="failover-events-tile__actions">
+              <WriteGate>
+                <CButton
+                  secondary
+                  size="small"
+                  @click="acknowledging = event"
+                >
+                  {{ t('acknowledge') }}
+                </CButton>
+              </WriteGate>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-          <p>{{ t('eventsEmptyText') }}</p>
-        </CResult>
-      </template>
-    </NDataTable>
-  </CTile>
+    <ConfirmDialog
+      :show="acknowledging !== null"
+      :title="t('acknowledgeDialogTitle')"
+      :text="
+        acknowledging
+          ? t('acknowledgeConfirm', {
+              user: acknowledging.user,
+              bucket: acknowledging.bucket || t('allBuckets'),
+              from: acknowledging.from,
+              to: acknowledging.to,
+            })
+          : ''
+      "
+      :confirm-label="t('acknowledge')"
+      :cancel-label="t('cancel')"
+      :loading="isSaving"
+      @update:show="acknowledging = null"
+      @confirm="confirmAcknowledge"
+    />
+  </SectionCard>
 </template>
 
 <style lang="scss" scoped>
   .failover-events-tile {
-    &__hint {
-      margin: 0 0 16px;
-      color: var(--text-color-3);
-    }
-
-    &__empty {
-      padding: 24px 0;
+    &__actions {
+      text-align: right;
     }
   }
 </style>

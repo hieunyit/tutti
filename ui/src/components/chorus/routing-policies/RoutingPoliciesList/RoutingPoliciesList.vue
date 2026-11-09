@@ -157,7 +157,7 @@
 <style lang="scss" scoped>
   .routing-policies-list {
     &__result {
-      min-height: 400px;
+      min-height: 200px;
     }
   }
 </style>
