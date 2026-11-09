@@ -116,7 +116,15 @@ func (m *middleware) doesSignatureV2Match(r *http.Request) (string, error) {
 		return "", fmt.Errorf("%w: unsupported sign alhorithm", dom.ErrAuth)
 	}
 	v2Auth = v2Auth[len(prefix):]
-	if !compareSignatureV2(v2Auth, expectedAuth) {
+	matched := compareSignatureV2(v2Auth, expectedAuth)
+	// a dynamic account in its rotation grace period also accepts the previous secret
+	for _, alt := range credInfo.alt {
+		if matched {
+			break
+		}
+		matched = compareSignatureV2(v2Auth, signatureV2(alt, r.Method, encodedResource, strings.Join(unescapedQueries, "&"), r.Header))
+	}
+	if !matched {
 		return "", mclient.ErrorResponse{
 			XMLName:    xml.Name{},
 			Code:       "SignatureDoesNotMatch",

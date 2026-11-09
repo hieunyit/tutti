@@ -39,6 +39,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
@@ -219,7 +220,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		replSvc := replication.NewS3(queueSvc, verSvc, policySvc)
 		accessCache := accesspolicy.NewCache(accesspolicy.NewStore(confRedis), accesspolicy.DefaultTTL)
 		proxyConfig.AccessMiddleware = access.Middleware(accessCache.Lookup)
-		authCheck := auth.Middleware(conf.Auth, credsSvc, conf.Address)
+		// runtime-managed accounts: secrets are sealed with the dynamic credentials master password.
+		// Without it no dynamic account can be created or authenticate.
+		accountCache := proxyaccount.NewCache(proxyaccount.NewStore(confRedis, func() (proxyaccount.Sealer, error) {
+			return credsSvc, nil
+		}), proxyaccount.DefaultTTL)
+		authCheck := auth.Middleware(conf.Auth, credsSvc, conf.Address, auth.WithAccounts(accountCache.Lookup))
 		proxyConfig.Storages[dom.S3] = router.StorageProxy{
 			Router:             routeSvc,
 			Replicator:         replSvc,

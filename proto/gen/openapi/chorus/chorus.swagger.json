@@ -858,6 +858,40 @@
         ]
       }
     },
+    "/routing/update": {
+      "put": {
+        "summary": "Atomically changes the target storage of an existing user or bucket routing override.\nUnlike delete + add, requests never fall back to the main storage in between.\nFails with NotFound if the routing does not exist and with the same conflicts as AddRouting.",
+        "operationId": "Policy_UpdateRouting",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusUpdateRoutingRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
     "/storage": {
       "get": {
         "summary": "Lists configured storages with users",
@@ -1178,7 +1212,7 @@
     },
     "/tutti/proxy-accounts": {
       "get": {
-        "summary": "ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials\nused by the proxy and custom credentials) with their effective access policy. Secrets are never returned.",
+        "summary": "ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials\nused by the proxy and custom credentials) with their effective access policy. Secrets are never returned.\nRuntime-managed (\"dynamic\") accounts are listed with source \"dynamic\" and their lifecycle metadata.",
         "operationId": "Resilience_ListProxyAccounts",
         "responses": {
           "200": {
@@ -1194,6 +1228,138 @@
             }
           }
         },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "summary": "CreateProxyAccount creates a runtime-managed proxy account for an existing storage user and returns the\ngenerated access key id and secret. The secret is returned ONLY in this response.\nFails with FailedPrecondition if the dynamic credentials master password is not configured.",
+        "operationId": "Resilience_CreateProxyAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyAccountSecret"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusCreateProxyAccountRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/proxy-accounts/delete": {
+      "put": {
+        "summary": "DeleteProxyAccount permanently removes a dynamic account.",
+        "operationId": "Resilience_DeleteProxyAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProxyAccountKey"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/proxy-accounts/rotate": {
+      "put": {
+        "summary": "RotateProxyAccountSecret generates a new secret. The previous secret keeps working for grace_period.\nThe new secret is returned ONLY in this response.",
+        "operationId": "Resilience_RotateProxyAccountSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyAccountSecret"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusRotateProxyAccountSecretRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/proxy-accounts/status": {
+      "put": {
+        "summary": "SetProxyAccountStatus enables (\"active\") or disables (\"disabled\") a dynamic account.",
+        "operationId": "Resilience_SetProxyAccountStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusSetProxyAccountStatusRequest"
+            }
+          }
+        ],
         "tags": [
           "Resilience"
         ]
@@ -1468,6 +1634,18 @@
         "isBlocked": {
           "type": "boolean",
           "title": "true if routing is blocked for given user and bucket"
+        }
+      }
+    },
+    "chorusCreateProxyAccountRequest": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "Storage user the proxy acts as for this account. Must have storage credentials."
+        },
+        "description": {
+          "type": "string"
         }
       }
     },
@@ -1964,6 +2142,39 @@
         }
       }
     },
+    "chorusProxyAccessKey": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "Always \"dynamic\"."
+        },
+        "status": {
+          "type": "string",
+          "description": "\"active\" or \"disabled\"."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rotatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "previousSecretExpiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Set while a rotated-out secret is still valid."
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "description": "ProxyAccessKey describes one runtime-managed access key (never its secret)."
+    },
     "chorusProxyAccount": {
       "type": "object",
       "properties": {
@@ -1991,9 +2202,25 @@
         "hasPolicy": {
           "type": "boolean",
           "description": "True if a policy is stored for the user."
+        },
+        "dynamicKeys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProxyAccessKey"
+          },
+          "description": "Runtime-managed access keys of the user with lifecycle metadata. Their ids are also in access_key_ids\nand \"dynamic\" is in sources."
         }
       },
       "description": "ProxyAccount is a proxy user with its access key ids and effective policy."
+    },
+    "chorusProxyAccountKey": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        }
+      }
     },
     "chorusProxyAccountList": {
       "type": "object",
@@ -2006,6 +2233,23 @@
           }
         }
       }
+    },
+    "chorusProxyAccountSecret": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        },
+        "previousSecretExpiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Set after a rotation with a grace period: until then the previous secret still works."
+        }
+      },
+      "description": "ProxyAccountSecret is returned once, when a secret is generated."
     },
     "chorusProxySettings": {
       "type": "object",
@@ -2264,6 +2508,18 @@
       "default": "NOT_STARTED",
       "description": " - NOT_STARTED: Switch is not started yet\n - IN_PROGRESS: Switch is in progress. Draining replication events queue.\nFor switch with downtime, requests to target are blocked at this point.\n - CHECK_IN_PROGRESS: Switch is in progress. Queue is drained. Checking if source and\ndestination targets are the same. Requests are still blocked. Used only\nfor switch with downtime with enabled bucket check.\n - ERROR: Switch failed to complete in downtime window and was aborted.\nRequests to target are unblocked. Used only for switch with downtime.\nIf cron downtime_window is used, switch will be retried on next cron\nexecution.\n - SKIPPED: Switch was not able to start in given downtime window because conditions\nwere not met. Used only for switch with downtime. If cron downtime_window\nis used, switch will be retried on next cron execution.\n - DONE: Switch was successfully completed.\nAll data was replicated to replication destination target and all read\nand all requests are now routed to it."
     },
+    "chorusRotateProxyAccountSecretRequest": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "gracePeriod": {
+          "type": "string",
+          "description": "How long the previous secret keeps working. Unset means 1h, zero means immediate invalidation."
+        }
+      }
+    },
     "chorusRoutingID": {
       "type": "object",
       "properties": {
@@ -2398,6 +2654,18 @@
         },
         "eTag": {
           "type": "string"
+        }
+      }
+    },
+    "chorusSetProxyAccountStatusRequest": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "description": "\"active\" or \"disabled\"."
         }
       }
     },
@@ -2814,6 +3082,23 @@
         }
       },
       "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
+    },
+    "chorusUpdateRoutingRequest": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "user whose routing to change."
+        },
+        "bucket": {
+          "type": "string",
+          "description": "bucket whose routing to change. Empty for the user-level routing."
+        },
+        "toStorage": {
+          "type": "string",
+          "title": "new destination storage name"
+        }
+      }
     },
     "chorusUserRouting": {
       "type": "object",

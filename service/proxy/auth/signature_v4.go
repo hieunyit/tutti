@@ -98,7 +98,17 @@ func (m *middleware) doesSignatureV4Match(hashedPayload string, r *http.Request)
 		signV4Values.Credential.Scope.Region)
 	newSignature := getV4Signature(signingKey, stringToSign)
 
-	if !compareSignatureV4(newSignature, signV4Values.Signature) {
+	matched := compareSignatureV4(newSignature, signV4Values.Signature)
+	// a dynamic account in its rotation grace period also accepts the previous secret
+	for _, alt := range credInfo.alt {
+		if matched {
+			break
+		}
+		signingKey = getV4SigningKey(alt.SecretAccessKey, signV4Values.Credential.Scope.Date,
+			signV4Values.Credential.Scope.Region)
+		matched = compareSignatureV4(getV4Signature(signingKey, stringToSign), signV4Values.Signature)
+	}
+	if !matched {
 		return "", nil, mclient.ErrorResponse{
 			XMLName:    xml.Name{},
 			Code:       "SignatureDoesNotMatch",

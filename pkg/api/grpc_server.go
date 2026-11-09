@@ -209,6 +209,12 @@ func convertApiError(ctx context.Context, err error) error {
 		details = append(details, &errdetails.ErrorInfo{
 			Reason: err.Error(),
 		})
+	case errors.Is(err, dom.ErrFailedPrecondition):
+		code = codes.FailedPrecondition
+		mappedErr = dom.ErrFailedPrecondition
+		details = append(details, &errdetails.ErrorInfo{
+			Reason: err.Error(),
+		})
 	case errors.Is(err, dom.ErrAuth):
 		code = codes.Unauthenticated
 		mappedErr = dom.ErrAuth

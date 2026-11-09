@@ -43,7 +43,67 @@ service Resilience {
 
   // ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
   // used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+  // Runtime-managed ("dynamic") accounts are listed with source "dynamic" and their lifecycle metadata.
   rpc ListProxyAccounts(google.protobuf.Empty) returns (ProxyAccountList);
+
+  // CreateProxyAccount creates a runtime-managed proxy account for an existing storage user and returns the
+  // generated access key id and secret. The secret is returned ONLY in this response.
+  // Fails with FailedPrecondition if the dynamic credentials master password is not configured.
+  rpc CreateProxyAccount(CreateProxyAccountRequest) returns (ProxyAccountSecret);
+
+  // RotateProxyAccountSecret generates a new secret. The previous secret keeps working for grace_period.
+  // The new secret is returned ONLY in this response.
+  rpc RotateProxyAccountSecret(RotateProxyAccountSecretRequest) returns (ProxyAccountSecret);
+
+  // SetProxyAccountStatus enables ("active") or disables ("disabled") a dynamic account.
+  rpc SetProxyAccountStatus(SetProxyAccountStatusRequest) returns (google.protobuf.Empty);
+
+  // DeleteProxyAccount permanently removes a dynamic account.
+  rpc DeleteProxyAccount(ProxyAccountKey) returns (google.protobuf.Empty);
+}
+
+message CreateProxyAccountRequest {
+  // Storage user the proxy acts as for this account. Must have storage credentials.
+  string user = 1;
+  string description = 2;
+}
+
+// ProxyAccountSecret is returned once, when a secret is generated.
+message ProxyAccountSecret {
+  string access_key_id = 1;
+  string secret_access_key = 2;
+  // Set after a rotation with a grace period: until then the previous secret still works.
+  google.protobuf.Timestamp previous_secret_expires_at = 3;
+}
+
+message RotateProxyAccountSecretRequest {
+  string access_key_id = 1;
+  // How long the previous secret keeps working. Unset means 1h, zero means immediate invalidation.
+  google.protobuf.Duration grace_period = 2;
+}
+
+message SetProxyAccountStatusRequest {
+  string access_key_id = 1;
+  // "active" or "disabled".
+  string status = 2;
+}
+
+message ProxyAccountKey {
+  string access_key_id = 1;
+}
+
+// ProxyAccessKey describes one runtime-managed access key (never its secret).
+message ProxyAccessKey {
+  string access_key_id = 1;
+  // Always "dynamic".
+  string source = 2;
+  // "active" or "disabled".
+  string status = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp rotated_at = 5;
+  // Set while a rotated-out secret is still valid.
+  google.protobuf.Timestamp previous_secret_expires_at = 6;
+  string description = 7;
 }
 
 // AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do.
@@ -76,6 +136,9 @@ message ProxyAccount {
   AccessPolicy policy = 4;
   // True if a policy is stored for the user.
   bool has_policy = 5;
+  // Runtime-managed access keys of the user with lifecycle metadata. Their ids are also in access_key_ids
+  // and "dynamic" is in sources.
+  repeated ProxyAccessKey dynamic_keys = 6;
 }
 
 message ProxyAccountList {

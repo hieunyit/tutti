@@ -276,6 +276,114 @@ func local_request_Resilience_ListProxyAccounts_0(ctx context.Context, marshaler
 	return msg, metadata, err
 }
 
+func request_Resilience_CreateProxyAccount_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq CreateProxyAccountRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.CreateProxyAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_CreateProxyAccount_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq CreateProxyAccountRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.CreateProxyAccount(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_Resilience_RotateProxyAccountSecret_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RotateProxyAccountSecretRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.RotateProxyAccountSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_RotateProxyAccountSecret_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RotateProxyAccountSecretRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.RotateProxyAccountSecret(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_Resilience_SetProxyAccountStatus_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq SetProxyAccountStatusRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.SetProxyAccountStatus(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_SetProxyAccountStatus_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq SetProxyAccountStatusRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.SetProxyAccountStatus(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_Resilience_DeleteProxyAccount_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ProxyAccountKey
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.DeleteProxyAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_DeleteProxyAccount_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ProxyAccountKey
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.DeleteProxyAccount(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 // RegisterResilienceHandlerServer registers the http handlers for service Resilience to "mux".
 // UnaryRPC     :call ResilienceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -481,6 +589,86 @@ func RegisterResilienceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 			return
 		}
 		forward_Resilience_ListProxyAccounts_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_Resilience_CreateProxyAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/CreateProxyAccount", runtime.WithHTTPPathPattern("/tutti/proxy-accounts"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_CreateProxyAccount_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_CreateProxyAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_RotateProxyAccountSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/RotateProxyAccountSecret", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/rotate"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_RotateProxyAccountSecret_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_RotateProxyAccountSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_SetProxyAccountStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/SetProxyAccountStatus", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/status"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_SetProxyAccountStatus_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_SetProxyAccountStatus_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_DeleteProxyAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/DeleteProxyAccount", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/delete"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_DeleteProxyAccount_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_DeleteProxyAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -692,31 +880,107 @@ func RegisterResilienceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 		}
 		forward_Resilience_ListProxyAccounts_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPost, pattern_Resilience_CreateProxyAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/CreateProxyAccount", runtime.WithHTTPPathPattern("/tutti/proxy-accounts"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_CreateProxyAccount_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_CreateProxyAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_RotateProxyAccountSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/RotateProxyAccountSecret", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/rotate"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_RotateProxyAccountSecret_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_RotateProxyAccountSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_SetProxyAccountStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/SetProxyAccountStatus", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/status"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_SetProxyAccountStatus_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_SetProxyAccountStatus_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_DeleteProxyAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/DeleteProxyAccount", runtime.WithHTTPPathPattern("/tutti/proxy-accounts/delete"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_DeleteProxyAccount_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_DeleteProxyAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
 var (
-	pattern_Resilience_GetProxyStatus_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxies"}, ""))
-	pattern_Resilience_ListFailoverPolicies_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
-	pattern_Resilience_SetFailoverPolicy_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
-	pattern_Resilience_DeleteFailoverPolicy_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "policies", "delete"}, ""))
-	pattern_Resilience_ListFailoverEvents_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "events"}, ""))
-	pattern_Resilience_DeleteFailoverEvent_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "events", "delete"}, ""))
-	pattern_Resilience_ListAccessPolicies_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
-	pattern_Resilience_SetAccessPolicy_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
-	pattern_Resilience_DeleteAccessPolicy_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "access-policies", "delete"}, ""))
-	pattern_Resilience_ListProxyAccounts_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
+	pattern_Resilience_GetProxyStatus_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxies"}, ""))
+	pattern_Resilience_ListFailoverPolicies_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
+	pattern_Resilience_SetFailoverPolicy_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
+	pattern_Resilience_DeleteFailoverPolicy_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "policies", "delete"}, ""))
+	pattern_Resilience_ListFailoverEvents_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "events"}, ""))
+	pattern_Resilience_DeleteFailoverEvent_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "events", "delete"}, ""))
+	pattern_Resilience_ListAccessPolicies_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
+	pattern_Resilience_SetAccessPolicy_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
+	pattern_Resilience_DeleteAccessPolicy_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "access-policies", "delete"}, ""))
+	pattern_Resilience_ListProxyAccounts_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
+	pattern_Resilience_CreateProxyAccount_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
+	pattern_Resilience_RotateProxyAccountSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "rotate"}, ""))
+	pattern_Resilience_SetProxyAccountStatus_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "status"}, ""))
+	pattern_Resilience_DeleteProxyAccount_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "delete"}, ""))
 )
 
 var (
-	forward_Resilience_GetProxyStatus_0       = runtime.ForwardResponseMessage
-	forward_Resilience_ListFailoverPolicies_0 = runtime.ForwardResponseMessage
-	forward_Resilience_SetFailoverPolicy_0    = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteFailoverPolicy_0 = runtime.ForwardResponseMessage
-	forward_Resilience_ListFailoverEvents_0   = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteFailoverEvent_0  = runtime.ForwardResponseMessage
-	forward_Resilience_ListAccessPolicies_0   = runtime.ForwardResponseMessage
-	forward_Resilience_SetAccessPolicy_0      = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteAccessPolicy_0   = runtime.ForwardResponseMessage
-	forward_Resilience_ListProxyAccounts_0    = runtime.ForwardResponseMessage
+	forward_Resilience_GetProxyStatus_0           = runtime.ForwardResponseMessage
+	forward_Resilience_ListFailoverPolicies_0     = runtime.ForwardResponseMessage
+	forward_Resilience_SetFailoverPolicy_0        = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteFailoverPolicy_0     = runtime.ForwardResponseMessage
+	forward_Resilience_ListFailoverEvents_0       = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteFailoverEvent_0      = runtime.ForwardResponseMessage
+	forward_Resilience_ListAccessPolicies_0       = runtime.ForwardResponseMessage
+	forward_Resilience_SetAccessPolicy_0          = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteAccessPolicy_0       = runtime.ForwardResponseMessage
+	forward_Resilience_ListProxyAccounts_0        = runtime.ForwardResponseMessage
+	forward_Resilience_CreateProxyAccount_0       = runtime.ForwardResponseMessage
+	forward_Resilience_RotateProxyAccountSecret_0 = runtime.ForwardResponseMessage
+	forward_Resilience_SetProxyAccountStatus_0    = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteProxyAccount_0       = runtime.ForwardResponseMessage
 )

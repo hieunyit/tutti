@@ -22,9 +22,11 @@ import (
 	"sort"
 
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
@@ -93,6 +95,17 @@ func (h *resilienceHandlers) ListProxyAccounts(ctx context.Context, _ *emptypb.E
 			x.sources[a.Source] = struct{}{}
 		}
 	}
+	dynamic, err := h.accounts.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dynKeys := map[string][]*pb.ProxyAccessKey{}
+	for _, d := range dynamic {
+		x := get(d.User)
+		x.keys[d.AccessKeyID] = struct{}{}
+		x.sources[proxyAccountSourceDynamic] = struct{}{}
+		dynKeys[d.User] = append(dynKeys[d.User], accountToPb(d))
+	}
 	byUser := make(map[string]accesspolicy.Policy, len(policies))
 	for _, p := range policies {
 		byUser[p.User] = p
@@ -112,7 +125,7 @@ func (h *resilienceHandlers) ListProxyAccounts(ctx context.Context, _ *emptypb.E
 		}
 		res.Accounts = append(res.Accounts, &pb.ProxyAccount{
 			User: u, AccessKeyIds: sortedKeys(a.keys), Sources: sortedKeys(a.sources),
-			Policy: policyToPb(pol), HasPolicy: has,
+			Policy: policyToPb(pol), HasPolicy: has, DynamicKeys: dynKeys[u],
 		})
 	}
 	return res, nil
@@ -125,4 +138,70 @@ func sortedKeys(m map[string]struct{}) []string {
 	}
 	sort.Strings(res)
 	return res
+}
+
+const proxyAccountSourceDynamic = "dynamic"
+
+func accountToPb(a proxyaccount.Account) *pb.ProxyAccessKey {
+	res := &pb.ProxyAccessKey{
+		AccessKeyId: a.AccessKeyID, Source: proxyAccountSourceDynamic, Status: a.Status,
+		Description: a.Description, CreatedAt: timestamppb.New(a.CreatedAt),
+	}
+	if !a.RotatedAt.IsZero() && a.RotatedAt.Unix() > 0 {
+		res.RotatedAt = timestamppb.New(a.RotatedAt)
+	}
+	if !a.PreviousExpiresAt.IsZero() && a.PreviousExpiresAt.Unix() > 0 {
+		res.PreviousSecretExpiresAt = timestamppb.New(a.PreviousExpiresAt)
+	}
+	return res
+}
+
+func (h *resilienceHandlers) CreateProxyAccount(ctx context.Context, req *pb.CreateProxyAccountRequest) (*pb.ProxyAccountSecret, error) {
+	if req.GetUser() == "" {
+		return nil, fmt.Errorf("%w: proxy account: user is required", dom.ErrInvalidArg)
+	}
+	if h.userExists != nil && !h.userExists(req.User) {
+		return nil, fmt.Errorf("%w: proxy account: user %q has no storage credentials", dom.ErrInvalidArg, req.User)
+	}
+	acc, secret, err := h.accounts.Create(ctx, req.User, req.Description)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ProxyAccountSecret{AccessKeyId: acc.AccessKeyID, SecretAccessKey: secret}, nil
+}
+
+func (h *resilienceHandlers) RotateProxyAccountSecret(ctx context.Context, req *pb.RotateProxyAccountSecretRequest) (*pb.ProxyAccountSecret, error) {
+	if req.GetAccessKeyId() == "" {
+		return nil, fmt.Errorf("%w: proxy account: access_key_id is required", dom.ErrInvalidArg)
+	}
+	grace := proxyaccount.DefaultGracePeriod
+	if req.GracePeriod != nil {
+		if err := req.GracePeriod.CheckValid(); err != nil {
+			return nil, fmt.Errorf("%w: proxy account: invalid grace_period: %v", dom.ErrInvalidArg, err)
+		}
+		grace = req.GracePeriod.AsDuration()
+	}
+	acc, secret, err := h.accounts.Rotate(ctx, req.AccessKeyId, grace)
+	if err != nil {
+		return nil, err
+	}
+	res := &pb.ProxyAccountSecret{AccessKeyId: acc.AccessKeyID, SecretAccessKey: secret}
+	if grace > 0 {
+		res.PreviousSecretExpiresAt = timestamppb.New(acc.PreviousExpiresAt)
+	}
+	return res, nil
+}
+
+func (h *resilienceHandlers) SetProxyAccountStatus(ctx context.Context, req *pb.SetProxyAccountStatusRequest) (*emptypb.Empty, error) {
+	if err := h.accounts.SetStatus(ctx, req.GetAccessKeyId(), req.GetStatus()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (h *resilienceHandlers) DeleteProxyAccount(ctx context.Context, req *pb.ProxyAccountKey) (*emptypb.Empty, error) {
+	if err := h.accounts.Delete(ctx, req.GetAccessKeyId()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }

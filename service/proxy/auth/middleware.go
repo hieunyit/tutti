@@ -17,22 +17,37 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/xml"
 	"net/http"
+	"time"
 
 	mclient "github.com/minio/minio-go/v7"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/s3/chunked"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
-func Middleware(conf *Config, credsSvc objstore.CredsService, endpointAddress string) *middleware {
+// AccountLookup resolves a runtime-managed (dynamic) proxy account by access key id.
+type AccountLookup func(ctx context.Context, accessKeyID string) (proxyaccount.Credential, bool)
+
+// Option customizes the auth middleware.
+type Option func(*middleware)
+
+// WithAccounts enables runtime-managed proxy accounts. They have the lowest precedence:
+// auth.custom, then auth.useStorage credentials, then dynamic accounts.
+func WithAccounts(lookup AccountLookup) Option {
+	return func(m *middleware) { m.accounts = lookup }
+}
+
+func Middleware(conf *Config, credsSvc objstore.CredsService, endpointAddress string, opts ...Option) *middleware {
 	custom := map[string]credMeta{}
 	for user, cred := range conf.Custom {
 		custom[cred.AccessKeyID] = credMeta{
@@ -40,7 +55,7 @@ func Middleware(conf *Config, credsSvc objstore.CredsService, endpointAddress st
 			user: user,
 		}
 	}
-	return &middleware{
+	m := &middleware{
 		allowV2:     conf.AllowV2Signature,
 		signedHdrs:  s3.SignedHeaderOpts{RequireSignedContentType: conf.RequireSignedContentType},
 		custom:      custom,
@@ -48,11 +63,18 @@ func Middleware(conf *Config, credsSvc objstore.CredsService, endpointAddress st
 		credsSvc:    credsSvc,
 		endpoint:    endpointAddress,
 	}
+	for _, o := range opts {
+		o(m)
+	}
+	return m
 }
 
 type credMeta struct {
 	cred s3.CredentialsV4
 	user string
+	// alt are additional credentials (same access key id, other secret) that also verify:
+	// the previous secret of a dynamic account during the rotation grace period.
+	alt []s3.CredentialsV4
 }
 
 type middleware struct {
@@ -62,6 +84,7 @@ type middleware struct {
 	storageName string
 	credsSvc    objstore.CredsService
 	endpoint    string
+	accounts    AccountLookup
 }
 
 func (m *middleware) Wrap(next http.Handler) http.Handler {
@@ -101,25 +124,32 @@ var authDeniedErr = mclient.ErrorResponse{
 	StatusCode: http.StatusForbidden,
 }
 
+// getCred resolves the credentials of an access key id. Precedence: auth.custom, then auth.useStorage credentials,
+// then dynamic accounts.
 func (m *middleware) getCred(accessKey string) (credMeta, error) {
+	// check custom creds
+	if res, ok := m.custom[accessKey]; ok {
+		return res, nil
+	}
 	if m.storageName != "" {
 		// check storage creds
 		user, cred, err := m.credsSvc.FindS3Credentials(m.storageName, accessKey)
 		if err == nil {
-			// found:
-			return credMeta{
-				cred: cred,
-				user: user,
-			}, nil
+			return credMeta{cred: cred, user: user}, nil
 		}
-		// fallback to custom creds
 	}
-	// check custom creds
-	res, ok := m.custom[accessKey]
-	if !ok {
-		return res, authDeniedErr
+	if m.accounts != nil {
+		// a disabled account is indistinguishable from an unknown one
+		if acc, ok := m.accounts(context.Background(), accessKey); ok && acc.Status == proxyaccount.StatusActive {
+			secrets := acc.Secrets(time.Now())
+			res := credMeta{user: acc.User, cred: s3.CredentialsV4{AccessKeyID: accessKey, SecretAccessKey: secrets[0]}}
+			for _, sec := range secrets[1:] {
+				res.alt = append(res.alt, s3.CredentialsV4{AccessKeyID: accessKey, SecretAccessKey: sec})
+			}
+			return res, nil
+		}
 	}
-	return res, nil
+	return credMeta{}, authDeniedErr
 }
 
 // isReqAuthenticated verifies the request signature and returns the

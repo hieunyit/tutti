@@ -20,16 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Resilience_GetProxyStatus_FullMethodName       = "/chorus.Resilience/GetProxyStatus"
-	Resilience_ListFailoverPolicies_FullMethodName = "/chorus.Resilience/ListFailoverPolicies"
-	Resilience_SetFailoverPolicy_FullMethodName    = "/chorus.Resilience/SetFailoverPolicy"
-	Resilience_DeleteFailoverPolicy_FullMethodName = "/chorus.Resilience/DeleteFailoverPolicy"
-	Resilience_ListFailoverEvents_FullMethodName   = "/chorus.Resilience/ListFailoverEvents"
-	Resilience_DeleteFailoverEvent_FullMethodName  = "/chorus.Resilience/DeleteFailoverEvent"
-	Resilience_ListAccessPolicies_FullMethodName   = "/chorus.Resilience/ListAccessPolicies"
-	Resilience_SetAccessPolicy_FullMethodName      = "/chorus.Resilience/SetAccessPolicy"
-	Resilience_DeleteAccessPolicy_FullMethodName   = "/chorus.Resilience/DeleteAccessPolicy"
-	Resilience_ListProxyAccounts_FullMethodName    = "/chorus.Resilience/ListProxyAccounts"
+	Resilience_GetProxyStatus_FullMethodName           = "/chorus.Resilience/GetProxyStatus"
+	Resilience_ListFailoverPolicies_FullMethodName     = "/chorus.Resilience/ListFailoverPolicies"
+	Resilience_SetFailoverPolicy_FullMethodName        = "/chorus.Resilience/SetFailoverPolicy"
+	Resilience_DeleteFailoverPolicy_FullMethodName     = "/chorus.Resilience/DeleteFailoverPolicy"
+	Resilience_ListFailoverEvents_FullMethodName       = "/chorus.Resilience/ListFailoverEvents"
+	Resilience_DeleteFailoverEvent_FullMethodName      = "/chorus.Resilience/DeleteFailoverEvent"
+	Resilience_ListAccessPolicies_FullMethodName       = "/chorus.Resilience/ListAccessPolicies"
+	Resilience_SetAccessPolicy_FullMethodName          = "/chorus.Resilience/SetAccessPolicy"
+	Resilience_DeleteAccessPolicy_FullMethodName       = "/chorus.Resilience/DeleteAccessPolicy"
+	Resilience_ListProxyAccounts_FullMethodName        = "/chorus.Resilience/ListProxyAccounts"
+	Resilience_CreateProxyAccount_FullMethodName       = "/chorus.Resilience/CreateProxyAccount"
+	Resilience_RotateProxyAccountSecret_FullMethodName = "/chorus.Resilience/RotateProxyAccountSecret"
+	Resilience_SetProxyAccountStatus_FullMethodName    = "/chorus.Resilience/SetProxyAccountStatus"
+	Resilience_DeleteProxyAccount_FullMethodName       = "/chorus.Resilience/DeleteProxyAccount"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -62,7 +66,19 @@ type ResilienceClient interface {
 	DeleteAccessPolicy(ctx context.Context, in *AccessPolicyUser, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
 	// used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+	// Runtime-managed ("dynamic") accounts are listed with source "dynamic" and their lifecycle metadata.
 	ListProxyAccounts(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyAccountList, error)
+	// CreateProxyAccount creates a runtime-managed proxy account for an existing storage user and returns the
+	// generated access key id and secret. The secret is returned ONLY in this response.
+	// Fails with FailedPrecondition if the dynamic credentials master password is not configured.
+	CreateProxyAccount(ctx context.Context, in *CreateProxyAccountRequest, opts ...grpc.CallOption) (*ProxyAccountSecret, error)
+	// RotateProxyAccountSecret generates a new secret. The previous secret keeps working for grace_period.
+	// The new secret is returned ONLY in this response.
+	RotateProxyAccountSecret(ctx context.Context, in *RotateProxyAccountSecretRequest, opts ...grpc.CallOption) (*ProxyAccountSecret, error)
+	// SetProxyAccountStatus enables ("active") or disables ("disabled") a dynamic account.
+	SetProxyAccountStatus(ctx context.Context, in *SetProxyAccountStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DeleteProxyAccount permanently removes a dynamic account.
+	DeleteProxyAccount(ctx context.Context, in *ProxyAccountKey, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resilienceClient struct {
@@ -173,6 +189,46 @@ func (c *resilienceClient) ListProxyAccounts(ctx context.Context, in *emptypb.Em
 	return out, nil
 }
 
+func (c *resilienceClient) CreateProxyAccount(ctx context.Context, in *CreateProxyAccountRequest, opts ...grpc.CallOption) (*ProxyAccountSecret, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProxyAccountSecret)
+	err := c.cc.Invoke(ctx, Resilience_CreateProxyAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) RotateProxyAccountSecret(ctx context.Context, in *RotateProxyAccountSecretRequest, opts ...grpc.CallOption) (*ProxyAccountSecret, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProxyAccountSecret)
+	err := c.cc.Invoke(ctx, Resilience_RotateProxyAccountSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) SetProxyAccountStatus(ctx context.Context, in *SetProxyAccountStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_SetProxyAccountStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) DeleteProxyAccount(ctx context.Context, in *ProxyAccountKey, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_DeleteProxyAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResilienceServer is the server API for Resilience service.
 // All implementations should embed UnimplementedResilienceServer
 // for forward compatibility.
@@ -203,7 +259,19 @@ type ResilienceServer interface {
 	DeleteAccessPolicy(context.Context, *AccessPolicyUser) (*emptypb.Empty, error)
 	// ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
 	// used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+	// Runtime-managed ("dynamic") accounts are listed with source "dynamic" and their lifecycle metadata.
 	ListProxyAccounts(context.Context, *emptypb.Empty) (*ProxyAccountList, error)
+	// CreateProxyAccount creates a runtime-managed proxy account for an existing storage user and returns the
+	// generated access key id and secret. The secret is returned ONLY in this response.
+	// Fails with FailedPrecondition if the dynamic credentials master password is not configured.
+	CreateProxyAccount(context.Context, *CreateProxyAccountRequest) (*ProxyAccountSecret, error)
+	// RotateProxyAccountSecret generates a new secret. The previous secret keeps working for grace_period.
+	// The new secret is returned ONLY in this response.
+	RotateProxyAccountSecret(context.Context, *RotateProxyAccountSecretRequest) (*ProxyAccountSecret, error)
+	// SetProxyAccountStatus enables ("active") or disables ("disabled") a dynamic account.
+	SetProxyAccountStatus(context.Context, *SetProxyAccountStatusRequest) (*emptypb.Empty, error)
+	// DeleteProxyAccount permanently removes a dynamic account.
+	DeleteProxyAccount(context.Context, *ProxyAccountKey) (*emptypb.Empty, error)
 }
 
 // UnimplementedResilienceServer should be embedded to have
@@ -242,6 +310,18 @@ func (UnimplementedResilienceServer) DeleteAccessPolicy(context.Context, *Access
 }
 func (UnimplementedResilienceServer) ListProxyAccounts(context.Context, *emptypb.Empty) (*ProxyAccountList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListProxyAccounts not implemented")
+}
+func (UnimplementedResilienceServer) CreateProxyAccount(context.Context, *CreateProxyAccountRequest) (*ProxyAccountSecret, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateProxyAccount not implemented")
+}
+func (UnimplementedResilienceServer) RotateProxyAccountSecret(context.Context, *RotateProxyAccountSecretRequest) (*ProxyAccountSecret, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateProxyAccountSecret not implemented")
+}
+func (UnimplementedResilienceServer) SetProxyAccountStatus(context.Context, *SetProxyAccountStatusRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetProxyAccountStatus not implemented")
+}
+func (UnimplementedResilienceServer) DeleteProxyAccount(context.Context, *ProxyAccountKey) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteProxyAccount not implemented")
 }
 func (UnimplementedResilienceServer) testEmbeddedByValue() {}
 
@@ -443,6 +523,78 @@ func _Resilience_ListProxyAccounts_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_CreateProxyAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateProxyAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).CreateProxyAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_CreateProxyAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).CreateProxyAccount(ctx, req.(*CreateProxyAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_RotateProxyAccountSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateProxyAccountSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).RotateProxyAccountSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_RotateProxyAccountSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).RotateProxyAccountSecret(ctx, req.(*RotateProxyAccountSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_SetProxyAccountStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetProxyAccountStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).SetProxyAccountStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_SetProxyAccountStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).SetProxyAccountStatus(ctx, req.(*SetProxyAccountStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_DeleteProxyAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProxyAccountKey)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).DeleteProxyAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_DeleteProxyAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).DeleteProxyAccount(ctx, req.(*ProxyAccountKey))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Resilience_ServiceDesc is the grpc.ServiceDesc for Resilience service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -489,6 +641,22 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListProxyAccounts",
 			Handler:    _Resilience_ListProxyAccounts_Handler,
+		},
+		{
+			MethodName: "CreateProxyAccount",
+			Handler:    _Resilience_CreateProxyAccount_Handler,
+		},
+		{
+			MethodName: "RotateProxyAccountSecret",
+			Handler:    _Resilience_RotateProxyAccountSecret_Handler,
+		},
+		{
+			MethodName: "SetProxyAccountStatus",
+			Handler:    _Resilience_SetProxyAccountStatus_Handler,
+		},
+		{
+			MethodName: "DeleteProxyAccount",
+			Handler:    _Resilience_DeleteProxyAccount_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

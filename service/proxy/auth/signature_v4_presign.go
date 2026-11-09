@@ -121,7 +121,16 @@ func (m *middleware) doesPresignedSignatureV4Match(r *http.Request) (string, str
 	signingKey := getV4SigningKey(cred.SecretAccessKey, psv.Credential.Scope.Date, psv.Credential.Scope.Region)
 	newSignature := getV4Signature(signingKey, stringToSign)
 
-	if !compareSignatureV4(newSignature, psv.Signature) {
+	matched := compareSignatureV4(newSignature, psv.Signature)
+	// a dynamic account in its rotation grace period also accepts the previous secret
+	for _, alt := range credInfo.alt {
+		if matched {
+			break
+		}
+		altKey := getV4SigningKey(alt.SecretAccessKey, psv.Credential.Scope.Date, psv.Credential.Scope.Region)
+		matched = compareSignatureV4(getV4Signature(altKey, stringToSign), psv.Signature)
+	}
+	if !matched {
 		return "", unsignedPayload, mclient.ErrorResponse{
 			XMLName:    xml.Name{},
 			Code:       "SignatureDoesNotMatch",

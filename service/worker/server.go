@@ -39,6 +39,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/notifications"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/rpc"
@@ -276,7 +277,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		resilienceHandler := api.ResilienceHandlers(confRedis, func(storage string) bool {
 			_, ok := credsSvc.Storages()[storage]
 			return ok
-		})
+		}, api.WithProxyAccounts(func() (proxyaccount.Sealer, error) {
+			return credsSvc, nil
+		}, func(user string) bool {
+			// dynamic proxy accounts act as a storage user of the main storage
+			return credsSvc.HasUser(credsSvc.MainStorage(), user) == nil
+		}))
 
 		authSvc, err := auth.NewService(conf.Api.Auth, appRedis)
 		if err != nil {

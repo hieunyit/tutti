@@ -1596,6 +1596,69 @@ func (x *AddRoutingRequest) GetToStorage() string {
 	return ""
 }
 
+type UpdateRoutingRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// user whose routing to change.
+	User string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// bucket whose routing to change. Empty for the user-level routing.
+	Bucket *string `protobuf:"bytes,2,opt,name=bucket,proto3,oneof" json:"bucket,omitempty"`
+	// new destination storage name
+	ToStorage     string `protobuf:"bytes,3,opt,name=to_storage,json=toStorage,proto3" json:"to_storage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateRoutingRequest) Reset() {
+	*x = UpdateRoutingRequest{}
+	mi := &file_chorus_policy_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoutingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoutingRequest) ProtoMessage() {}
+
+func (x *UpdateRoutingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_policy_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoutingRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRoutingRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_policy_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UpdateRoutingRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *UpdateRoutingRequest) GetBucket() string {
+	if x != nil && x.Bucket != nil {
+		return *x.Bucket
+	}
+	return ""
+}
+
+func (x *UpdateRoutingRequest) GetToStorage() string {
+	if x != nil {
+		return x.ToStorage
+	}
+	return ""
+}
+
 type RoutingID struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// routing policy user
@@ -1608,7 +1671,7 @@ type RoutingID struct {
 
 func (x *RoutingID) Reset() {
 	*x = RoutingID{}
-	mi := &file_chorus_policy_proto_msgTypes[19]
+	mi := &file_chorus_policy_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1620,7 +1683,7 @@ func (x *RoutingID) String() string {
 func (*RoutingID) ProtoMessage() {}
 
 func (x *RoutingID) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_policy_proto_msgTypes[19]
+	mi := &file_chorus_policy_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1633,7 +1696,7 @@ func (x *RoutingID) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoutingID.ProtoReflect.Descriptor instead.
 func (*RoutingID) Descriptor() ([]byte, []int) {
-	return file_chorus_policy_proto_rawDescGZIP(), []int{19}
+	return file_chorus_policy_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RoutingID) GetUser() string {
@@ -1662,7 +1725,7 @@ type TestProxyRequest struct {
 
 func (x *TestProxyRequest) Reset() {
 	*x = TestProxyRequest{}
-	mi := &file_chorus_policy_proto_msgTypes[20]
+	mi := &file_chorus_policy_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1737,7 @@ func (x *TestProxyRequest) String() string {
 func (*TestProxyRequest) ProtoMessage() {}
 
 func (x *TestProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_policy_proto_msgTypes[20]
+	mi := &file_chorus_policy_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1750,7 @@ func (x *TestProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestProxyRequest.ProtoReflect.Descriptor instead.
 func (*TestProxyRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_policy_proto_rawDescGZIP(), []int{20}
+	return file_chorus_policy_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TestProxyRequest) GetUser() string {
@@ -1718,7 +1781,7 @@ type TestProxyResponse struct {
 
 func (x *TestProxyResponse) Reset() {
 	*x = TestProxyResponse{}
-	mi := &file_chorus_policy_proto_msgTypes[21]
+	mi := &file_chorus_policy_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1730,7 +1793,7 @@ func (x *TestProxyResponse) String() string {
 func (*TestProxyResponse) ProtoMessage() {}
 
 func (x *TestProxyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_policy_proto_msgTypes[21]
+	mi := &file_chorus_policy_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1743,7 +1806,7 @@ func (x *TestProxyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestProxyResponse.ProtoReflect.Descriptor instead.
 func (*TestProxyResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_policy_proto_rawDescGZIP(), []int{21}
+	return file_chorus_policy_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *TestProxyResponse) GetRouteToStorage() string {
@@ -1795,7 +1858,7 @@ type ListReplicationsRequest_Filter struct {
 
 func (x *ListReplicationsRequest_Filter) Reset() {
 	*x = ListReplicationsRequest_Filter{}
-	mi := &file_chorus_policy_proto_msgTypes[22]
+	mi := &file_chorus_policy_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1807,7 +1870,7 @@ func (x *ListReplicationsRequest_Filter) String() string {
 func (*ListReplicationsRequest_Filter) ProtoMessage() {}
 
 func (x *ListReplicationsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_policy_proto_msgTypes[22]
+	mi := &file_chorus_policy_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1909,7 +1972,7 @@ type RoutingsRequest_Filter struct {
 
 func (x *RoutingsRequest_Filter) Reset() {
 	*x = RoutingsRequest_Filter{}
-	mi := &file_chorus_policy_proto_msgTypes[23]
+	mi := &file_chorus_policy_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1921,7 +1984,7 @@ func (x *RoutingsRequest_Filter) String() string {
 func (*RoutingsRequest_Filter) ProtoMessage() {}
 
 func (x *RoutingsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_policy_proto_msgTypes[23]
+	mi := &file_chorus_policy_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2149,6 +2212,12 @@ const file_chorus_policy_proto_rawDesc = "" +
 	"\x06bucket\x18\x02 \x01(\tH\x00R\x06bucket\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"to_storage\x18\x03 \x01(\tR\ttoStorageB\t\n" +
+	"\a_bucket\"q\n" +
+	"\x14UpdateRoutingRequest\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\x1b\n" +
+	"\x06bucket\x18\x02 \x01(\tH\x00R\x06bucket\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"to_storage\x18\x03 \x01(\tR\ttoStorageB\t\n" +
 	"\a_bucket\"G\n" +
 	"\tRoutingID\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x1b\n" +
@@ -2165,7 +2234,8 @@ const file_chorus_policy_proto_rawDesc = "" +
 	"\vEventSource\x12\x16\n" +
 	"\x12EVENT_SOURCE_PROXY\x10\x00\x12 \n" +
 	"\x1cEVENT_SOURCE_S3_NOTIFICATION\x10\x01\x12\x18\n" +
-	"\x14EVENT_SOURCE_WEBHOOK\x10\x022\xeb\t\n" +
+	"\x14EVENT_SOURCE_WEBHOOK\x10\x022\xb2\n" +
+	"\n" +
 	"\x06Policy\x12U\n" +
 	"\x10AvailableBuckets\x12\x1f.chorus.AvailableBucketsRequest\x1a .chorus.AvailableBucketsResponse\x12G\n" +
 	"\x0eAddReplication\x12\x1d.chorus.AddReplicationRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
@@ -2181,7 +2251,8 @@ const file_chorus_policy_proto_rawDesc = "" +
 	"\x0fGetSwitchStatus\x12\x15.chorus.ReplicationID\x1a\x19.chorus.ReplicationSwitch\x12A\n" +
 	"\fListRoutings\x12\x17.chorus.RoutingsRequest\x1a\x18.chorus.RoutingsResponse\x12?\n" +
 	"\n" +
-	"AddRouting\x12\x19.chorus.AddRoutingRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
+	"AddRouting\x12\x19.chorus.AddRoutingRequest\x1a\x16.google.protobuf.Empty\x12E\n" +
+	"\rUpdateRouting\x12\x1c.chorus.UpdateRoutingRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
 	"\rDeleteRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x129\n" +
 	"\fBlockRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x12;\n" +
 	"\x0eUnblockRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x12@\n" +
@@ -2200,7 +2271,7 @@ func file_chorus_policy_proto_rawDescGZIP() []byte {
 }
 
 var file_chorus_policy_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_chorus_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_chorus_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_chorus_policy_proto_goTypes = []any{
 	(EventSource)(0),                       // 0: chorus.EventSource
 	(ReplicationSwitch_Status)(0),          // 1: chorus.ReplicationSwitch.Status
@@ -2223,42 +2294,43 @@ var file_chorus_policy_proto_goTypes = []any{
 	(*UserRouting)(nil),                    // 18: chorus.UserRouting
 	(*BucketRouting)(nil),                  // 19: chorus.BucketRouting
 	(*AddRoutingRequest)(nil),              // 20: chorus.AddRoutingRequest
-	(*RoutingID)(nil),                      // 21: chorus.RoutingID
-	(*TestProxyRequest)(nil),               // 22: chorus.TestProxyRequest
-	(*TestProxyResponse)(nil),              // 23: chorus.TestProxyResponse
-	(*ListReplicationsRequest_Filter)(nil), // 24: chorus.ListReplicationsRequest.Filter
-	(*RoutingsRequest_Filter)(nil),         // 25: chorus.RoutingsRequest.Filter
-	(*timestamppb.Timestamp)(nil),          // 26: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),            // 27: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                  // 28: google.protobuf.Empty
+	(*UpdateRoutingRequest)(nil),           // 21: chorus.UpdateRoutingRequest
+	(*RoutingID)(nil),                      // 22: chorus.RoutingID
+	(*TestProxyRequest)(nil),               // 23: chorus.TestProxyRequest
+	(*TestProxyResponse)(nil),              // 24: chorus.TestProxyResponse
+	(*ListReplicationsRequest_Filter)(nil), // 25: chorus.ListReplicationsRequest.Filter
+	(*RoutingsRequest_Filter)(nil),         // 26: chorus.RoutingsRequest.Filter
+	(*timestamppb.Timestamp)(nil),          // 27: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),            // 28: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                  // 29: google.protobuf.Empty
 }
 var file_chorus_policy_proto_depIdxs = []int32{
 	2,  // 0: chorus.AddReplicationRequest.id:type_name -> chorus.ReplicationID
 	4,  // 1: chorus.AddReplicationRequest.opts:type_name -> chorus.ReplicationOpts
 	0,  // 2: chorus.ReplicationOpts.event_source:type_name -> chorus.EventSource
-	24, // 3: chorus.ListReplicationsRequest.filter:type_name -> chorus.ListReplicationsRequest.Filter
+	25, // 3: chorus.ListReplicationsRequest.filter:type_name -> chorus.ListReplicationsRequest.Filter
 	7,  // 4: chorus.ListReplicationsResponse.replications:type_name -> chorus.Replication
 	2,  // 5: chorus.Replication.id:type_name -> chorus.ReplicationID
 	4,  // 6: chorus.Replication.opts:type_name -> chorus.ReplicationOpts
-	26, // 7: chorus.Replication.created_at:type_name -> google.protobuf.Timestamp
-	27, // 8: chorus.Replication.event_lag:type_name -> google.protobuf.Duration
-	26, // 9: chorus.Replication.archived_at:type_name -> google.protobuf.Timestamp
+	27, // 7: chorus.Replication.created_at:type_name -> google.protobuf.Timestamp
+	28, // 8: chorus.Replication.event_lag:type_name -> google.protobuf.Duration
+	27, // 9: chorus.Replication.archived_at:type_name -> google.protobuf.Timestamp
 	15, // 10: chorus.Replication.switch_info:type_name -> chorus.ReplicationSwitch
 	0,  // 11: chorus.Replication.event_source:type_name -> chorus.EventSource
 	2,  // 12: chorus.CompareBucketRequest.target:type_name -> chorus.ReplicationID
 	2,  // 13: chorus.SwitchZeroDowntimeRequest.replication_id:type_name -> chorus.ReplicationID
-	27, // 14: chorus.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
+	28, // 14: chorus.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
 	2,  // 15: chorus.SwitchDowntimeRequest.replication_id:type_name -> chorus.ReplicationID
 	14, // 16: chorus.SwitchDowntimeRequest.downtime_opts:type_name -> chorus.SwitchDowntimeOpts
-	26, // 17: chorus.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
-	27, // 18: chorus.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
+	27, // 17: chorus.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
+	28, // 18: chorus.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
 	1,  // 19: chorus.ReplicationSwitch.last_status:type_name -> chorus.ReplicationSwitch.Status
-	27, // 20: chorus.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
+	28, // 20: chorus.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
 	14, // 21: chorus.ReplicationSwitch.downtime_opts:type_name -> chorus.SwitchDowntimeOpts
-	26, // 22: chorus.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
-	26, // 23: chorus.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
+	27, // 22: chorus.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
+	27, // 23: chorus.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
 	2,  // 24: chorus.ReplicationSwitch.replication_id:type_name -> chorus.ReplicationID
-	25, // 25: chorus.RoutingsRequest.filter:type_name -> chorus.RoutingsRequest.Filter
+	26, // 25: chorus.RoutingsRequest.filter:type_name -> chorus.RoutingsRequest.Filter
 	18, // 26: chorus.RoutingsResponse.user_routings:type_name -> chorus.UserRouting
 	19, // 27: chorus.RoutingsResponse.bucket_routings:type_name -> chorus.BucketRouting
 	2,  // 28: chorus.TestProxyResponse.replications:type_name -> chorus.ReplicationID
@@ -2277,30 +2349,32 @@ var file_chorus_policy_proto_depIdxs = []int32{
 	2,  // 41: chorus.Policy.GetSwitchStatus:input_type -> chorus.ReplicationID
 	16, // 42: chorus.Policy.ListRoutings:input_type -> chorus.RoutingsRequest
 	20, // 43: chorus.Policy.AddRouting:input_type -> chorus.AddRoutingRequest
-	21, // 44: chorus.Policy.DeleteRouting:input_type -> chorus.RoutingID
-	21, // 45: chorus.Policy.BlockRouting:input_type -> chorus.RoutingID
-	21, // 46: chorus.Policy.UnblockRouting:input_type -> chorus.RoutingID
-	22, // 47: chorus.Policy.TestProxy:input_type -> chorus.TestProxyRequest
-	9,  // 48: chorus.Policy.AvailableBuckets:output_type -> chorus.AvailableBucketsResponse
-	28, // 49: chorus.Policy.AddReplication:output_type -> google.protobuf.Empty
-	7,  // 50: chorus.Policy.GetReplication:output_type -> chorus.Replication
-	6,  // 51: chorus.Policy.ListReplications:output_type -> chorus.ListReplicationsResponse
-	7,  // 52: chorus.Policy.StreamReplication:output_type -> chorus.Replication
-	28, // 53: chorus.Policy.PauseReplication:output_type -> google.protobuf.Empty
-	28, // 54: chorus.Policy.ResumeReplication:output_type -> google.protobuf.Empty
-	28, // 55: chorus.Policy.DeleteReplication:output_type -> google.protobuf.Empty
-	28, // 56: chorus.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
-	28, // 57: chorus.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
-	28, // 58: chorus.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
-	15, // 59: chorus.Policy.GetSwitchStatus:output_type -> chorus.ReplicationSwitch
-	17, // 60: chorus.Policy.ListRoutings:output_type -> chorus.RoutingsResponse
-	28, // 61: chorus.Policy.AddRouting:output_type -> google.protobuf.Empty
-	28, // 62: chorus.Policy.DeleteRouting:output_type -> google.protobuf.Empty
-	28, // 63: chorus.Policy.BlockRouting:output_type -> google.protobuf.Empty
-	28, // 64: chorus.Policy.UnblockRouting:output_type -> google.protobuf.Empty
-	23, // 65: chorus.Policy.TestProxy:output_type -> chorus.TestProxyResponse
-	48, // [48:66] is the sub-list for method output_type
-	30, // [30:48] is the sub-list for method input_type
+	21, // 44: chorus.Policy.UpdateRouting:input_type -> chorus.UpdateRoutingRequest
+	22, // 45: chorus.Policy.DeleteRouting:input_type -> chorus.RoutingID
+	22, // 46: chorus.Policy.BlockRouting:input_type -> chorus.RoutingID
+	22, // 47: chorus.Policy.UnblockRouting:input_type -> chorus.RoutingID
+	23, // 48: chorus.Policy.TestProxy:input_type -> chorus.TestProxyRequest
+	9,  // 49: chorus.Policy.AvailableBuckets:output_type -> chorus.AvailableBucketsResponse
+	29, // 50: chorus.Policy.AddReplication:output_type -> google.protobuf.Empty
+	7,  // 51: chorus.Policy.GetReplication:output_type -> chorus.Replication
+	6,  // 52: chorus.Policy.ListReplications:output_type -> chorus.ListReplicationsResponse
+	7,  // 53: chorus.Policy.StreamReplication:output_type -> chorus.Replication
+	29, // 54: chorus.Policy.PauseReplication:output_type -> google.protobuf.Empty
+	29, // 55: chorus.Policy.ResumeReplication:output_type -> google.protobuf.Empty
+	29, // 56: chorus.Policy.DeleteReplication:output_type -> google.protobuf.Empty
+	29, // 57: chorus.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
+	29, // 58: chorus.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
+	29, // 59: chorus.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
+	15, // 60: chorus.Policy.GetSwitchStatus:output_type -> chorus.ReplicationSwitch
+	17, // 61: chorus.Policy.ListRoutings:output_type -> chorus.RoutingsResponse
+	29, // 62: chorus.Policy.AddRouting:output_type -> google.protobuf.Empty
+	29, // 63: chorus.Policy.UpdateRouting:output_type -> google.protobuf.Empty
+	29, // 64: chorus.Policy.DeleteRouting:output_type -> google.protobuf.Empty
+	29, // 65: chorus.Policy.BlockRouting:output_type -> google.protobuf.Empty
+	29, // 66: chorus.Policy.UnblockRouting:output_type -> google.protobuf.Empty
+	24, // 67: chorus.Policy.TestProxy:output_type -> chorus.TestProxyResponse
+	49, // [49:68] is the sub-list for method output_type
+	30, // [30:49] is the sub-list for method input_type
 	30, // [30:30] is the sub-list for extension type_name
 	30, // [30:30] is the sub-list for extension extendee
 	0,  // [0:30] is the sub-list for field type_name
@@ -2320,15 +2394,16 @@ func file_chorus_policy_proto_init() {
 	file_chorus_policy_proto_msgTypes[14].OneofWrappers = []any{}
 	file_chorus_policy_proto_msgTypes[18].OneofWrappers = []any{}
 	file_chorus_policy_proto_msgTypes[19].OneofWrappers = []any{}
-	file_chorus_policy_proto_msgTypes[22].OneofWrappers = []any{}
+	file_chorus_policy_proto_msgTypes[20].OneofWrappers = []any{}
 	file_chorus_policy_proto_msgTypes[23].OneofWrappers = []any{}
+	file_chorus_policy_proto_msgTypes[24].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_policy_proto_rawDesc), len(file_chorus_policy_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   24,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -96,6 +96,11 @@ service Policy {
   // Overrides routing destination for given user or user's bucket.
   rpc AddRouting(AddRoutingRequest) returns (google.protobuf.Empty);
 
+  // Atomically changes the target storage of an existing user or bucket routing override.
+  // Unlike delete + add, requests never fall back to the main storage in between.
+  // Fails with NotFound if the routing does not exist and with the same conflicts as AddRouting.
+  rpc UpdateRouting(UpdateRoutingRequest) returns (google.protobuf.Empty);
+
   // Removes user or bucket routing override.
   rpc DeleteRouting(RoutingID) returns (google.protobuf.Empty);
 
@@ -484,6 +489,15 @@ message AddRoutingRequest {
   // bucket for which to override routing destination.
   optional string bucket = 2;
   // destination storage name
+  string to_storage = 3;
+}
+
+message UpdateRoutingRequest {
+  // user whose routing to change.
+  string user = 1;
+  // bucket whose routing to change. Empty for the user-level routing.
+  optional string bucket = 2;
+  // new destination storage name
   string to_storage = 3;
 }
 

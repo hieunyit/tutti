@@ -622,7 +622,11 @@ func (s *credsSvc) encrypt(credsStruct any) (string, error) {
 	if s.config.DynamicCredentials.DisableEncryption {
 		return string(plaintext), nil
 	}
-	// encrypt with AES-GCM
+	return s.sealBytes(plaintext)
+}
+
+// sealBytes encrypts plaintext with AES-GCM using the key derived from the master password and base64-encodes it.
+func (s *credsSvc) sealBytes(plaintext []byte) (string, error) {
 	block, err := aes.NewCipher(s.key)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cipher: %w", err)
@@ -639,6 +643,32 @@ func (s *credsSvc) encrypt(credsStruct any) (string, error) {
 	// base64 encode
 	encoded := base64.StdEncoding.EncodeToString(ciphertext)
 	return encoded, nil
+}
+
+// Seal encrypts data with the same AES-GCM key as dynamic storage credentials (derived from the dynamic credentials
+// master password). It never falls back to plaintext: it fails with dom.ErrFailedPrecondition if no master password is
+// configured, or if encryption is disabled.
+func (s *credsSvc) Seal(plaintext []byte) (string, error) {
+	if err := s.sealingAvailable(); err != nil {
+		return "", err
+	}
+	return s.sealBytes(plaintext)
+}
+
+// Open decrypts a value produced by Seal.
+func (s *credsSvc) Open(sealed string) ([]byte, error) {
+	if err := s.sealingAvailable(); err != nil {
+		return nil, err
+	}
+	return s.decrypt([]byte(sealed))
+}
+
+func (s *credsSvc) sealingAvailable() error {
+	dc := s.config.DynamicCredentials
+	if !dc.Enabled || dc.DisableEncryption || len(s.key) == 0 {
+		return fmt.Errorf("%w: sealing secrets requires storage.dynamicCredentials enabled with a masterPassword (encryption on)", dom.ErrFailedPrecondition)
+	}
+	return nil
 }
 
 func (s *credsSvc) decrypt(ciphertext []byte) ([]byte, error) {

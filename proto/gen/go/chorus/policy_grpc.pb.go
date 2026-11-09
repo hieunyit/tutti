@@ -34,6 +34,7 @@ const (
 	Policy_GetSwitchStatus_FullMethodName        = "/chorus.Policy/GetSwitchStatus"
 	Policy_ListRoutings_FullMethodName           = "/chorus.Policy/ListRoutings"
 	Policy_AddRouting_FullMethodName             = "/chorus.Policy/AddRouting"
+	Policy_UpdateRouting_FullMethodName          = "/chorus.Policy/UpdateRouting"
 	Policy_DeleteRouting_FullMethodName          = "/chorus.Policy/DeleteRouting"
 	Policy_BlockRouting_FullMethodName           = "/chorus.Policy/BlockRouting"
 	Policy_UnblockRouting_FullMethodName         = "/chorus.Policy/UnblockRouting"
@@ -117,6 +118,10 @@ type PolicyClient interface {
 	ListRoutings(ctx context.Context, in *RoutingsRequest, opts ...grpc.CallOption) (*RoutingsResponse, error)
 	// Overrides routing destination for given user or user's bucket.
 	AddRouting(ctx context.Context, in *AddRoutingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Atomically changes the target storage of an existing user or bucket routing override.
+	// Unlike delete + add, requests never fall back to the main storage in between.
+	// Fails with NotFound if the routing does not exist and with the same conflicts as AddRouting.
+	UpdateRouting(ctx context.Context, in *UpdateRoutingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Removes user or bucket routing override.
 	DeleteRouting(ctx context.Context, in *RoutingID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Blocks requests on proxy for given user or user's bucket.
@@ -285,6 +290,16 @@ func (c *policyClient) AddRouting(ctx context.Context, in *AddRoutingRequest, op
 	return out, nil
 }
 
+func (c *policyClient) UpdateRouting(ctx context.Context, in *UpdateRoutingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_UpdateRouting_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *policyClient) DeleteRouting(ctx context.Context, in *RoutingID, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -402,6 +417,10 @@ type PolicyServer interface {
 	ListRoutings(context.Context, *RoutingsRequest) (*RoutingsResponse, error)
 	// Overrides routing destination for given user or user's bucket.
 	AddRouting(context.Context, *AddRoutingRequest) (*emptypb.Empty, error)
+	// Atomically changes the target storage of an existing user or bucket routing override.
+	// Unlike delete + add, requests never fall back to the main storage in between.
+	// Fails with NotFound if the routing does not exist and with the same conflicts as AddRouting.
+	UpdateRouting(context.Context, *UpdateRoutingRequest) (*emptypb.Empty, error)
 	// Removes user or bucket routing override.
 	DeleteRouting(context.Context, *RoutingID) (*emptypb.Empty, error)
 	// Blocks requests on proxy for given user or user's bucket.
@@ -461,6 +480,9 @@ func (UnimplementedPolicyServer) ListRoutings(context.Context, *RoutingsRequest)
 }
 func (UnimplementedPolicyServer) AddRouting(context.Context, *AddRoutingRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddRouting not implemented")
+}
+func (UnimplementedPolicyServer) UpdateRouting(context.Context, *UpdateRoutingRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateRouting not implemented")
 }
 func (UnimplementedPolicyServer) DeleteRouting(context.Context, *RoutingID) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteRouting not implemented")
@@ -739,6 +761,24 @@ func _Policy_AddRouting_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Policy_UpdateRouting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRoutingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).UpdateRouting(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_UpdateRouting_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).UpdateRouting(ctx, req.(*UpdateRoutingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Policy_DeleteRouting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RoutingID)
 	if err := dec(in); err != nil {
@@ -869,6 +909,10 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRouting",
 			Handler:    _Policy_AddRouting_Handler,
+		},
+		{
+			MethodName: "UpdateRouting",
+			Handler:    _Policy_UpdateRouting_Handler,
 		},
 		{
 			MethodName: "DeleteRouting",

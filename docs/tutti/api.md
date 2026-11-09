@@ -98,6 +98,23 @@ curl -s -X PUT http://localhost:9671/tutti/failover/events/delete \
 
 Clearing an event does not change routing; it only removes the record.
 
+### Atomic routing update
+
+`chorus.Policy/UpdateRouting` (`PUT /routing/update`, admin only) changes the target storage of an existing user or
+bucket routing in one Redis script, so requests never fall back to the main storage in between (unlike delete + add).
+It validates like `AddRouting` (target storage and user exist, no conflicting replication), returns `NotFound` if the
+routing does not exist, and keeps a routing block untouched.
+
+```bash
+curl -X PUT $API/routing/update -d '{"user":"user1","bucket":"photos","toStorage":"f1"}'
+```
+
+### Dynamic proxy accounts
+
+`CreateProxyAccount`, `RotateProxyAccountSecret`, `SetProxyAccountStatus`, `DeleteProxyAccount` (all admin only,
+`/tutti/proxy-accounts[/rotate|/status|/delete]`) manage runtime proxy accounts; `ListProxyAccounts` shows them with
+source `dynamic`. See [dynamic-creds.md](../dynamic-creds.md#runtime-managed-proxy-accounts).
+
 ## chorctl
 
 `chorctl` (see [tools/chorctl](../../tools/chorctl)) talks to the worker REST API (`-a/--address`, default `http://localhost:9671`). Tutti adds read-only commands:

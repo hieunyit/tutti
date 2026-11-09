@@ -75,6 +75,9 @@ http:
     - selector: chorus.Policy.AddRouting
       post: /routing/add
       body: "*"
+    - selector: chorus.Policy.UpdateRouting
+      put: /routing/update
+      body: "*"
     - selector: chorus.Policy.DeleteRouting
       put: /routing/delete
       body: "*"
@@ -120,3 +123,15 @@ http:
       body: "*"
     - selector: chorus.Resilience.ListProxyAccounts
       get: /tutti/proxy-accounts
+    - selector: chorus.Resilience.CreateProxyAccount
+      post: /tutti/proxy-accounts
+      body: "*"
+    - selector: chorus.Resilience.RotateProxyAccountSecret
+      put: /tutti/proxy-accounts/rotate
+      body: "*"
+    - selector: chorus.Resilience.SetProxyAccountStatus
+      put: /tutti/proxy-accounts/status
+      body: "*"
+    - selector: chorus.Resilience.DeleteProxyAccount
+      put: /tutti/proxy-accounts/delete
+      body: "*"

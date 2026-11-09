@@ -56,3 +56,29 @@ Pull-based approach:
    3. If `version` is equal to cached `version`, do nothing.
 
 
+
+## Runtime-managed proxy accounts
+
+Besides storage credentials (`auth.useStorage`) and static `auth.custom` credentials, the proxy authenticates
+**dynamic proxy accounts** created through the management API. An account maps a generated access key to an existing
+storage user: the proxy verifies the SigV4 (or presigned/V2) signature with the account secret and then acts as the
+mapped user (storage credentials, routing, replication and access policies are applied by user as usual).
+
+* Requires `storage.dynamicCredentials` with `enabled: true` and a `masterPassword` (encryption on) in **both** the
+  worker and the proxies. Secrets are sealed with the same AES-GCM key as dynamic storage credentials; without a master
+  password `CreateProxyAccount` fails with `FailedPrecondition` and plaintext is never stored.
+* Storage: Redis config DB hash `tutti:proxy-accounts` (field = access key id, value = JSON record with sealed
+  `secret` / `previousSecret`).
+* Access key id: `TUT` + 17 uppercase alphanumerics; secret: 40 random alphanumerics (crypto/rand).
+* API (admin only), service `chorus.Resilience`:
+  * `CreateProxyAccount{user, description}` `POST /tutti/proxy-accounts` - returns `accessKeyId` + `secretAccessKey` once.
+  * `RotateProxyAccountSecret{accessKeyId, gracePeriod}` `PUT /tutti/proxy-accounts/rotate` - new secret returned once;
+    the previous secret keeps working for `gracePeriod` (default 1h, `0s` = immediate).
+  * `SetProxyAccountStatus{accessKeyId, status}` `PUT /tutti/proxy-accounts/status` - `active` or `disabled`.
+  * `DeleteProxyAccount{accessKeyId}` `PUT /tutti/proxy-accounts/delete`.
+  * `ListProxyAccounts` `GET /tutti/proxy-accounts` - dynamic accounts appear with source `dynamic`, status,
+    `createdAt`, `rotatedAt` and `previousSecretExpiresAt` in `dynamicKeys`. Secrets are never returned.
+* Credential precedence for an access key id: `auth.custom` > `auth.useStorage` credentials > dynamic accounts.
+  A disabled dynamic account is rejected like an unknown key (`InvalidAccessKeyId`).
+* Propagation: proxies cache accounts for at most 5 seconds, so create, rotate, disable and delete take effect on all
+  proxies within about 5 seconds (rotation grace expiry is evaluated per request, so it is exact).

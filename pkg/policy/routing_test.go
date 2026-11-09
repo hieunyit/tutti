@@ -543,3 +543,73 @@ func Test_policySvc_DeleteUserRouting(t *testing.T) {
 		})
 	}
 }
+
+func Test_policySvc_UpdateRouting(t *testing.T) {
+	newSvc := func(t *testing.T) *policySvc {
+		c := testutil.SetupRedis(t)
+		return NewService(c, &tasks.QueueServiceMock{Queues: map[string]int{}, Paused: map[string]bool{}}, "main")
+	}
+	t.Run("user routing", func(t *testing.T) {
+		r := require.New(t)
+		svc := newSvc(t)
+		ctx := t.Context()
+		// missing routing -> NotFound, nothing created
+		r.ErrorIs(svc.UpdateUserRouting(ctx, "u1", "b"), dom.ErrNotFound)
+		routes, err := svc.GetUserRoutings(ctx)
+		r.NoError(err)
+		r.Empty(routes)
+
+		r.NoError(svc.SetUserRouting(ctx, "u1", "a"))
+		r.NoError(svc.UpdateUserRouting(ctx, "u1", "b"))
+		routes, err = svc.GetUserRoutings(ctx)
+		r.NoError(err)
+		r.Equal(map[string]string{"u1": "b"}, routes)
+
+		// block state is preserved
+		r.NoError(svc.BlockUserRouting(ctx, "u1"))
+		r.NoError(svc.UpdateUserRouting(ctx, "u1", "c"))
+		blocks, err := svc.GetUserRoutingBlocks(ctx)
+		r.NoError(err)
+		r.True(blocks["u1"])
+		routes, _ = svc.GetUserRoutings(ctx)
+		r.Equal("c", routes["u1"])
+	})
+	t.Run("user routing conflicts with user replication", func(t *testing.T) {
+		r := require.New(t)
+		svc := newSvc(t)
+		ctx := t.Context()
+		r.NoError(svc.SetUserRouting(ctx, "u1", "a"))
+		_, err := svc.AddUserReplicationPolicy(ctx, entity.UserReplicationPolicy{User: "u1", FromStorage: "a", ToStorage: "b"}, entity.ReplicationOptions{})
+		r.NoError(err)
+		r.ErrorIs(svc.UpdateUserRouting(ctx, "u1", "c"), dom.ErrInvalidArg)
+		routes, _ := svc.GetUserRoutings(ctx)
+		r.Equal("a", routes["u1"])
+	})
+	t.Run("bucket routing", func(t *testing.T) {
+		r := require.New(t)
+		svc := newSvc(t)
+		ctx := t.Context()
+		id := entity.BucketRoutingPolicyID{User: "u1", Bucket: "bk"}
+		r.ErrorIs(svc.UpdateBucketRouting(ctx, id, "b"), dom.ErrNotFound)
+		r.NoError(svc.SetBucketRouting(ctx, id, "a"))
+		r.NoError(svc.UpdateBucketRouting(ctx, id, "b"))
+		routes, err := svc.GetBucketRoutings(ctx, "u1")
+		r.NoError(err)
+		r.Equal(map[string]string{"bk": "b"}, routes)
+		// other bucket has no routing
+		r.ErrorIs(svc.UpdateBucketRouting(ctx, entity.BucketRoutingPolicyID{User: "u1", Bucket: "other"}, "b"), dom.ErrNotFound)
+	})
+	t.Run("bucket routing conflicts with bucket replication", func(t *testing.T) {
+		r := require.New(t)
+		svc := newSvc(t)
+		ctx := t.Context()
+		id := entity.BucketRoutingPolicyID{User: "u1", Bucket: "bk"}
+		r.NoError(svc.SetBucketRouting(ctx, id, "a"))
+		_, err := svc.AddBucketReplicationPolicy(ctx, entity.BucketReplicationPolicy{
+			User: "u1", FromStorage: "a", FromBucket: "bk", ToStorage: "c", ToBucket: "bk2"}, entity.ReplicationOptions{})
+		r.NoError(err)
+		r.ErrorIs(svc.UpdateBucketRouting(ctx, id, "b"), dom.ErrInvalidArg)
+		routes, _ := svc.GetBucketRoutings(ctx, "u1")
+		r.Equal("a", routes["bk"])
+	})
+}

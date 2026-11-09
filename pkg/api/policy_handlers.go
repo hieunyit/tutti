@@ -779,6 +779,32 @@ func (h *policyHandlers) AddRouting(ctx context.Context, req *pb.AddRoutingReque
 	return &emptypb.Empty{}, nil
 }
 
+// UpdateRouting changes the target storage of an existing user or bucket routing atomically.
+func (h *policyHandlers) UpdateRouting(ctx context.Context, req *pb.UpdateRoutingRequest) (*emptypb.Empty, error) {
+	if req.User == "" {
+		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
+	}
+	if req.ToStorage == "" {
+		return nil, fmt.Errorf("%w: to_storage is required", dom.ErrInvalidArg)
+	}
+	if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
+		return nil, err
+	}
+	err := h.inUserLock(ctx, req.User, func() error {
+		if req.Bucket != nil && *req.Bucket != "" {
+			return h.policySvc.UpdateBucketRouting(ctx, entity.BucketRoutingPolicyID{
+				User:   req.User,
+				Bucket: *req.Bucket,
+			}, req.ToStorage)
+		}
+		return h.policySvc.UpdateUserRouting(ctx, req.User, req.ToStorage)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
 func (h *policyHandlers) DeleteRouting(ctx context.Context, req *pb.RoutingID) (*emptypb.Empty, error) {
 	if req.User == "" {
 		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)

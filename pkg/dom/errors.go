@@ -30,6 +30,7 @@ var (
 	ErrAlreadyExists        = errors.New("AlreadyExists")
 	ErrNotFound             = errors.New("NotFound")
 	ErrInvalidArg           = errors.New("InvalidArg")
+	ErrFailedPrecondition   = errors.New("FailedPrecondition")
 	ErrAuth                 = errors.New("AuthError")
 	ErrPolicy               = errors.New("PolicyError")
 	ErrRoutingBlock         = errors.New("RoutingBlockedError")

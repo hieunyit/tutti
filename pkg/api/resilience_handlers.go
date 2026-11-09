@@ -12,6 +12,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
@@ -19,8 +20,26 @@ import (
 
 // ResilienceHandlers serves proxy status and failover policies/events.
 // confRedis holds failover data and proxy status documents; known reports whether a storage is configured.
-func ResilienceHandlers(confRedis redis.Cmdable, known func(storage string) bool) pb.ResilienceServer {
-	return &resilienceHandlers{redis: confRedis, store: failover.NewStore(confRedis, known), policies: accesspolicy.NewStore(confRedis)}
+func ResilienceHandlers(confRedis redis.Cmdable, known func(storage string) bool, opts ...ResilienceOption) pb.ResilienceServer {
+	h := &resilienceHandlers{redis: confRedis, store: failover.NewStore(confRedis, known), policies: accesspolicy.NewStore(confRedis)}
+	h.accounts = proxyaccount.NewStore(confRedis, nil)
+	for _, o := range opts {
+		o(h)
+	}
+	return h
+}
+
+// ResilienceOption customizes ResilienceHandlers.
+type ResilienceOption func(*resilienceHandlers)
+
+// WithProxyAccounts configures runtime-managed proxy accounts: sealer provides the secret sealing (it must fail with
+// dom.ErrFailedPrecondition if no master password is configured) and userExists reports whether a storage user has
+// credentials. Without this option, accounts cannot be created.
+func WithProxyAccounts(sealer func() (proxyaccount.Sealer, error), userExists func(user string) bool) ResilienceOption {
+	return func(h *resilienceHandlers) {
+		h.accounts = proxyaccount.NewStore(h.redis, sealer)
+		h.userExists = userExists
+	}
 }
 
 var _ pb.ResilienceServer = &resilienceHandlers{}
@@ -29,6 +48,9 @@ type resilienceHandlers struct {
 	redis    redis.Cmdable
 	store    *failover.Store
 	policies *accesspolicy.Store
+	accounts *proxyaccount.Store
+	// userExists reports whether the storage user has credentials. Nil disables the check.
+	userExists func(user string) bool
 }
 
 func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ProxyStatusList, error) {

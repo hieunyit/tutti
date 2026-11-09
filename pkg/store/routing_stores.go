@@ -17,6 +17,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/redis/go-redis/v9"
 
@@ -135,6 +136,26 @@ func (r *UserRoutingStore) SetOp(ctx context.Context, user, toStorage string) Op
 	return r.route.SetFieldOp(ctx, "", user, toStorage).Status()
 }
 
+// luaUpdateRoute atomically changes the destination of an existing routing field. Returns 0 if the field is missing.
+var luaUpdateRoute = redis.NewScript(`if redis.call('hexists',KEYS[1],ARGV[1]) == 1 then redis.call('hset',KEYS[1],ARGV[1],ARGV[2]); return 1 else return 0 end`)
+
+// UpdateOp atomically changes the destination of an existing user routing in one Redis script.
+// Returns dom.ErrNotFound if the user has no routing. A routing block is not affected.
+func (r *UserRoutingStore) UpdateOp(ctx context.Context, user, toStorage string) error {
+	key, err := r.route.MakeKey("")
+	if err != nil {
+		return fmt.Errorf("unable to make key: %w", err)
+	}
+	n, err := luaUpdateRoute.Run(ctx, r.route.client, []string{key}, user, toStorage).Int()
+	if err != nil {
+		return fmt.Errorf("unable to update user routing: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: routing of user %q", dom.ErrNotFound, user)
+	}
+	return nil
+}
+
 func (r *UserRoutingStore) BlockOp(ctx context.Context, user string) OperationStatus {
 	return r.block.AddOp(ctx, "", user).Status()
 }
@@ -236,6 +257,23 @@ func (r *BucketRoutingStore) ListBlocksOp(ctx context.Context, user string) Oper
 // Can be part of a transaction.
 func (r *BucketRoutingStore) SetOp(ctx context.Context, id entity.BucketRoutingPolicyID, toStorage string) OperationStatus {
 	return r.route.SetFieldOp(ctx, id.User, id.Bucket, toStorage).Status()
+}
+
+// UpdateOp atomically changes the destination of an existing bucket routing in one Redis script.
+// Returns dom.ErrNotFound if the bucket has no routing. A routing block is not affected.
+func (r *BucketRoutingStore) UpdateOp(ctx context.Context, id entity.BucketRoutingPolicyID, toStorage string) error {
+	key, err := r.route.MakeKey(id.User)
+	if err != nil {
+		return fmt.Errorf("unable to make key: %w", err)
+	}
+	n, err := luaUpdateRoute.Run(ctx, r.route.client, []string{key}, id.Bucket, toStorage).Int()
+	if err != nil {
+		return fmt.Errorf("unable to update bucket routing: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: routing of user %q bucket %q", dom.ErrNotFound, id.User, id.Bucket)
+	}
+	return nil
 }
 
 func (r *BucketRoutingStore) BlockOp(ctx context.Context, id entity.BucketRoutingPolicyID) OperationStatus {

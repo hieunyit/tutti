@@ -905,3 +905,35 @@ func Test_credsSvc_LegacyKey(t *testing.T) {
 	r.NoError(err)
 	r.Equal(creds, got)
 }
+
+func Test_credsSvc_SealOpen(t *testing.T) {
+	r := require.New(t)
+	ctx := t.Context()
+	newConf := func(dc DynamicCredentialsConfig) *Config {
+		return &Config{
+			Main:               "s3storage",
+			Storages:           map[string]Storage{"s3storage": {CommonConfig: CommonConfig{Type: dom.S3}, S3: &validS3}},
+			DynamicCredentials: dc,
+		}
+	}
+	// dynamic credentials disabled: never seals (no plaintext fallback)
+	off, err := NewCredsSvc(ctx, newConf(DynamicCredentialsConfig{}), nil)
+	r.NoError(err)
+	_, err = off.Seal([]byte("secret"))
+	r.ErrorIs(err, dom.ErrFailedPrecondition)
+	// encryption disabled: never seals either
+	plain, err := NewCredsSvc(ctx, newConf(DynamicCredentialsConfig{Enabled: true, DisableEncryption: true, PollInterval: time.Second}), testutil.SetupRedis(t))
+	r.NoError(err)
+	_, err = plain.Seal([]byte("secret"))
+	r.ErrorIs(err, dom.ErrFailedPrecondition)
+
+	// enabled: same key as dynamic credentials, roundtrip
+	on, err := NewCredsSvc(ctx, newConf(DynamicCredentialsConfig{Enabled: true, MasterPassword: "test-master-password", PollInterval: time.Second}), testutil.SetupRedis(t))
+	r.NoError(err)
+	sealed, err := on.Seal([]byte("secret-value"))
+	r.NoError(err)
+	r.NotContains(sealed, "secret-value")
+	opened, err := on.Open(sealed)
+	r.NoError(err)
+	r.Equal("secret-value", string(opened))
+}

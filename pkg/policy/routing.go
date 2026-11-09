@@ -31,6 +31,8 @@ type RoutingSvc interface {
 	GetUserRoutings(ctx context.Context) (map[string]string, error)
 	GetUserRoutingBlocks(ctx context.Context) (map[string]bool, error)
 	DeleteUserRouting(ctx context.Context, user string) error
+	// UpdateUserRouting atomically changes the target storage of an existing user routing.
+	UpdateUserRouting(ctx context.Context, user string, toStorage string) error
 	BlockUserRouting(ctx context.Context, user string) error
 	UnblockUserRouting(ctx context.Context, user string) error
 
@@ -38,6 +40,8 @@ type RoutingSvc interface {
 	GetBucketRoutings(ctx context.Context, user string) (map[string]string, error)
 	GetBucketRoutingBlocks(ctx context.Context, user string) (map[string]bool, error)
 	DeleteBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID) error
+	// UpdateBucketRouting atomically changes the target storage of an existing bucket routing.
+	UpdateBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID, toStorage string) error
 	BlockBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID) error
 	UnblockBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID) error
 }
@@ -79,6 +83,42 @@ func (r *policySvc) SetUserRouting(ctx context.Context, user string, toStorage s
 	}
 	// add the routing
 	return r.userRoutingStore.SetOp(ctx, user, toStorage).Get()
+}
+
+// UpdateBucketRouting has the same replication conflict checks as SetBucketRouting, but requires an existing routing
+// and replaces its target in one atomic Redis operation (no window where the bucket falls back to the main storage).
+func (r *policySvc) UpdateBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID, toStorage string) error {
+	userReplExists, err := r.hasUserReplication(ctx, id.User)
+	if err != nil {
+		return fmt.Errorf("unable to get user-level replications for user %s: %w", id.User, err)
+	}
+	if userReplExists {
+		return fmt.Errorf("%w: cannot update bucket-level routing for user %s and bucket %s because user-level replications exist", dom.ErrInvalidArg, id.User, id.Bucket)
+	}
+	bucketReplExists, err := r.hasBucketReplication(ctx, entity.BucketReplicationPolicyID{
+		User:       id.User,
+		FromBucket: id.Bucket,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to get bucket-level replications for user %s and bucket %s: %w", id.User, id.Bucket, err)
+	}
+	if bucketReplExists {
+		return fmt.Errorf("%w: cannot update bucket-level routing for user %s and bucket %s because active bucket-level replications exist", dom.ErrInvalidArg, id.User, id.Bucket)
+	}
+	return r.bucketRoutingStore.UpdateOp(ctx, id, toStorage)
+}
+
+// UpdateUserRouting has the same replication conflict checks as SetUserRouting, but requires an existing routing
+// and replaces its target in one atomic Redis operation.
+func (r *policySvc) UpdateUserRouting(ctx context.Context, user string, toStorage string) error {
+	userReplExists, err := r.hasUserReplication(ctx, user)
+	if err != nil {
+		return fmt.Errorf("unable to get user-level replications for user %s: %w", user, err)
+	}
+	if userReplExists {
+		return fmt.Errorf("%w: cannot update user-level routing for user %s because active user-level replications exist", dom.ErrInvalidArg, user)
+	}
+	return r.userRoutingStore.UpdateOp(ctx, user, toStorage)
 }
 
 func (r *policySvc) DeleteBucketRouting(ctx context.Context, id entity.BucketRoutingPolicyID) error {
