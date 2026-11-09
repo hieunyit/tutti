@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti foundations</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; padding: 48px; background: #FFFFFF; font-family: Inter, system-ui, sans-serif; color: #101828; display: flex; flex-direction: column; gap: 32px">
+  <div style="display: flex; flex-direction: column; gap: 4px"><h1 style="margin: 0; font-size: 28px; font-weight: 700">Foundations</h1><p style="margin: 0; font-size: 14px; color: #475467">Tokens and components every page uses. Implement as CSS variables; dark values swap in under the dark theme.</p></div>
+
+  <section style="display: flex; flex-direction: column; gap: 12px">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600">Color tokens · light / dark</h2>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px">
+      <sc-for list="{{colors}}" as="c" hint-placeholder-count="12">
+        <div style="border: 1px solid #E4E7EC; border-radius: 10px; overflow: hidden; font-size: 12px">
+          <div style="display: flex; height: 44px"><div style="flex: 1; background: {{c.light}}"></div><div style="flex: 1; background: {{c.dark}}"></div></div>
+          <div style="padding: 8px 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'JetBrains Mono', monospace; font-weight: 500">{{c.name}}</span><span style="color: #667085">{{c.light}} / {{c.dark}}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px">
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">Type · Inter, JetBrains Mono</h2>
+      <span style="font-size: 24px; line-height: 32px; font-weight: 700">Page title 24/32 bold</span>
+      <span style="font-size: 15px; font-weight: 600">Card title 15 semibold</span>
+      <span style="font-size: 14px; color: #475467">Body and description 14 regular</span>
+      <span style="font-size: 13px">Table cell 13 · tabular numbers 1,284</span>
+      <span style="font-size: 12px; color: #667085">Caption and secondary 12</span>
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #667085">Nav group 11 caps</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px">TUT31PVD0ELLEBAHVCB2 · keys, endpoints</span>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">Buttons · 36 px (32 in tables)</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #2952CC; background: #2952CC; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600">Primary</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; color: #101828; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500">Secondary</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #FDA29B; background: #FFFFFF; color: #B42318; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500">Destructive</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #B42318; background: #B42318; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600">Confirm delete</button>
+        <button type="button" disabled style="height: 36px; padding: 0 14px; border: 1px solid #E4E7EC; background: #F2F4F7; color: #98A2B3; border-radius: 8px; font: inherit; font-size: 14px">Disabled</button>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #475467">One primary per page, top right of the page header. Destructive actions always open a confirm dialog naming the object. Read-only users see actions disabled with a tooltip giving the reason.</p>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600">Status · same meaning everywhere</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">● Available</span>
+        <span style="font-size: 12px; font-weight: 600; color: #B54708; background: #FFFAEB; border-radius: 999px; padding: 2px 8px">● Paused</span>
+        <span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px">● Unavailable</span>
+        <span style="font-size: 12px; font-weight: 600; color: #175CD3; background: #EFF8FF; border-radius: 999px; padding: 2px 8px">● Syncing</span>
+        <span style="font-size: 12px; font-weight: 600; color: #475467; background: #F2F4F7; border-radius: 999px; padding: 2px 8px">● Disabled</span>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #475467">Green healthy/active/up to date · amber paused/behind/degraded · red unavailable/failed/blocked · blue in progress · grey off/disabled. Always text plus color, never color alone. Empty values show an en dash.</p>
+      <h2 style="margin: 8px 0 0; font-size: 16px; font-weight: 600">Inputs</h2>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Label<input placeholder="Placeholder says what to enter" style="height: 36px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 12px; font: inherit; font-size: 14px; font-weight: 400"><span style="font-size: 12px; color: #667085; font-weight: 400">Help text under the field</span></label>
+    </section>
+  </div>
+
+  <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; font-size: 13px; color: #475467">
+    <div style="display: flex; flex-direction: column; gap: 4px"><strong style="color: #101828">Spacing</strong>4 · 8 · 12 · 16 · 20 · 24 · 32. Page padding 24 (16 on phones). Card padding 16.</div>
+    <div style="display: flex; flex-direction: column; gap: 4px"><strong style="color: #101828">Radius</strong>Tags 6 · controls 8 · cards 12 · dialogs 14 · pills 999.</div>
+    <div style="display: flex; flex-direction: column; gap: 4px"><strong style="color: #101828">Tables</strong>Header 12 semibold on subtle bg, rows 13, numbers right-aligned tabular, actions right-aligned, wide tables scroll inside the card.</div>
+    <div style="display: flex; flex-direction: column; gap: 4px"><strong style="color: #101828">Dates</strong>9 Nov 2026, 13:15:37 (24 h, locale aware) with relative time "4 s ago" in tooltips.</div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = (name, light, dark) => ({ name, light, dark });
+    return {
+      colors: [
+        c('bg-app', '#F5F7FA', '#0B1220'), c('bg-surface', '#FFFFFF', '#111A2E'), c('bg-subtle', '#F9FAFB', '#16213A'),
+        c('border', '#E4E7EC', '#24314D'), c('text', '#101828', '#F1F5F9'), c('text-secondary', '#475467', '#A9B4C8'),
+        c('accent', '#2952CC', '#6E95FF'), c('accent-subtle', '#EEF3FF', '#1B2A4A'), c('success', '#067647', '#47CD89'),
+        c('warning', '#B54708', '#FDB022'), c('danger', '#B42318', '#F97066'), c('nav-bg', '#0B1220', '#070C17')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

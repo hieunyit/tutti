@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti monitoring</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="monitoring" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Overview" page="Monitoring" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Monitoring</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">S3 traffic through all proxies. History is kept by the proxies, so charts are full as soon as the page opens.</p>
+        </div>
+        <span style="font-size: 13px; color: #667085; display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #12B76A"></span>Live · 2 s</span>
+        <div role="group" aria-label="Time range" style="display: flex; border: 1px solid #D0D5DD; border-radius: 8px; overflow: hidden; font-size: 13px; background: #FFFFFF">
+          <button type="button" aria-pressed="false" style="border: 0; background: #FFFFFF; padding: 0 12px; height: 34px; font: inherit; cursor: pointer">5 min</button>
+          <button type="button" aria-pressed="true" style="border: 0; border-left: 1px solid #D0D5DD; background: #F2F4F7; padding: 0 12px; height: 34px; font: inherit; font-weight: 600; cursor: pointer">15 min</button>
+          <button type="button" aria-pressed="false" style="border: 0; border-left: 1px solid #D0D5DD; background: #FFFFFF; padding: 0 12px; height: 34px; font: inherit; cursor: pointer">1 h</button>
+          <button type="button" aria-pressed="false" style="border: 0; border-left: 1px solid #D0D5DD; background: #FFFFFF; padding: 0 12px; height: 34px; font: inherit; cursor: pointer">6 h</button>
+        </div>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Pause</button>
+      </div>
+
+      <section aria-label="Key metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+            <h2 style="margin: 0; font-size: 13px; font-weight: 600; color: #475467">{{g.title}}</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px">
+              <sc-for list="{{g.items}}" as="m" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #667085">{{m.label}}</span><span style="font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{m.color}}">{{m.value}}</span><span style="font-size: 12px; color: #667085">{{m.delta}}</span></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+
+      <section aria-label="Charts" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px">
+        <sc-for list="{{charts}}" as="c" hint-placeholder-count="4">
+          <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap"><h2 style="margin: 0; font-size: 15px; font-weight: 600">{{c.title}}</h2>
+              <span style="margin-left: auto; display: flex; gap: 12px; font-size: 12px; color: #475467"><span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 3px; background: #2952CC"></span>{{c.a}}</span><span style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 10px; height: 3px; background: #E8590C"></span>{{c.b}}</span></span>
+            </div>
+            <svg role="img" aria-label="{{c.title}} over the last 15 minutes" viewBox="0 0 600 180" style="width: 100%; height: 180px">
+              <line x1="40" y1="20" x2="600" y2="20" stroke="#EEF0F3"></line><line x1="40" y1="70" x2="600" y2="70" stroke="#EEF0F3"></line><line x1="40" y1="120" x2="600" y2="120" stroke="#EEF0F3"></line><line x1="40" y1="160" x2="600" y2="160" stroke="#D0D5DD"></line>
+              <text x="0" y="24" font-size="11" fill="#667085">{{c.max}}</text><text x="0" y="164" font-size="11" fill="#667085">0</text>
+              <text x="40" y="178" font-size="11" fill="#667085">13:00</text><text x="560" y="178" font-size="11" fill="#667085">13:15</text>
+              <polyline points="{{c.pa}}" fill="none" stroke="#2952CC" stroke-width="2"></polyline>
+              <polyline points="{{c.pb}}" fill="none" stroke="#E8590C" stroke-width="2" stroke-dasharray="5 3"></polyline>
+            </svg>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3"><h2 style="margin: 0; font-size: 15px; font-weight: 600">By storage</h2></div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">Storage</th><th scope="col" class="num">Requests/s</th><th scope="col" class="num">p95 latency</th><th scope="col" class="num">5xx/s</th><th scope="col" class="num">Fail-fast/s</th><th scope="col" class="num">Total requests</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight: 600">follower</td><td class="num">7.7</td><td class="num">9.6 ms</td><td class="num">0.00</td><td class="num">0.00</td><td class="num">48,210</td></tr>
+              <tr><td style="font-weight: 600">main</td><td class="num">0.0</td><td class="num">–</td><td class="num">0.00</td><td class="num">3.10</td><td class="num">12,904</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const series = (seed, base, amp) => {
+      const pts = [];
+      for (let i = 0; i <= 28; i++) {
+        const x = 40 + i * 20;
+        const y = 160 - (base + amp * Math.sin((i + seed) / 3) + amp * 0.4 * Math.cos((i * seed) / 5));
+        pts.push(x + ',' + Math.max(22, Math.min(160, y)).toFixed(1));
+      }
+      return pts.join(' ');
+    };
+    return {
+      groups: [
+        { title: 'Traffic', items: [
+          { label: 'Requests/s', value: '7.7', delta: '+12% vs 15 min ago', color: '#101828' },
+          { label: 'In', value: '1.4 MB/s', delta: 'uploads', color: '#101828' },
+          { label: 'Out', value: '6.2 MB/s', delta: 'downloads', color: '#101828' } ] },
+        { title: 'Latency', items: [
+          { label: 'Average', value: '3.1 ms', delta: 'all requests', color: '#101828' },
+          { label: 'p95', value: '9.6 ms', delta: 'all requests', color: '#101828' } ] },
+        { title: 'Errors', items: [
+          { label: '4xx/s', value: '0.10', delta: 'client errors', color: '#101828' },
+          { label: '5xx/s', value: '0.03', delta: 'server errors', color: '#B42318' },
+          { label: 'Fail-fast/s', value: '3.10', delta: 'storage unavailable', color: '#B54708' },
+          { label: 'Denied/s', value: '0.00', delta: 'access policy', color: '#101828' } ] }
+      ],
+      charts: [
+        { title: 'Requests per second', a: 'read', b: 'write', max: '12', pa: series(1, 90, 25), pb: series(4, 40, 12) },
+        { title: 'Latency', a: 'average', b: 'p95', max: '20 ms', pa: series(2, 40, 8), pb: series(5, 90, 20) },
+        { title: 'Throughput', a: 'out', b: 'in', max: '8 MB/s', pa: series(3, 100, 20), pb: series(6, 35, 10) },
+        { title: 'Errors per second', a: '5xx', b: 'fail-fast', max: '4', pa: series(7, 6, 4), pb: series(8, 70, 30) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

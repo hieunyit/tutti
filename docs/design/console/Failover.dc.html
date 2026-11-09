@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti failover</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="failover" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Data protection" page="Failover" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Failover</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">Move routing to a replica when a storage stays unavailable. Failback is always manual.</p>
+        </div>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Refresh</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #2952CC; background: #2952CC; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Add policy</button>
+      </div>
+
+      <div role="alert" style="display: flex; gap: 12px; align-items: flex-start; background: #FEF3F2; border: 1px solid #FECDCA; border-radius: 12px; padding: 14px 16px">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2" style="flex: none; margin-top: 1px"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0">
+          <strong style="font-size: 14px; color: #7A271A">Policies will not trigger: automatic failover is off on 1 of 1 proxies</strong>
+          <span style="font-size: 13px; color: #912018">Policies are stored, but each proxy only acts on them when its config has <code class="mono">failover.enabled: true</code>. Enable it on every proxy and restart, then this banner disappears.</span>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px"><a href="Docs.dc.html" style="font-weight: 600; color: #B42318">How to enable failover</a><span style="color: #912018">Proxy dbos81cf… · failover off · checkInterval –</span></div>
+        </div>
+      </div>
+
+      <section aria-label="Readiness" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Proxies with failover on</span><span style="font-size: 24px; font-weight: 700; color: #B42318">0 / 1</span><span style="font-size: 12px; color: #667085">failover.enabled in proxy config</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Enabled policies</span><span style="font-size: 24px; font-weight: 700">1</span><span style="font-size: 12px; color: #667085">main → follower</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Replication to targets</span><span style="font-size: 24px; font-weight: 700; color: #B54708">Paused</span><span style="font-size: 12px; color: #667085">target must be within max event lag</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Open events</span><span style="font-size: 24px; font-weight: 700">1</span><span style="font-size: 12px; color: #667085">waiting for manual failback</span></div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Policies</h2></div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">Source storage</th><th scope="col">Status</th><th scope="col">Targets, in order</th><th scope="col" class="num">Unavailable for</th><th scope="col" class="num">Max event lag</th><th scope="col">Will it trigger?</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 600">main</td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">Enabled</span></td>
+                <td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 2px 8px">1 · follower</span></td>
+                <td class="num">20 s</td>
+                <td class="num">0</td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #B42318">No · proxies have failover off</span></td>
+                <td><div style="display: flex; gap: 8px; justify-content: flex-end"><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer">Edit</button><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #FDA29B; background: #FFFFFF; color: #B42318; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer">Delete</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3; display: flex; gap: 8px; align-items: center"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Events</h2><span style="font-size: 12px; color: #667085">Acknowledge after you repaired the source, synchronised it and moved routing back.</span></div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">Time</th><th scope="col">Scope</th><th scope="col">From → to</th><th scope="col" class="num">Lag at failover</th><th scope="col">Status</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>9 Nov 2026, 08:39:15</td>
+                <td>user1 · all buckets</td>
+                <td>main → follower</td>
+                <td class="num">0</td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #B54708; background: #FFFAEB; border-radius: 999px; padding: 2px 8px">Open</span></td>
+                <td style="text-align: right"><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer">Acknowledge</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

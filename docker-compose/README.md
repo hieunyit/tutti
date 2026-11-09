@@ -93,6 +93,26 @@ To run chorus with docker compose:
     ```
 11. List main and follower contents again to see that the file was removed from both. Feel free to play around with storages using `s3cmd` and preconfigured configs [s3cmd-main.conf](./s3cmd-main.conf) [s3cmd-follower.conf](./s3cmd-follower.conf) [s3cmd-proxy.conf](./s3cmd-proxy.conf).
 
+## Demo sign-in, failover and proxy accounts
+
+The demo config enables the features below. Everything here is for local demos only.
+
+- **Sign-in:** the management API and web UI (http://localhost:8080) require login (`api.auth` in [worker-conf.yaml](./worker-conf.yaml)).
+  Demo users: `admin` / `admin` (role admin) and `viewer` / `viewer` (read-only). **Change or remove these users before any real use.**
+  Production hashes are bcrypt, generated as described in [service/worker/config.yaml](../service/worker/config.yaml).
+- **Failover:** the proxy runs the automatic failover controller (`failover.enabled: true` in [proxy-conf.yaml](./proxy-conf.yaml)).
+  A storage only fails over if it has an enabled failover policy with targets, set through the Resilience API, `chorctl`, or the UI `/failover` page.
+  See [docs/tutti/operations.md](../docs/tutti/operations.md#automatic-failover).
+- **Proxy accounts:** creating proxy accounts requires a master password. [s3-credentials.yaml](./s3-credentials.yaml) sets a demo
+  `storage.dynamicCredentials.masterPassword` (at least 12 characters), shared by worker and proxy. Config values are not env-expanded,
+  so to keep the password out of the file, set `CFG_STORAGE_DYNAMICCREDENTIALS_MASTERPASSWORD` in the environment of both services
+  (the loader's `CFG_` override). Do not change the master password once accounts exist, because stored secrets can no longer be decrypted.
+
+Start the stack with the fake S3 backends and the proxy, rebuilding images from source:
+```shell
+docker-compose -f ./docker-compose/docker-compose.yml --profile fake --profile proxy up --build
+```
+
 ## Where to go next
 Try to add more worker instances to speed up replication process and observe how they are balancing the load. To do this, duplicate existing `worker` service in [docker-compose.yml](./docker-compose.yml) with omitted ports to avoid conflicts:
 ```yaml

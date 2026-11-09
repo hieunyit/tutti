@@ -23,4 +23,11 @@ features:
   acl: false # sync object/bucket ACLs
   lifecycle: false # sync bucket Lifecycle
   policy: false # sync bucket Policies
+# Automatic failover (demo). Proxies act on failover policies only when enabled is true.
+# Failover also needs an enabled failover policy for the source storage (set via the Resilience API / chorctl / UI /failover).
+failover:
+  enabled: true
+  checkInterval: 5s # how often the controller evaluates conditions
+  after: 30s # default: how long the source breaker must stay open before failover
+  maxEventLag: 0 # default: max unprocessed replication events allowed on the target
 

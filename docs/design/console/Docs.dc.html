@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti documentation and API reference</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="docs" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Help" page="Documentation" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Documentation</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">Guides shipped with this release, and the management API reference generated from its OpenAPI spec.</p>
+        </div>
+        <div role="tablist" aria-label="Documentation sections" style="display: flex; gap: 4px; background: #EAECF0; border-radius: 10px; padding: 3px">
+          <button type="button" role="tab" aria-selected="true" style="border: 0; background: #FFFFFF; border-radius: 8px; padding: 0 14px; height: 32px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,0.08)">Guides</button>
+          <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; border-radius: 8px; padding: 0 14px; height: 32px; font: inherit; font-size: 13px; cursor: pointer">API reference</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start">
+        <nav aria-label="Guides" style="flex: 1 1 220px; max-width: 260px; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; font-size: 14px">
+          <label style="display: flex; align-items: center; gap: 8px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 10px; height: 34px; font-size: 13px; color: #667085; margin-bottom: 8px">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+            <input type="search" placeholder="Search docs" aria-label="Search docs" style="border: 0; outline: 0; font: inherit; width: 100%">
+          </label>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Getting started</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Configuration</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Sign-in and roles</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; background: #EEF3FF; color: #2952CC; font-weight: 600; text-decoration: none">Failover</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Proxy accounts</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Monitoring</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Operations</a>
+          <a href="Docs.dc.html" style="padding: 7px 10px; border-radius: 8px; color: #344054; text-decoration: none">Upgrading from Chorus</a>
+        </nav>
+
+        <article style="flex: 999 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 28px 32px; font-size: 15px; line-height: 1.65; color: #344054">
+          <span style="font-size: 12px; color: #667085">Guides / Failover · docs/failover.md</span>
+          <h2 style="margin: 6px 0 12px; font-size: 22px; color: #101828">Automatic failover</h2>
+          <p style="margin: 0 0 12px">A proxy moves a user's routing from an unavailable storage to the first healthy target of its policy. Two switches must be on: the policy, and <code class="mono">failover.enabled</code> in every proxy's config.</p>
+          <h3 style="margin: 20px 0 8px; font-size: 16px; color: #101828">Enable it on a proxy</h3>
+          <pre style="margin: 0; background: #0B1220; color: #E2E8F0; border-radius: 10px; padding: 14px 16px; overflow-x: auto"><code class="mono" style="font-size: 13px">failover:
+  enabled: true
+  checkInterval: 5s
+  after: 30s
+  maxEventLag: 0</code></pre>
+          <p style="margin: 12px 0 0">The target must already receive replication from the source, and its event lag must be within <code class="mono">maxEventLag</code>.</p>
+        </article>
+
+        <section aria-label="API reference preview" style="flex: 1 1 360px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap"><h2 style="margin: 0; font-size: 15px; font-weight: 600">API reference</h2><span style="font-size: 12px; color: #667085">OpenAPI 2.0 · /api</span>
+            <a href="Docs.dc.html" style="margin-left: auto; font-size: 13px; font-weight: 600">Download spec</a></div>
+          <sc-for list="{{endpoints}}" as="e" hint-placeholder-count="6">
+            <div style="display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #EEF0F3; font-size: 13px">
+              <span style="min-width: 52px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 6px; color: {{e.fg}}; background: {{e.bg}}">{{e.method}}</span>
+              <code class="mono" style="color: #101828">{{e.path}}</code>
+              <span style="margin-left: auto; color: #667085; font-size: 12px">{{e.role}}</span>
+            </div>
+          </sc-for>
+          <div style="padding: 12px 16px; font-size: 13px; color: #475467">Try requests in place with your current session; admin-only calls are marked.</div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const m = {
+      GET: { fg: '#175CD3', bg: '#EFF8FF' },
+      POST: { fg: '#067647', bg: '#ECFDF3' },
+      PUT: { fg: '#B54708', bg: '#FFFAEB' }
+    };
+    const e = (method, path, role) => ({ method, path, role, fg: m[method].fg, bg: m[method].bg });
+    return {
+      endpoints: [
+        e('POST', '/auth/login', 'public'),
+        e('GET', '/tutti/proxies', 'viewer'),
+        e('GET', '/tutti/failover/policies', 'viewer'),
+        e('POST', '/tutti/failover/policies', 'admin'),
+        e('GET', '/tutti/proxy-accounts', 'viewer'),
+        e('POST', '/tutti/proxy-accounts', 'admin'),
+        e('PUT', '/tutti/proxy-accounts/rotate', 'admin'),
+        e('PUT', '/routing/update', 'admin')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

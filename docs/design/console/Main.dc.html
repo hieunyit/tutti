@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="dashboard" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 56px; box-sizing: border-box; background: #FFFFFF; border-bottom: 1px solid #E4E7EC; display: flex; align-items: center; gap: 16px; padding: 0 24px; flex-wrap: wrap">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #667085; display: flex; gap: 8px"><span>Overview</span><span aria-hidden="true">/</span><span style="color: #101828; font-weight: 600">Dashboard</span></nav>
+      <label style="margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 10px; height: 36px; width: 300px; max-width: 100%; color: #667085; font-size: 13px">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input type="search" placeholder="Search buckets, users, keys" aria-label="Search" style="border: 0; outline: 0; font: inherit; width: 100%; background: transparent">
+        <span style="border: 1px solid #E4E7EC; border-radius: 4px; padding: 0 5px; font-size: 11px">/</span>
+      </label>
+      <span style="font-size: 12px; font-weight: 600; color: #B54708; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 999px; padding: 2px 10px">production</span>
+      <button type="button" aria-label="Switch theme" style="width: 36px; height: 36px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475467" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></button>
+      <button type="button" style="display: flex; align-items: center; gap: 8px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; height: 36px; padding: 0 10px; font: inherit; font-size: 13px; cursor: pointer">
+        <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #E0E8FF; color: #2952CC; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center">A</span>
+        <span style="font-weight: 600">admin</span><span style="color: #667085">Administrator</span>
+      </button>
+    </header>
+
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Dashboard</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">Health of storages, replication and S3 traffic across all proxies.</p>
+        </div>
+        <span style="font-size: 13px; color: #667085; display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #12B76A"></span>Live · updated 4 s ago</span>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Refresh</button>
+      </div>
+
+      <section aria-label="Needs attention" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #EEF0F3; display: flex; align-items: center; gap: 8px"><h2 style="margin: 0; font-size: 14px; font-weight: 600">Needs attention</h2><span style="font-size: 12px; color: #667085">2 issues</span></div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #EEF0F3; flex-wrap: wrap">
+          <span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border: 1px solid #FECDCA; border-radius: 6px; padding: 2px 8px">Critical</span>
+          <span style="font-size: 14px; flex: 1 1 320px"><strong>Storage main is unavailable</strong> for 2 min 10 s. Automatic failover is <strong>off on 1 of 1 proxies</strong>, so traffic is not being moved to follower.</span>
+          <a href="Failover.dc.html" style="font-size: 14px; font-weight: 600">Review failover</a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap">
+          <span style="font-size: 12px; font-weight: 600; color: #B54708; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 6px; padding: 2px 8px">Warning</span>
+          <span style="font-size: 14px; flex: 1 1 320px">Replication <strong>user1: main → follower</strong> is paused. 1,284 events are waiting.</span>
+          <a href="Main.dc.html" style="font-size: 14px; font-weight: 600">Open replication</a>
+        </div>
+      </section>
+
+      <section aria-label="Key metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+          <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 13px; color: #475467; font-weight: 500">{{k.label}}</span>
+            <span style="font-size: 26px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{k.color}}">{{k.value}}</span>
+            <span style="font-size: 12px; color: #667085">{{k.sub}}</span>
+          </div>
+        </sc-for>
+      </section>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px">
+        <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 14px 16px; display: flex; align-items: center; border-bottom: 1px solid #EEF0F3"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Storages</h2><a href="Storages.dc.html" style="margin-left: auto; font-size: 13px; font-weight: 600">View all</a></div>
+          <div style="overflow-x: auto">
+            <table class="tbl">
+              <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col" class="num">p95 latency</th><th scope="col" class="num">Req/s</th></tr></thead>
+              <tbody>
+                <tr><td style="font-weight: 600">main</td><td>Main</td><td><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px">● Unavailable</span></td><td class="num">–</td><td class="num">0.0</td></tr>
+                <tr><td style="font-weight: 600">follower</td><td>Follower</td><td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">● Available</span></td><td class="num">9.6 ms</td><td class="num">7.7</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <div style="padding: 14px 16px; display: flex; align-items: center; border-bottom: 1px solid #EEF0F3"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Replication</h2><a href="Main.dc.html" style="margin-left: auto; font-size: 13px; font-weight: 600">View all</a></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+            <div role="img" aria-label="3 replications: 2 up to date, 0 in progress, 1 paused" style="display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: #EEF0F3">
+              <div style="width: 66%; background: #12B76A"></div><div style="width: 34%; background: #F79009"></div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; font-size: 13px">
+              <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475467">Up to date</span><strong style="font-size: 18px">2</strong></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475467">Initial sync</span><strong style="font-size: 18px">0</strong></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475467">Behind</span><strong style="font-size: 18px">0</strong></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><span style="color: #475467">Paused</span><strong style="font-size: 18px; color: #B54708">1</strong></div>
+            </div>
+          </div>
+          <div style="overflow-x: auto; border-top: 1px solid #EEF0F3">
+            <table class="tbl">
+              <thead><tr><th scope="col">Replication</th><th scope="col">State</th><th scope="col" class="num">Lag</th></tr></thead>
+              <tbody>
+                <tr><td>user1 · main → follower</td><td><span style="font-size: 12px; font-weight: 600; color: #B54708; background: #FFFAEB; border-radius: 999px; padding: 2px 8px">Paused</span></td><td class="num">1,284</td></tr>
+                <tr><td>user2/photos · main → follower</td><td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">Up to date</span></td><td class="num">0</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 280px"><h2 style="margin: 0; font-size: 15px; font-weight: 600">S3 endpoint</h2><span style="font-size: 13px; color: #475467">Point S3 clients at the proxy. Credentials are managed under Proxy accounts.</span></div>
+        <code style="font-family: 'JetBrains Mono', monospace; font-size: 13px; background: #F2F4F7; border: 1px solid #E4E7EC; border-radius: 8px; padding: 8px 12px">http://s3.tutti.local:9669</code>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Copy</button>
+        <a href="ProxyAccounts.dc.html" style="font-size: 14px; font-weight: 600">Manage accounts</a>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      kpis: [
+        { label: 'Storages healthy', value: '1 / 2', sub: 'main unavailable', color: '#B42318' },
+        { label: 'Replications', value: '2 active', sub: '1 paused', color: '#101828' },
+        { label: 'Replication lag', value: '1,284', sub: 'events waiting', color: '#B54708' },
+        { label: 'Requests / s', value: '7.7', sub: 'last 1 min, all proxies', color: '#101828' },
+        { label: '5xx error rate', value: '0.4 %', sub: 'last 5 min', color: '#101828' },
+        { label: 'Proxies reporting', value: '1 / 1', sub: 'last report 2 s ago', color: '#101828' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

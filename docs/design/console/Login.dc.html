@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in to Tutti</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2952CC}a:hover{color:#1D3C99}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #FFFFFF">
+  <section aria-label="About Tutti" style="flex: 1 1 520px; background: #0B1220; color: #CBD5E1; padding: 48px 56px; box-sizing: border-box; display: flex; flex-direction: column; gap: 32px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 9px; background: #3B6CF6; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">T</div>
+      <span style="color: #F8FAFC; font-weight: 600; font-size: 18px">Tutti</span>
+    </div>
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 16px; max-width: 460px">
+      <h1 style="margin: 0; color: #F8FAFC; font-size: 32px; line-height: 40px; font-weight: 700">One S3 endpoint. Every copy accounted for.</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.6">Replicate, route and fail over S3 storage behind a single proxy, and see the health of every copy in one console.</p>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+        <li style="display: flex; gap: 10px"><span aria-hidden="true" style="color: #6E95FF">✓</span>Synchronous or async replication across storages</li>
+        <li style="display: flex; gap: 10px"><span aria-hidden="true" style="color: #6E95FF">✓</span>Health checks, circuit breakers and policy-based failover</li>
+        <li style="display: flex; gap: 10px"><span aria-hidden="true" style="color: #6E95FF">✓</span>Per-account permissions and rotating access keys</li>
+      </ul>
+    </div>
+    <span style="font-size: 12px; color: #94A3B8">v0.1.0 · based on Chorus by Clyso GmbH</span>
+  </section>
+  <section aria-label="Sign in" style="flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 48px 24px; box-sizing: border-box; background: #F5F7FA">
+    <form style="width: 400px; max-width: 100%; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 1px 3px rgba(16,24,40,0.06)">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 22px; font-weight: 700">Sign in</h2>
+        <p style="margin: 0; font-size: 14px; color: #475467">Use the account your administrator created for you.</p>
+      </div>
+      <div role="alert" style="font-size: 13px; color: #912018; background: #FEF3F2; border: 1px solid #FECDCA; border-radius: 8px; padding: 10px 12px">Wrong username or password. 7 attempts left before a 15-minute lock.</div>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Username
+        <input type="text" autocomplete="username" placeholder="Enter your username" value="admin" style="height: 40px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 12px; font: inherit; font-size: 14px; font-weight: 400">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Password
+        <span style="display: flex; align-items: center; border: 1px solid #FDA29B; border-radius: 8px; padding-right: 6px; box-shadow: 0 0 0 3px #FEE4E2">
+          <input type="password" autocomplete="current-password" placeholder="Enter your password" style="flex: 1; height: 38px; border: 0; outline: 0; padding: 0 12px; font: inherit; font-size: 14px; font-weight: 400; border-radius: 8px">
+          <button type="button" aria-label="Show password" style="border: 0; background: transparent; color: #667085; font: inherit; font-size: 13px; cursor: pointer; height: 32px; padding: 0 8px">Show</button>
+        </span>
+      </label>
+      <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px"><input type="checkbox" style="margin-top: 3px"><span style="display: flex; flex-direction: column; gap: 2px">Keep me signed in<span style="font-size: 12px; color: #667085">Only on a device you trust. Sessions last 12 h.</span></span></label>
+      <button type="submit" style="height: 44px; border: 0; background: #2952CC; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Sign in</button>
+      <p style="margin: 0; font-size: 12px; color: #667085; text-align: center">Forgot your password? Ask an administrator to reset it in the worker config.</p>
+    </form>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

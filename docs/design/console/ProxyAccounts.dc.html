@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti proxy accounts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap;vertical-align:middle}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.btn{height:32px;padding:0 12px;border:1px solid #D0D5DD;background:#FFFFFF;border-radius:8px;font:inherit;font-size:13px;cursor:pointer;color:#101828}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="accounts" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Access" page="Proxy accounts" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Proxy accounts</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">S3 access keys that clients use against the proxy, and what each storage user may do.</p>
+        </div>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #2952CC; background: #2952CC; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Create access key</button>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: flex-start; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 12px; padding: 14px 16px">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B54708" stroke-width="2" style="flex: none"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #7A2E0E">
+          <strong style="font-size: 14px; color: #7A2E0E">Shown when key creation is unavailable</strong>
+          <span>The worker has no master password for sealing secrets. Set <code class="mono">storage.dynamicCredentials.enabled: true</code> and <code class="mono">masterPassword</code> on the worker and every proxy. Until then "Create access key" is disabled with this reason in its tooltip.</span>
+        </div>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 12px 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #EEF0F3">
+          <label style="display: flex; align-items: center; gap: 8px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 10px; height: 36px; width: 280px; max-width: 100%; font-size: 13px; color: #667085">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+            <input type="search" placeholder="Filter by user or access key" aria-label="Filter accounts" style="border: 0; outline: 0; font: inherit; width: 100%">
+          </label>
+          <span style="margin-left: auto; font-size: 12px; color: #667085">Changes reach all proxies within 5 s</span>
+        </div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col" style="width: 32px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Expand</span></th><th scope="col">Storage user</th><th scope="col">Permission</th><th scope="col">Buckets</th><th scope="col">Access keys</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><button type="button" aria-label="Collapse user1" aria-expanded="true" class="btn" style="width: 28px; height: 28px; padding: 0">&#9662;</button></td>
+                <td style="font-weight: 600">user1</td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #2952CC; background: #EEF3FF; border-radius: 6px; padding: 2px 8px">Read-only</span></td>
+                <td><span class="mono">backups-*</span>, <span class="mono">reports</span></td>
+                <td>3 keys · 2 managed here</td>
+                <td style="text-align: right"><button type="button" class="btn">Edit permissions</button></td>
+              </tr>
+              <tr>
+                <td colspan="6" style="padding: 0 16px 16px 48px; background: #FCFCFD">
+                  <div style="border: 1px solid #E4E7EC; border-radius: 10px; overflow-x: auto; background: #FFFFFF; margin-top: 4px">
+                    <table class="tbl">
+                      <thead><tr><th scope="col">Access key ID</th><th scope="col">Source</th><th scope="col">Status</th><th scope="col">Description</th><th scope="col">Created</th><th scope="col">Last rotated</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+                      <tbody>
+                        <tr>
+                          <td><span class="mono">TUT31PVD0ELLEBAHVCB2</span> <button type="button" aria-label="Copy access key ID" class="btn" style="height: 24px; padding: 0 6px; font-size: 11px">Copy</button></td>
+                          <td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 1px 6px">Managed</span></td>
+                          <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">Active</span></td>
+                          <td>ci uploader</td>
+                          <td>9 Nov 2026, 13:15</td>
+                          <td><div style="display: flex; flex-direction: column"><span>9 Nov 2026, 13:15</span><span style="font-size: 12px; color: #B54708">old secret valid until 14:15</span></div></td>
+                          <td><div style="display: flex; gap: 6px; justify-content: flex-end"><button type="button" class="btn">Rotate</button><button type="button" class="btn">Disable</button><button type="button" class="btn" style="color: #B42318; border-color: #FDA29B">Delete</button></div></td>
+                        </tr>
+                        <tr>
+                          <td><span class="mono">TUTJEV3XJWL5LWPQ9YHD</span></td>
+                          <td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 1px 6px">Managed</span></td>
+                          <td><span style="font-size: 12px; font-weight: 600; color: #475467; background: #F2F4F7; border-radius: 999px; padding: 2px 8px">Disabled</span></td>
+                          <td>legacy backup agent</td>
+                          <td>2 Nov 2026, 09:02</td>
+                          <td>–</td>
+                          <td><div style="display: flex; gap: 6px; justify-content: flex-end"><button type="button" class="btn">Rotate</button><button type="button" class="btn">Enable</button><button type="button" class="btn" style="color: #B42318; border-color: #FDA29B">Delete</button></div></td>
+                        </tr>
+                        <tr>
+                          <td><span class="mono">minioadmin</span></td>
+                          <td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 1px 6px; color: #475467">Config · storage main</span></td>
+                          <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">Active</span></td>
+                          <td>–</td>
+                          <td>–</td>
+                          <td>–</td>
+                          <td style="text-align: right; font-size: 12px; color: #667085">Managed in config file</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><button type="button" aria-label="Expand user2" aria-expanded="false" class="btn" style="width: 28px; height: 28px; padding: 0">&#9656;</button></td>
+                <td style="font-weight: 600">user2</td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 6px; padding: 2px 8px">Read-write</span></td>
+                <td>All buckets <span style="font-size: 12px; color: #667085">(no policy)</span></td>
+                <td>1 key · config only</td>
+                <td style="text-align: right"><button type="button" class="btn">Set permissions</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-label="New secret dialog example" style="align-self: flex-start; width: 520px; max-width: 100%; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; box-shadow: 0 12px 32px rgba(16,24,40,0.12); padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 600">Access key created</h2>
+        <p style="margin: 0; font-size: 13px; color: #7A2E0E; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 8px; padding: 10px 12px">Copy the secret now. It is shown only once and cannot be recovered.</p>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500">Access key ID<div style="display: flex; gap: 8px"><input readonly value="TUT31PVD0ELLEBAHVCB2" style="flex: 1; height: 36px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px"><button type="button" class="btn" style="height: 36px">Copy</button></div></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500">Secret access key<div style="display: flex; gap: 8px"><input readonly type="password" value="ImUJuBg0uDvdwFEgPJbWOpKQ1RcOQZcnwIKfWiQR" style="flex: 1; height: 36px; border: 1px solid #D0D5DD; border-radius: 8px; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px"><button type="button" class="btn" style="height: 36px">Show</button><button type="button" class="btn" style="height: 36px">Copy</button></div></label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox"> I have stored the secret in a safe place</label>
+        <div style="display: flex; justify-content: flex-end; gap: 8px"><button type="button" class="btn" style="height: 36px">Download .env</button><button type="button" disabled style="height: 36px; padding: 0 14px; border: 1px solid #A9BEF5; background: #A9BEF5; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600">Done</button></div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
