@@ -1074,3 +1074,20 @@ func Test_ContextReplicationGenerations(t *testing.T) {
 		})
 	}
 }
+
+func TestKeepReplicationsFromRoute(t *testing.T) {
+	main2f1 := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("u", "main", "f1"))
+	main2f2 := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("u", "main", "f2"))
+	sameStorage := entity.UniversalFromBucketReplication(entity.NewBucketReplicationPolicy("u", "main", "b", "main", "b-copy"))
+
+	// normal operation: routed to the replication source, nothing dropped
+	got := keepReplicationsFromRoute([]entity.UniversalReplicationID{main2f1, main2f2, sameStorage}, "main")
+	if len(got) != 3 {
+		t.Fatalf("expected all replications kept, got %v", got)
+	}
+	// after failover to f2: replications from the failed main must not be part of the request
+	got = keepReplicationsFromRoute([]entity.UniversalReplicationID{main2f1, main2f2}, "f2")
+	if len(got) != 0 {
+		t.Fatalf("expected no replications after failover, got %v", got)
+	}
+}

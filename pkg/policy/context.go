@@ -87,7 +87,7 @@ func (r *policySvc) BuildProxyContext(ctx context.Context, user, bucket string) 
 	if err != nil {
 		return ctx, err
 	}
-	relications = dropReplicationsToRoute(relications, rotuteTo)
+	relications = keepReplicationsFromRoute(relications, rotuteTo)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}
@@ -95,14 +95,17 @@ func (r *policySvc) BuildProxyContext(ctx context.Context, user, bucket string) 
 	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, activeSwitch)
 }
 
-// dropReplicationsToRoute removes replications whose destination is the storage the request is routed to.
-// Such replication can only exist after a failover (routing moved to the destination, replication paused):
-// copying an object from the routed storage to itself is meaningless and must not be attempted by
-// synchronous replication or enqueued.
-func dropReplicationsToRoute(repls []entity.UniversalReplicationID, routedTo string) []entity.UniversalReplicationID {
+// keepReplicationsFromRoute keeps only replications whose source is the storage the request is
+// routed to. Normally every replication of a scope starts at its routed storage, so nothing is
+// dropped. After an automatic failover the scope is routed to the promoted storage while the
+// replications from the failed storage still exist (the one to the promoted storage is paused,
+// others such as main->f1 are not): events for them would be recorded against a storage the
+// request did not write to, so they must not be part of the request. Replications to another
+// bucket on the same storage (from == to storage) are kept.
+func keepReplicationsFromRoute(repls []entity.UniversalReplicationID, routedTo string) []entity.UniversalReplicationID {
 	n := 0
 	for _, id := range repls {
-		if id.ToStorage() != routedTo {
+		if id.FromStorage() == routedTo {
 			repls[n] = id
 			n++
 		}
@@ -289,7 +292,7 @@ func (r *policySvc) BuildProxyNoBucketContext(ctx context.Context, user string) 
 	if err != nil {
 		return ctx, err
 	}
-	relications = dropReplicationsToRoute(relications, rotuteTo)
+	relications = keepReplicationsFromRoute(relications, rotuteTo)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}
