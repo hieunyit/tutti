@@ -120,6 +120,33 @@ describe('ProxyAccountHelper', () => {
     expect(ProxyAccountHelper.getKeyRows({ user: 'empty' })).toEqual([]);
   });
 
+  it('filters key matches to the matching key while user matches keep all keys', () => {
+    const accounts = [
+      {
+        user: 'deploy',
+        accessKeyIds: ['STATIC_A', 'DYNAMIC_B'],
+        sources: ['storage:main', 'dynamic'],
+        dynamicKeys: [
+          {
+            accessKeyId: 'DYNAMIC_B',
+            status: 'active',
+            description: 'nightly backup',
+          },
+        ],
+      },
+    ];
+
+    expect(
+      ProxyAccountHelper.filterAccounts(accounts, 'static_a')[0]?.accessKeyIds,
+    ).toEqual(['STATIC_A']);
+    expect(
+      ProxyAccountHelper.filterAccounts(accounts, 'nightly')[0]?.accessKeyIds,
+    ).toEqual(['DYNAMIC_B']);
+    expect(
+      ProxyAccountHelper.filterAccounts(accounts, 'deploy')[0]?.accessKeyIds,
+    ).toEqual(['STATIC_A', 'DYNAMIC_B']);
+  });
+
   it('checks timestamps', () => {
     expect(ProxyAccountHelper.hasTime(undefined)).toBe(false);
     expect(ProxyAccountHelper.hasTime('0001-01-01T00:00:00Z')).toBe(false);

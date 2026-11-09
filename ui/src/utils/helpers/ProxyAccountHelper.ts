@@ -137,6 +137,43 @@ export abstract class ProxyAccountHelper {
     ];
   }
 
+  /** Filter the flat key list by its owning user, key ID, or managed description. */
+  static filterAccounts(
+    accounts: TuttiProxyAccount[],
+    query: string,
+  ): TuttiProxyAccount[] {
+    const needle = query.trim().toLowerCase();
+
+    if (!needle) return accounts;
+
+    return accounts.flatMap((account) => {
+      if (account.user.toLowerCase().includes(needle)) return [account];
+
+      const matchingIds = new Set(
+        (account.accessKeyIds ?? []).filter((id) =>
+          id.toLowerCase().includes(needle),
+        ),
+      );
+      const matchingDynamic = (account.dynamicKeys ?? []).filter(
+        (key) =>
+          matchingIds.has(key.accessKeyId) ||
+          key.description?.toLowerCase().includes(needle),
+      );
+
+      matchingDynamic.forEach((key) => matchingIds.add(key.accessKeyId));
+
+      return matchingIds.size
+        ? [
+            {
+              ...account,
+              accessKeyIds: [...matchingIds],
+              dynamicKeys: matchingDynamic,
+            },
+          ]
+        : [];
+    });
+  }
+
   /**
    * Contents of a client-side ".env" download. Built in the browser from the
    * one-time secret and never stored.

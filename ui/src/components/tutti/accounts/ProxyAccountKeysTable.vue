@@ -16,13 +16,15 @@
 
 <script setup lang="ts">
   /**
-   * Nested table (expanded row) with every access key of one proxy account.
+   * Key table with every access key for one account (user detail) or all
+   * accounts (flat access keys page).
    * Static keys come from the config and are read-only; managed keys can be
    * rotated, disabled/enabled and deleted.
    */
   import { CButton } from '@clyso/clyso-ui-kit';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { RouterLink } from 'vue-router';
   import i18nAccounts from './i18nAccounts';
   import CopyButton from '@/components/chorus/common/CopyButton/CopyButton.vue';
   import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
@@ -37,9 +39,11 @@
     type ProxyAccountKeyRow,
   } from '@/utils/helpers/ProxyAccountHelper';
   import type { TuttiProxyAccount } from '@/utils/types/tutti';
+  import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
-    account: TuttiProxyAccount;
+    account?: TuttiProxyAccount;
+    accounts?: TuttiProxyAccount[];
   }>();
 
   const emit = defineEmits<{
@@ -50,7 +54,15 @@
   const store = useTuttiAccessPolicyStore();
   const { createNotification } = useChorusNotification();
 
-  const rows = computed(() => ProxyAccountHelper.getKeyRows(props.account));
+  const rows = computed(() =>
+    (props.accounts ?? (props.account ? [props.account] : [])).flatMap(
+      (account) =>
+        ProxyAccountHelper.getKeyRows(account).map((row) => ({
+          ...row,
+          user: account.user,
+        })),
+    ),
+  );
   const deleting = ref<ProxyAccountKeyRow | null>(null);
   const isDeleting = ref(false);
 
@@ -123,7 +135,7 @@
 </script>
 
 <template>
-  <div class="keys-table">
+  <div :class="['keys-table', { 'keys-table--flat': !!accounts }]">
     <p
       v-if="rows.length === 0"
       class="keys-table__none"
@@ -137,6 +149,12 @@
       <table class="tt-table">
         <thead>
           <tr>
+            <th
+              v-if="accounts"
+              scope="col"
+            >
+              {{ t('columnUser') }}
+            </th>
             <th scope="col">{{ t('columnAccessKeyId') }}</th>
             <th scope="col">{{ t('columnSource') }}</th>
             <th scope="col">{{ t('columnStatus') }}</th>
@@ -151,20 +169,29 @@
         <tbody>
           <tr
             v-for="row in rows"
-            :key="row.accessKeyId"
+            :key="`${row.user}:${row.accessKeyId}`"
           >
-            <td>
+            <td v-if="accounts">
+              <RouterLink
+                :to="{
+                  name: RouteName.TUTTI_USER_DETAIL,
+                  params: { name: row.user },
+                }"
+                >{{ row.user }}</RouterLink
+              >
+            </td>
+            <td :data-label="accounts ? t('columnAccessKeyId') : undefined">
               <span class="keys-table__id">
                 <code>{{ row.accessKeyId }}</code>
                 <CopyButton :text="row.accessKeyId" />
               </span>
             </td>
-            <td>
+            <td :data-label="accounts ? t('columnSource') : undefined">
               <span class="keys-table__source">{{
                 sourceLabel(row.source)
               }}</span>
             </td>
-            <td>
+            <td :data-label="accounts ? t('columnStatus') : undefined">
               <StatusTag
                 :variant="
                   row.dynamicKey &&
@@ -180,9 +207,13 @@
                 "
               />
             </td>
-            <td>{{ row.dynamicKey?.description || EMPTY_VALUE }}</td>
-            <td>{{ dateCell(row.dynamicKey?.createdAt) }}</td>
-            <td>
+            <td :data-label="accounts ? t('columnDescription') : undefined">
+              {{ row.dynamicKey?.description || EMPTY_VALUE }}
+            </td>
+            <td :data-label="accounts ? t('columnCreated') : undefined">
+              {{ dateCell(row.dynamicKey?.createdAt) }}
+            </td>
+            <td :data-label="accounts ? t('columnRotated') : undefined">
               <span class="keys-table__stack">
                 <span>{{ dateCell(row.dynamicKey?.rotatedAt) }}</span>
                 <span
@@ -192,7 +223,10 @@
                 >
               </span>
             </td>
-            <td class="keys-table__actions">
+            <td
+              class="keys-table__actions"
+              :data-label="accounts ? t('columnActions') : undefined"
+            >
               <span
                 v-if="!row.dynamicKey"
                 class="keys-table__muted"
@@ -308,6 +342,51 @@
     &__buttons {
       display: inline-flex;
       gap: 6px;
+    }
+
+    @media (max-width: 600px) {
+      &--flat .tt-table,
+      &--flat .tt-table tbody,
+      &--flat .tt-table tr,
+      &--flat .tt-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      &--flat .tt-table thead {
+        display: none;
+      }
+
+      &--flat .tt-table tr {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--tt-border);
+      }
+
+      &--flat .tt-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 6px 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        border: 0;
+        text-align: right;
+      }
+
+      &--flat .tt-table td::before {
+        content: attr(data-label);
+        flex: 0 0 35%;
+        color: var(--tt-text-3);
+        font-size: 12px;
+        text-align: left;
+      }
+
+      &--flat .keys-table__buttons {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
     }
   }
 </style>
