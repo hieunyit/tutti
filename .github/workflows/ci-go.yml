@@ -8,11 +8,13 @@ on:
       - main
     paths:
       - ".github/**"
+      - "ui/**"
       - "**.go"
       - "**/config.yaml"
       - "**/proto/**"
 jobs:
-  test:
+  unit:
+    name: Vet and unit tests (race)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +22,20 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.26.10"
+      - name: go vet
+        run: go vet ./...
+      - name: Unit tests with race detector
+        run: go test -race -count=1 ./pkg/... ./service/...
+  test:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.26.10"
+      # `make test` runs `go test ./...`, which includes the e2e packages under ./test/... (test/resilience among them)
       - name: make test
         run: make test TEST_WAIT_SHORT=20s TEST_WAIT_LONG=80s
       - name: Run Proto Generation
@@ -36,3 +52,28 @@ jobs:
           else
             echo "Proto generation check passed. No uncommitted changes."
           fi
+  ui:
+    name: UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # the UI pins yarn 1 via "packageManager" and ships yarn.lock (no package-lock.json)
+      - name: Enable corepack (yarn)
+        run: corepack enable
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Type check
+        run: yarn lint:types
+      - name: ESLint
+        run: yarn lint:eslint
+      - name: Unit tests
+        run: yarn test:unit --run
+      - name: Build
+        run: yarn build

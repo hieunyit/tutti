@@ -62,6 +62,12 @@ type Chorus struct {
 
 func SetupChorus(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config) Chorus {
 	t.Helper()
+	return SetupChorusRedis(t, workerConf, proxyConf, testutil.SetupRedisAddr(t))
+}
+
+// SetupChorusRedis is SetupChorus on a caller-provided Redis, so a test can control it (e.g. inject errors into miniredis).
+func SetupChorusRedis(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config, redisAddr string) Chorus {
+	t.Helper()
 	var err error
 	workerConf, err = DeepCopyStruct(workerConf)
 	if err != nil {
@@ -75,7 +81,6 @@ func SetupChorus(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Confi
 		RetryLong:  retryLong,
 	}
 
-	redisAddr := testutil.SetupRedisAddr(t)
 	workerConf.Redis.Address = redisAddr
 
 	if proxyConf != nil {

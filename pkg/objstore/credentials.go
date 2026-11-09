@@ -170,7 +170,11 @@ type credsSvc struct {
 	// index of S3 credentials by access key for chorus Proxy Auth Middleware
 	s3AccessKeyIdx map[string]s3CredsByAccessKey
 	key            []byte
-	version        int64
+	// version is the redis version of the cached credentials. Guarded by the embedded RWMutex.
+	version int64
+	// syncMu serializes sync calls (background poll and sync after SetXCredentials): a sync reads the cached version
+	// first and replaces the cache last, so concurrent syncs must not interleave.
+	syncMu sync.Mutex
 	sync.RWMutex
 }
 
@@ -303,12 +307,17 @@ func (s *credsSvc) sync(ctx context.Context) error {
 	if !s.config.DynamicCredentials.Enabled {
 		return nil
 	}
+	s.syncMu.Lock()
+	defer s.syncMu.Unlock()
 	// read redis version of creds and update local cache
 	remoteVer, err := s.client.HGet(ctx, redisHashKey, redisHFieldVersion).Int64()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return fmt.Errorf("failed to get credentials version from redis: %w", err)
 	}
-	if s.version == remoteVer {
+	s.RLock()
+	localVer := s.version
+	s.RUnlock()
+	if localVer == remoteVer {
 		// no changes
 		return nil
 	}

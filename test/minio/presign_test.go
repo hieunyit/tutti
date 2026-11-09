@@ -269,8 +269,7 @@ func Test_e2e_proxy_presigned_sigv4(t *testing.T) {
 		ctx := t.Context()
 
 		obj, content := "header-auth-obj.txt", "header auth content"
-		// DisableContentSha256 avoids a streaming upload, see
-		// streaming_signature_is_not_supported below.
+		// DisableContentSha256 avoids a streaming upload.
 		_, err := proxyClient.PutObject(ctx, bucket, obj, strings.NewReader(content), int64(len(content)),
 			mclient.PutObjectOptions{DisableContentSha256: true})
 		r.NoError(err)
@@ -279,12 +278,10 @@ func Test_e2e_proxy_presigned_sigv4(t *testing.T) {
 	})
 }
 
-// Test_e2e_proxy_streaming_upload pins the streaming upload limitation
-// documented in service/proxy/README.md: minio-go signs a payload chunk chain
-// against the request signature, which the proxy invalidates by re-signing the
-// request. If this test starts failing, chunked uploads got supported and the
-// DisableContentSha256 workarounds in this suite can be dropped.
-func Test_e2e_proxy_streaming_signature_is_not_supported(t *testing.T) {
+// Test_e2e_proxy_streaming_upload checks that the proxy decodes aws-chunked streaming uploads
+// (minio-go signs a payload chunk chain against the request signature, which the proxy
+// invalidates by re-signing the request, so it verifies the chain itself and forwards the plain payload).
+func Test_e2e_proxy_streaming_upload(t *testing.T) {
 	r := require.New(t)
 	e := app.SetupChorus(t, workerConf, proxyConf)
 	ctx := t.Context()
@@ -300,10 +297,8 @@ func Test_e2e_proxy_streaming_signature_is_not_supported(t *testing.T) {
 
 	content := "streaming upload content"
 	_, err = proxyClient.PutObject(ctx, bucket, "obj.txt", strings.NewReader(content), int64(len(content)), mclient.PutObjectOptions{})
-	r.Error(err)
-	// MinIO reports the broken chunk chain as SignatureDoesNotMatch, Ceph RGW
-	// as XAmzContentSHA256Mismatch.
-	r.Contains([]string{"SignatureDoesNotMatch", "XAmzContentSHA256Mismatch"}, mclient.ToErrorResponse(err).Code)
+	r.NoError(err)
+	r.Equal(content, string(readObject(t, minioClient, bucket, "obj.txt")))
 }
 
 // Test_e2e_proxy_sigv2 covers the V2 signature path, which - like a presigned
