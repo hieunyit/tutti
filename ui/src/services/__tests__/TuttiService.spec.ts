@@ -15,6 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TuttiService } from '../TuttiService';
+import { ChorusService } from '../ChorusService';
 import { apiClient } from '@/http';
 
 vi.mock('@/http', () => ({
@@ -38,6 +39,25 @@ describe('TuttiService', () => {
     });
     expect(mocked.get).toHaveBeenCalledWith(
       expect.stringContaining('/tutti/proxies'),
+      { signal: undefined },
+    );
+  });
+
+  it('passes cancellation signals through for monitoring requests', async () => {
+    const controller = new AbortController();
+
+    mocked.get.mockResolvedValue({ data: { proxies: [] } });
+    mocked.post.mockResolvedValue({ data: { replications: [] } });
+    await TuttiService.getProxies(controller.signal);
+    await ChorusService.getReplications(controller.signal);
+    expect(mocked.get).toHaveBeenCalledWith(
+      expect.stringContaining('/tutti/proxies'),
+      { signal: controller.signal },
+    );
+    expect(mocked.post).toHaveBeenCalledWith(
+      expect.stringContaining('/replication'),
+      undefined,
+      { signal: controller.signal },
     );
   });
 

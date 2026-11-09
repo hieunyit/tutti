@@ -29,6 +29,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nAuth from '@/components/auth/i18nAuth';
   import { useAuthStore } from '@/stores/authStore';
+  import { APP_VERSION } from '@/utils/constants/env';
   import { AuthHelper } from '@/utils/helpers/AuthHelper';
   import { RouteName } from '@/utils/types/router';
 
@@ -74,6 +75,8 @@
   });
 
   async function submit() {
+    if (isLoggingIn.value) return;
+
     showErrors.value = true;
 
     if (username.value.trim() === '' || password.value === '') return;
@@ -96,12 +99,16 @@
 
 <template>
   <main class="login-page">
-    <form
-      class="login-page__card"
-      @submit.prevent="submit"
-    >
-      <h1 class="login-page__brand">Tutti</h1>
-      <h2 class="login-page__title">{{ t('loginTitle') }}</h2>
+    <div class="login-page__card">
+      <div class="login-page__brand">
+        <span
+          class="login-page__logo"
+          aria-hidden="true"
+          >T</span
+        >
+        <span class="login-page__product">Tutti</span>
+      </div>
+      <h1 class="login-page__title">{{ t('signInTo') }}</h1>
       <p class="login-page__subtitle">{{ t('loginSubtitle') }}</p>
 
       <NAlert
@@ -124,7 +131,8 @@
           <NInput
             v-model:value="username"
             autofocus
-            :input-props="{ autocomplete: 'username' }"
+            :placeholder="t('usernamePlaceholder')"
+            :input-props="{ autocomplete: 'username', name: 'username' }"
             :disabled="isLoggingIn"
           />
         </NFormItem>
@@ -137,7 +145,11 @@
             v-model:value="password"
             type="password"
             show-password-on="click"
-            :input-props="{ autocomplete: 'current-password' }"
+            :placeholder="t('passwordPlaceholder')"
+            :input-props="{
+              autocomplete: 'current-password',
+              name: 'password',
+            }"
             :disabled="isLoggingIn"
           />
         </NFormItem>
@@ -152,42 +164,92 @@
         <NButton
           type="primary"
           attr-type="submit"
+          size="large"
           block
           :loading="isLoggingIn"
+          :disabled="isLoggingIn"
         >
           {{ t('signIn') }}
         </NButton>
       </NForm>
-    </form>
+    </div>
+
+    <footer class="login-page__footer">Tutti · v{{ APP_VERSION }}</footer>
   </main>
 </template>
 
 <style lang="scss" scoped>
   .login-page {
+    box-sizing: border-box;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    gap: 16px;
+    padding: 24px 16px;
+    background:
+      radial-gradient(
+        ellipse at 50% 0%,
+        color-mix(in srgb, var(--primary-color) 12%, transparent),
+        transparent 65%
+      ),
+      var(--body-color);
 
     &__card {
+      box-sizing: border-box;
       width: 100%;
       max-width: 400px;
+      padding: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background-color: var(--card-color);
+      box-shadow: 0 8px 32px
+        color-mix(in srgb, var(--text-color-1) 10%, transparent);
+
+      @media screen and (max-width: 480px) {
+        padding: 24px 20px;
+      }
     }
 
     &__brand {
-      margin: 0 0 24px;
-      font-size: 40px;
-      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    &__logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--card-color);
+      background-color: var(--primary-color);
+    }
+
+    &__product {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-color-1);
     }
 
     &__title {
       margin: 0 0 4px;
+      font-size: 22px;
+      line-height: 30px;
+      font-weight: 600;
+      color: var(--text-color-1);
     }
 
     &__subtitle {
-      margin: 0 0 16px;
-      opacity: 0.7;
+      margin: 0 0 20px;
+      font-size: 14px;
+      color: var(--text-color-3);
     }
 
     &__error {
@@ -195,9 +257,15 @@
     }
 
     &__hint {
-      margin: 4px 0 16px 24px;
+      margin: 4px 0 20px 24px;
       font-size: 12px;
-      opacity: 0.7;
+      line-height: 16px;
+      color: var(--text-color-3);
+    }
+
+    &__footer {
+      font-size: 12px;
+      color: var(--text-color-3);
     }
   }
 </style>

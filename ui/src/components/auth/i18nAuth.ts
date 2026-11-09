@@ -20,6 +20,9 @@ export default <I18nMessages>{
   [I18nLocale.EN]: {
     loginTitle: 'Sign in',
     loginSubtitle: 'Sign in to manage your Tutti deployment.',
+    signInTo: 'Sign in to Tutti',
+    usernamePlaceholder: 'Enter your username',
+    passwordPlaceholder: 'Enter your password',
     username: 'Username',
     password: 'Password',
     keepSignedIn: 'Keep me signed in',
@@ -46,6 +49,9 @@ export default <I18nMessages>{
   [I18nLocale.DE]: {
     loginTitle: 'Anmelden',
     loginSubtitle: 'Melden Sie sich an, um Tutti zu verwalten.',
+    signInTo: 'Bei Tutti anmelden',
+    usernamePlaceholder: 'Benutzernamen eingeben',
+    passwordPlaceholder: 'Passwort eingeben',
     username: 'Benutzername',
     password: 'Passwort',
     keepSignedIn: 'Angemeldet bleiben',

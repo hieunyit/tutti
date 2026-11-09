@@ -18,14 +18,16 @@
   import { CTile } from '@clyso/clyso-ui-kit';
   import { NDataTable, type DataTableColumns } from 'naive-ui';
   import { storeToRefs } from 'pinia';
-  import { computed } from 'vue';
+  import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nMonitoring from './i18nMonitoring';
+  import { useNumberFormat } from './useNumberFormat';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
   const { t } = useI18n({ messages: i18nMonitoring });
+  const fmt = useNumberFormat();
   const store = useTuttiMonitoringStore();
   const { proxies, latestSnapshots, latestByProxy } = storeToRefs(store);
 
@@ -100,46 +102,73 @@
   const rateText = (v: number) =>
     `${TrafficStatsHelper.formatRate(v)}${t('rateUnit')}`;
 
+  const num = (title: string, key: keyof ProxyRow, width = 110) => ({
+    title,
+    key,
+    align: 'right' as const,
+    width,
+    render: (row: ProxyRow) => fmt(Number(row[key])),
+  });
+
   const proxyColumns = computed<DataTableColumns<ProxyRow>>(() => [
     {
       title: t('columnProxy'),
       key: 'appId',
+      minWidth: 160,
       render: (row) =>
-        row.address ? `${row.appId} (${row.address})` : row.appId,
+        h('div', { class: 'monitoring-breakdown__proxy' }, [
+          h('span', row.appId),
+          row.address
+            ? h('small', { class: 'monitoring-breakdown__muted' }, row.address)
+            : null,
+        ]),
     },
     {
       title: t('columnStarted'),
       key: 'startedAt',
+      width: 190,
       render: (row) => formatDateTime(row.startedAt),
     },
-    { title: t('columnRequests'), key: 'requests' },
+    num(t('columnRequests'), 'requests', 130),
     {
       title: t('columnRate'),
       key: 'rate',
+      align: 'right',
+      width: 100,
       render: (row) => rateText(row.rate),
     },
-    { title: t('columnErrors4xx'), key: 'e4' },
-    { title: t('columnErrors5xx'), key: 'e5' },
+    num(t('columnErrors4xx'), 'e4'),
+    num(t('columnErrors5xx'), 'e5'),
     {
       title: t('columnBytesIn'),
       key: 'bytesIn',
+      align: 'right',
+      width: 110,
       render: (row) => TrafficStatsHelper.formatBytes(row.bytesIn),
     },
     {
       title: t('columnBytesOut'),
       key: 'bytesOut',
+      align: 'right',
+      width: 110,
       render: (row) => TrafficStatsHelper.formatBytes(row.bytesOut),
     },
-    { title: t('columnFailFast'), key: 'failFast' },
-    { title: t('columnAccessDenied'), key: 'accessDenied' },
+    num(t('columnFailFast'), 'failFast', 100),
+    num(t('columnAccessDenied'), 'accessDenied', 100),
   ]);
 
   const storageColumns = computed<DataTableColumns<StorageRow>>(() => [
     { title: t('columnStorage'), key: 'storage' },
-    { title: t('columnRequests'), key: 'requests' },
+    {
+      title: t('columnRequests'),
+      key: 'requests',
+      align: 'right',
+      render: (row) => fmt(row.requests),
+    },
     {
       title: t('columnRate'),
       key: 'rate',
+      align: 'right',
       render: (row) => rateText(row.rate),
     },
   ]);
@@ -153,10 +182,10 @@
         :columns="proxyColumns"
         :data="proxyRows"
         :bordered="false"
-        :scroll-x="900"
+        :scroll-x="1180"
         :row-key="(row: ProxyRow) => row.appId"
       >
-        <template #empty>{{ t('noRows') }}</template>
+        <template #empty>{{ t('noProxyRows') }}</template>
       </NDataTable>
     </CTile>
 
@@ -168,7 +197,7 @@
         :bordered="false"
         :row-key="(row: StorageRow) => row.storage"
       >
-        <template #empty>{{ t('noRows') }}</template>
+        <template #empty>{{ t('noStorageRows') }}</template>
       </NDataTable>
     </CTile>
   </div>
@@ -178,5 +207,19 @@
   .monitoring-breakdown {
     display: grid;
     gap: 16px;
+
+    :deep(.monitoring-breakdown__proxy) {
+      display: flex;
+      flex-direction: column;
+    }
+
+    :deep(.monitoring-breakdown__muted) {
+      color: var(--text-color-3);
+    }
+
+    :deep(.n-data-table-td),
+    :deep(.n-data-table-th) {
+      font-variant-numeric: tabular-nums;
+    }
   }
 </style>

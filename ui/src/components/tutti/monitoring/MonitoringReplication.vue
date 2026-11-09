@@ -28,11 +28,14 @@
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nMonitoring from './i18nMonitoring';
+  import { useNumberFormat } from './useNumberFormat';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
   import type { ChorusReplication } from '@/utils/types/chorus';
+  import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nMonitoring });
+  const fmt = useNumberFormat();
   const store = useTuttiMonitoringStore();
   const { replications, replicationsError, latestSnapshots, current } =
     storeToRefs(store);
@@ -64,20 +67,28 @@
   }
 
   const columns = computed<DataTableColumns<ChorusReplication>>(() => [
-    { title: t('columnReplication'), key: 'label', render: label },
+    {
+      title: t('columnReplication'),
+      key: 'label',
+      minWidth: 240,
+      render: label,
+    },
     {
       title: t('columnEvents'),
       key: 'events',
-      render: (r) => String(num(r.events)),
+      align: 'right',
+      render: (r) => fmt(num(r.events)),
     },
     {
       title: t('columnEventsDone'),
       key: 'eventsDone',
-      render: (r) => String(num(r.eventsDone)),
+      align: 'right',
+      render: (r) => fmt(num(r.eventsDone)),
     },
     {
       title: t('columnLag'),
       key: 'eventLag',
+      align: 'right',
       render: (r) => {
         const lag = num(r.eventLag);
 
@@ -92,7 +103,7 @@
                   ? 'warning'
                   : 'default',
           },
-          () => String(lag),
+          () => fmt(lag),
         );
       },
     },
@@ -131,18 +142,28 @@
   <div class="monitoring-replication">
     <CTile class="monitoring-replication__tile">
       <template #title>{{ t('syncTitle') }}</template>
-      <div class="monitoring-replication__sync">
+      <p
+        v-if="sync.reached + sync.below + sync.skipped === 0"
+        class="monitoring-replication__empty"
+      >
+        {{ t('syncEmpty') }}
+      </p>
+      <div
+        v-else
+        class="monitoring-replication__sync"
+      >
         <NStatistic
           :label="t('syncQuorumReached')"
-          :value="sync.reached"
+          :value="fmt(sync.reached)"
         />
         <NStatistic
           :label="t('syncBelowQuorum')"
-          :value="sync.below"
+          :value="fmt(sync.below)"
+          :class="{ 'monitoring-replication__bad': sync.below > 0 }"
         />
         <NStatistic
           :label="t('syncSkipped')"
-          :value="sync.skipped"
+          :value="fmt(sync.skipped)"
         />
         <NStatistic
           v-if="current"
@@ -150,7 +171,12 @@
           :value="TrafficStatsHelper.formatRate(current.syncBelowQuorum)"
         />
       </div>
-      <p class="monitoring-replication__hint">{{ t('syncHint') }}</p>
+      <p
+        v-if="sync.reached + sync.below + sync.skipped > 0"
+        class="monitoring-replication__hint"
+      >
+        {{ t('syncHint') }}
+      </p>
     </CTile>
 
     <CTile class="monitoring-replication__tile">
@@ -177,7 +203,12 @@
         :scroll-x="800"
         :row-key="(row: ChorusReplication) => row.idStr"
       >
-        <template #empty>{{ t('backlogEmpty') }}</template>
+        <template #empty>
+          {{ t('backlogEmpty') }}
+          <RouterLink :to="{ name: RouteName.CHORUS_REPLICATION }">
+            {{ t('backlogLink') }}
+          </RouterLink>
+        </template>
       </NDataTable>
     </CTile>
   </div>
@@ -194,10 +225,21 @@
       gap: 32px;
     }
 
+    &__empty {
+      margin: 0;
+      color: var(--text-color-3);
+    }
+
+    &__bad {
+      :deep(.n-statistic-value__content) {
+        color: var(--error-color);
+      }
+    }
+
     &__hint {
       margin: 12px 0 0;
       font-size: 12px;
-      opacity: 0.7;
+      color: var(--text-color-3);
     }
 
     &__alert {

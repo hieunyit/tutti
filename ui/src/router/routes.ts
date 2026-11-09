@@ -16,23 +16,39 @@
 
 import type { RouteRecordRaw } from 'vue-router';
 import { RouteName } from '@/utils/types/router';
-import ChorusHomePage from '@/pages/ChorusHomePage/ChorusHomePage.vue';
-import DashboardView from '@/components/dashboard/DashboardView/DashboardView.vue';
-import ChorusStoragesPage from '@/pages/ChorusStoragesPage/ChorusStoragesPage.vue';
-import ChorusMonitoringPage from '@/pages/ChorusMonitoringPage/ChorusMonitoringPage.vue';
-import ChorusReplicationPage from '@/pages/ChorusReplicationPage/ChorusReplicationPage.vue';
-import ChorusAddReplicationPage from '@/pages/ChorusAddReplicationPage/ChorusAddReplicationPage.vue';
-import ChorusStorageDetailsPage from '@/pages/ChorusStorageDetailsPage/ChorusStorageDetailsPage.vue';
-import ChorusRoutingPoliciesPage from '@/pages/ChorusRoutingPoliciesPage/ChorusRoutingPoliciesPage.vue';
-import ChorusAddRoutingPolicyPage from '@/pages/ChorusAddRoutingPolicyPage/ChorusAddRoutingPolicyPage.vue';
-import ChorusSetCredentialPage from '@/pages/ChorusSetCredentialPage/ChorusSetCredentialPage.vue';
-import ChorusDiffReportsPage from '@/pages/ChorusDiffReportsPage/ChorusDiffReportsPage.vue';
-import ChorusAddDiffReportPage from '@/pages/ChorusAddDiffReportPage/ChorusAddDiffReportPage.vue';
-import ChorusDiffReportDetailPage from '@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue';
-import TuttiHealthPage from '@/pages/TuttiHealthPage/TuttiHealthPage.vue';
-import TuttiFailoverPage from '@/pages/TuttiFailoverPage/TuttiFailoverPage.vue';
-import TuttiProxyAccountsPage from '@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue';
-import LoginPage from '@/pages/LoginPage/LoginPage.vue';
+const ChorusHomePage = () =>
+  import('@/pages/ChorusHomePage/ChorusHomePage.vue');
+const DashboardView = () =>
+  import('@/components/dashboard/DashboardView/DashboardView.vue');
+const ChorusStoragesPage = () =>
+  import('@/pages/ChorusStoragesPage/ChorusStoragesPage.vue');
+const ChorusMonitoringPage = () =>
+  import('@/pages/ChorusMonitoringPage/ChorusMonitoringPage.vue');
+const ChorusReplicationPage = () =>
+  import('@/pages/ChorusReplicationPage/ChorusReplicationPage.vue');
+const ChorusAddReplicationPage = () =>
+  import('@/pages/ChorusAddReplicationPage/ChorusAddReplicationPage.vue');
+const ChorusStorageDetailsPage = () =>
+  import('@/pages/ChorusStorageDetailsPage/ChorusStorageDetailsPage.vue');
+const ChorusRoutingPoliciesPage = () =>
+  import('@/pages/ChorusRoutingPoliciesPage/ChorusRoutingPoliciesPage.vue');
+const ChorusAddRoutingPolicyPage = () =>
+  import('@/pages/ChorusAddRoutingPolicyPage/ChorusAddRoutingPolicyPage.vue');
+const ChorusSetCredentialPage = () =>
+  import('@/pages/ChorusSetCredentialPage/ChorusSetCredentialPage.vue');
+const ChorusDiffReportsPage = () =>
+  import('@/pages/ChorusDiffReportsPage/ChorusDiffReportsPage.vue');
+const ChorusAddDiffReportPage = () =>
+  import('@/pages/ChorusAddDiffReportPage/ChorusAddDiffReportPage.vue');
+const ChorusDiffReportDetailPage = () =>
+  import('@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue');
+const TuttiHealthPage = () =>
+  import('@/pages/TuttiHealthPage/TuttiHealthPage.vue');
+const TuttiFailoverPage = () =>
+  import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
+const TuttiProxyAccountsPage = () =>
+  import('@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue');
+const LoginPage = () => import('@/pages/LoginPage/LoginPage.vue');
 
 export const routes: RouteRecordRaw[] = [
   {

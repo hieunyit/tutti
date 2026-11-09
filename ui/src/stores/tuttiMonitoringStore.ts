@@ -41,6 +41,10 @@ export interface MonitoringProxy {
 interface MonitoringState {
   /** true until the first proxies response (success or failure) */
   isLoading: boolean;
+  /** user paused the live updates */
+  isPaused: boolean;
+  /** ms since epoch of the last successful proxies response */
+  lastUpdated: number | null;
   hasError: boolean;
   proxies: MonitoringProxy[];
   /** proxies that run without published stats (older versions) */
@@ -59,6 +63,8 @@ interface MonitoringState {
 function getInitialState(): MonitoringState {
   return {
     isLoading: true,
+    isPaused: false,
+    lastUpdated: null,
     hasError: false,
     proxies: [],
     proxiesWithoutStats: [],
@@ -74,6 +80,8 @@ function getInitialState(): MonitoringState {
 
 export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
   const state = reactive<MonitoringState>(getInitialState());
+  let proxyRequest: AbortController | null = null;
+  let replicationRequest: AbortController | null = null;
 
   const seriesByProxy = computed<Record<string, TrafficRates[]>>(() =>
     Object.fromEntries(
@@ -156,21 +164,42 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
   }
 
   async function loadProxies() {
+    if (proxyRequest !== null) return;
+
+    const request = new AbortController();
+
+    proxyRequest = request;
+
     try {
-      const res = await TuttiService.getProxies();
+      const res = await TuttiService.getProxies(request.signal);
+
+      if (proxyRequest !== request) return;
 
       ingestProxies(res.proxies ?? []);
       state.hasError = false;
+      state.lastUpdated = Date.now();
     } catch {
-      state.hasError = true;
+      if (proxyRequest === request) state.hasError = true;
     } finally {
-      state.isLoading = false;
+      if (proxyRequest === request) {
+        proxyRequest = null;
+        state.isLoading = false;
+      }
     }
   }
 
   async function loadReplications() {
+    if (replicationRequest !== null) return;
+
+    const request = new AbortController();
+
+    replicationRequest = request;
+
     try {
-      const res = await ChorusService.getReplications();
+      const res = await ChorusService.getReplications(request.signal);
+
+      if (replicationRequest !== request) return;
+
       const replications = (res.replications ?? []).filter(
         (replication) => !replication.isArchived,
       );
@@ -187,13 +216,21 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
       state.lagStreaks = streaks;
       state.replicationsError = false;
     } catch {
-      state.replicationsError = true;
+      if (replicationRequest === request) state.replicationsError = true;
     } finally {
-      state.replicationsLoaded = true;
+      if (replicationRequest === request) {
+        replicationRequest = null;
+        state.replicationsLoaded = true;
+      }
     }
   }
 
   function stopPolling() {
+    proxyRequest?.abort();
+    replicationRequest?.abort();
+    proxyRequest = null;
+    replicationRequest = null;
+
     if (state.proxyTimer !== null) clearInterval(state.proxyTimer);
 
     if (state.replicationTimer !== null) clearInterval(state.replicationTimer);
@@ -204,6 +241,7 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
 
   function startPolling() {
     stopPolling();
+    state.isPaused = false;
     loadProxies();
     loadReplications();
     state.proxyTimer = setInterval(loadProxies, MONITORING_PROXY_INTERVAL_MS);
@@ -211,6 +249,16 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
       loadReplications,
       MONITORING_REPLICATION_INTERVAL_MS,
     );
+  }
+
+  /** Stops the live updates but keeps the collected data. */
+  function pause() {
+    stopPolling();
+    state.isPaused = true;
+  }
+
+  function resume() {
+    startPolling();
   }
 
   function $reset() {
@@ -232,6 +280,8 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
     loadReplications,
     startPolling,
     stopPolling,
+    pause,
+    resume,
     $reset,
   };
 });

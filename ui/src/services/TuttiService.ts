@@ -30,9 +30,12 @@ import type {
 } from '@/utils/types/tutti';
 
 export abstract class TuttiService {
-  static async getProxies(): Promise<TuttiProxyStatusListResponse> {
+  static async getProxies(
+    signal?: AbortSignal,
+  ): Promise<TuttiProxyStatusListResponse> {
     const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
       ApiHelper.getChorusAPIUrl('/tutti/proxies'),
+      { signal },
     );
 
     return data;

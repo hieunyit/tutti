@@ -69,9 +69,13 @@ export abstract class ChorusService {
     return data;
   }
 
-  static async getReplications(): Promise<ChorusReplicationListResponse> {
+  static async getReplications(
+    signal?: AbortSignal,
+  ): Promise<ChorusReplicationListResponse> {
     const { data } = await apiClient.post<ChorusReplicationListResponse>(
       ApiHelper.getChorusAPIUrl('/replication'),
+      undefined,
+      { signal },
     );
 
     return data;
