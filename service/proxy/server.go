@@ -31,6 +31,7 @@ import (
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/metrics"
@@ -139,10 +140,29 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
-		clientRegistry, err := objstore.NewRegistry(ctx, credsSvc, metricsSvc)
+		healthReg := health.NewRegistry(conf.Health, health.WithLogger(logger), health.WithOnChange(func(storage string, available bool) {
+			if conf.Metrics.Enabled {
+				metrics.SetStorageAvailable(storage, available)
+				metrics.CountBreakerTransition(storage, available)
+			}
+		}))
+		clientRegistry, err := objstore.NewRegistry(ctx, credsSvc, metricsSvc, objstore.WithHealth(healthReg))
 		if err != nil {
 			return err
 		}
+		var probeTargets []health.Target
+		for name, stor := range s3Conf {
+			healthReg.Register(name)
+			if conf.Metrics.Enabled {
+				metrics.SetStorageAvailable(name, true)
+			}
+			probeTargets = append(probeTargets, health.Target{
+				Storage:  name,
+				Interval: stor.HealthCheckInterval,
+				Probe:    storageProbe(clientRegistry, credsSvc, name),
+			})
+		}
+		go healthReg.RunChecks(ctx, probeTargets...)
 		if conf.Replication.Sync.Enabled {
 			lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 			defer lockRedis.Close()
@@ -150,6 +170,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
 			copySvc := copy.NewS3CopySvc(credsSvc, clientRegistry, metricsSvc)
 			proxyConfig.Sync = router.SyncOptions{
+				Health:          healthReg,
 				Enabled:         true,
 				Syncer:          syncer.New(verSvc, objectLocker, copySvc, clientRegistry),
 				WriteQuorum:     conf.Replication.Sync.WriteQuorum,
@@ -247,3 +268,20 @@ func requestReplyServer(proxyUrl string, credentials ...map[string]s3.Credential
 // syncLockOverlap matches the default worker lock.overlap: the proxy takes the same distributed
 // destination-object lock as the worker when syncing synchronously.
 const syncLockOverlap = 2 * time.Second
+
+// storageProbe is a cheap authenticated call (ListBuckets) with one configured credential of the storage.
+func storageProbe(clients objstore.Clients, creds objstore.CredsService, storage string) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		users := creds.ListUsers(storage)
+		if len(users) == 0 {
+			return health.ErrSkipProbe
+		}
+		slices.Sort(users)
+		c, err := clients.AsS3(ctx, storage, users[0])
+		if err != nil {
+			return err
+		}
+		_, err = c.S3().ListBuckets(ctx)
+		return err
+	}
+}

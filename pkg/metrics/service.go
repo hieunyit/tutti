@@ -57,6 +57,40 @@ var copyInProgressBytes = promauto.NewGaugeVec(
 	[]string{"flow", "user", "bucket"},
 )
 
+var storageAvailable = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "storage_available",
+		Help: "1 if the storage circuit breaker is closed, 0 if requests to the storage fail fast.",
+	},
+	[]string{"storage"},
+)
+
+var breakerTransitions = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "storage_breaker_transitions_total",
+		Help: "Number of storage circuit breaker transitions.",
+	},
+	[]string{"storage", "to"},
+)
+
+// SetStorageAvailable sets the storage_available gauge.
+func SetStorageAvailable(storage string, available bool) {
+	v := 0.0
+	if available {
+		v = 1
+	}
+	storageAvailable.WithLabelValues(storage).Set(v)
+}
+
+// CountBreakerTransition counts a circuit breaker transition to "open" or "closed".
+func CountBreakerTransition(storage string, available bool) {
+	to := "open"
+	if available {
+		to = "closed"
+	}
+	breakerTransitions.WithLabelValues(storage, to).Inc()
+}
+
 type Service interface {
 	Count(flow xctx.Flow, storage string, method string)
 	Upload(flow xctx.Flow, storage, bucket string, bytes int)

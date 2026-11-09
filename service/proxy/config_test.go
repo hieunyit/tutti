@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/health"
 )
 
 func TestGetConfigDefaults(t *testing.T) {
@@ -107,4 +108,15 @@ func TestSyncConfigValidate(t *testing.T) {
 	r.Error((&SyncConfig{OnQuorumFailure: "ignore"}).Validate())
 	rc := ReplicationConfig{OnEventError: "fail", Sync: SyncConfig{Enabled: true}}
 	r.Error(rc.Validate())
+}
+
+func TestHealthConfigValidate(t *testing.T) {
+	r := require.New(t)
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.Equal(3, conf.Health.FailureThreshold)
+	r.Equal(30*time.Second, conf.Health.OpenDuration)
+	r.NoError(conf.Health.Validate())
+	r.Error((&health.Config{FailureThreshold: -1}).Validate())
+	r.Error((&health.Config{OpenDuration: -time.Second}).Validate())
 }

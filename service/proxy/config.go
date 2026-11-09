@@ -24,6 +24,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/config"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/swift"
@@ -56,6 +57,8 @@ type Config struct {
 	Cors    *cors.Config `yaml:"cors"`
 
 	Replication ReplicationConfig `yaml:"replication"`
+	// Health configures per-storage circuit breakers.
+	Health health.Config `yaml:"health"`
 }
 
 type ReplicationConfig struct {
@@ -121,6 +124,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Replication.Validate(); err != nil {
+		return err
+	}
+	if err := c.Health.Validate(); err != nil {
 		return err
 	}
 	return nil

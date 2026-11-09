@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -33,6 +34,21 @@ type ObjectSyncer interface {
 	Sync(ctx context.Context, p tasks.ObjectSyncPayload) error
 }
 
+// StorageHealth lets synchronous replication skip destinations known to be down and report outcomes.
+// It is implemented by pkg/health.Registry.
+type StorageHealth interface {
+	// Available reports whether a request would be admitted, without taking a half-open trial.
+	Available(storage string) bool
+	// Allow admits a request (taking the half-open trial if needed).
+	Allow(storage string) bool
+	Observe(storage string, err error)
+}
+
+var (
+	errDestUnavailable   = errors.New("destination storage is unavailable (circuit breaker open)")
+	errQuorumUnreachable = errors.New("not attempted: write quorum is unreachable with the available destinations")
+)
+
 // SyncOptions configures synchronous replication on the write path.
 type SyncOptions struct {
 	Enabled bool
@@ -43,6 +59,8 @@ type SyncOptions struct {
 	Timeout time.Duration
 	// OnQuorumFailure is "fail" (default) or "accept".
 	OnQuorumFailure string
+	// Health is optional: destinations with an open breaker are not attempted.
+	Health StorageHealth
 }
 
 // syncResult is the outcome of the synchronous replication of one request.
@@ -72,24 +90,54 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
-	syncCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	res.total = 1 + len(dests)
 	res.failed = map[entity.UniversalReplicationID]error{}
+	res.quorum = o.WriteQuorum
+	if res.quorum <= 0 || res.quorum > res.total {
+		res.quorum = res.total
+	}
+
+	run := make([]entity.UniversalReplicationID, 0, len(dests))
+	for _, id := range dests {
+		if o.Health != nil && !o.Health.Available(id.ToStorage()) {
+			res.failed[id] = errDestUnavailable
+			continue
+		}
+		run = append(run, id)
+	}
+	res.copies = 1
+	if o.Health != nil && 1+len(run) < res.quorum {
+		// the quorum cannot be reached even if every available destination succeeds: do not wait for anything
+		for _, id := range run {
+			res.failed[id] = errQuorumUnreachable
+		}
+		return res, true
+	}
+
+	syncCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	synced := 0
-	for _, id := range dests {
+	for _, id := range run {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			gen := xctx.GetReplicationGeneration(ctx, id)
+			to := id.ToStorage()
 			var err error
-			for _, p := range payloads {
-				p.SetReplicationID(id, gen)
-				if err = o.Syncer.Sync(syncCtx, p); err != nil {
-					break
+			if o.Health != nil && !o.Health.Allow(to) {
+				err = errDestUnavailable
+			} else {
+				gen := xctx.GetReplicationGeneration(ctx, id)
+				for _, p := range payloads {
+					p.SetReplicationID(id, gen)
+					err = o.Syncer.Sync(syncCtx, p)
+					if o.Health != nil {
+						o.Health.Observe(to, err)
+					}
+					if err != nil {
+						break
+					}
 				}
 			}
 			mu.Lock()
@@ -104,10 +152,6 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 	wg.Wait()
 
 	res.copies = 1 + synced
-	res.quorum = o.WriteQuorum
-	if res.quorum <= 0 || res.quorum > res.total {
-		res.quorum = res.total
-	}
 	return res, true
 }
 

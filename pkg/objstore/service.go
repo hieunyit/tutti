@@ -194,12 +194,15 @@ func (c commonClient) ObjectVersions(ctx context.Context, bucket string, name st
 // Then:
 // - implement management API for dynamic credentials
 // - add e2e tests
-func NewRegistry(ctx context.Context, creds CredsService, metricsSvc metrics.Service) (*clients, error) {
+func NewRegistry(ctx context.Context, creds CredsService, metricsSvc metrics.Service, opts ...RegistryOption) (*clients, error) {
 	res := &clients{
 		metricsSvc:   metricsSvc,
 		credsSvc:     creds,
 		s3Clients:    make(map[string]s3CacheVal),
 		swiftClients: make(map[string]swiftCacheVal),
+	}
+	for _, o := range opts {
+		o(res)
 	}
 	// pre-populate clients cache with existing storages and users
 	storsages := creds.Storages()
@@ -227,7 +230,17 @@ func NewRegistry(ctx context.Context, creds CredsService, metricsSvc metrics.Ser
 
 var _ Clients = (*clients)(nil)
 
+// RegistryOption customizes the clients registry.
+type RegistryOption func(*clients)
+
+// WithHealth makes every S3 client created by the registry fail fast for unavailable storages
+// and report request outcomes (see s3client.WithHealth).
+func WithHealth(h s3client.Health) RegistryOption {
+	return func(c *clients) { c.health = h }
+}
+
 type clients struct {
+	health     s3client.Health
 	metricsSvc metrics.Service
 
 	credsSvc CredsService
@@ -280,7 +293,11 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 		return cacheVal.client, nil
 	}
 	// create new client
-	client, err := s3client.NewClient(ctx, r.metricsSvc, s3Addr, cred, storage, user)
+	var clientOpts []s3client.Option
+	if r.health != nil {
+		clientOpts = append(clientOpts, s3client.WithHealth(r.health))
+	}
+	client, err := s3client.NewClient(ctx, r.metricsSvc, s3Addr, cred, storage, user, clientOpts...)
 	if err != nil {
 		return nil, err
 	}

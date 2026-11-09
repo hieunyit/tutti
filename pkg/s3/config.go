@@ -65,7 +65,9 @@ type StorageAddress struct {
 	DefaultRegion string   `yaml:"defaultRegion"`
 
 	HttpTimeout time.Duration `yaml:"httpTimeout"`
-	IsSecure    bool          `yaml:"isSecure"`
+	// HealthCheckInterval is the period of the storage availability probe. Default 10s.
+	HealthCheckInterval time.Duration `yaml:"healthCheckInterval"`
+	IsSecure            bool          `yaml:"isSecure"`
 }
 
 func (s *Storage) HasUser(user string) bool {
@@ -105,6 +107,9 @@ func (s *Storage) Validate() error {
 
 	if s.HttpTimeout == 0 {
 		s.HttpTimeout = defaultHttpTimeout
+	}
+	if s.HealthCheckInterval < 0 {
+		return fmt.Errorf("%w: healthCheckInterval must not be negative", dom.ErrInvalidStorageConfig)
 	}
 	if !slices.Contains(providers, s.Provider) {
 		return fmt.Errorf("%w: invalid storage provider %q. Supported values: %#v", dom.ErrInvalidStorageConfig, s.Provider, providers)

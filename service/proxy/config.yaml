@@ -20,6 +20,13 @@ replication:
     #   fail   - respond 503 ServiceUnavailable (data is on main and the task is enqueued; the client may retry)
     #   accept - forward main's response (header still reports the copies count)
     onQuorumFailure: fail
+# Per-storage circuit breakers, fed by periodic health probes (storages.<name>.healthCheckInterval, default 10s)
+# and by the outcome of real requests. While a breaker is open, requests to that storage fail immediately with
+# 503 ServiceUnavailable instead of waiting for httpTimeout, and synchronous replication skips that destination.
+# Network errors, timeouts and 5xx count as failures; any definitive S3 answer (2xx/3xx/4xx) counts as success.
+health:
+  failureThreshold: 3 # consecutive failures that open the breaker
+  openDuration: 30s # how long it stays open before one trial request/probe is allowed
 cors:
   enabled: false
   allowAll: false

@@ -39,7 +39,24 @@ type Client interface {
 	Do(req *http.Request) (*http.Response, bool, error)
 }
 
+// Health is an optional availability gate and observer (see pkg/health.Registry).
+type Health interface {
+	// Allow reports whether a request to the storage may be sent now.
+	Allow(storage string) bool
+	// Observe records the outcome of a request to the storage.
+	Observe(storage string, err error)
+}
+
+// Option customizes a Client.
+type Option func(*client)
+
+// WithHealth makes Do fail fast for unavailable storages and report request outcomes.
+func WithHealth(h Health) Option {
+	return func(c *client) { c.health = h }
+}
+
 type client struct {
+	health      Health
 	metricsSvc  metrics.Service
 	c           *http.Client
 	mc          *S3
@@ -51,7 +68,7 @@ type client struct {
 	conf        s3.StorageAddress
 }
 
-func NewClient(ctx context.Context, metricsSvc metrics.Service, storageConf s3.StorageAddress, cred s3.CredentialsV4, storageName, userName string) (Client, error) {
+func NewClient(ctx context.Context, metricsSvc metrics.Service, storageConf s3.StorageAddress, cred s3.CredentialsV4, storageName, userName string, opts ...Option) (Client, error) {
 	c := &client{
 		c: &http.Client{
 			Timeout: storageConf.HttpTimeout,
@@ -61,6 +78,9 @@ func NewClient(ctx context.Context, metricsSvc metrics.Service, storageConf s3.S
 		userName:    userName,
 		cred:        cred,
 		metricsSvc:  metricsSvc,
+	}
+	for _, o := range opts {
+		o(c)
 	}
 	host := strings.TrimPrefix(storageConf.Address, "http://")
 	host = strings.TrimPrefix(host, "https://")

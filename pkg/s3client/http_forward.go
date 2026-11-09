@@ -18,6 +18,8 @@ package s3client
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +30,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/s3"
 )
 
@@ -42,6 +45,10 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 	}
 	defer span.End()
 	req = req.WithContext(ctx)
+	if c.health != nil && !c.health.Allow(c.storageName) {
+		// fail fast instead of waiting for the http timeout of an unavailable storage
+		return nil, false, health.UnavailableError(c.storageName)
+	}
 	defer func() {
 		if err != nil {
 			return
@@ -108,6 +115,7 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 	_, doReqSpan := otel.Tracer("").Start(ctx, fmt.Sprintf("clientDo.%s.DoReq", xctx.GetMethod(req.Context()).String()))
 	resp, err = c.c.Do(newReq)
 	doReqSpan.End()
+	c.observe(req.Context(), resp, err)
 	if resp != nil && !successStatus[resp.StatusCode] {
 		isApiErr = true
 		// Read the body to be saved later.
@@ -132,4 +140,20 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 		return nil, false, err
 	}
 	return
+}
+
+// observe reports the availability outcome of a forwarded request.
+func (c *client) observe(ctx context.Context, resp *http.Response, err error) {
+	if c.health == nil {
+		return
+	}
+	switch {
+	case err != nil && resp == nil:
+		if ctx.Err() != nil && !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return // the caller went away: tells nothing about the storage
+		}
+		c.health.Observe(c.storageName, err)
+	case resp != nil:
+		c.health.Observe(c.storageName, mclient.ErrorResponse{StatusCode: resp.StatusCode})
+	}
 }
