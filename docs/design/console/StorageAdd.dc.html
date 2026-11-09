@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add storage and storage settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.sub{font-size:12px;color:#667085}
+.inp{height:36px;border:1px solid #D0D5DD;border-radius:8px;padding:0 12px;font:inherit;font-size:14px;font-weight:400;box-sizing:border-box;width:100%;background:#FFFFFF}
+.lbl{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
+.mono{font-family:'JetBrains Mono',monospace}
+.btn{height:36px;padding:0 14px;border:1px solid #D0D5DD;background:#FFFFFF;border-radius:8px;font:inherit;font-size:14px;cursor:pointer;color:#101828}
+.pri{height:36px;padding:0 14px;border:1px solid #2952CC;background:#2952CC;color:#FFFFFF;border-radius:8px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="storages" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Storages" page="Add storage" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; box-sizing: border-box; width: 100%; max-width: 1600px">
+
+      <section aria-label="Add storage dialog" style="flex: 1 1 560px; max-width: 640px; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; box-shadow: 0 12px 32px rgba(16,24,40,0.10); padding: 24px; display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; flex-direction: column; gap: 4px"><h1 style="margin: 0; font-size: 18px; font-weight: 600">Add storage</h1><span class="sub">Worker and every proxy pick it up within 5 s. No restart needed.</span></div>
+        <ol aria-label="Steps" style="list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; font-size: 13px">
+          <li aria-current="step" style="font-weight: 600; color: #2952CC">1 Connection</li><li aria-hidden="true" style="color: #D0D5DD">—</li><li style="color: #667085">2 Credentials and test</li>
+        </ol>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+          <label class="lbl">Name<input class="inp mono" value="archive"><span class="sub" style="font-weight: 400">Lowercase, digits, - and _. Cannot be changed later.</span></label>
+          <label class="lbl">Provider<select class="inp"><option>MinIO</option><option>Ceph</option><option>Other S3</option></select></label>
+          <label class="lbl" style="grid-column: 1 / -1">Endpoint URL<input class="inp mono" value="https://s3.archive.internal:9000"></label>
+          <label class="lbl">Region<input class="inp" value="us-east-1"></label>
+          <label class="lbl">Request timeout<input class="inp" value="1m"></label>
+          <label class="lbl">Health check every<input class="inp" value="10s"></label>
+          <label class="lbl">Rate limit<span style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked aria-label="Enable rate limit"><input class="inp" value="600" aria-label="Requests per minute" style="width: 110px"><span class="sub" style="font-weight: 400">req / min</span></span></label>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #EEF0F3; padding-top: 16px">
+          <strong style="font-size: 14px">Step 2 · Credentials for existing users</strong>
+          <div style="display: grid; grid-template-columns: 90px repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end">
+            <span style="font-size: 14px; font-weight: 600; height: 36px; display: flex; align-items: center">user1</span>
+            <label class="lbl">Access key ID<input class="inp mono" value="AKIAARCHIVE01"></label>
+            <label class="lbl">Secret access key<input class="inp" type="password" value="xxxxxxxxxxxx"></label>
+            <span style="font-size: 14px; font-weight: 600; height: 36px; display: flex; align-items: center">user2</span>
+            <label class="lbl"><span class="tt">Access key ID</span><input class="inp mono" placeholder="Skip for now"></label>
+            <label class="lbl">Secret access key<input class="inp" type="password"></label>
+          </div>
+        </div>
+        <div role="status" style="display: flex; flex-direction: column; gap: 6px; background: #F9FAFB; border: 1px solid #E4E7EC; border-radius: 10px; padding: 12px 14px; font-size: 13px">
+          <span style="color: #067647; font-weight: 600">✓ Endpoint reachable · TLS valid (CN s3.archive.internal, expires 14 Aug 2027) · 18 ms</span>
+          <span style="color: #067647; font-weight: 600">✓ user1 can list buckets · 22 ms</span>
+          <span style="color: #475467">– user2 skipped: replication for user2 cannot use this storage yet</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap"><button type="button" class="btn">Cancel</button><div style="display: flex; gap: 8px"><button type="button" class="btn">Test connection</button><button type="button" class="pri">Add storage</button></div></div>
+      </section>
+
+      <section aria-label="Storage settings tab" style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 4px"><h2 style="margin: 0; font-size: 18px; font-weight: 600">Storage detail · Settings tab</h2><span class="sub">archive · Managed in console</span></div>
+        <div style="display: flex; gap: 12px; align-items: flex-start; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #7A2E0E">
+          <span aria-hidden="true">!</span><span><strong>This storage is in use.</strong> 2 replications and 1 failover policy point to it. A wrong endpoint stops replication until you fix it. Test before saving.</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+          <label class="lbl" style="grid-column: 1 / -1">Endpoint URL<input class="inp mono" value="https://s3-new.archive.internal:9000" style="border-color: #2952CC; box-shadow: 0 0 0 3px #E0E8FF"><span class="sub" style="font-weight: 400">Changed from https://s3.archive.internal:9000</span></label>
+          <label class="lbl">Provider<select class="inp"><option>MinIO</option></select></label>
+          <label class="lbl">Region<input class="inp" value="us-east-1"></label>
+          <label class="lbl">Request timeout<input class="inp" value="1m"></label>
+          <label class="lbl">Health check every<input class="inp" value="10s"></label>
+          <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #EEF0F3; padding-top: 14px"><button type="button" class="btn">Discard changes</button><button type="button" class="btn">Test connection</button><button type="button" class="pri">Save changes</button></div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <strong style="font-size: 14px">Storage defined in the config file</strong>
+          <span style="font-size: 13px; color: #475467">Settings of <span class="mono">main</span> and <span class="mono">follower</span> are shown read-only. Edit <span class="mono">storage.storages</span> in the worker and proxy config and restart them to change these.</span>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #FECDCA; border-radius: 12px; padding: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px"><strong style="font-size: 14px; color: #B42318">Delete storage</strong><span class="sub">Only possible when no replication, routing or failover policy uses it.</span></div>
+          <button type="button" class="btn" style="color: #B42318; border-color: #FDA29B">Delete archive</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
