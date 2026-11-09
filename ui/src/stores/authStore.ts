@@ -37,6 +37,8 @@ interface AuthState {
   loginError: AuthLoginErrorKind | null;
   /** seconds from Retry-After when rate limited */
   retryAfterSeconds: number | null;
+  /** failed attempts left before a lock, only when the API reports it */
+  remainingAttempts: number | null;
 }
 
 function getInitialState(): AuthState {
@@ -49,6 +51,7 @@ function getInitialState(): AuthState {
     isLoggingIn: false,
     loginError: null,
     retryAfterSeconds: null,
+    remainingAttempts: null,
   };
 }
 
@@ -112,6 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     state.isLoggingIn = true;
     state.loginError = null;
     state.retryAfterSeconds = null;
+    state.remainingAttempts = null;
 
     try {
       const res = await AuthService.login({ username, password });
@@ -129,6 +133,18 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (status === 401) {
         state.loginError = 'invalidCredentials';
+
+        const data = axios.isAxiosError(e) ? e.response?.data : undefined;
+        const remaining = Number(
+          (data as { remainingAttempts?: unknown } | undefined)
+            ?.remainingAttempts ??
+            (axios.isAxiosError(e)
+              ? e.response?.headers?.['x-remaining-attempts']
+              : undefined),
+        );
+
+        state.remainingAttempts =
+          Number.isInteger(remaining) && remaining >= 0 ? remaining : null;
       } else if (status === 429) {
         state.loginError = 'rateLimited';
 

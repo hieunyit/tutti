@@ -24,6 +24,7 @@
   import { toRefs } from 'vue';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
+  import { DARK_THEME_OVERRIDES, LIGHT_THEME_OVERRIDES } from '@/styles/theme';
 
   const { locale } = toRefs(useI18nStore());
   const { colorScheme } = toRefs(useColorSchemeStore());
@@ -34,6 +35,8 @@
     class="app"
     :color-scheme="colorScheme"
     :locale="locale"
+    :custom-light-theme="LIGHT_THEME_OVERRIDES"
+    :custom-dark-theme="DARK_THEME_OVERRIDES"
   >
     <RouterView />
 

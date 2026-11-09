@@ -17,8 +17,9 @@
 <script setup lang="ts">
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import DashboardKpiCard from './DashboardKpiCard.vue';
   import i18nDashboard from './i18nDashboard';
+  import KpiCard from '@/components/ui/KpiCard.vue';
+  import type { Tone } from '@/components/ui/status';
   import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
   import type {
     ProxyReporting,
@@ -28,8 +29,6 @@
   } from '@/utils/helpers/DashboardHelper';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
   import { RouteName } from '@/utils/types/router';
-
-  type Tone = 'success' | 'warning' | 'error';
 
   const props = defineProps<{
     storages: StorageHealthRow[] | null;
@@ -57,14 +56,21 @@
     const healthy = rows.filter((r) => r.state === 'healthy').length;
     const down = rows.filter((r) => r.state === 'unavailable').length;
     const unknown = rows.filter((r) => r.state === 'unknown').length;
-    const tone: Tone | undefined = down > 0 ? 'error' : undefined;
+    const tone: Tone | undefined = down > 0 ? 'danger' : undefined;
 
     return {
       value: `${number(healthy)} / ${number(rows.length)}`,
       hint:
-        unknown > 0
-          ? t('kpiStoragesHint', { n: number(unknown) })
-          : t('kpiStoragesAllKnown'),
+        down > 0
+          ? t('kpiStoragesDown', {
+              names: rows
+                .filter((r) => r.state === 'unavailable')
+                .map((r) => r.name)
+                .join(', '),
+            })
+          : unknown > 0
+            ? t('kpiStoragesHint', { n: number(unknown) })
+            : t('kpiStoragesAllKnown'),
       tone,
     };
   });
@@ -75,11 +81,8 @@
     if (!r) return { value: none.value, hint: '', tone: undefined };
 
     return {
-      value: number(r.total),
-      hint: t('kpiReplicationsHint', {
-        active: number(r.active),
-        paused: number(r.paused),
-      }),
+      value: `${number(r.active)} ${t('kpiReplicationsActive')}`,
+      hint: t('kpiReplicationsPausedHint', { n: number(r.paused) }),
       tone: (r.paused > 0 ? 'warning' : undefined) as Tone | undefined,
     };
   });
@@ -126,7 +129,11 @@
       hint: tr.isErrorPercentCurrent
         ? t('kpiErrorsCurrent')
         : t('kpiErrorsSinceStart'),
-      tone: (tr.errorPercent5xx > 0 ? 'error' : undefined) as Tone | undefined,
+      tone: (tr.errorPercent5xx >= 5
+        ? 'danger'
+        : tr.errorPercent5xx >= 1
+          ? 'warning'
+          : undefined) as Tone | undefined,
     };
   });
 
@@ -144,73 +151,58 @@
 </script>
 
 <template>
-  <div class="dashboard-kpis">
-    <div class="dashboard-kpis__grid">
-      <DashboardKpiCard
-        :label="t('kpiStorages')"
-        :value="storagesCard.value"
-        :hint="storagesCard.hint"
-        :tone="storagesCard.tone"
-        :to="{ name: RouteName.TUTTI_HEALTH }"
-      />
-      <DashboardKpiCard
-        :label="t('kpiReplications')"
-        :value="replicationsCard.value"
-        :hint="replicationsCard.hint"
-        :tone="replicationsCard.tone"
-        :to="{ name: RouteName.CHORUS_REPLICATION }"
-      />
-      <DashboardKpiCard
-        :label="t('kpiLag')"
-        :value="lagCard.value"
-        :hint="lagCard.hint"
-        :tone="lagCard.tone"
-        :to="{ name: RouteName.CHORUS_REPLICATION }"
-      />
-      <DashboardKpiCard
-        :label="requestsCard.label"
-        :value="requestsCard.value"
-        :hint="requestsCard.hint"
-        :to="{ name: RouteName.CHORUS_MONITORING }"
-      />
-      <DashboardKpiCard
-        :label="t('kpiErrors')"
-        :value="errorsCard.value"
-        :hint="errorsCard.hint"
-        :tone="errorsCard.tone"
-        :to="{ name: RouteName.CHORUS_MONITORING }"
-      />
-      <DashboardKpiCard
-        :label="t('kpiProxies')"
-        :value="proxiesCard.value"
-        :hint="proxiesCard.hint"
-        :tone="proxiesCard.tone"
-        :to="{ name: RouteName.TUTTI_HEALTH }"
-      />
-    </div>
-  </div>
+  <section
+    class="dashboard-kpis"
+    :aria-label="t('kpiLabel')"
+  >
+    <KpiCard
+      :label="t('kpiStorages')"
+      :value="storagesCard.value"
+      :sub="storagesCard.hint"
+      :tone="storagesCard.tone"
+      :to="{ name: RouteName.TUTTI_HEALTH }"
+    />
+    <KpiCard
+      :label="t('kpiReplications')"
+      :value="replicationsCard.value"
+      :sub="replicationsCard.hint"
+      :tone="replicationsCard.tone"
+      :to="{ name: RouteName.CHORUS_REPLICATION }"
+    />
+    <KpiCard
+      :label="t('kpiLag')"
+      :value="lagCard.value"
+      :sub="lagCard.hint"
+      :tone="lagCard.tone"
+      :to="{ name: RouteName.CHORUS_REPLICATION }"
+    />
+    <KpiCard
+      :label="requestsCard.label"
+      :value="requestsCard.value"
+      :sub="requestsCard.hint"
+      :to="{ name: RouteName.CHORUS_MONITORING }"
+    />
+    <KpiCard
+      :label="t('kpiErrors')"
+      :value="errorsCard.value"
+      :sub="errorsCard.hint"
+      :tone="errorsCard.tone"
+      :to="{ name: RouteName.CHORUS_MONITORING }"
+    />
+    <KpiCard
+      :label="t('kpiProxies')"
+      :value="proxiesCard.value"
+      :sub="proxiesCard.hint"
+      :tone="proxiesCard.tone"
+      :to="{ name: RouteName.TUTTI_HEALTH }"
+    />
+  </section>
 </template>
 
 <style lang="scss" scoped>
   .dashboard-kpis {
-    container-type: inline-size;
-
-    &__grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
-
-      @container (min-width: 520px) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      @container (min-width: 760px) {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      @container (min-width: 1100px) {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-      }
-    }
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
   }
 </style>

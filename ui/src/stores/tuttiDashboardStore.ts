@@ -18,13 +18,18 @@ import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
+import { useAuthStore } from '@/stores/authStore';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import {
   TrafficStatsHelper,
   type TrafficSnapshot,
 } from '@/utils/helpers/TrafficStatsHelper';
 import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
-import type { TuttiFailoverEvent, TuttiProxyStatus } from '@/utils/types/tutti';
+import type {
+  TuttiFailoverEvent,
+  TuttiFailoverPolicy,
+  TuttiProxyStatus,
+} from '@/utils/types/tutti';
 
 export const DASHBOARD_REFRESH_INTERVAL_MS = 30_000;
 
@@ -40,6 +45,8 @@ interface DashboardState {
   replications: ChorusReplication[] | null;
   proxies: TuttiProxyStatus[] | null;
   events: TuttiFailoverEvent[] | null;
+  /** null for viewers (not readable) or when the request failed */
+  policies: TuttiFailoverPolicy[] | null;
   /** sources whose last request failed (403 is not an error) */
   failed: Record<SourceKey, boolean>;
   /** rolling snapshots per proxy, kept across page visits for rates */
@@ -56,6 +63,7 @@ function getInitialState(): DashboardState {
     replications: null,
     proxies: null,
     events: null,
+    policies: null,
     failed: {
       storages: false,
       replications: false,
@@ -108,12 +116,18 @@ export const useTuttiDashboardStore = defineStore('tuttiDashboard', () => {
     state.isRefreshing = true;
     const requestGeneration = generation;
 
-    const [storages, replications, proxies, events] = await Promise.allSettled([
-      ChorusService.getStorages(),
-      ChorusService.getReplications(),
-      TuttiService.getProxies(),
-      TuttiService.getFailoverEvents(),
-    ]);
+    const [storages, replications, proxies, events, policies] =
+      await Promise.allSettled([
+        ChorusService.getStorages(),
+        ChorusService.getReplications(),
+        TuttiService.getProxies(),
+        TuttiService.getFailoverEvents(),
+        // optional and admin-only: used to detect "failover off while
+        // policies exist"; viewers skip the request
+        useAuthStore().canWrite
+          ? TuttiService.getFailoverPolicies()
+          : Promise.resolve(null),
+      ]);
 
     // Leaving the page or resetting the session invalidates pending responses.
     if (requestGeneration !== generation) return;
@@ -152,6 +166,11 @@ export const useTuttiDashboardStore = defineStore('tuttiDashboard', () => {
     };
 
     if (events.status === 'rejected') state.events = null;
+
+    state.policies =
+      policies.status === 'fulfilled'
+        ? (policies.value?.policies ?? null)
+        : null;
 
     if (delivered) state.lastUpdated = Date.now();
 

@@ -18,6 +18,8 @@
   defineProps<{
     title: string;
     description?: string;
+    /** "Live · updated 4 s ago": shown with a status dot before the actions */
+    liveText?: string;
   }>();
 </script>
 
@@ -33,6 +35,20 @@
           {{ description }}
         </p>
       </div>
+
+      <span
+        v-if="liveText || $slots.live"
+        class="page-header__live"
+        aria-live="polite"
+      >
+        <slot name="live">
+          <span
+            class="page-header__live-dot"
+            aria-hidden="true"
+          />
+          {{ liveText }}
+        </slot>
+      </span>
 
       <div
         v-if="$slots.actions"
@@ -53,35 +69,52 @@
 
 <style lang="scss" scoped>
   .page-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 
     &__row {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+      align-items: flex-end;
       flex-wrap: wrap;
       gap: 12px 16px;
     }
 
     &__text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
       min-width: 0;
-      flex: 1 1 280px;
+      flex: 1 1 360px;
     }
 
     &__title {
       margin: 0;
       font-size: 24px;
       line-height: 32px;
-      font-weight: 600;
-      color: var(--text-color-1);
+      font-weight: 700;
+      color: var(--tt-text);
     }
 
     &__description {
-      margin: 4px 0 0;
+      margin: 0;
       font-size: 14px;
       line-height: 20px;
-      color: var(--text-color-3);
+      color: var(--tt-text-2);
       max-width: 72ch;
+    }
+
+    &__live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--tt-text-3);
+    }
+
+    &__live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--tt-success-solid);
     }
 
     &__actions {

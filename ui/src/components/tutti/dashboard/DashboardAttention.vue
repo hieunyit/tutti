@@ -15,7 +15,6 @@
   -->
 
 <script setup lang="ts">
-  import { NTag } from 'naive-ui';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
@@ -37,17 +36,12 @@
   const hiddenCount = computed(() =>
     Math.max(0, props.items.length - VISIBLE_ITEMS),
   );
-  const hasError = computed(() =>
-    props.items.some((item) => item.severity === 'error'),
-  );
 
-  function text(item: AttentionItem): string {
-    const params =
-      item.kind === 'proxyStale'
-        ? { ...item.params, since: formatRelative(String(item.params.since)) }
-        : item.params;
-
-    return t(item.kind, params);
+  /** message parameters; the names the operator looks for are rendered bold */
+  function params(item: AttentionItem): Record<string, string | number> {
+    return item.kind === 'proxyStale'
+      ? { ...item.params, since: formatRelative(String(item.params.since)) }
+      : item.params;
   }
 </script>
 
@@ -55,7 +49,6 @@
   <section
     v-if="items.length > 0"
     class="dashboard-attention"
-    :class="`dashboard-attention--${hasError ? 'error' : 'warning'}`"
     :aria-label="t('attentionTitle')"
   >
     <header class="dashboard-attention__header">
@@ -71,24 +64,35 @@
         :key="item.id"
         class="dashboard-attention__item"
       >
-        <NTag
-          :type="item.severity"
-          size="small"
-          :bordered="false"
+        <span
           class="dashboard-attention__tag"
+          :class="`dashboard-attention__tag--${item.severity}`"
         >
           {{
             item.severity === 'error'
               ? t('severityError')
               : t('severityWarning')
           }}
-        </NTag>
-        <span class="dashboard-attention__text">{{ text(item) }}</span>
+        </span>
+        <i18n-t
+          :keypath="item.kind"
+          tag="span"
+          scope="parent"
+          class="dashboard-attention__text"
+        >
+          <template
+            v-for="(value, key) in params(item)"
+            :key="key"
+            #[key]
+          >
+            <strong>{{ value }}</strong>
+          </template>
+        </i18n-t>
         <RouterLink
           class="dashboard-attention__link"
           :to="{ name: item.route }"
         >
-          {{ t('open') }} →
+          {{ t(`action_${item.kind}`) }}
         </RouterLink>
       </li>
     </ul>
@@ -106,37 +110,28 @@
 
 <style lang="scss" scoped>
   .dashboard-attention {
-    padding: 12px 16px;
-    border: 1px solid var(--border-color);
-    border-left-width: 4px;
-    border-radius: 8px;
-    background-color: var(--card-color);
-
-    &--error {
-      border-left-color: var(--error-color);
-    }
-
-    &--warning {
-      border-left-color: var(--warning-color);
-    }
+    overflow: hidden;
+    background-color: var(--tt-surface);
+    border: 1px solid var(--tt-border);
+    border-radius: var(--tt-radius-card);
 
     &__header {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 8px;
-      margin-bottom: 4px;
+      padding: 12px var(--tt-card-padding);
+      border-bottom: 1px solid var(--tt-border-subtle);
     }
 
     &__title {
       margin: 0;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--text-color-1);
     }
 
     &__count {
-      font-size: 13px;
-      color: var(--text-color-3);
+      font-size: 12px;
+      color: var(--tt-text-3);
     }
 
     &__list {
@@ -148,62 +143,70 @@
     &__item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 8px 0;
-      font-size: 14px;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      padding: 12px var(--tt-card-padding);
 
       & + & {
-        border-top: 1px solid var(--border-color);
-      }
-
-      @media screen and (max-width: 640px) {
-        flex-wrap: wrap;
-        gap: 4px 12px;
+        border-top: 1px solid var(--tt-border-subtle);
       }
     }
 
     &__tag {
-      flex: none;
-      min-width: 64px;
-      justify-content: center;
-    }
+      padding: 2px 8px;
+      border: 1px solid;
+      border-radius: var(--tt-radius-tag);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 600;
 
-    &__text {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow-wrap: anywhere;
-      color: var(--text-color-1);
+      &--error {
+        color: var(--tt-danger);
+        background-color: var(--tt-danger-bg);
+        border-color: var(--tt-danger-border);
+      }
 
-      @media screen and (max-width: 640px) {
-        flex-basis: calc(100% - 90px);
+      &--warning {
+        color: var(--tt-warning);
+        background-color: var(--tt-warning-bg);
+        border-color: var(--tt-warning-border);
       }
     }
 
+    &__text {
+      flex: 1 1 320px;
+      min-width: 0;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
     &__link {
-      flex: none;
-      margin-left: auto;
-      white-space: nowrap;
-      color: var(--primary-color);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--tt-accent);
       text-decoration: none;
 
-      &:hover,
-      &:focus-visible {
+      &:hover {
+        color: var(--tt-accent-hover);
         text-decoration: underline;
       }
     }
 
     &__more {
-      margin-top: 4px;
-      padding: 4px 0;
+      width: 100%;
+      padding: 10px var(--tt-card-padding);
       border: 0;
-      background: none;
+      border-top: 1px solid var(--tt-border-subtle);
+      background: transparent;
       font: inherit;
       font-size: 13px;
+      font-weight: 600;
+      color: var(--tt-accent);
+      text-align: left;
       cursor: pointer;
-      color: var(--primary-color);
 
       &:hover {
-        text-decoration: underline;
+        background-color: var(--tt-subtle);
       }
     }
   }

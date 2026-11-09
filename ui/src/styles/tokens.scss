@@ -1,0 +1,268 @@
+/*
+ * Copyright © 2026 hieunyit
+ *
+ *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// Tutti design tokens (docs/design/console/Foundations.dc.html).
+// Light values live on :root, dark values on body.color-scheme-dark (set by
+// the color scheme store). The UI kit's own custom properties are remapped to
+// the tokens at the bottom so kit components follow the same palette.
+
+:root {
+  --tt-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tt-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --tt-radius-tag: 6px;
+  --tt-radius-control: 8px;
+  --tt-radius-card: 12px;
+  --tt-radius-dialog: 14px;
+  --tt-radius-pill: 999px;
+
+  --tt-page-padding: 24px;
+  --tt-card-padding: 16px;
+
+  --tt-bg-app: #f5f7fa;
+  --tt-surface: #ffffff;
+  --tt-subtle: #f9fafb;
+  --tt-border: #e4e7ec;
+  --tt-border-subtle: #eef0f3;
+  --tt-border-strong: #d0d5dd;
+  --tt-text: #101828;
+  --tt-text-2: #475467;
+  --tt-text-3: #667085;
+  --tt-disabled-bg: #f2f4f7;
+  --tt-disabled-text: #98a2b3;
+  --tt-code-bg: #f2f4f7;
+  --tt-hover: rgba(16, 24, 40, 0.05);
+  --tt-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+
+  --tt-accent: #2952cc;
+  --tt-accent-hover: #1d3c99;
+  --tt-accent-subtle: #eef3ff;
+  --tt-accent-solid: #2952cc;
+  --tt-accent-solid-hover: #1d3c99;
+  --tt-on-accent: #ffffff;
+  --tt-avatar-bg: #e0e8ff;
+
+  --tt-success: #067647;
+  --tt-success-bg: #ecfdf3;
+  --tt-success-border: #abefc6;
+  --tt-success-solid: #12b76a;
+  --tt-warning: #b54708;
+  --tt-warning-bg: #fffaeb;
+  --tt-warning-border: #fedf89;
+  --tt-warning-solid: #f79009;
+  --tt-danger: #b42318;
+  --tt-danger-bg: #fef3f2;
+  --tt-danger-border: #fecdca;
+  --tt-danger-solid: #f04438;
+  --tt-info: #175cd3;
+  --tt-info-bg: #eff8ff;
+  --tt-info-border: #b2ddff;
+  --tt-info-solid: #2e90fa;
+  --tt-neutral: #475467;
+  --tt-neutral-bg: #f2f4f7;
+  --tt-neutral-border: #e4e7ec;
+  --tt-neutral-solid: #98a2b3;
+
+  --tt-nav-bg: #0b1220;
+  --tt-nav-text: #cbd5e1;
+  --tt-nav-muted: #94a3b8;
+  --tt-nav-strong: #f8fafc;
+  --tt-nav-active-bg: #1b2a4a;
+  --tt-nav-hover-bg: rgba(255, 255, 255, 0.06);
+  --tt-nav-border: #1e293b;
+  --tt-nav-accent: #6e95ff;
+  --tt-nav-logo: #3b6cf6;
+  --tt-nav-badge-bg: #7a271a;
+  --tt-nav-badge-text: #fee4e2;
+}
+
+body.color-scheme-dark {
+  --tt-bg-app: #0b1220;
+  --tt-surface: #111a2e;
+  --tt-subtle: #16213a;
+  --tt-border: #24314d;
+  --tt-border-subtle: #1c2943;
+  --tt-border-strong: #3a4a6b;
+  --tt-text: #f1f5f9;
+  --tt-text-2: #a9b4c8;
+  --tt-text-3: #8d99b0;
+  --tt-disabled-bg: #16213a;
+  --tt-disabled-text: #66728b;
+  --tt-code-bg: #16213a;
+  --tt-hover: rgba(255, 255, 255, 0.06);
+  --tt-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+  --tt-accent: #6e95ff;
+  --tt-accent-hover: #8fadff;
+  --tt-accent-subtle: #1b2a4a;
+  --tt-accent-solid: #3a66f0;
+  --tt-accent-solid-hover: #2f58d6;
+  --tt-on-accent: #ffffff;
+  --tt-avatar-bg: #1b2a4a;
+
+  --tt-success: #47cd89;
+  --tt-success-bg: rgba(71, 205, 137, 0.14);
+  --tt-success-border: rgba(71, 205, 137, 0.35);
+  --tt-success-solid: #47cd89;
+  --tt-warning: #fdb022;
+  --tt-warning-bg: rgba(253, 176, 34, 0.14);
+  --tt-warning-border: rgba(253, 176, 34, 0.35);
+  --tt-warning-solid: #fdb022;
+  --tt-danger: #f97066;
+  --tt-danger-bg: rgba(249, 112, 102, 0.14);
+  --tt-danger-border: rgba(249, 112, 102, 0.4);
+  --tt-danger-solid: #f97066;
+  --tt-info: #84adff;
+  --tt-info-bg: rgba(132, 173, 255, 0.14);
+  --tt-info-border: rgba(132, 173, 255, 0.35);
+  --tt-info-solid: #6e95ff;
+  --tt-neutral: #a9b4c8;
+  --tt-neutral-bg: #1b2740;
+  --tt-neutral-border: #2c3a58;
+  --tt-neutral-solid: #66728b;
+
+  --tt-nav-bg: #070c17;
+  --tt-nav-border: #17213a;
+}
+
+// Remap the UI kit's custom properties to the Tutti tokens.
+:root,
+body.color-scheme-dark {
+  --clyso-color: var(--tt-accent);
+  --base-color: #ffffff;
+  --primary-color: var(--tt-accent);
+  --primary-color-hover: var(--tt-accent-hover);
+  --primary-color-pressed: var(--tt-accent-hover);
+  --primary-color-suppl: var(--tt-accent-hover);
+  --info-color: var(--tt-info);
+  --success-color: var(--tt-success);
+  --warning-color: var(--tt-warning);
+  --error-color: var(--tt-danger);
+  --text-color-base: var(--tt-text);
+  --text-color-1: var(--tt-text);
+  --text-color-2: var(--tt-text-2);
+  --text-color-3: var(--tt-text-3);
+  --text-color-disabled: var(--tt-disabled-text);
+  --body-color: var(--tt-bg-app);
+  --table-color: var(--tt-subtle);
+  --menu-color: var(--tt-surface);
+  --menu-alt-color: var(--tt-subtle);
+  --side-menu-option-hover-color: var(--tt-hover);
+  --side-menu-option-matched-color: var(--tt-accent-subtle);
+  --card-color: var(--tt-surface);
+  --popover-color: var(--tt-surface);
+  --notification-color: var(--tt-surface);
+  --card-border-color: var(--tt-border);
+  --border-color: var(--tt-border);
+  --filters-card-color: var(--tt-subtle);
+  --button-color-2: var(--tt-hover);
+  --button-color-2-hover: var(--tt-hover);
+  --button-color-2-pressed: var(--tt-border);
+  --icon-color: var(--tt-text-3);
+}
+
+body {
+  font-family: var(--tt-font);
+  background-color: var(--tt-bg-app);
+  color: var(--tt-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+// visible keyboard focus everywhere
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--tt-accent);
+  outline-offset: 2px;
+}
+
+.tt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tt-mono {
+  font-family: var(--tt-mono);
+}
+
+.tt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+// Table styling for the kit data tables and for plain <table class="tt-table">.
+// Wrap a table (or a CDataTable) in .tt-table-wrap to scroll inside its card.
+.tt-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.tt-table,
+.tt-table-wrap .c-data-table-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tt-table th,
+.tt-table-wrap .c-data-table-table th,
+.tt-table-wrap .c-data-table-th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tt-text-2);
+  padding: 10px 16px;
+  background: var(--tt-subtle);
+  border-bottom: 1px solid var(--tt-border);
+  white-space: nowrap;
+}
+
+.tt-table td,
+.tt-table-wrap .c-data-table-table td,
+.tt-table-wrap .c-data-table-td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--tt-text);
+  border-bottom: 1px solid var(--tt-border-subtle);
+  white-space: nowrap;
+}
+
+.tt-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.tt-table th.tt-num,
+.tt-table td.tt-num {
+  text-align: right;
+}

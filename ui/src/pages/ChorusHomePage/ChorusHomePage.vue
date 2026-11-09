@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
   import { CButton, CSkeleton } from '@clyso/clyso-ui-kit';
-  import { NAlert } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -30,11 +29,13 @@
   import ProxyUptimeWidget from '@/components/chorus/home/ProxyUptimeWidget/ProxyUptimeWidget.vue';
   import WorkerUptimeWidget from '@/components/chorus/home/WorkerUptimeWidget/WorkerUptimeWidget.vue';
   import PageHeader from '@/components/layout/PageHeader.vue';
+  import Callout from '@/components/ui/Callout.vue';
   import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
   import { useNow } from '@/utils/composables/useNow';
   import { HAS_PROMETHEUS } from '@/utils/constants/env';
   import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
   import { formatRelative } from '@/utils/helpers/DateTimeHelper';
+  import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
   const { t } = useI18n({ messages: i18nDashboard });
   const store = useTuttiDashboardStore();
@@ -46,6 +47,7 @@
     replications,
     proxies,
     events,
+    policies,
     windows,
     failedSources,
     hasFatalError,
@@ -71,10 +73,22 @@
   const updatedText = computed(() =>
     lastUpdated.value === null
       ? t('notUpdated')
-      : t('updated', {
+      : t('liveUpdated', {
           time: formatRelative(lastUpdated.value, undefined, now.value),
         }),
   );
+
+  const rates = computed(() =>
+    DashboardHelper.getCurrentRates(windows.value, undefined, now.value),
+  );
+  const storageRates = computed(() => rates.value?.byStorage ?? null);
+  const p95 = computed(() => {
+    const value = rates.value
+      ? TrafficStatsHelper.p95Latency(rates.value)
+      : null;
+
+    return value === null ? '' : TrafficStatsHelper.formatLatency(value);
+  });
 
   const storageRows = computed(() =>
     storages.value
@@ -107,6 +121,7 @@
         replications: replications.value,
         proxies: proxies.value,
         events: events.value,
+        policies: policies.value,
       },
       now.value,
     ),
@@ -133,14 +148,9 @@
     <PageHeader
       :title="t('title')"
       :description="t('description')"
+      :live-text="updatedText"
     >
       <template #actions>
-        <span
-          class="chorus-home-page__updated"
-          aria-live="polite"
-        >
-          {{ updatedText }}
-        </span>
         <CButton
           :loading="isRefreshing"
           @click="store.refresh()"
@@ -162,22 +172,26 @@
       v-else-if="isLoading"
       class="chorus-home-page__sections"
     >
+      <CSkeleton
+        :height="120"
+        :border-radius="12"
+      />
       <div class="chorus-home-page__skeleton-kpis">
         <CSkeleton
           v-for="n in 6"
           :key="n"
           :height="104"
-          :border-radius="8"
+          :border-radius="12"
         />
       </div>
       <div class="chorus-home-page__columns">
         <CSkeleton
           :height="240"
-          :border-radius="8"
+          :border-radius="12"
         />
         <CSkeleton
           :height="240"
-          :border-radius="8"
+          :border-radius="12"
         />
       </div>
     </div>
@@ -186,12 +200,12 @@
       v-else
       class="chorus-home-page__sections"
     >
-      <NAlert
+      <Callout
         v-if="failedSources.length > 0"
-        type="warning"
+        tone="warning"
       >
         {{ partialErrorText }}
-      </NAlert>
+      </Callout>
 
       <DashboardAttention
         v-if="attention.length > 0"
@@ -217,16 +231,19 @@
       />
 
       <div class="chorus-home-page__columns">
-        <DashboardStorages :storages="storageRows" />
-
-        <div class="chorus-home-page__side">
-          <DashboardReplications
-            v-if="breakdown"
-            :breakdown="breakdown"
-          />
-          <DashboardEndpoint />
-        </div>
+        <DashboardStorages
+          :storages="storageRows"
+          :rates="storageRates"
+          :p95="p95"
+        />
+        <DashboardReplications
+          v-if="breakdown && replications"
+          :breakdown="breakdown"
+          :replications="replications"
+        />
       </div>
+
+      <DashboardEndpoint />
 
       <div
         v-if="HAS_PROMETHEUS"
@@ -249,73 +266,53 @@
 
 <style lang="scss" scoped>
   .chorus-home-page {
-    max-width: 1800px;
-
-    &__updated {
-      font-size: 13px;
-      color: var(--text-color-3);
-    }
+    max-width: 1600px;
 
     &__sections {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
     }
 
     &__ok {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 16px;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      background-color: var(--card-color);
+      padding: 12px var(--tt-card-padding);
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-card);
+      background-color: var(--tt-surface);
       font-size: 14px;
-      color: var(--text-color-1);
+      color: var(--tt-text);
     }
 
     &__ok-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: var(--success-color);
+      background-color: var(--tt-success-solid);
     }
 
     &__skeleton-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
     }
 
     &__columns {
       display: grid;
-      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
       gap: 16px;
       align-items: start;
-
-      @media screen and (max-width: 1100px) {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    &__side {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      min-width: 0;
     }
 
     &__uptime {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
       gap: 16px;
 
       > :deep(*) {
         grid-column: auto !important;
-      }
-
-      @media screen and (max-width: 500px) {
-        grid-template-columns: minmax(0, 1fr);
       }
     }
   }

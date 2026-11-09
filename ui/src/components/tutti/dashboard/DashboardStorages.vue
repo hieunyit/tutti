@@ -15,28 +15,33 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
-  import { NTag } from 'naive-ui';
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
+  import SectionCard from '@/components/ui/SectionCard.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import type { StatusVariant } from '@/components/ui/status';
   import type {
     StorageHealthRow,
     StorageHealthState,
   } from '@/utils/helpers/DashboardHelper';
+  import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
   import { RouteName } from '@/utils/types/router';
 
   defineProps<{
     storages: StorageHealthRow[] | null;
+    /** requests/s per storage name, null while no rate is known */
+    rates: Record<string, number> | null;
+    /** formatted overall p95 latency, shown in the header */
+    p95?: string;
   }>();
 
   const { t } = useI18n({ messages: i18nDashboard });
 
-  const TAG_TYPE: Record<StorageHealthState, 'success' | 'error' | 'default'> =
-    {
-      healthy: 'success',
-      unavailable: 'error',
-      unknown: 'default',
-    };
+  const VARIANT: Record<StorageHealthState, StatusVariant> = {
+    healthy: 'success',
+    unavailable: 'danger',
+    unknown: 'neutral',
+  };
 
   const STATE_KEY: Record<StorageHealthState, string> = {
     healthy: 'stateHealthy',
@@ -46,44 +51,52 @@
 </script>
 
 <template>
-  <CTile class="dashboard-storages">
-    <template #title>{{ t('storagesTitle') }}</template>
-    <template #header-extra>
-      <RouterLink
-        class="dashboard-storages__manage"
-        :to="{ name: RouteName.CHORUS_STORAGES }"
-      >
-        {{ t('storagesManage') }} →
-      </RouterLink>
-    </template>
-
+  <SectionCard
+    class="dashboard-storages"
+    :title="t('storagesTitle')"
+    :meta="p95 ? t('storagesP95', { value: p95 }) : undefined"
+    :link-label="t('storagesViewAll')"
+    :link-to="{ name: RouteName.CHORUS_STORAGES }"
+    flush
+  >
     <p
       v-if="storages === null"
-      class="dashboard-storages__empty"
+      class="dashboard-storages__note"
     >
       {{ t('storagesUnavailable') }}
     </p>
 
     <p
       v-else-if="storages.length === 0"
-      class="dashboard-storages__empty"
+      class="dashboard-storages__note"
     >
       {{ t('storagesEmpty') }}
     </p>
 
-    <ul
+    <table
       v-else
-      class="dashboard-storages__list"
+      class="tt-table"
     >
-      <li
-        v-for="storage in storages"
-        :key="storage.name"
-        class="dashboard-storages__row"
-      >
-        <div class="dashboard-storages__info">
-          <div class="dashboard-storages__name-line">
+      <thead>
+        <tr>
+          <th scope="col">{{ t('columnName') }}</th>
+          <th scope="col">{{ t('columnRole') }}</th>
+          <th scope="col">{{ t('columnStatus') }}</th>
+          <th
+            scope="col"
+            class="tt-num"
+          >
+            {{ t('columnReqPerSecond') }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="storage in storages"
+          :key="storage.name"
+        >
+          <td class="dashboard-storages__name">
             <RouterLink
-              class="dashboard-storages__name"
               :to="{
                 name: RouteName.CHORUS_STORAGE_DETAILS,
                 params: { storageName: storage.name },
@@ -91,100 +104,45 @@
             >
               {{ storage.name }}
             </RouterLink>
-            <NTag
-              v-if="storage.isMain"
-              size="small"
-              type="info"
-              :bordered="false"
-            >
-              {{ t('storageMain') }}
-            </NTag>
-          </div>
-          <span class="dashboard-storages__meta">
-            {{ storage.provider }} · {{ storage.address }}
-          </span>
-        </div>
-        <NTag
-          :type="TAG_TYPE[storage.state]"
-          size="small"
-          :bordered="false"
-          round
-        >
-          {{ t(STATE_KEY[storage.state]) }}
-        </NTag>
-      </li>
-    </ul>
-  </CTile>
+          </td>
+          <td>{{ storage.isMain ? t('roleMain') : t('roleFollower') }}</td>
+          <td>
+            <StatusTag
+              :variant="VARIANT[storage.state]"
+              :label="t(STATE_KEY[storage.state])"
+            />
+          </td>
+          <td class="tt-num">
+            {{
+              rates && storage.name in rates
+                ? TrafficStatsHelper.formatRate(rates[storage.name] ?? 0)
+                : t('kpiNoData')
+            }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </SectionCard>
 </template>
 
 <style lang="scss" scoped>
   .dashboard-storages {
-    &__manage {
-      font-size: 13px;
-      color: var(--primary-color);
+    &__note {
+      margin: 0;
+      padding: 24px 16px;
+      font-size: 14px;
+      color: var(--tt-text-3);
+    }
+
+    &__name a {
+      font-weight: 600;
+      color: var(--tt-text);
       text-decoration: none;
 
-      &:hover,
-      &:focus-visible {
+      &:hover {
+        color: var(--tt-accent);
         text-decoration: underline;
       }
-    }
-
-    &__empty {
-      margin: 0;
-      color: var(--text-color-3);
-    }
-
-    &__list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    &__row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 0;
-
-      & + & {
-        border-top: 1px solid var(--border-color);
-      }
-    }
-
-    &__info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    &__name-line {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    &__name {
-      overflow-wrap: anywhere;
-      font-weight: 600;
-      color: var(--text-color-1);
-      text-decoration: none;
-
-      &:hover,
-      &:focus-visible {
-        color: var(--primary-color);
-      }
-    }
-
-    &__meta {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 12px;
-      color: var(--text-color-3);
     }
   }
 </style>

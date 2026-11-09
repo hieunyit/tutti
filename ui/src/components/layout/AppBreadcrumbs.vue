@@ -117,8 +117,8 @@
       margin: 0;
       padding: 0;
       list-style: none;
-      font-size: 14px;
-      color: var(--text-color-3);
+      font-size: 13px;
+      color: var(--tt-text-3);
       white-space: nowrap;
       overflow: hidden;
     }
@@ -129,9 +129,9 @@
       min-width: 0;
 
       &:not(:last-child)::after {
-        content: '›';
+        content: '/';
         margin: 0 8px;
-        color: var(--text-color-3);
+        color: var(--tt-text-3);
       }
 
       &--current {
@@ -139,7 +139,7 @@
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: var(--text-color-1);
+        color: var(--tt-text);
         font-weight: 600;
       }
     }
@@ -149,7 +149,7 @@
       text-decoration: none;
 
       &:hover {
-        color: var(--text-color-1);
+        color: var(--tt-text);
         text-decoration: underline;
       }
     }

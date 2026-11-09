@@ -39,6 +39,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.TUTTI_HEALTH]: 'Storage health',
     [RouteName.TUTTI_FAILOVER]: 'Failover',
     [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy accounts',
+    [RouteName.TUTTI_DOCS]: 'Documentation',
+    [RouteName.TUTTI_API_REFERENCE]: 'API reference',
   },
   [I18nLocale.DE]: {
     [RouteName.LOGIN]: 'Login',
@@ -57,6 +59,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.TUTTI_HEALTH]: 'Speicher-Zustand',
     [RouteName.TUTTI_FAILOVER]: 'Failover',
     [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy-Konten',
+    [RouteName.TUTTI_DOCS]: 'Dokumentation',
+    [RouteName.TUTTI_API_REFERENCE]: 'API-Referenz',
   },
 };
 

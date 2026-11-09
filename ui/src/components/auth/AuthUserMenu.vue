@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-  import { NDropdown, NTag } from 'naive-ui';
+  import { NDropdown } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, h, ref } from 'vue';
   import { useRouter } from 'vue-router';
@@ -33,7 +33,10 @@
   const isLoggingOut = ref(false);
 
   const roleLabel = computed(() =>
-    role.value === AuthRole.ADMIN ? t('roleAdmin') : t('roleViewer'),
+    role.value === AuthRole.ADMIN ? t('roleNameAdmin') : t('roleNameViewer'),
+  );
+  const initial = computed(() =>
+    (username.value ?? '?').trim().charAt(0).toUpperCase(),
   );
 
   const options = computed<DropdownOption[]>(() => [
@@ -91,19 +94,13 @@
       class="auth-user-menu"
       :aria-label="t('userMenu')"
     >
-      <span class="auth-user-menu__name">{{ username }}</span>
-      <NTag
-        size="small"
-        round
-        :type="role === AuthRole.ADMIN ? 'success' : 'warning'"
-      >
-        {{ roleLabel }}
-      </NTag>
       <span
-        class="auth-user-menu__caret"
+        class="auth-user-menu__avatar"
         aria-hidden="true"
-        >▾</span
+        >{{ initial }}</span
       >
+      <span class="auth-user-menu__name">{{ username }}</span>
+      <span class="auth-user-menu__role">{{ roleLabel }}</span>
     </button>
   </NDropdown>
 </template>
@@ -113,21 +110,32 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 32px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--tt-border-strong);
+    border-radius: var(--tt-radius-control);
+    background-color: var(--tt-surface);
     font: inherit;
-    color: var(--text-color-1);
+    font-size: 13px;
+    color: var(--tt-text);
     cursor: pointer;
 
     &:hover {
-      background-color: var(--button-color-2-hover);
+      background-color: var(--tt-subtle);
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--primary-color);
+    &__avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: var(--tt-avatar-bg);
+      color: var(--tt-accent);
+      font-size: 12px;
+      font-weight: 700;
     }
 
     &__name {
@@ -135,16 +143,19 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-weight: 500;
+      font-weight: 600;
 
       @media screen and (max-width: 639px) {
         display: none;
       }
     }
 
-    &__caret {
-      font-size: 10px;
-      color: var(--text-color-3);
+    &__role {
+      color: var(--tt-text-3);
+
+      @media screen and (max-width: 959px) {
+        display: none;
+      }
     }
   }
 </style>
@@ -160,18 +171,18 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--text-color-3);
+    color: var(--tt-text-3);
   }
 
   .auth-user-menu__info-name {
     font-weight: 600;
     word-break: break-all;
-    color: var(--text-color-1);
+    color: var(--tt-text);
   }
 
   .auth-user-menu__info-role {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--text-color-3);
+    color: var(--tt-text-3);
   }
 </style>

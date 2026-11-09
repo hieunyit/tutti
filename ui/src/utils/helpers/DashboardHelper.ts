@@ -16,7 +16,11 @@
 
 import { RouteName } from '@/utils/types/router';
 import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
-import type { TuttiFailoverEvent, TuttiProxyStatus } from '@/utils/types/tutti';
+import type {
+  TuttiFailoverEvent,
+  TuttiFailoverPolicy,
+  TuttiProxyStatus,
+} from '@/utils/types/tutti';
 import {
   TrafficStatsHelper,
   type TrafficRates,
@@ -29,6 +33,8 @@ export const DASHBOARD_PROXY_STALE_MS = 60_000;
 export const DASHBOARD_RATE_MAX_GAP_MS = 120_000;
 
 export type DashboardSeverity = 'error' | 'warning';
+
+export type ReplicationState = 'paused' | 'initial' | 'behind' | 'upToDate';
 
 export type StorageHealthState = 'healthy' | 'unavailable' | 'unknown';
 
@@ -67,6 +73,7 @@ export type AttentionKind =
   | 'failoverEvent'
   | 'replicationPaused'
   | 'replicationBehind'
+  | 'failoverOff'
   | 'proxyStale';
 
 export interface AttentionItem {
@@ -83,6 +90,8 @@ export interface DashboardSources {
   replications: ChorusReplication[] | null;
   proxies: TuttiProxyStatus[] | null;
   events: TuttiFailoverEvent[] | null;
+  /** optional: failover policies (not readable by viewers) */
+  policies?: TuttiFailoverPolicy[] | null;
 }
 
 export interface TrafficSummary {
@@ -118,6 +127,43 @@ export abstract class DashboardHelper {
     replications: ChorusReplication[],
   ): ChorusReplication[] {
     return replications.filter((replication) => !replication.isArchived);
+  }
+
+  static replicationState(replication: ChorusReplication): ReplicationState {
+    if (replication.isPaused) return 'paused';
+
+    if (!replication.isInitDone) return 'initial';
+
+    return DashboardHelper.eventLag(replication) > 0 ? 'behind' : 'upToDate';
+  }
+
+  /**
+   * Active replications for the summary table: paused and lagging ones first
+   * (most lag first), then the rest in the given order, at most `limit`.
+   */
+  static summaryReplications(
+    replications: ChorusReplication[],
+    limit = 5,
+  ): ChorusReplication[] {
+    const rank: Record<ReplicationState, number> = {
+      paused: 0,
+      behind: 1,
+      initial: 2,
+      upToDate: 3,
+    };
+
+    return DashboardHelper.activeReplications(replications)
+      .map((replication, index) => ({ replication, index }))
+      .sort(
+        (a, b) =>
+          rank[DashboardHelper.replicationState(a.replication)] -
+            rank[DashboardHelper.replicationState(b.replication)] ||
+          DashboardHelper.eventLag(b.replication) -
+            DashboardHelper.eventLag(a.replication) ||
+          a.index - b.index,
+      )
+      .slice(0, limit)
+      .map((entry) => entry.replication);
   }
 
   static eventLag(replication: ChorusReplication): number {
@@ -286,6 +332,32 @@ export abstract class DashboardHelper {
     };
   }
 
+  /**
+   * Automatic failover is switched off on reporting proxies while enabled
+   * failover policies exist: the policies then never take effect.
+   */
+  static getFailoverOff(
+    sources: DashboardSources,
+    now: number,
+  ): { off: number; total: number } | null {
+    const hasPolicies = (sources.policies ?? []).some(
+      (policy) => policy.enabled !== false,
+    );
+
+    if (!hasPolicies) return null;
+
+    const withSettings = (sources.proxies ?? []).filter(
+      (proxy) =>
+        DashboardHelper.isProxyReporting(proxy, now) &&
+        proxy.settings?.failover?.enabled !== undefined,
+    );
+    const off = withSettings.filter(
+      (proxy) => proxy.settings?.failover?.enabled === false,
+    ).length;
+
+    return off > 0 ? { off, total: withSettings.length } : null;
+  }
+
   /** Everything that needs an operator's attention, errors first. */
   static getAttentionItems(
     sources: DashboardSources,
@@ -350,6 +422,20 @@ export abstract class DashboardHelper {
         }
       },
     );
+
+    const failoverOff = DashboardHelper.getFailoverOff(sources, now);
+
+    if (failoverOff) {
+      items.push({
+        id: 'failover:off',
+        kind: 'failoverOff',
+        severity: items.some((item) => item.kind === 'storageDown')
+          ? 'error'
+          : 'warning',
+        params: failoverOff,
+        route: RouteName.TUTTI_FAILOVER,
+      });
+    }
 
     DashboardHelper.getProxyReporting(sources.proxies ?? [], now).stale.forEach(
       (proxy) =>

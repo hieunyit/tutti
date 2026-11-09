@@ -31,9 +31,16 @@ export enum RouteName {
   TUTTI_HEALTH = 'TUTTI_HEALTH',
   TUTTI_FAILOVER = 'TUTTI_FAILOVER',
   TUTTI_PROXY_ACCOUNTS = 'TUTTI_PROXY_ACCOUNTS',
+  TUTTI_DOCS = 'TUTTI_DOCS',
+  TUTTI_API_REFERENCE = 'TUTTI_API_REFERENCE',
 }
 
-export type NavGroupId = 'overview' | 'storage' | 'dataProtection' | 'access';
+export type NavGroupId =
+  | 'overview'
+  | 'storage'
+  | 'dataProtection'
+  | 'access'
+  | 'help';
 
 declare module 'vue-router' {
   interface RouteMeta {

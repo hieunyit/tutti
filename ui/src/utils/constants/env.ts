@@ -20,3 +20,5 @@ export const HAS_LANG_SELECT = import.meta.env.VITE_HAS_LANG_SELECT === 'TRUE';
 export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
 export const API_PREFIX: string = import.meta.env.VITE_API_PREFIX ?? '';
 export const APP_VERSION: string = __APP_VERSION__;
+/** optional environment badge text for the top bar; empty hides it */
+export const ENV_LABEL: string = (import.meta.env.VITE_ENV_LABEL ?? '').trim();

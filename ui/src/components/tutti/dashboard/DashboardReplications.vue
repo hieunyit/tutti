@@ -15,32 +15,47 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CTile } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { useReplicationsWidget } from '@/components/chorus/home/ReplicationsWidget/useReplicationsWidget';
+  import SectionCard from '@/components/ui/SectionCard.vue';
+  import StatusTag from '@/components/ui/StatusTag.vue';
+  import EmptyState from '@/components/ui/EmptyState.vue';
+  import type { StatusVariant } from '@/components/ui/status';
+  import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
   import {
     DashboardHelper,
     type ReplicationBreakdown,
+    type ReplicationState,
   } from '@/utils/helpers/DashboardHelper';
+  import { IconName } from '@/utils/types/icon';
+  import type { ChorusReplication } from '@/utils/types/chorus';
   import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
     breakdown: ReplicationBreakdown;
+    replications: ChorusReplication[];
   }>();
 
   const { t } = useI18n({ messages: i18nDashboard });
+  const number = useNumberFormat();
   const {
-    goToReplicationsPage,
     showUpToDateReplications,
     showInProgressReplications,
     showBehindReplications,
     showPausedReplications,
   } = useReplicationsWidget();
 
-  const rows = computed(() => {
+  const VARIANT: Record<ReplicationState, StatusVariant> = {
+    upToDate: 'success',
+    initial: 'info',
+    behind: 'warning',
+    paused: 'warning',
+  };
+
+  const counts = computed(() => {
     const b = props.breakdown;
 
     return [
@@ -48,187 +63,180 @@
         key: 'upToDate',
         label: t('breakdownUpToDate'),
         count: b.upToDate,
-        color: 'var(--success-color)',
+        color: 'var(--tt-success-solid)',
         open: showUpToDateReplications,
       },
       {
         key: 'initial',
         label: t('breakdownInitial'),
         count: b.initial,
-        color: 'var(--info-color)',
+        color: 'var(--tt-info-solid)',
         open: showInProgressReplications,
       },
       {
         key: 'behind',
         label: t('breakdownBehind'),
         count: b.behind,
-        color: 'var(--warning-color)',
+        color:
+          'color-mix(in srgb, var(--tt-warning-solid) 55%, var(--tt-surface))',
         open: showBehindReplications,
+        tone: 'warning',
       },
       {
         key: 'paused',
         label: t('breakdownPaused'),
         count: b.paused,
-        color: 'var(--text-color-3)',
+        color: 'var(--tt-warning-solid)',
         open: showPausedReplications,
+        tone: 'warning',
       },
-    ].map((row) => ({
-      ...row,
-      share: DashboardHelper.percent(row.count, b.total),
-    }));
+    ];
   });
+
+  const rows = computed(() =>
+    DashboardHelper.summaryReplications(props.replications).map(
+      (replication) => ({
+        id: replication.idStr,
+        name: DashboardHelper.replicationLabel(replication),
+        state: DashboardHelper.replicationState(replication),
+        lag: DashboardHelper.eventLag(replication),
+      }),
+    ),
+  );
 
   const ariaLabel = computed(
     () =>
-      `${t('breakdownLabel')}: ${rows.value
+      `${t('breakdownLabel')}: ${counts.value
         .map((row) => `${row.label} ${row.count}`)
         .join(', ')}`,
   );
 </script>
 
 <template>
-  <CTile class="dashboard-replications">
-    <template #title>{{ t('replicationsTitle') }}</template>
-    <template #header-extra>
-      <RouterLink
-        class="dashboard-replications__link"
-        :to="{ name: RouteName.CHORUS_REPLICATION }"
-      >
-        {{ t('replicationsAll') }} →
-      </RouterLink>
-    </template>
-
-    <div
+  <SectionCard
+    class="dashboard-replications"
+    :title="t('replicationsTitle')"
+    :link-label="t('storagesViewAll')"
+    :link-to="{ name: RouteName.CHORUS_REPLICATION }"
+    flush
+  >
+    <EmptyState
       v-if="breakdown.total === 0"
-      class="dashboard-replications__empty"
+      :icon="IconName.BASE_SWAP_HORIZONTAL"
+      :title="t('replicationsEmptyTitle')"
+      :text="t('replicationsEmptyText')"
     >
-      <p class="dashboard-replications__empty-title">
-        {{ t('replicationsEmptyTitle') }}
-      </p>
-      <p class="dashboard-replications__empty-text">
-        {{ t('replicationsEmptyText') }}
-      </p>
       <WriteGate>
-        <CButton
-          type="primary"
-          size="small"
+        <button
+          type="button"
+          class="dashboard-replications__add"
           @click="$router.push({ name: RouteName.CHORUS_ADD_REPLICATION })"
         >
           {{ t('replicationsAdd') }}
-        </CButton>
+        </button>
       </WriteGate>
-    </div>
+    </EmptyState>
 
     <template v-else>
-      <div
-        class="dashboard-replications__bar"
-        role="img"
-        :aria-label="ariaLabel"
-      >
-        <template
-          v-for="row in rows"
-          :key="row.key"
+      <div class="dashboard-replications__summary">
+        <div
+          class="dashboard-replications__bar"
+          role="img"
+          :aria-label="ariaLabel"
         >
-          <span
-            v-if="row.count > 0"
-            class="dashboard-replications__segment"
-            :style="{ flexGrow: row.count, backgroundColor: row.color }"
-            :title="`${row.label}: ${row.count}`"
-          />
-        </template>
+          <template
+            v-for="row in counts"
+            :key="row.key"
+          >
+            <span
+              v-if="row.count > 0"
+              class="dashboard-replications__segment"
+              :style="{ flexGrow: row.count, backgroundColor: row.color }"
+            />
+          </template>
+        </div>
+
+        <ul class="dashboard-replications__counts">
+          <li
+            v-for="row in counts"
+            :key="row.key"
+          >
+            <button
+              type="button"
+              class="dashboard-replications__count"
+              @click="row.open()"
+            >
+              <span class="dashboard-replications__count-label">
+                <span
+                  class="dashboard-replications__swatch"
+                  aria-hidden="true"
+                  :style="{ backgroundColor: row.color }"
+                />
+                {{ row.label }}
+              </span>
+              <strong
+                class="dashboard-replications__count-value"
+                :class="{
+                  'dashboard-replications__count-value--warning':
+                    row.tone === 'warning' && row.count > 0,
+                }"
+                >{{ number(row.count) }}</strong
+              >
+            </button>
+          </li>
+        </ul>
       </div>
 
-      <table class="dashboard-replications__table">
-        <thead>
-          <tr>
-            <th scope="col">{{ t('columnStatus') }}</th>
-            <th
-              scope="col"
-              class="dashboard-replications__num"
+      <div class="dashboard-replications__table tt-table-wrap">
+        <table class="tt-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ t('columnReplication') }}</th>
+              <th scope="col">{{ t('columnStatus') }}</th>
+              <th
+                scope="col"
+                class="tt-num"
+              >
+                {{ t('columnLag') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in rows"
+              :key="row.id"
             >
-              {{ t('columnCount') }}
-            </th>
-            <th
-              scope="col"
-              class="dashboard-replications__num"
-            >
-              {{ t('columnShare') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in rows"
-            :key="row.key"
-            class="dashboard-replications__row"
-            tabindex="0"
-            @click="row.open()"
-            @keydown.enter="row.open()"
-          >
-            <td>
-              <span
-                class="dashboard-replications__swatch"
-                :style="{ backgroundColor: row.color }"
-              />
-              {{ row.label }}
-            </td>
-            <td class="dashboard-replications__num">{{ row.count }}</td>
-            <td class="dashboard-replications__num">{{ row.share }} %</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <button
-        type="button"
-        class="dashboard-replications__total"
-        @click="goToReplicationsPage"
-      >
-        {{ t('breakdownTotal', { n: breakdown.total }) }}
-      </button>
+              <td>{{ row.name }}</td>
+              <td>
+                <StatusTag
+                  :variant="VARIANT[row.state]"
+                  :label="t(`replicationState_${row.state}`)"
+                />
+              </td>
+              <td class="tt-num">{{ number(row.lag) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </template>
-  </CTile>
+  </SectionCard>
 </template>
 
 <style lang="scss" scoped>
   .dashboard-replications {
-    &__link {
-      font-size: 13px;
-      color: var(--primary-color);
-      text-decoration: none;
-
-      &:hover,
-      &:focus-visible {
-        text-decoration: underline;
-      }
-    }
-
-    &__empty {
+    &__summary {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    &__empty-title {
-      margin: 0;
-      font-weight: 600;
-      color: var(--text-color-1);
-    }
-
-    &__empty-text {
-      margin: 0;
-      font-size: 13px;
-      color: var(--text-color-3);
+      gap: 12px;
+      padding: var(--tt-card-padding);
     }
 
     &__bar {
       display: flex;
-      gap: 2px;
-      height: 12px;
-      margin-bottom: 12px;
-      border-radius: 6px;
+      height: 10px;
       overflow: hidden;
-      background-color: var(--border-color);
+      border-radius: var(--tt-radius-pill);
+      background-color: var(--tt-border-subtle);
     }
 
     &__segment {
@@ -236,66 +244,79 @@
       min-width: 6px;
     }
 
-    &__table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
+    &__counts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
 
-      th {
-        padding: 4px 8px;
-        font-size: 12px;
-        font-weight: 500;
-        text-align: left;
-        color: var(--text-color-3);
-      }
-
-      td {
-        padding: 8px;
-        color: var(--text-color-1);
-        border-top: 1px solid var(--border-color);
+      @media screen and (max-width: 479px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
-    &__row {
+    &__count {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      color: var(--tt-text-2);
+      text-align: left;
       cursor: pointer;
 
-      &:hover,
-      &:focus-visible {
-        outline: none;
-        background-color: color-mix(
-          in srgb,
-          var(--primary-color) 8%,
-          transparent
-        );
+      &:hover .dashboard-replications__count-value {
+        text-decoration: underline;
       }
     }
 
-    &__num {
-      width: 72px;
-      text-align: right !important;
-      font-variant-numeric: tabular-nums;
+    &__count-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     &__swatch {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      margin-right: 8px;
-      border-radius: 3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
     }
 
-    &__total {
-      margin-top: 8px;
-      padding: 0;
-      border: 0;
-      background: none;
+    &__count-value {
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+      color: var(--tt-text);
+
+      &--warning {
+        color: var(--tt-warning);
+      }
+    }
+
+    &__table {
+      border-top: 1px solid var(--tt-border-subtle);
+    }
+
+    &__add {
+      height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--tt-accent-solid);
+      border-radius: var(--tt-radius-control);
+      background-color: var(--tt-accent-solid);
       font: inherit;
-      font-size: 13px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--tt-on-accent);
       cursor: pointer;
-      color: var(--text-color-3);
 
       &:hover {
-        color: var(--primary-color);
+        background-color: var(--tt-accent-solid-hover);
       }
     }
   }

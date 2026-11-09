@@ -48,6 +48,7 @@ const TuttiFailoverPage = () =>
   import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
 const TuttiProxyAccountsPage = () =>
   import('@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue');
+const DocsPage = () => import('@/pages/DocsPage.vue');
 const LoginPage = () => import('@/pages/LoginPage/LoginPage.vue');
 
 export const routes: RouteRecordRaw[] = [
@@ -175,6 +176,18 @@ export const routes: RouteRecordRaw[] = [
         },
         name: RouteName.TUTTI_FAILOVER,
         component: TuttiFailoverPage,
+      },
+      {
+        path: 'docs',
+        meta: { navGroup: 'help', navSection: RouteName.TUTTI_DOCS },
+        name: RouteName.TUTTI_DOCS,
+        component: DocsPage,
+      },
+      {
+        path: 'docs/api',
+        meta: { navGroup: 'help', navSection: RouteName.TUTTI_API_REFERENCE },
+        name: RouteName.TUTTI_API_REFERENCE,
+        component: DocsPage,
       },
       {
         path: 'storages/:storageName/credentials/:alias?',

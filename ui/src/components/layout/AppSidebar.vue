@@ -18,13 +18,12 @@
   import { computed } from 'vue';
   import { useRoute } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { CIcon } from '@clyso/clyso-ui-kit';
   import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
   import { NAV_GROUPS } from '@/utils/constants/navigation';
   import { useAboutDialog } from '@/utils/composables/useAboutDialog';
+  import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
-  import { IconName } from '@/utils/types/icon';
   import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
@@ -42,6 +41,7 @@
   const { t } = useI18n({ messages: i18nLayout });
   const route = useRoute();
   const { openAbout } = useAboutDialog();
+  const badges = useNavBadges();
 
   const isRail = computed(() => Boolean(props.collapsed) && !props.isDrawer);
 
@@ -66,12 +66,18 @@
       aria-label="Tutti"
       @click="emit('navigate')"
     >
-      <span class="app-sidebar__logo">T</span>
+      <span
+        class="app-sidebar__logo"
+        aria-hidden="true"
+        >T</span
+      >
       <span
         v-if="!isRail"
-        class="app-sidebar__product"
-        >Tutti</span
+        class="app-sidebar__brand-text"
       >
+        <span class="app-sidebar__product">Tutti</span>
+        <span class="app-sidebar__tagline">{{ t('consoleTagline') }}</span>
+      </span>
     </RouterLink>
 
     <nav
@@ -110,17 +116,39 @@
               :aria-current="activeItem === item.routeName ? 'page' : undefined"
               @click="emit('navigate')"
             >
-              <CIcon
+              <svg
                 class="app-sidebar__icon"
-                :name="item.icon"
-                :width="18"
-                :height="18"
-              />
+                aria-hidden="true"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path :d="item.iconPath" />
+              </svg>
               <span
                 v-if="!isRail"
                 class="app-sidebar__label"
                 >{{ $t(item.routeName) }}</span
               >
+              <template v-if="item.badgeKey && badges[item.badgeKey]">
+                <span
+                  v-if="!isRail"
+                  class="app-sidebar__badge"
+                >
+                  {{ badges[item.badgeKey] }}
+                  <span class="tt-sr-only">{{ t('badgeLabel') }}</span>
+                </span>
+                <span
+                  v-else
+                  class="app-sidebar__badge-dot"
+                  aria-hidden="true"
+                />
+              </template>
             </RouterLink>
           </template>
           {{ $t(item.routeName) }}
@@ -136,23 +164,30 @@
         <template #trigger>
           <button
             type="button"
-            class="app-sidebar__item app-sidebar__about"
+            class="app-sidebar__about"
             @click="handleAbout"
           >
-            <CIcon
+            <svg
               class="app-sidebar__icon"
-              :name="IconName.BASE_CONTRACT"
-              :width="18"
-              :height="18"
-            />
-            <span
-              v-if="!isRail"
-              class="app-sidebar__label"
-              >{{ t('about') }}</span
+              aria-hidden="true"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
             >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+              />
+              <path d="M12 8h.01M11 12h1v5h1" />
+            </svg>
+            <span v-if="!isRail">{{ t('aboutTutti') }}</span>
           </button>
         </template>
-        {{ t('about') }}
+        {{ t('aboutTutti') }}
       </NTooltip>
 
       <div class="app-sidebar__meta">
@@ -171,17 +206,10 @@
               type="button"
               class="app-sidebar__toggle"
               :aria-label="collapsed ? t('expand') : t('collapse')"
+              :aria-expanded="!collapsed"
               @click="emit('toggle')"
             >
-              <CIcon
-                :name="
-                  collapsed
-                    ? IconName.BASE_ARROW_FORWARD
-                    : IconName.BASE_ARROW_BACK
-                "
-                :width="16"
-                :height="16"
-              />
+              <span aria-hidden="true">{{ collapsed ? '›' : '‹' }}</span>
             </button>
           </template>
           {{ collapsed ? t('expand') : t('collapse') }}
@@ -195,23 +223,29 @@
   .app-sidebar {
     display: flex;
     flex-direction: column;
+    gap: 4px;
     height: 100%;
     min-height: 0;
     width: 100%;
-    background-color: var(--card-color);
-    border-right: 1px solid var(--border-color);
-    padding: 12px 8px;
+    box-sizing: border-box;
+    background-color: var(--tt-nav-bg);
+    color: var(--tt-nav-text);
+    border-right: 1px solid var(--tt-nav-border);
+    padding: 16px 12px;
     overflow: hidden;
 
     &__brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      height: 40px;
-      padding: 0 8px;
-      margin-bottom: 8px;
-      color: var(--text-color-1);
+      padding: 4px 8px 16px;
+      color: var(--tt-nav-strong);
       text-decoration: none;
+      border-radius: var(--tt-radius-control);
+
+      &:focus-visible {
+        outline-offset: -2px;
+      }
     }
 
     &__logo {
@@ -219,19 +253,33 @@
       align-items: center;
       justify-content: center;
       flex: none;
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
       font-weight: 700;
       font-size: 16px;
-      color: var(--card-color);
-      background-color: var(--primary-color);
+      color: #ffffff;
+      background-color: var(--tt-nav-logo);
+    }
+
+    &__brand-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
     }
 
     &__product {
-      font-size: 18px;
+      font-size: 15px;
+      line-height: 20px;
       font-weight: 600;
-      letter-spacing: 0.2px;
+      color: var(--tt-nav-strong);
+    }
+
+    &__tagline {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--tt-nav-muted);
+      white-space: nowrap;
     }
 
     &__nav {
@@ -241,58 +289,60 @@
     }
 
     &__group {
-      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-top: 12px;
     }
 
     &__group-label {
-      margin: 12px 0 4px;
-      padding: 0 12px;
+      margin: 0;
+      padding: 0 10px 6px;
       font-size: 11px;
       line-height: 16px;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--text-color-3);
+      color: var(--tt-nav-muted);
     }
 
     &__group-divider {
       height: 1px;
-      margin: 10px 8px;
-      background-color: var(--border-color);
+      margin: 6px 8px;
+      background-color: var(--tt-nav-border);
     }
 
     &__item {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      box-sizing: border-box;
       width: 100%;
-      height: 36px;
-      padding: 0 12px;
-      margin-bottom: 2px;
-      border: 0;
-      border-radius: 6px;
-      background: transparent;
-      font: inherit;
+      padding: 8px 10px;
+      border-radius: var(--tt-radius-control);
       font-size: 14px;
-      color: var(--text-color-2);
+      line-height: 20px;
+      font-weight: 500;
+      color: var(--tt-nav-text);
       text-decoration: none;
-      cursor: pointer;
       transition: background-color 0.15s;
 
       &:hover {
-        background-color: var(--side-menu-option-hover-color);
+        background-color: var(--tt-nav-hover-bg);
+        color: var(--tt-nav-strong);
       }
 
       &:focus-visible {
-        outline: 2px solid var(--primary-color);
+        outline: 2px solid var(--tt-nav-accent);
         outline-offset: -2px;
       }
 
       &--active {
-        background-color: var(--side-menu-option-matched-color);
-        color: var(--text-color-1);
+        background-color: var(--tt-nav-active-bg);
+        color: #ffffff;
         font-weight: 600;
-        box-shadow: inset 3px 0 0 var(--primary-color);
+        box-shadow: inset 2px 0 0 var(--tt-nav-accent);
       }
     }
 
@@ -307,18 +357,63 @@
       white-space: nowrap;
     }
 
+    &__badge {
+      margin-left: auto;
+      padding: 1px 7px;
+      border-radius: var(--tt-radius-pill);
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 600;
+      color: var(--tt-nav-badge-text);
+      background-color: var(--tt-nav-badge-bg);
+    }
+
+    &__badge-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #f97066;
+    }
+
     &__footer {
-      border-top: 1px solid var(--border-color);
-      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 10px 0;
+      border-top: 1px solid var(--tt-nav-border);
+      font-size: 12px;
+      color: var(--tt-nav-muted);
+    }
+
+    &__about {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      color: var(--tt-nav-text);
+      cursor: pointer;
+
+      &:hover {
+        color: var(--tt-nav-strong);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--tt-nav-accent);
+        outline-offset: 2px;
+      }
     }
 
     &__meta {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 4px 8px 0 12px;
-      font-size: 12px;
-      color: var(--text-color-3);
     }
 
     &__toggle {
@@ -327,18 +422,20 @@
       justify-content: center;
       width: 28px;
       height: 28px;
-      border: 0;
+      border: 1px solid var(--tt-nav-border);
       border-radius: 6px;
       background: transparent;
-      color: var(--text-color-2);
+      font-size: 16px;
+      line-height: 1;
+      color: var(--tt-nav-text);
       cursor: pointer;
 
       &:hover {
-        background-color: var(--side-menu-option-hover-color);
+        background-color: var(--tt-nav-hover-bg);
       }
 
       &:focus-visible {
-        outline: 2px solid var(--primary-color);
+        outline: 2px solid var(--tt-nav-accent);
       }
     }
 
@@ -347,18 +444,26 @@
 
       .app-sidebar__brand {
         justify-content: center;
-        padding: 0;
+        padding-inline: 0;
       }
 
       .app-sidebar__item {
         justify-content: center;
-        padding: 0;
+        padding-inline: 0;
+      }
+
+      .app-sidebar__about {
+        justify-content: center;
+      }
+
+      .app-sidebar__footer {
+        padding-inline: 0;
+        align-items: center;
       }
 
       .app-sidebar__meta {
         flex-direction: column;
-        gap: 4px;
-        padding: 4px 0 0;
+        gap: 6px;
       }
 
       .app-sidebar__version {

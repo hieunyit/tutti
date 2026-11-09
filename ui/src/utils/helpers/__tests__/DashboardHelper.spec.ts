@@ -205,6 +205,103 @@ describe('DashboardHelper', () => {
     });
   });
 
+  describe('failover off with policies', () => {
+    const policies = [{ source: 'main', enabled: true, targets: ['b'] }];
+    const off = proxy({ settings: { failover: { enabled: false } } });
+
+    it('flags proxies with failover off while enabled policies exist', () => {
+      const items = DashboardHelper.getAttentionItems(
+        {
+          storages: [storage('main')],
+          replications: [],
+          proxies: [
+            off,
+            proxy({ appId: 'p2', settings: { failover: { enabled: true } } }),
+          ],
+          events: [],
+          policies,
+        },
+        NOW,
+      );
+
+      expect(items).toHaveLength(1);
+      expect(items[0]?.kind).toBe('failoverOff');
+      expect(items[0]?.severity).toBe('warning');
+      expect(items[0]?.params).toEqual({ off: 1, total: 2 });
+      expect(items[0]?.route).toBe(RouteName.TUTTI_FAILOVER);
+    });
+
+    it('is critical when a storage is down and ignores disabled or missing policies', () => {
+      const down = proxy({
+        storages: [{ name: 'main', available: false }],
+        settings: { failover: { enabled: false } },
+      });
+      const items = DashboardHelper.getAttentionItems(
+        {
+          storages: [storage('main')],
+          replications: [],
+          proxies: [down],
+          events: [],
+          policies,
+        },
+        NOW,
+      );
+
+      expect(items.map((i) => [i.kind, i.severity])).toEqual([
+        ['storageDown', 'error'],
+        ['failoverOff', 'error'],
+      ]);
+      expect(
+        DashboardHelper.getFailoverOff(
+          {
+            storages: null,
+            replications: null,
+            proxies: [off],
+            events: null,
+            policies: [{ source: 'main', enabled: false }],
+          },
+          NOW,
+        ),
+      ).toBeNull();
+      expect(
+        DashboardHelper.getFailoverOff(
+          { storages: null, replications: null, proxies: [off], events: null },
+          NOW,
+        ),
+      ).toBeNull();
+    });
+  });
+
+  describe('replication summary', () => {
+    it('derives the state of a replication', () => {
+      expect(
+        DashboardHelper.replicationState(replication({ isPaused: true })),
+      ).toBe('paused');
+      expect(
+        DashboardHelper.replicationState(replication({ isInitDone: false })),
+      ).toBe('initial');
+      expect(
+        DashboardHelper.replicationState(replication({ eventLag: '3' })),
+      ).toBe('behind');
+      expect(DashboardHelper.replicationState(replication())).toBe('upToDate');
+    });
+
+    it('lists paused and lagging replications first and caps the list', () => {
+      const list = [
+        replication({ idStr: 'ok' }),
+        replication({ idStr: 'lag', eventLag: '9' }),
+        replication({ idStr: 'paused', isPaused: true }),
+        replication({ idStr: 'archived', isArchived: true, isPaused: true }),
+        replication({ idStr: 'lag2', eventLag: '2' }),
+      ];
+
+      expect(
+        DashboardHelper.summaryReplications(list).map((r) => r.idStr),
+      ).toEqual(['paused', 'lag', 'lag2', 'ok']);
+      expect(DashboardHelper.summaryReplications(list, 2)).toHaveLength(2);
+    });
+  });
+
   describe('getTrafficSummary', () => {
     const snapshot = (collectedAt: string, requests: number, e5: number) =>
       TrafficStatsHelper.normalize({

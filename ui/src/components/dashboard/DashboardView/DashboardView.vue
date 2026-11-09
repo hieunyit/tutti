@@ -20,17 +20,20 @@
   import { useRoute } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { NDrawer, NDrawerContent } from 'naive-ui';
-  import { CColorSchemeToggle, CLanguageSelect } from '@clyso/clyso-ui-kit';
+  import { CLanguageSelect } from '@clyso/clyso-ui-kit';
   import { useI18nStore } from '@/stores/i18nStore';
-  import { useColorSchemeStore } from '@/stores/colorSchemeStore';
   import AuthUserMenu from '@/components/auth/AuthUserMenu.vue';
   import { useAuthStore } from '@/stores/authStore';
   import AppSidebar from '@/components/layout/AppSidebar.vue';
   import AppBreadcrumbs from '@/components/layout/AppBreadcrumbs.vue';
+  import AppQuickSearch from '@/components/layout/AppQuickSearch.vue';
+  import AppThemeToggle from '@/components/layout/AppThemeToggle.vue';
+  import Callout from '@/components/ui/Callout.vue';
   import AboutDialog from '@/components/layout/AboutDialog.vue';
   import i18nLayout from '@/components/layout/i18nLayout';
   import DashboardFooter from '@/components/dashboard/DashboardFooter/DashboardFooter.vue';
-  import { HAS_LANG_SELECT } from '@/utils/constants/env';
+  import { ENV_LABEL, HAS_LANG_SELECT } from '@/utils/constants/env';
+  import { RouteName } from '@/utils/types/router';
   import { useSidebar } from '@/utils/composables/useSidebar';
 
   const { t } = useI18n({ messages: i18nLayout });
@@ -39,10 +42,7 @@
   const { locale } = storeToRefs(useI18nStore());
   const { setLocale } = useI18nStore();
 
-  const { showUserMenu } = storeToRefs(useAuthStore());
-
-  const { colorScheme } = storeToRefs(useColorSchemeStore());
-  const { setColorScheme } = useColorSchemeStore();
+  const { showUserMenu, authEnabled } = storeToRefs(useAuthStore());
 
   const { isCollapsed, isMobile, isDrawerOpen, toggleCollapsed } = useSidebar();
 
@@ -91,46 +91,66 @@
     </NDrawer>
 
     <div class="dashboard-view__body">
-      <header class="dashboard-view__topbar">
-        <button
-          v-if="isMobile"
-          type="button"
-          class="dashboard-view__burger"
-          :aria-label="t('openMenu')"
-          :aria-expanded="isDrawerOpen"
-          @click="isDrawerOpen = true"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
+      <div class="dashboard-view__top">
+        <header class="dashboard-view__topbar">
+          <button
+            v-if="isMobile"
+            type="button"
+            class="dashboard-view__burger"
+            :aria-label="t('openMenu')"
+            :aria-expanded="isDrawerOpen"
+            @click="isDrawerOpen = true"
           >
-            <path d="M3 5h14M3 10h14M3 15h14" />
-          </svg>
-        </button>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M3 5h14M3 10h14M3 15h14" />
+            </svg>
+          </button>
 
-        <AppBreadcrumbs class="dashboard-view__crumbs" />
+          <AppBreadcrumbs class="dashboard-view__crumbs" />
 
-        <div class="dashboard-view__controls">
-          <CLanguageSelect
-            v-if="HAS_LANG_SELECT"
-            :value="locale"
-            @update:value="setLocale"
-          />
+          <AppQuickSearch class="dashboard-view__search" />
 
-          <CColorSchemeToggle
-            :value="colorScheme"
-            @update:value="setColorScheme"
-          />
+          <span
+            v-if="ENV_LABEL"
+            class="dashboard-view__env"
+            >{{ ENV_LABEL }}</span
+          >
 
-          <AuthUserMenu v-if="showUserMenu" />
-        </div>
-      </header>
+          <div class="dashboard-view__controls">
+            <CLanguageSelect
+              v-if="HAS_LANG_SELECT"
+              :value="locale"
+              @update:value="setLocale"
+            />
+
+            <AppThemeToggle />
+
+            <AuthUserMenu v-if="showUserMenu" />
+          </div>
+        </header>
+
+        <Callout
+          v-if="authEnabled === false"
+          class="dashboard-view__auth-warning"
+          tone="warning"
+        >
+          {{ t('authDisabledBanner') }}
+          <template #actions>
+            <RouterLink :to="{ name: RouteName.TUTTI_DOCS }">{{
+              t('authDisabledLink')
+            }}</RouterLink>
+          </template>
+        </Callout>
+      </div>
 
       <main class="dashboard-view__main">
         <RouterView />
@@ -174,22 +194,57 @@
       min-height: 100vh;
     }
 
-    &__topbar {
+    &__top {
       position: sticky;
       top: 0;
-      z-index: 2;
+      z-index: 5;
+      background-color: var(--tt-surface);
+      border-bottom: 1px solid var(--tt-border);
+    }
+
+    &__topbar {
       display: flex;
       align-items: center;
-      gap: 12px;
-      height: 56px;
-      padding: 0 24px;
-      background-color: var(--card-color);
-      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      min-height: 56px;
+      box-sizing: border-box;
+      padding: 8px var(--tt-page-padding);
 
       @media screen and (max-width: 639px) {
-        padding: 0 12px;
+        padding: 8px 12px;
         gap: 8px;
       }
+    }
+
+    &__auth-warning {
+      margin: 0 var(--tt-page-padding) 8px;
+
+      @media screen and (max-width: 639px) {
+        margin: 0 12px 8px;
+      }
+    }
+
+    &__search {
+      margin-left: auto;
+
+      @media screen and (max-width: 639px) {
+        order: 10;
+        flex: 1 1 100%;
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+
+    &__env {
+      padding: 2px 10px;
+      border: 1px solid var(--tt-warning-border);
+      border-radius: var(--tt-radius-pill);
+      background-color: var(--tt-warning-bg);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 600;
+      color: var(--tt-warning);
     }
 
     &__burger {
@@ -200,22 +255,18 @@
       width: 36px;
       height: 36px;
       border: 0;
-      border-radius: 6px;
+      border-radius: var(--tt-radius-control);
       background: transparent;
-      color: var(--text-color-1);
+      color: var(--tt-text);
       cursor: pointer;
 
       &:hover {
-        background-color: var(--button-color-2-hover);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--primary-color);
+        background-color: var(--tt-hover);
       }
     }
 
     &__crumbs {
-      flex: 1;
+      flex: 0 1 auto;
       min-width: 0;
     }
 
@@ -229,7 +280,7 @@
     &__main {
       flex: 1;
       min-width: 0;
-      padding: 24px;
+      padding: var(--tt-page-padding);
 
       @media screen and (max-width: 639px) {
         padding: 16px;

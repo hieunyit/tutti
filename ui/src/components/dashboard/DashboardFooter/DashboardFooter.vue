@@ -46,7 +46,7 @@
     padding: 12px 24px;
     font-size: 12px;
     line-height: 16px;
-    color: var(--text-color-3);
+    color: var(--tt-text-3);
 
     @media screen and (max-width: 639px) {
       padding: 12px 16px;
@@ -63,7 +63,7 @@
       cursor: pointer;
 
       &:hover {
-        color: var(--text-color-1);
+        color: var(--tt-text);
       }
     }
   }
