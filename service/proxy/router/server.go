@@ -47,6 +47,8 @@ type Config struct {
 	CorsMiddleware func(next http.Handler) http.Handler
 	// Replication defines how failures to record replication events are handled.
 	Replication ReplicationOptions
+	// Sync configures optional synchronous replication on the write path.
+	Sync SyncOptions
 }
 
 const (
@@ -155,7 +157,7 @@ func New(config Config) (http.Handler, error) {
 	handlers := make(map[dom.StorageType]http.Handler, len(config.Storages))
 	for storType, storProxy := range config.Storages {
 		// 9. main request handler. Forward request to storage backend and emit replication tasks
-		handler := serve(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil, config.Replication)
+		handler := serve(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil, config.Replication, config.Sync)
 		if config.TraceMiddleware != nil {
 			// 8. tracing
 			handler = config.TraceMiddleware(handler)
@@ -196,7 +198,7 @@ func New(config Config) (http.Handler, error) {
 
 }
 
-func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts ReplicationOptions) http.Handler {
+func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts ReplicationOptions, syncOpts SyncOptions) http.Handler {
 	replOpts = replOpts.withDefaults()
 	// Use a custom handler function instead of ServeMux to avoid automatic redirects
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -217,6 +219,8 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 			}
 		}()
 		ctx = log.WithStorage(ctx, storage)
+		var syncRes syncResult
+		var synced bool
 		// TODO: is it reachable? This branch is active only if err == nil
 		if isApiErr {
 			zerolog.Ctx(ctx).Info().Err(err).Msg("s3 api error returned")
@@ -245,6 +249,22 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 				writeEventRecordError(ctx, w)
 				return
 			}
+			if recordErr == nil && syncOpts.active() {
+				syncRes, synced = syncOpts.syncDestinations(replCtx, taskList)
+				if synced && syncRes.copies < syncRes.quorum {
+					onFail := syncOpts.OnQuorumFailure
+					if onFail == "" {
+						onFail = OnQuorumFailureFail
+					}
+					syncRes.logFailures(logger, onFail)
+					if onFail == OnQuorumFailureFail {
+						writeQuorumError(ctx, w)
+						return
+					}
+				} else if synced && len(syncRes.failed) != 0 {
+					syncRes.logFailures(logger, syncOpts.OnQuorumFailure)
+				}
+			}
 		}
 		// Forward response to original client
 		for k, v := range resp.Header {
@@ -262,6 +282,9 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 				}
 			}
 			w.Header().Set(k, v[0])
+		}
+		if synced {
+			w.Header().Set(ReplicasHeader, syncRes.header())
 		}
 		w.WriteHeader(resp.StatusCode)
 		_, err = io.Copy(w, resp.Body)

@@ -19,21 +19,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/hibiken/asynq"
-	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
-	"github.com/hieunyit/tutti/pkg/dom"
-	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/log"
-	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/tasks"
-	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
 func (s *svc) HandleObjectSync(ctx context.Context, t *asynq.Task) (err error) {
@@ -45,7 +38,6 @@ func (s *svc) HandleObjectSync(ctx context.Context, t *asynq.Task) (err error) {
 	ctx = log.WithObjName(ctx, p.Object.Name)
 	ctx = log.WithUser(ctx, p.ID.User())
 	logger := zerolog.Ctx(ctx)
-	fromBucket, toBucket := p.ID.FromToBuckets(p.Object.Bucket)
 
 	// acquire rate limits for source and destination storage before proceeding
 	if err := s.rateLimit(ctx, p.ID.FromStorage(), s3.HeadObject, s3.GetObject, s3.GetObjectAcl); err != nil {
@@ -57,67 +49,5 @@ func (s *svc) HandleObjectSync(ctx context.Context, t *asynq.Task) (err error) {
 		return err
 	}
 
-	objectLockID := entity.NewVersionedObjectLockID(p.ID.ToStorage(), toBucket, p.Object.Name, p.Object.Version)
-	lock, err := s.objectLocker.Lock(ctx, objectLockID)
-	if err != nil {
-		return err
-	}
-	defer lock.Release(ctx)
-	versions, err := s.versionSvc.GetObj(ctx, p.ID, p.Object)
-	if err != nil {
-		return err
-	}
-	isObjDeleted := versions.IsEmpty()
-	if isObjDeleted {
-		return s.objectDelete(ctx, p)
-	}
-
-	fromVer, toVer := versions.From, versions.To
-	if fromVer <= toVer {
-		logger.Info().Int("from_ver", fromVer).Int("to_ver", toVer).Msg("object sync: identical from/to obj version: skip copy")
-		return nil
-	}
-
-	err = lock.Do(ctx, time.Second*2, func() error {
-		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
-			Storage: p.ID.FromStorage(),
-			Bucket:  fromBucket,
-			Name:    p.Object.Name,
-		}, copy.File{
-			Storage: p.ID.ToStorage(),
-			Bucket:  toBucket,
-			Name:    p.Object.Name,
-		})
-	})
-	if err != nil {
-		if errors.Is(err, dom.ErrNotFound) {
-			logger.Warn().Msg("object sync: skip object sync: object missing in source")
-			return nil
-		}
-		return err
-	}
-	logger.Info().Msg("object sync: done")
-
-	if fromVer != 0 {
-		destination := meta.Destination{Storage: p.ID.ToStorage(), Bucket: toBucket}
-		return s.versionSvc.UpdateIfGreater(ctx, p.ID, p.Object, destination, fromVer)
-	}
-
-	return nil
-}
-
-func (s *svc) objectDelete(ctx context.Context, p tasks.ObjectSyncPayload) (err error) {
-	fromClient, toClient, err := s.getClients(ctx, p.ID.User(), p.ID.FromStorage(), p.ID.ToStorage())
-	if err != nil {
-		return err
-	}
-	_, err = fromClient.S3().StatObject(ctx, p.Object.Bucket, p.Object.Name, mclient.StatObjectOptions{})
-	if err == nil {
-		zerolog.Ctx(ctx).Warn().Msg("skip obj delete: obj still exists in source storage")
-		return nil
-	}
-
-	_, toBucket := p.ID.FromToBuckets(p.Object.Bucket)
-	err = toClient.S3().RemoveObject(ctx, toBucket, p.Object.Name, mclient.RemoveObjectOptions{VersionID: p.Object.Version})
-	return
+	return s.syncer.Sync(ctx, p)
 }

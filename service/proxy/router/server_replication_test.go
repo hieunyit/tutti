@@ -55,7 +55,7 @@ func (c *cannedRouter) Route(*http.Request) (*http.Response, []tasks.Replication
 func runServe(t *testing.T, svc replication.Service, opts ReplicationOptions, ctx context.Context) (*httptest.ResponseRecorder, *cannedRouter) {
 	t.Helper()
 	rt := &cannedRouter{tasks: []tasks.ReplicationTask{&tasks.ObjectSyncPayload{}}}
-	h := serve(rt, svc, false, opts)
+	h := serve(rt, svc, false, opts, SyncOptions{})
 	req := httptest.NewRequest(http.MethodPut, "/b/o", nil).WithContext(xctx.SetRoutingPolicy(zerolog.Nop().WithContext(ctx), "main"))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -116,7 +116,7 @@ func TestServe_ReplicationRetryBudgetIsPerRequest(t *testing.T) {
 		many[i] = &tasks.ObjectSyncPayload{}
 	}
 	rt := &cannedRouter{tasks: many}
-	h := serve(rt, svc, false, ReplicationOptions{OnEventError: OnEventErrorFail, EventRetryBudget: 200 * time.Millisecond})
+	h := serve(rt, svc, false, ReplicationOptions{OnEventError: OnEventErrorFail, EventRetryBudget: 200 * time.Millisecond}, SyncOptions{})
 	req := httptest.NewRequest(http.MethodPost, "/b?delete", nil).
 		WithContext(xctx.SetRoutingPolicy(zerolog.Nop().WithContext(context.Background()), "main"))
 	rec := httptest.NewRecorder()

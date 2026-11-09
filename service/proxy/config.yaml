@@ -7,6 +7,19 @@ replication:
   #   log  - legacy behavior: respond with the storage response and only log the error. Follower may silently diverge.
   onEventError: fail
   eventRetryBudget: 2s # total time to retry recording the event (exponential backoff) before onEventError applies
+  # Synchronous replication on the write path. When enabled, after the main write succeeded and the event was
+  # recorded, the proxy copies the object to the replication destinations BEFORE answering the client.
+  # The replication task stays enqueued as a safety net: destinations that fail or time out are completed by the worker.
+  # Applies to object writes/deletes (PutObject, CompleteMultipartUpload, CopyObject, DeleteObject(s)); ACL/tag/bucket tasks stay async.
+  # The response carries header X-Tutti-Replicas: <copies>/<1+destinations>.
+  sync:
+    enabled: false
+    writeQuorum: 0 # copies (main included) that must exist before answering; 0 = main + all destinations
+    timeout: 30s # max time spent syncing destinations per request
+    # What to do when fewer than writeQuorum copies exist:
+    #   fail   - respond 503 ServiceUnavailable (data is on main and the task is enqueued; the client may retry)
+    #   accept - forward main's response (header still reports the copies count)
+    onQuorumFailure: fail
 cors:
   enabled: false
   allowAll: false

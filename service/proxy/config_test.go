@@ -89,3 +89,22 @@ func TestReplicationConfigValidate(t *testing.T) {
 	neg := ReplicationConfig{OnEventError: "fail", EventRetryBudget: -time.Second}
 	r.Error(neg.Validate())
 }
+
+func TestSyncConfigValidate(t *testing.T) {
+	r := require.New(t)
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.False(conf.Replication.Sync.Enabled)
+	r.Equal(30*time.Second, conf.Replication.Sync.Timeout)
+	r.Equal("fail", conf.Replication.Sync.OnQuorumFailure)
+	r.NoError(conf.Replication.Validate())
+
+	r.NoError((&SyncConfig{}).Validate(), "disabled needs no timeout")
+	r.NoError((&SyncConfig{Enabled: true, Timeout: time.Second, WriteQuorum: 2, OnQuorumFailure: "accept"}).Validate())
+	r.Error((&SyncConfig{Enabled: true}).Validate(), "zero timeout")
+	r.Error((&SyncConfig{Enabled: true, Timeout: -time.Second}).Validate())
+	r.Error((&SyncConfig{WriteQuorum: -1}).Validate())
+	r.Error((&SyncConfig{OnQuorumFailure: "ignore"}).Validate())
+	rc := ReplicationConfig{OnEventError: "fail", Sync: SyncConfig{Enabled: true}}
+	r.Error(rc.Validate())
+}

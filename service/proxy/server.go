@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/extra/redisotel/v9"
@@ -40,6 +41,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/rpc"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/storage"
+	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/util"
@@ -47,6 +49,8 @@ import (
 	"github.com/hieunyit/tutti/service/proxy/auth"
 	"github.com/hieunyit/tutti/service/proxy/cors"
 	"github.com/hieunyit/tutti/service/proxy/router"
+	"github.com/hieunyit/tutti/service/worker/copy"
+	"github.com/hieunyit/tutti/service/worker/syncer"
 )
 
 func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
@@ -139,6 +143,21 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
+		if conf.Replication.Sync.Enabled {
+			lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
+			defer lockRedis.Close()
+			objectLocker := store.NewObjectLocker(lockRedis, syncLockOverlap)
+			// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
+			copySvc := copy.NewS3CopySvc(credsSvc, clientRegistry, metricsSvc)
+			proxyConfig.Sync = router.SyncOptions{
+				Enabled:         true,
+				Syncer:          syncer.New(verSvc, objectLocker, copySvc, clientRegistry),
+				WriteQuorum:     conf.Replication.Sync.WriteQuorum,
+				Timeout:         conf.Replication.Sync.Timeout,
+				OnQuorumFailure: conf.Replication.Sync.OnQuorumFailure,
+			}
+			logger.Info().Int("write_quorum", conf.Replication.Sync.WriteQuorum).Dur("timeout", conf.Replication.Sync.Timeout).Msg("synchronous replication enabled")
+		}
 		routeSvc := router.NewS3Router(clientRegistry, verSvc, uploadSvc, limiter)
 		replSvc := replication.NewS3(queueSvc, verSvc, policySvc)
 		authCheck := auth.Middleware(conf.Auth, credsSvc, conf.Address)
@@ -224,3 +243,7 @@ func requestReplyServer(proxyUrl string, credentials ...map[string]s3.Credential
 		return res, nil
 	}
 }
+
+// syncLockOverlap matches the default worker lock.overlap: the proxy takes the same distributed
+// destination-object lock as the worker when syncing synchronously.
+const syncLockOverlap = 2 * time.Second

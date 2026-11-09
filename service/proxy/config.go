@@ -65,6 +65,37 @@ type ReplicationConfig struct {
 	OnEventError string `yaml:"onEventError"`
 	// EventRetryBudget is the total time to retry recording the event before OnEventError applies. Default 2s.
 	EventRetryBudget time.Duration `yaml:"eventRetryBudget"`
+	// Sync enables synchronous replication on the write path.
+	Sync SyncConfig `yaml:"sync"`
+}
+
+// SyncConfig configures synchronous replication: after the main write succeeded the proxy copies the
+// object to the replication destinations before answering the client. The replication task stays
+// enqueued as a safety net, so destinations that fail or time out are completed by the worker.
+type SyncConfig struct {
+	Enabled bool `yaml:"enabled"`
+	// WriteQuorum is the number of copies (main included) that must exist before answering.
+	// 0 means main + all destinations.
+	WriteQuorum int `yaml:"writeQuorum"`
+	// Timeout is the max time spent syncing destinations per request.
+	Timeout time.Duration `yaml:"timeout"`
+	// OnQuorumFailure: "fail" responds 503, "accept" forwards the main storage response.
+	OnQuorumFailure string `yaml:"onQuorumFailure"`
+}
+
+func (c *SyncConfig) Validate() error {
+	if c.WriteQuorum < 0 {
+		return fmt.Errorf("proxy config: replication.sync.writeQuorum must not be negative")
+	}
+	switch c.OnQuorumFailure {
+	case "", router.OnQuorumFailureFail, router.OnQuorumFailureAccept:
+	default:
+		return fmt.Errorf("proxy config: invalid replication.sync.onQuorumFailure %q: must be %q or %q", c.OnQuorumFailure, router.OnQuorumFailureFail, router.OnQuorumFailureAccept)
+	}
+	if c.Enabled && c.Timeout <= 0 {
+		return fmt.Errorf("proxy config: replication.sync.timeout must be greater than 0 when sync is enabled")
+	}
+	return nil
 }
 
 func (r *ReplicationConfig) Validate() error {
@@ -76,7 +107,7 @@ func (r *ReplicationConfig) Validate() error {
 	if r.EventRetryBudget < 0 {
 		return fmt.Errorf("proxy config: replication.eventRetryBudget must not be negative")
 	}
-	return nil
+	return r.Sync.Validate()
 }
 
 func (c *Config) Validate() error {

@@ -31,6 +31,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/service/worker/copy"
+	"github.com/hieunyit/tutti/service/worker/syncer"
 )
 
 type Config struct {
@@ -78,6 +79,7 @@ type svc struct {
 	replicationstatusLocker *store.ReplicationStatusLocker
 	versionedSvc            *VersionedMigrationSvc
 	conf                    *Config
+	syncer                  *syncer.ObjectSyncer
 }
 
 func New(conf *Config, credsSvc objstore.CredsService, clients objstore.Clients, versionSvc meta.VersionService,
@@ -87,6 +89,7 @@ func New(conf *Config, credsSvc objstore.CredsService, clients objstore.Clients,
 	replicationstatusLocker *store.ReplicationStatusLocker, versionedSvc *VersionedMigrationSvc) *svc {
 	return &svc{
 		conf:                    conf,
+		syncer:                  syncer.New(versionSvc, objectLocker, copySvc, clients),
 		credsSvc:                credsSvc,
 		clients:                 clients,
 		versionSvc:              versionSvc,
