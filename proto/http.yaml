@@ -110,3 +110,13 @@ http:
     - selector: chorus.Resilience.DeleteFailoverEvent
       put: /tutti/failover/events/delete
       body: "*"
+    - selector: chorus.Resilience.ListAccessPolicies
+      get: /tutti/access-policies
+    - selector: chorus.Resilience.SetAccessPolicy
+      post: /tutti/access-policies
+      body: "*"
+    - selector: chorus.Resilience.DeleteAccessPolicy
+      put: /tutti/access-policies/delete
+      body: "*"
+    - selector: chorus.Resilience.ListProxyAccounts
+      get: /tutti/proxy-accounts

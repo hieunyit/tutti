@@ -43,6 +43,9 @@ type Config struct {
 	TraceMiddleware   func(next http.Handler) http.Handler
 	MetricsMiddleware func(next http.Handler) http.Handler
 	PolicyMiddleware  func(next http.Handler) http.Handler
+	// AccessMiddleware enforces per-account access policies. Optional, applied to S3 only
+	// (after authentication and request parsing).
+	AccessMiddleware func(next http.Handler) http.Handler
 	// CorsMiddleware must be set only when CORS is enabled: it also makes the proxy drop backend CORS headers.
 	CorsMiddleware func(next http.Handler) http.Handler
 	// Replication defines how failures to record replication events are handled.
@@ -168,6 +171,10 @@ func New(config Config) (http.Handler, error) {
 		}
 		// 6. set routing & replication policies to context
 		handler = config.PolicyMiddleware(handler)
+		if storType == dom.S3 && config.AccessMiddleware != nil {
+			// 5.5. per-account access policy (user from auth, method/bucket from request parse)
+			handler = config.AccessMiddleware(handler)
+		}
 		// 5. parse storage-specific request method/user/bucket/object and set to context
 		handler = storProxy.ReqParseMiddleware(handler)
 		if storProxy.AuthMiddleware != nil {

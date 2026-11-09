@@ -28,6 +28,7 @@ import (
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
@@ -49,6 +50,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/util"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/service/proxy/access"
 	"github.com/hieunyit/tutti/service/proxy/auth"
 	"github.com/hieunyit/tutti/service/proxy/cors"
 	failovercontroller "github.com/hieunyit/tutti/service/proxy/failover"
@@ -168,7 +170,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		go healthReg.RunChecks(ctx, probeTargets...)
 		startedAt := time.Now().UTC()
 		statusPub := proxystatus.NewPublisher(confRedis, app.AppID, health.DefaultProbeInterval, func() proxystatus.Status {
-			return proxyStatus(conf, healthReg, startedAt)
+			return proxyStatus(conf, healthReg, startedAt, proxyAccounts(conf.Auth, credsSvc))
 		}, logger)
 		go statusPub.Run(ctx)
 		if conf.Failover.Enabled {
@@ -214,6 +216,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		routeSvc := router.NewS3Router(clientRegistry, verSvc, uploadSvc, limiter)
 		replSvc := replication.NewS3(queueSvc, verSvc, policySvc)
+		accessCache := accesspolicy.NewCache(accesspolicy.NewStore(confRedis), accesspolicy.DefaultTTL)
+		proxyConfig.AccessMiddleware = access.Middleware(accessCache.Lookup)
 		authCheck := auth.Middleware(conf.Auth, credsSvc, conf.Address)
 		proxyConfig.Storages[dom.S3] = router.StorageProxy{
 			Router:             routeSvc,
@@ -320,7 +324,7 @@ func storageProbe(clients objstore.Clients, creds objstore.CredsService, storage
 }
 
 // proxyStatus builds the status document published to Redis (config DB, tutti:proxy-status:<app_id>).
-func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time) proxystatus.Status {
+func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time, accounts []proxystatus.Account) proxystatus.Status {
 	snap := reg.Snapshot()
 	storages := make([]proxystatus.StorageHealth, 0, len(snap))
 	for _, s := range snap {
@@ -334,6 +338,7 @@ func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time) proxys
 		Address:   conf.Address,
 		StartedAt: startedAt,
 		Storages:  storages,
+		Accounts:  accounts,
 		Settings: proxystatus.Settings{
 			Replication: proxystatus.ReplicationSettings{
 				OnEventError:     conf.Replication.OnEventError,
@@ -356,4 +361,32 @@ func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time) proxys
 		st.Settings.RequireSignedContentType = conf.Auth.RequireSignedContentType
 	}
 	return st
+}
+
+// proxyAccounts lists the accounts that can authenticate against the proxy: users of the auth.useStorage
+// credentials and auth.custom. Only access key ids are listed, never secrets.
+func proxyAccounts(conf *auth.Config, creds objstore.CredsService) []proxystatus.Account {
+	if conf == nil {
+		return nil
+	}
+	var res []proxystatus.Account
+	if conf.UseStorage != "" {
+		for _, user := range creds.ListUsers(conf.UseStorage) {
+			c, err := creds.GetS3Credentials(conf.UseStorage, user)
+			if err != nil {
+				continue
+			}
+			res = append(res, proxystatus.Account{User: user, AccessKeyID: c.AccessKeyID, Source: "storage:" + conf.UseStorage})
+		}
+	}
+	for user, c := range conf.Custom {
+		res = append(res, proxystatus.Account{User: user, AccessKeyID: c.AccessKeyID, Source: "custom"})
+	}
+	slices.SortFunc(res, func(a, b proxystatus.Account) int {
+		if c := strings.Compare(a.User, b.User); c != 0 {
+			return c
+		}
+		return strings.Compare(a.AccessKeyID, b.AccessKeyID)
+	})
+	return res
 }

@@ -14,6 +14,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -150,3 +152,64 @@ func TestResilience_ProxyStatusAggregation(t *testing.T) {
 }
 
 func durationpbSeconds(s int64) *durationpb.Duration { return &durationpb.Duration{Seconds: s} }
+
+func TestResilience_AccessPolicies(t *testing.T) {
+	ctx := context.Background()
+	c, rc, _ := resilienceClient(t)
+
+	_, err := c.SetAccessPolicy(ctx, &pb.AccessPolicy{User: "ro", Permission: "read-only", Buckets: []string{"photos-*"}, Description: "d"})
+	require.NoError(t, err)
+	_, err = c.SetAccessPolicy(ctx, &pb.AccessPolicy{User: "all", Permission: "write-only"})
+	require.NoError(t, err)
+	for name, p := range map[string]*pb.AccessPolicy{
+		"no user":  {Permission: "read-only"},
+		"bad perm": {User: "u", Permission: "admin"},
+		"bad glob": {User: "u", Permission: "read-only", Buckets: []string{"[x"}},
+	} {
+		_, err = c.SetAccessPolicy(ctx, p)
+		require.Equal(t, codes.InvalidArgument, status.Code(err), name)
+	}
+	l, err := c.ListAccessPolicies(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.Len(t, l.Policies, 2)
+	require.Equal(t, "all", l.Policies[0].User)
+	require.Equal(t, []string{"*"}, l.Policies[0].Buckets)
+	require.Equal(t, "ro", l.Policies[1].User)
+
+	// proxy accounts: listed by id, never by secret
+	pub := proxystatus.NewPublisher(rc, "app1", time.Second, func() proxystatus.Status {
+		return proxystatus.Status{Address: "x", Accounts: []proxystatus.Account{
+			{User: "ro", AccessKeyID: "AKRO", Source: "custom"},
+			{User: "free", AccessKeyID: "AKFREE", Source: "storage:main"},
+		}}
+	}, zerolog.Nop())
+	require.NoError(t, pub.PublishOnce(ctx))
+	acc, err := c.ListProxyAccounts(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.Len(t, acc.Accounts, 3) // all (policy only), free, ro
+	by := map[string]*pb.ProxyAccount{}
+	for _, a := range acc.Accounts {
+		by[a.User] = a
+	}
+	require.True(t, by["ro"].HasPolicy)
+	require.Equal(t, []string{"AKRO"}, by["ro"].AccessKeyIds)
+	require.Equal(t, "read-only", by["ro"].Policy.Permission)
+	require.False(t, by["free"].HasPolicy)
+	require.Equal(t, "read-write", by["free"].Policy.Permission)
+	require.Equal(t, []string{"storage:main"}, by["free"].Sources)
+	raw, err := protojsonMarshal(acc)
+	require.NoError(t, err)
+	require.NotContains(t, raw, "ecret")
+
+	_, err = c.DeleteAccessPolicy(ctx, &pb.AccessPolicyUser{User: "ro"})
+	require.NoError(t, err)
+	_, err = c.DeleteAccessPolicy(ctx, &pb.AccessPolicyUser{User: "ro"})
+	require.Equal(t, codes.NotFound, status.Code(err))
+	_, err = c.DeleteAccessPolicy(ctx, &pb.AccessPolicyUser{})
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func protojsonMarshal(m proto.Message) (string, error) {
+	b, err := protojson.Marshal(m)
+	return string(b), err
+}

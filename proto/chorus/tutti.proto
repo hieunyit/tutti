@@ -30,6 +30,56 @@ service Resilience {
 
   // DeleteFailoverEvent clears the record of a performed failover, e.g. after manual failback.
   rpc DeleteFailoverEvent(FailoverEventID) returns (google.protobuf.Empty);
+
+  // ListAccessPolicies returns all proxy account access policies sorted by user.
+  rpc ListAccessPolicies(google.protobuf.Empty) returns (AccessPolicyList);
+
+  // SetAccessPolicy creates or replaces the access policy of a proxy user.
+  // Proxies pick up changes within a few seconds (policy cache TTL).
+  rpc SetAccessPolicy(AccessPolicy) returns (google.protobuf.Empty);
+
+  // DeleteAccessPolicy removes the access policy of a proxy user: the user gets full access again.
+  rpc DeleteAccessPolicy(AccessPolicyUser) returns (google.protobuf.Empty);
+
+  // ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
+  // used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+  rpc ListProxyAccounts(google.protobuf.Empty) returns (ProxyAccountList);
+}
+
+// AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do.
+message AccessPolicy {
+  // Proxy user name.
+  string user = 1;
+  // "read-write", "read-only" or "write-only".
+  string permission = 2;
+  // Allowed bucket glob patterns, e.g. ["photos-*", "logs"]. Empty or ["*"] means all buckets.
+  repeated string buckets = 3;
+  string description = 4;
+}
+
+message AccessPolicyList {
+  repeated AccessPolicy policies = 1;
+}
+
+message AccessPolicyUser {
+  string user = 1;
+}
+
+// ProxyAccount is a proxy user with its access key ids and effective policy.
+message ProxyAccount {
+  string user = 1;
+  // Access key ids (never secrets).
+  repeated string access_key_ids = 2;
+  // Where credentials come from: "custom" or "storage:<name>".
+  repeated string sources = 3;
+  // Effective policy: the stored one, or read-write on all buckets if none is stored.
+  AccessPolicy policy = 4;
+  // True if a policy is stored for the user.
+  bool has_policy = 5;
+}
+
+message ProxyAccountList {
+  repeated ProxyAccount accounts = 1;
 }
 
 // StorageHealth is the circuit breaker state of one storage as seen by one proxy.

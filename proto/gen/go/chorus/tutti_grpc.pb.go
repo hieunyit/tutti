@@ -26,6 +26,10 @@ const (
 	Resilience_DeleteFailoverPolicy_FullMethodName = "/chorus.Resilience/DeleteFailoverPolicy"
 	Resilience_ListFailoverEvents_FullMethodName   = "/chorus.Resilience/ListFailoverEvents"
 	Resilience_DeleteFailoverEvent_FullMethodName  = "/chorus.Resilience/DeleteFailoverEvent"
+	Resilience_ListAccessPolicies_FullMethodName   = "/chorus.Resilience/ListAccessPolicies"
+	Resilience_SetAccessPolicy_FullMethodName      = "/chorus.Resilience/SetAccessPolicy"
+	Resilience_DeleteAccessPolicy_FullMethodName   = "/chorus.Resilience/DeleteAccessPolicy"
+	Resilience_ListProxyAccounts_FullMethodName    = "/chorus.Resilience/ListProxyAccounts"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -49,6 +53,16 @@ type ResilienceClient interface {
 	ListFailoverEvents(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*FailoverEventList, error)
 	// DeleteFailoverEvent clears the record of a performed failover, e.g. after manual failback.
 	DeleteFailoverEvent(ctx context.Context, in *FailoverEventID, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListAccessPolicies returns all proxy account access policies sorted by user.
+	ListAccessPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AccessPolicyList, error)
+	// SetAccessPolicy creates or replaces the access policy of a proxy user.
+	// Proxies pick up changes within a few seconds (policy cache TTL).
+	SetAccessPolicy(ctx context.Context, in *AccessPolicy, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DeleteAccessPolicy removes the access policy of a proxy user: the user gets full access again.
+	DeleteAccessPolicy(ctx context.Context, in *AccessPolicyUser, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
+	// used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+	ListProxyAccounts(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyAccountList, error)
 }
 
 type resilienceClient struct {
@@ -119,6 +133,46 @@ func (c *resilienceClient) DeleteFailoverEvent(ctx context.Context, in *Failover
 	return out, nil
 }
 
+func (c *resilienceClient) ListAccessPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AccessPolicyList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AccessPolicyList)
+	err := c.cc.Invoke(ctx, Resilience_ListAccessPolicies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) SetAccessPolicy(ctx context.Context, in *AccessPolicy, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_SetAccessPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) DeleteAccessPolicy(ctx context.Context, in *AccessPolicyUser, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_DeleteAccessPolicy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) ListProxyAccounts(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyAccountList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProxyAccountList)
+	err := c.cc.Invoke(ctx, Resilience_ListProxyAccounts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResilienceServer is the server API for Resilience service.
 // All implementations should embed UnimplementedResilienceServer
 // for forward compatibility.
@@ -140,6 +194,16 @@ type ResilienceServer interface {
 	ListFailoverEvents(context.Context, *emptypb.Empty) (*FailoverEventList, error)
 	// DeleteFailoverEvent clears the record of a performed failover, e.g. after manual failback.
 	DeleteFailoverEvent(context.Context, *FailoverEventID) (*emptypb.Empty, error)
+	// ListAccessPolicies returns all proxy account access policies sorted by user.
+	ListAccessPolicies(context.Context, *emptypb.Empty) (*AccessPolicyList, error)
+	// SetAccessPolicy creates or replaces the access policy of a proxy user.
+	// Proxies pick up changes within a few seconds (policy cache TTL).
+	SetAccessPolicy(context.Context, *AccessPolicy) (*emptypb.Empty, error)
+	// DeleteAccessPolicy removes the access policy of a proxy user: the user gets full access again.
+	DeleteAccessPolicy(context.Context, *AccessPolicyUser) (*emptypb.Empty, error)
+	// ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials
+	// used by the proxy and custom credentials) with their effective access policy. Secrets are never returned.
+	ListProxyAccounts(context.Context, *emptypb.Empty) (*ProxyAccountList, error)
 }
 
 // UnimplementedResilienceServer should be embedded to have
@@ -166,6 +230,18 @@ func (UnimplementedResilienceServer) ListFailoverEvents(context.Context, *emptyp
 }
 func (UnimplementedResilienceServer) DeleteFailoverEvent(context.Context, *FailoverEventID) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteFailoverEvent not implemented")
+}
+func (UnimplementedResilienceServer) ListAccessPolicies(context.Context, *emptypb.Empty) (*AccessPolicyList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAccessPolicies not implemented")
+}
+func (UnimplementedResilienceServer) SetAccessPolicy(context.Context, *AccessPolicy) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAccessPolicy not implemented")
+}
+func (UnimplementedResilienceServer) DeleteAccessPolicy(context.Context, *AccessPolicyUser) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAccessPolicy not implemented")
+}
+func (UnimplementedResilienceServer) ListProxyAccounts(context.Context, *emptypb.Empty) (*ProxyAccountList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListProxyAccounts not implemented")
 }
 func (UnimplementedResilienceServer) testEmbeddedByValue() {}
 
@@ -295,6 +371,78 @@ func _Resilience_DeleteFailoverEvent_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_ListAccessPolicies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ListAccessPolicies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ListAccessPolicies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ListAccessPolicies(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_SetAccessPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AccessPolicy)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).SetAccessPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_SetAccessPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).SetAccessPolicy(ctx, req.(*AccessPolicy))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_DeleteAccessPolicy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AccessPolicyUser)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).DeleteAccessPolicy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_DeleteAccessPolicy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).DeleteAccessPolicy(ctx, req.(*AccessPolicyUser))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_ListProxyAccounts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ListProxyAccounts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ListProxyAccounts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ListProxyAccounts(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Resilience_ServiceDesc is the grpc.ServiceDesc for Resilience service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -325,6 +473,22 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteFailoverEvent",
 			Handler:    _Resilience_DeleteFailoverEvent_Handler,
+		},
+		{
+			MethodName: "ListAccessPolicies",
+			Handler:    _Resilience_ListAccessPolicies_Handler,
+		},
+		{
+			MethodName: "SetAccessPolicy",
+			Handler:    _Resilience_SetAccessPolicy_Handler,
+		},
+		{
+			MethodName: "DeleteAccessPolicy",
+			Handler:    _Resilience_DeleteAccessPolicy_Handler,
+		},
+		{
+			MethodName: "ListProxyAccounts",
+			Handler:    _Resilience_ListProxyAccounts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

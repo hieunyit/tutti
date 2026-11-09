@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
@@ -18,14 +19,15 @@ import (
 // ResilienceHandlers serves proxy status and failover policies/events.
 // confRedis holds failover data and proxy status documents; known reports whether a storage is configured.
 func ResilienceHandlers(confRedis redis.Cmdable, known func(storage string) bool) pb.ResilienceServer {
-	return &resilienceHandlers{redis: confRedis, store: failover.NewStore(confRedis, known)}
+	return &resilienceHandlers{redis: confRedis, store: failover.NewStore(confRedis, known), policies: accesspolicy.NewStore(confRedis)}
 }
 
 var _ pb.ResilienceServer = &resilienceHandlers{}
 
 type resilienceHandlers struct {
-	redis redis.Cmdable
-	store *failover.Store
+	redis    redis.Cmdable
+	store    *failover.Store
+	policies *accesspolicy.Store
 }
 
 func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empty) (*pb.ProxyStatusList, error) {

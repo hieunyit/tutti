@@ -914,6 +914,96 @@
         ]
       }
     },
+    "/tutti/access-policies": {
+      "get": {
+        "summary": "ListAccessPolicies returns all proxy account access policies sorted by user.",
+        "operationId": "Resilience_ListAccessPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusAccessPolicyList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "summary": "SetAccessPolicy creates or replaces the access policy of a proxy user.\nProxies pick up changes within a few seconds (policy cache TTL).",
+        "operationId": "Resilience_SetAccessPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusAccessPolicy"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/access-policies/delete": {
+      "put": {
+        "summary": "DeleteAccessPolicy removes the access policy of a proxy user: the user gets full access again.",
+        "operationId": "Resilience_DeleteAccessPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusAccessPolicyUser"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/failover/events": {
       "get": {
         "summary": "ListFailoverEvents returns the performed failovers that were not yet cleared.",
@@ -1086,6 +1176,29 @@
         ]
       }
     },
+    "/tutti/proxy-accounts": {
+      "get": {
+        "summary": "ListProxyAccounts returns the accounts able to authenticate against live proxies (users of storage credentials\nused by the proxy and custom credentials) with their effective access policy. Secrets are never returned.",
+        "operationId": "Resilience_ListProxyAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyAccountList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/version": {
       "get": {
         "summary": "Get app version",
@@ -1224,6 +1337,50 @@
             "$ref": "#/definitions/chorusSwiftEvent"
           },
           "description": "Events are processed independently; a failure in one does not affect others."
+        }
+      }
+    },
+    "chorusAccessPolicy": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "Proxy user name."
+        },
+        "permission": {
+          "type": "string",
+          "description": "\"read-write\", \"read-only\" or \"write-only\"."
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed bucket glob patterns, e.g. [\"photos-*\", \"logs\"]. Empty or [\"*\"] means all buckets."
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "description": "AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do."
+    },
+    "chorusAccessPolicyList": {
+      "type": "object",
+      "properties": {
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusAccessPolicy"
+          }
+        }
+      }
+    },
+    "chorusAccessPolicyUser": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
         }
       }
     },
@@ -1772,6 +1929,49 @@
         },
         "bucket": {
           "type": "string"
+        }
+      }
+    },
+    "chorusProxyAccount": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "accessKeyIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Access key ids (never secrets)."
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Where credentials come from: \"custom\" or \"storage:\u003cname\u003e\"."
+        },
+        "policy": {
+          "$ref": "#/definitions/chorusAccessPolicy",
+          "description": "Effective policy: the stored one, or read-write on all buckets if none is stored."
+        },
+        "hasPolicy": {
+          "type": "boolean",
+          "description": "True if a policy is stored for the user."
+        }
+      },
+      "description": "ProxyAccount is a proxy user with its access key ids and effective policy."
+    },
+    "chorusProxyAccountList": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProxyAccount"
+          }
         }
       }
     },

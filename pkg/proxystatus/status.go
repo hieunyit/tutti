@@ -69,6 +69,14 @@ type Settings struct {
 	RequireSignedContentType bool                `json:"requireSignedContentType"`
 }
 
+// Account is a proxy account: a user and one of its access key ids.
+type Account struct {
+	User        string `json:"user"`
+	AccessKeyID string `json:"accessKeyId"`
+	// Source is "custom" or "storage:<name>".
+	Source string `json:"source"`
+}
+
 // Status is the document published by one proxy instance.
 type Status struct {
 	AppID     string          `json:"appId"`
@@ -76,7 +84,9 @@ type Status struct {
 	StartedAt time.Time       `json:"startedAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 	Storages  []StorageHealth `json:"storages"`
-	Settings  Settings        `json:"settings"`
+	// Accounts are the accounts able to authenticate against this proxy (no secrets).
+	Accounts []Account `json:"accounts,omitempty"`
+	Settings Settings  `json:"settings"`
 }
 
 // Key returns the Redis key of the app's status document.
