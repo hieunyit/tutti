@@ -33,6 +33,9 @@ interface AuthState {
   token: string | null;
   username: string | null;
   role: AuthRole | null;
+  /** 'config' users cannot change their password here */
+  source: 'config' | 'managed' | null;
+  mustChangePassword: boolean;
   isLoggingIn: boolean;
   loginError: AuthLoginErrorKind | null;
   /** seconds from Retry-After when rate limited */
@@ -48,6 +51,8 @@ function getInitialState(): AuthState {
     token: AuthTokenHelper.get(),
     username: null,
     role: null,
+    source: null,
+    mustChangePassword: false,
     isLoggingIn: false,
     loginError: null,
     retryAfterSeconds: null,
@@ -66,6 +71,10 @@ export const useAuthStore = defineStore('auth', () => {
   const canWrite = computed(
     () => state.authEnabled === false || state.role === AuthRole.ADMIN,
   );
+  /** Administrators only; with sign-in disabled everybody is admin. */
+  const isAdmin = computed(
+    () => state.authEnabled === false || state.role === AuthRole.ADMIN,
+  );
   const isViewer = computed(() => !canWrite.value);
   const showUserMenu = computed(
     () => state.authEnabled === true && state.token !== null,
@@ -75,6 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
     state.authEnabled = me.authEnabled;
     state.username = me.username ?? null;
     state.role = me.role ?? null;
+    state.source = me.source ?? null;
+    state.mustChangePassword = me.mustChangePassword ?? false;
   }
 
   function clearSession() {
@@ -82,6 +93,8 @@ export const useAuthStore = defineStore('auth', () => {
     state.token = null;
     state.username = null;
     state.role = null;
+    state.source = null;
+    state.mustChangePassword = false;
   }
 
   /** Asks the backend who we are. Idempotent; call from the router guard. */
@@ -125,6 +138,13 @@ export const useAuthStore = defineStore('auth', () => {
       state.username = res.username;
       state.role = res.role;
       state.authEnabled = true;
+
+      // the login response does not say: /auth/me does
+      try {
+        applyMe(await AuthService.me());
+      } catch {
+        // keep the login data
+      }
       state.isInitialized = true;
 
       return true;
@@ -175,6 +195,20 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession();
   }
 
+  /** Called by the HTTP interceptor on 403 PASSWORD_CHANGE_REQUIRED. */
+  function handlePasswordChangeRequired() {
+    state.mustChangePassword = true;
+  }
+
+  /** Sets a new password; the calling session stays valid. */
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    await AuthService.changePassword(currentPassword, newPassword);
+    state.mustChangePassword = false;
+  }
+
   /** Called by the HTTP interceptor on any 401. */
   function handleUnauthorized() {
     clearSession();
@@ -188,12 +222,15 @@ export const useAuthStore = defineStore('auth', () => {
     ...toRefs(state),
     isAuthenticated,
     canWrite,
+    isAdmin,
     isViewer,
     showUserMenu,
     init,
     login,
     logout,
     handleUnauthorized,
+    handlePasswordChangeRequired,
+    changePassword,
     $reset,
   };
 });

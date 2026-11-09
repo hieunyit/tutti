@@ -41,10 +41,9 @@
 
     if (!name) return list;
 
-    const storageName =
-      typeof route.params.storageName === 'string'
-        ? route.params.storageName
-        : '';
+    const entityName = [route.params.storageName, route.params.name].find(
+      (value): value is string => typeof value === 'string' && value !== '',
+    );
     const section = navSection ?? name;
 
     if (name === section) {
@@ -58,17 +57,12 @@
       to: { name: section },
     });
 
-    if (name === RouteName.CHORUS_STORAGE_DETAILS && storageName) {
-      list.push({ label: storageName });
-    } else if (name === RouteName.CHORUS_SET_CREDENTIAL && storageName) {
-      list.push({
-        label: storageName,
-        to: {
-          name: RouteName.CHORUS_STORAGE_DETAILS,
-          params: { storageName },
-        },
-      });
-      list.push({ label: tGlobal(name) });
+    if (
+      (name === RouteName.CHORUS_STORAGE_DETAILS ||
+        name === RouteName.TUTTI_USER_DETAIL) &&
+      entityName
+    ) {
+      list.push({ label: entityName });
     } else {
       list.push({ label: tGlobal(name) });
     }

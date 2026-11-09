@@ -20,7 +20,7 @@ const ChorusHomePage = () =>
   import('@/pages/ChorusHomePage/ChorusHomePage.vue');
 const DashboardView = () =>
   import('@/components/dashboard/DashboardView/DashboardView.vue');
-const ChorusStoragesPage = () =>
+const TuttiStoragesPage = () =>
   import('@/pages/ChorusStoragesPage/ChorusStoragesPage.vue');
 const ChorusMonitoringPage = () =>
   import('@/pages/ChorusMonitoringPage/ChorusMonitoringPage.vue');
@@ -28,22 +28,30 @@ const ChorusReplicationPage = () =>
   import('@/pages/ChorusReplicationPage/ChorusReplicationPage.vue');
 const ChorusAddReplicationPage = () =>
   import('@/pages/ChorusAddReplicationPage/ChorusAddReplicationPage.vue');
-const ChorusStorageDetailsPage = () =>
+const TuttiStorageDetailPage = () =>
   import('@/pages/ChorusStorageDetailsPage/ChorusStorageDetailsPage.vue');
 const ChorusRoutingPoliciesPage = () =>
   import('@/pages/ChorusRoutingPoliciesPage/ChorusRoutingPoliciesPage.vue');
 const ChorusAddRoutingPolicyPage = () =>
   import('@/pages/ChorusAddRoutingPolicyPage/ChorusAddRoutingPolicyPage.vue');
-const ChorusSetCredentialPage = () =>
-  import('@/pages/ChorusSetCredentialPage/ChorusSetCredentialPage.vue');
 const ChorusDiffReportsPage = () =>
   import('@/pages/ChorusDiffReportsPage/ChorusDiffReportsPage.vue');
 const ChorusAddDiffReportPage = () =>
   import('@/pages/ChorusAddDiffReportPage/ChorusAddDiffReportPage.vue');
 const ChorusDiffReportDetailPage = () =>
   import('@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue');
-const TuttiHealthPage = () =>
-  import('@/pages/TuttiHealthPage/TuttiHealthPage.vue');
+const TuttiProxiesPage = () =>
+  import('@/pages/TuttiProxiesPage/TuttiProxiesPage.vue');
+const TuttiUsersPage = () =>
+  import('@/pages/TuttiUsersPage/TuttiUsersPage.vue');
+const TuttiUserCreatePage = () =>
+  import('@/pages/TuttiUserCreatePage/TuttiUserCreatePage.vue');
+const TuttiUserDetailPage = () =>
+  import('@/pages/TuttiUserDetailPage/TuttiUserDetailPage.vue');
+const TuttiConsoleUsersPage = () =>
+  import('@/pages/TuttiConsoleUsersPage/TuttiConsoleUsersPage.vue');
+const TuttiChangePasswordPage = () =>
+  import('@/pages/TuttiChangePasswordPage/TuttiChangePasswordPage.vue');
 const TuttiFailoverPage = () =>
   import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
 const TuttiProxyAccountsPage = () =>
@@ -56,6 +64,11 @@ export const routes: RouteRecordRaw[] = [
     path: '/login',
     name: RouteName.LOGIN,
     component: LoginPage,
+  },
+  {
+    path: '/change-password',
+    name: RouteName.TUTTI_CHANGE_PASSWORD,
+    component: TuttiChangePasswordPage,
   },
   {
     path: '/',
@@ -119,13 +132,13 @@ export const routes: RouteRecordRaw[] = [
         path: 'storages',
         meta: { navGroup: 'storage', navSection: RouteName.CHORUS_STORAGES },
         name: RouteName.CHORUS_STORAGES,
-        component: ChorusStoragesPage,
+        component: TuttiStoragesPage,
       },
       {
         path: 'storages/:storageName',
         meta: { navGroup: 'storage', navSection: RouteName.CHORUS_STORAGES },
         name: RouteName.CHORUS_STORAGE_DETAILS,
-        component: ChorusStorageDetailsPage,
+        component: TuttiStorageDetailPage,
         props: true,
       },
       {
@@ -155,9 +168,50 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'health',
-        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_HEALTH },
-        name: RouteName.TUTTI_HEALTH,
-        component: TuttiHealthPage,
+        redirect: { name: RouteName.CHORUS_STORAGES },
+      },
+      {
+        path: 'proxies',
+        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_PROXIES },
+        name: RouteName.TUTTI_PROXIES,
+        component: TuttiProxiesPage,
+      },
+      {
+        path: 'users',
+        meta: { navGroup: 'access', navSection: RouteName.TUTTI_USERS },
+        name: RouteName.TUTTI_USERS,
+        component: TuttiUsersPage,
+      },
+      {
+        path: 'users/new',
+        meta: {
+          requiresWrite: true,
+          navGroup: 'access',
+          navSection: RouteName.TUTTI_USERS,
+        },
+        name: RouteName.TUTTI_USER_CREATE,
+        component: TuttiUserCreatePage,
+      },
+      {
+        path: 'users/:name',
+        meta: { navGroup: 'access', navSection: RouteName.TUTTI_USERS },
+        name: RouteName.TUTTI_USER_DETAIL,
+        component: TuttiUserDetailPage,
+        props: true,
+      },
+      {
+        path: 'console-users',
+        meta: {
+          requiresAdmin: true,
+          navGroup: 'administration',
+          navSection: RouteName.TUTTI_CONSOLE_USERS,
+        },
+        name: RouteName.TUTTI_CONSOLE_USERS,
+        component: TuttiConsoleUsersPage,
+      },
+      {
+        path: 'access-keys',
+        redirect: { name: RouteName.TUTTI_PROXY_ACCOUNTS },
       },
       {
         path: 'proxy-accounts',
@@ -191,15 +245,20 @@ export const routes: RouteRecordRaw[] = [
         component: DocsPage,
       },
       {
-        path: 'storages/:storageName/credentials/:alias?',
-        meta: {
-          requiresWrite: true,
-          navGroup: 'storage',
-          navSection: RouteName.CHORUS_STORAGES,
-        },
+        // the old credentials page: credentials now live on the user pages
         name: RouteName.CHORUS_SET_CREDENTIAL,
-        component: ChorusSetCredentialPage,
-        props: true,
+        path: 'storages/:storageName/credentials/:alias?',
+        redirect: (to) => {
+          const alias = to.params.alias;
+
+          return typeof alias === 'string' && alias !== ''
+            ? { name: RouteName.TUTTI_USER_DETAIL, params: { name: alias } }
+            : {
+                name: RouteName.CHORUS_STORAGE_DETAILS,
+                params: { storageName: String(to.params.storageName) },
+                query: { tab: 'users' },
+              };
+        },
       },
     ],
   },

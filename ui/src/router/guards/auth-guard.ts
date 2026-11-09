@@ -35,6 +35,23 @@ const authGuard: NavigationGuard = async (to) => {
     };
   }
 
+  if (auth.mustChangePassword && auth.authEnabled) {
+    if (to.name === RouteName.TUTTI_CHANGE_PASSWORD) return true;
+
+    return {
+      name: RouteName.TUTTI_CHANGE_PASSWORD,
+      query: to.fullPath === '/' ? {} : { redirect: to.fullPath },
+    };
+  }
+
+  if (to.name === RouteName.TUTTI_CHANGE_PASSWORD) {
+    return { name: RouteName.CHORUS_HOME };
+  }
+
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { name: RouteName.CHORUS_HOME };
+  }
+
   if (to.meta.requiresWrite && !auth.canWrite) {
     return { name: RouteName.CHORUS_HOME };
   }

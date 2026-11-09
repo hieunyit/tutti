@@ -43,4 +43,14 @@ export abstract class AuthService {
 
     return data;
   }
+
+  static async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    await apiClient.post(ApiHelper.getChorusAPIUrl('/auth/password'), {
+      currentPassword,
+      newPassword,
+    });
+  }
 }

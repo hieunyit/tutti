@@ -15,6 +15,7 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
+import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 
 const AUTH_PATH = '/auth/';
 
@@ -22,6 +23,8 @@ interface AuthInterceptorDeps {
   getToken: () => string | null;
   /** Clears the session and navigates to the login page. */
   onUnauthorized: () => void;
+  /** HTTP 403 PASSWORD_CHANGE_REQUIRED: keep the session, ask for a new password. */
+  onPasswordChangeRequired?: () => void;
 }
 
 function isAuthRequest(url: string | undefined): boolean {
@@ -36,7 +39,7 @@ function isAuthRequest(url: string | undefined): boolean {
  */
 export function installAuthInterceptor(
   client: AxiosInstance,
-  { getToken, onUnauthorized }: AuthInterceptorDeps,
+  { getToken, onUnauthorized, onPasswordChangeRequired }: AuthInterceptorDeps,
 ): () => void {
   const requestId = client.interceptors.request.use((config) => {
     const token = getToken();
@@ -57,6 +60,8 @@ export function installAuthInterceptor(
         !isAuthRequest(error.config?.url)
       ) {
         onUnauthorized();
+      } else if (ErrorHelper.isPasswordChangeRequired(error)) {
+        onPasswordChangeRequired?.();
       }
 
       return Promise.reject(error);

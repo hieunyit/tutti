@@ -115,4 +115,76 @@ describe('auth interceptor', () => {
     await client.get('/x');
     expect(seen[0]?.auth).toBeUndefined();
   });
+
+  describe('PASSWORD_CHANGE_REQUIRED', () => {
+    function makeBlocked(body: unknown): AxiosInstance {
+      const adapter: AxiosAdapter = async (config) => {
+        throw new axios.AxiosError('fail', '403', config, null, {
+          data: body,
+          status: 403,
+          statusText: '',
+          headers: {},
+          config,
+        });
+      };
+
+      return axios.create({ adapter });
+    }
+
+    const blockedBody = {
+      code: 7,
+      message: 'password change required',
+      details: [
+        {
+          '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+          reason: 'PASSWORD_CHANGE_REQUIRED',
+          domain: 'tutti.auth',
+        },
+      ],
+    };
+
+    it('reports it without signing the user out', async () => {
+      const onPasswordChangeRequired = vi.fn();
+      const client = makeBlocked(blockedBody);
+
+      installAuthInterceptor(client, {
+        getToken: () => 'abc',
+        onUnauthorized,
+        onPasswordChangeRequired,
+      });
+      await expect(client.get('/api/tutti/users')).rejects.toBeTruthy();
+      expect(onPasswordChangeRequired).toHaveBeenCalledTimes(1);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('ignores other 403 responses', async () => {
+      const onPasswordChangeRequired = vi.fn();
+      const client = makeBlocked({ code: 7, message: 'read-only account' });
+
+      installAuthInterceptor(client, {
+        getToken: () => 'abc',
+        onUnauthorized,
+        onPasswordChangeRequired,
+      });
+      await expect(client.get('/api/tutti/users')).rejects.toBeTruthy();
+      expect(onPasswordChangeRequired).not.toHaveBeenCalled();
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('also matches code 7 with the stable message', async () => {
+      const onPasswordChangeRequired = vi.fn();
+      const client = makeBlocked({
+        code: 7,
+        message: 'password change required',
+      });
+
+      installAuthInterceptor(client, {
+        getToken: () => 'abc',
+        onUnauthorized,
+        onPasswordChangeRequired,
+      });
+      await expect(client.get('/x')).rejects.toBeTruthy();
+      expect(onPasswordChangeRequired).toHaveBeenCalledTimes(1);
+    });
+  });
 });

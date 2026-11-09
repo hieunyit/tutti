@@ -77,8 +77,15 @@ export abstract class ProxyAccountHelper {
   static getMessage(error: unknown): string | null {
     if (!axios.isAxiosError(error)) return null;
 
-    const message = (error.response?.data as { message?: string } | undefined)
-      ?.message;
+    const data = error.response?.data as
+      | { message?: string; details?: { '@type'?: string; reason?: string }[] }
+      | undefined;
+    const message =
+      data?.details?.find(
+        (detail) =>
+          detail['@type'] === 'type.googleapis.com/google.rpc.ErrorInfo' &&
+          detail.reason,
+      )?.reason ?? data?.message;
 
     return message ? message : null;
   }

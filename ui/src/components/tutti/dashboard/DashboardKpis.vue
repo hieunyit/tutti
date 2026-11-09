@@ -149,7 +149,7 @@
       :value="storagesCard.value"
       :sub="storagesCard.hint"
       :tone="storagesCard.tone"
-      :to="{ name: RouteName.TUTTI_HEALTH }"
+      :to="{ name: RouteName.CHORUS_STORAGES }"
     />
     <KpiCard
       :label="t('kpiReplications')"
@@ -183,7 +183,7 @@
       :value="proxiesCard.value"
       :sub="proxiesCard.hint"
       :tone="proxiesCard.tone"
-      :to="{ name: RouteName.TUTTI_HEALTH }"
+      :to="{ name: RouteName.CHORUS_STORAGES }"
     />
   </section>
 </template>

@@ -30,6 +30,18 @@ import type {
   TuttiStatsHistory,
   TuttiStatsRange,
 } from '@/utils/types/tutti';
+import type {
+  ConsoleUserCreateRequest,
+  ConsoleUserCreateResponse,
+  ConsoleUserListResponse,
+  ConsoleUserPasswordRequest,
+  ConsoleUserPasswordResponse,
+  S3UserCreateRequest,
+  S3UserCreateResponse,
+  S3UserListResponse,
+  S3UserTestRequest,
+  S3UserTestResponse,
+} from '@/utils/types/users';
 
 export abstract class TuttiService {
   static async getProxies(
@@ -160,6 +172,123 @@ export abstract class TuttiService {
     await apiClient.put(
       ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/delete'),
       { accessKeyId },
+    );
+  }
+
+  static async getUsers(signal?: AbortSignal): Promise<S3UserListResponse> {
+    const { data } = await apiClient.get<S3UserListResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/users'),
+      { signal },
+    );
+
+    return data;
+  }
+
+  static async createUser(
+    payload: S3UserCreateRequest,
+  ): Promise<S3UserCreateResponse> {
+    const { data } = await apiClient.post<S3UserCreateResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/users'),
+      payload,
+    );
+
+    return data;
+  }
+
+  static async updateUserCredentials(payload: {
+    name: string;
+    storage: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    verify?: boolean;
+  }): Promise<void> {
+    await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/credentials'), {
+      user: payload.name,
+      credential: {
+        storage: payload.storage,
+        accessKeyId: payload.accessKeyId,
+        secretAccessKey: payload.secretAccessKey,
+      },
+      verify: payload.verify,
+    });
+  }
+
+  static async deleteUser(name: string, force: boolean): Promise<void> {
+    await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/delete'), {
+      name,
+      force,
+    });
+  }
+
+  static async testUser(
+    payload: S3UserTestRequest,
+  ): Promise<S3UserTestResponse> {
+    const { data } = await apiClient.post<S3UserTestResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/users/test'),
+      {
+        user: payload.name,
+        storage: payload.storage,
+        ...(payload.accessKeyId !== undefined ||
+        payload.secretAccessKey !== undefined
+          ? {
+              credential: {
+                storage: payload.storage,
+                accessKeyId: payload.accessKeyId,
+                secretAccessKey: payload.secretAccessKey,
+              },
+            }
+          : {}),
+      },
+    );
+
+    return data;
+  }
+
+  static async getConsoleUsers(): Promise<ConsoleUserListResponse> {
+    const { data } = await apiClient.get<ConsoleUserListResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+    );
+
+    return data;
+  }
+
+  static async createConsoleUser(
+    payload: ConsoleUserCreateRequest,
+  ): Promise<ConsoleUserCreateResponse> {
+    const { data } = await apiClient.post<ConsoleUserCreateResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+      payload,
+    );
+
+    return data;
+  }
+
+  static async updateConsoleUser(payload: {
+    username: string;
+    role?: 'admin' | 'viewer';
+    disabled?: boolean;
+  }): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+      payload,
+    );
+  }
+
+  static async resetConsoleUserPassword(
+    payload: ConsoleUserPasswordRequest,
+  ): Promise<ConsoleUserPasswordResponse> {
+    const { data } = await apiClient.put<ConsoleUserPasswordResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/console-users/password'),
+      payload,
+    );
+
+    return data;
+  }
+
+  static async deleteConsoleUser(username: string): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/console-users/delete'),
+      { username },
     );
   }
 }

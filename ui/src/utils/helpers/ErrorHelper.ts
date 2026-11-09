@@ -24,7 +24,36 @@ import axios from 'axios';
  */
 const GOOGLE_RPC_ERROR_TYPE = 'type.googleapis.com/google.rpc.ErrorInfo';
 
+export const PASSWORD_CHANGE_REQUIRED_REASON = 'PASSWORD_CHANGE_REQUIRED';
+
 export abstract class ErrorHelper {
+  /**
+   * HTTP 403 {"code":7,"message":"password change required","details":[{"reason":
+   * "PASSWORD_CHANGE_REQUIRED"}]}: the signed-in user must set a new password first.
+   */
+  static isPasswordChangeRequired(error: unknown): boolean {
+    if (!axios.isAxiosError(error) || error.response?.status !== 403) {
+      return false;
+    }
+
+    const data = error.response.data as
+      | {
+          code?: number;
+          message?: string;
+          details?: { reason?: string }[];
+        }
+      | undefined;
+
+    if (
+      Array.isArray(data?.details) &&
+      data.details.some((d) => d?.reason === PASSWORD_CHANGE_REQUIRED_REASON)
+    ) {
+      return true;
+    }
+
+    return data?.code === 7 && data.message === 'password change required';
+  }
+
   static getReason(error: unknown): string | null {
     if (!axios.isAxiosError(error)) return null;
 

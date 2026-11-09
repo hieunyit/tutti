@@ -17,8 +17,10 @@
 <script setup lang="ts">
   import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
   import { useRouter } from 'vue-router';
+  import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
   import i18nLayout from './i18nLayout';
+  import { useAuthStore } from '@/stores/authStore';
   import { NAV_GROUPS, type NavItem } from '@/utils/constants/navigation';
   import {
     filterSearchItems,
@@ -28,6 +30,7 @@
   const { t } = useI18n({ messages: i18nLayout });
   const { t: tGlobal } = useI18n({ useScope: 'global' });
   const router = useRouter();
+  const { isAdmin } = storeToRefs(useAuthStore());
 
   const input = ref<HTMLInputElement | null>(null);
   const query = ref('');
@@ -35,12 +38,13 @@
   const activeIndex = ref(0);
 
   const entries = computed<SearchableItem<NavItem>[]>(() =>
-    NAV_GROUPS.flatMap((group) =>
-      group.items.map((item) => ({
-        item,
-        label: tGlobal(item.routeName),
-        group: t(`group.${group.id}`),
-      })),
+    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value).flatMap(
+      (group) =>
+        group.items.map((item) => ({
+          item,
+          label: tGlobal(item.routeName),
+          group: t(`group.${group.id}`),
+        })),
     ),
   );
   const results = computed(() => filterSearchItems(query.value, entries.value));

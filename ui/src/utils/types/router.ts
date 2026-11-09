@@ -21,14 +21,19 @@ export enum RouteName {
   CHORUS_ADD_REPLICATION = 'CHORUS_ADD_REPLICATION',
   CHORUS_STORAGES = 'CHORUS_STORAGES',
   CHORUS_STORAGE_DETAILS = 'CHORUS_STORAGE_DETAILS',
+  CHORUS_SET_CREDENTIAL = 'CHORUS_SET_CREDENTIAL',
   CHORUS_MONITORING = 'CHORUS_MONITORING',
   CHORUS_ROUTING_POLICIES = 'CHORUS_ROUTING_POLICIES',
   CHORUS_ADD_ROUTING_POLICY = 'CHORUS_ADD_ROUTING_POLICY',
-  CHORUS_SET_CREDENTIAL = 'CHORUS_SET_CREDENTIAL',
   CHORUS_DIFF_REPORTS = 'CHORUS_DIFF_REPORTS',
   CHORUS_ADD_DIFF_REPORT = 'CHORUS_ADD_DIFF_REPORT',
   CHORUS_DIFF_REPORT_DETAIL = 'CHORUS_DIFF_REPORT_DETAIL',
-  TUTTI_HEALTH = 'TUTTI_HEALTH',
+  TUTTI_PROXIES = 'TUTTI_PROXIES',
+  TUTTI_USERS = 'TUTTI_USERS',
+  TUTTI_USER_CREATE = 'TUTTI_USER_CREATE',
+  TUTTI_USER_DETAIL = 'TUTTI_USER_DETAIL',
+  TUTTI_CONSOLE_USERS = 'TUTTI_CONSOLE_USERS',
+  TUTTI_CHANGE_PASSWORD = 'TUTTI_CHANGE_PASSWORD',
   TUTTI_FAILOVER = 'TUTTI_FAILOVER',
   TUTTI_PROXY_ACCOUNTS = 'TUTTI_PROXY_ACCOUNTS',
   TUTTI_DOCS = 'TUTTI_DOCS',
@@ -40,12 +45,15 @@ export type NavGroupId =
   | 'storage'
   | 'dataProtection'
   | 'access'
+  | 'administration'
   | 'help';
 
 declare module 'vue-router' {
   interface RouteMeta {
     /** Route performs mutations: blocked for read-only (viewer) accounts. */
     requiresWrite?: boolean;
+    /** Administrators only (console users). */
+    requiresAdmin?: boolean;
     /** Navigation group (sidebar section + first breadcrumb). */
     navGroup?: NavGroupId;
     /** Sidebar item (route name) this page belongs to; also the 2nd breadcrumb. */

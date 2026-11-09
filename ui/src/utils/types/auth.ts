@@ -35,6 +35,9 @@ export interface AuthMeResponse {
   username?: string;
   role?: AuthRole;
   authEnabled: boolean;
+  /** config users are read-only, managed users live in Redis */
+  source?: 'config' | 'managed';
+  mustChangePassword?: boolean;
 }
 
 export type AuthLoginErrorKind =

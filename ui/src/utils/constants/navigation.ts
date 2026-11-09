@@ -28,6 +28,8 @@ export interface NavItem {
 
 export interface NavGroup {
   id: NavGroupId;
+  /** hidden for read-only accounts */
+  adminOnly?: boolean;
   items: NavItem[];
 }
 
@@ -36,8 +38,12 @@ const ICONS = {
   monitoring: 'M3 12h4l3-8 4 16 3-8h4',
   storages:
     'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
-  health:
+  proxies:
     'M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2c0 5.4 8.8 11.4 8.8 11.4s8.8-6 8.8-11.4z',
+  users:
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  admin:
+    'M12 2l9 4v6c0 5-3.8 9.4-9 10-5.2-.6-9-5-9-10V6zM12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8.5 16a3.5 3.5 0 0 1 7 0',
   replication:
     'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3',
   routing:
@@ -66,7 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'storage',
     items: [
       { routeName: RouteName.CHORUS_STORAGES, iconPath: ICONS.storages },
-      { routeName: RouteName.TUTTI_HEALTH, iconPath: ICONS.health },
+      { routeName: RouteName.TUTTI_PROXIES, iconPath: ICONS.proxies },
     ],
   },
   {
@@ -87,7 +93,17 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'access',
-    items: [{ routeName: RouteName.TUTTI_PROXY_ACCOUNTS, iconPath: ICONS.key }],
+    items: [
+      { routeName: RouteName.TUTTI_USERS, iconPath: ICONS.users },
+      { routeName: RouteName.TUTTI_PROXY_ACCOUNTS, iconPath: ICONS.key },
+    ],
+  },
+  {
+    id: 'administration',
+    adminOnly: true,
+    items: [
+      { routeName: RouteName.TUTTI_CONSOLE_USERS, iconPath: ICONS.admin },
+    ],
   },
   {
     id: 'help',

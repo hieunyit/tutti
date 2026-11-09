@@ -57,6 +57,19 @@ describe('ProxyAccountHelper', () => {
 
   it('extracts backend messages', () => {
     expect(
+      ProxyAccountHelper.getMessage(
+        apiError({
+          message: 'failed precondition',
+          details: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+              reason: 'user cannot be deleted: active proxy access keys',
+            },
+          ],
+        }),
+      ),
+    ).toBe('user cannot be deleted: active proxy access keys');
+    expect(
       ProxyAccountHelper.getMessage(apiError({ message: 'conflict' })),
     ).toBe('conflict');
     expect(ProxyAccountHelper.getMessage(apiError({}))).toBeNull();

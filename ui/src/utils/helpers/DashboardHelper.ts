@@ -315,7 +315,7 @@ export abstract class DashboardHelper {
             kind: 'storageDown',
             severity: 'error',
             params: { name: row.name, failures: row.failures },
-            route: RouteName.TUTTI_HEALTH,
+            route: RouteName.CHORUS_STORAGES,
           }),
         );
     }
@@ -388,7 +388,7 @@ export abstract class DashboardHelper {
             name: proxy.appId,
             since: proxy.updatedAt ?? '',
           },
-          route: RouteName.TUTTI_HEALTH,
+          route: RouteName.CHORUS_STORAGES,
         }),
     );
 

@@ -17,11 +17,13 @@
 <script setup lang="ts">
   import { computed } from 'vue';
   import { useRoute } from 'vue-router';
+  import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
   import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
   import { NAV_GROUPS } from '@/utils/constants/navigation';
   import { useAboutDialog } from '@/utils/composables/useAboutDialog';
+  import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
   import { RouteName } from '@/utils/types/router';
@@ -42,6 +44,10 @@
   const route = useRoute();
   const { openAbout } = useAboutDialog();
   const badges = useNavBadges();
+  const { isAdmin } = storeToRefs(useAuthStore());
+  const groups = computed(() =>
+    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value),
+  );
 
   const isRail = computed(() => Boolean(props.collapsed) && !props.isDrawer);
 
@@ -85,7 +91,7 @@
       :aria-label="t('navLabel')"
     >
       <section
-        v-for="group in NAV_GROUPS"
+        v-for="group in groups"
         :key="group.id"
         class="app-sidebar__group"
       >

@@ -15,13 +15,14 @@
   -->
 
 <script setup lang="ts">
-  import { NDropdown } from 'naive-ui';
+  import { NDropdown, NModal } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, h, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import type { DropdownOption } from 'naive-ui';
   import i18nAuth from './i18nAuth';
+  import ChangePasswordForm from './ChangePasswordForm.vue';
   import { useAuthStore } from '@/stores/authStore';
   import { AuthRole } from '@/utils/types/auth';
   import { RouteName } from '@/utils/types/router';
@@ -31,6 +32,7 @@
   const auth = useAuthStore();
   const { username, role } = storeToRefs(auth);
   const isLoggingOut = ref(false);
+  const showPassword = ref(false);
 
   const roleLabel = computed(() =>
     role.value === AuthRole.ADMIN ? t('roleNameAdmin') : t('roleNameViewer'),
@@ -61,6 +63,11 @@
         ]),
     },
     { key: 'divider', type: 'divider' },
+    {
+      key: 'password',
+      label: t('changePassword'),
+      disabled: auth.source !== 'managed',
+    },
     { key: 'logout', label: t('logout'), disabled: isLoggingOut.value },
   ]);
 
@@ -76,6 +83,8 @@
   }
 
   function handleSelect(key: string) {
+    if (key === 'password') showPassword.value = true;
+
     if (key === 'logout') {
       handleLogout();
     }
@@ -103,6 +112,17 @@
       <span class="auth-user-menu__role">{{ roleLabel }}</span>
     </button>
   </NDropdown>
+  <NModal
+    v-model:show="showPassword"
+    preset="card"
+    :title="t('changePassword')"
+    style="width: 480px; max-width: 94vw"
+  >
+    <ChangePasswordForm
+      v-if="showPassword"
+      @changed="showPassword = false"
+    />
+  </NModal>
 </template>
 
 <style lang="scss" scoped>

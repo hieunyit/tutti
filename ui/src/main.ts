@@ -48,6 +48,23 @@ installAuthInterceptor(apiClient, {
       query: { redirect: current.fullPath },
     });
   },
+  onPasswordChangeRequired: () => {
+    authStore.handlePasswordChangeRequired();
+
+    const current = router.currentRoute.value;
+
+    if (
+      current.name === RouteName.TUTTI_CHANGE_PASSWORD ||
+      current.name === RouteName.LOGIN
+    ) {
+      return;
+    }
+
+    router.push({
+      name: RouteName.TUTTI_CHANGE_PASSWORD,
+      query: { redirect: current.fullPath },
+    });
+  },
 });
 
 // the interceptor must exist before the router starts its first navigation
