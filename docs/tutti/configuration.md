@@ -41,6 +41,26 @@ auth:
 
 Source: `service/proxy/auth/config.go`, `pkg/s3/auth.go` (`validateSignedHeaders`).
 
+## Managed console users (worker)
+
+Console users sign in to the worker management API and the UI. They come from two sources:
+
+- `api.auth.users` in the worker config (bcrypt `passwordHash`, role `admin` or `viewer`): read-only, always win on name conflicts.
+- Managed users stored in Redis hash `tutti:console-users` in the **config DB** (`redis.configDB`), created and changed through the console users API ([api.md](api.md#console-users-api)). Nothing extra needs to be configured: they are available whenever `api.auth.enabled: true`.
+
+```yaml
+api:
+  auth:
+    enabled: true
+    sessionTTL: 12h
+    users:            # at least one is required; keep an admin here so the system is always administrable
+      - username: admin
+        passwordHash: "$2b$12$..."
+        role: admin
+```
+
+Passwords of managed users must be 12-72 bytes and are stored as bcrypt (cost 12). Sessions live in the meta DB (`redis.metaDB`). With `api.auth.enabled: false` the console users API returns failed precondition (`sign-in is disabled`).
+
 ## Replication event recording
 
 ```yaml

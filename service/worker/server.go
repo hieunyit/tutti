@@ -32,6 +32,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/api"
 	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/meta"
@@ -43,6 +44,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/rpc"
+	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
@@ -274,6 +276,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf)
 
+		authSvc, err := auth.NewService(conf.Api.Auth, appRedis, auth.WithManagedUsers(confRedis))
+		if err != nil {
+			return err
+		}
+		if !authSvc.Enabled() {
+			logger.Warn().Msg("management api is enabled WITHOUT authentication (api.auth.enabled=false): anyone who can reach the api ports has full admin access")
+		}
+
 		resilienceHandler := api.ResilienceHandlers(confRedis, func(storage string) bool {
 			_, ok := credsSvc.Storages()[storage]
 			return ok
@@ -285,15 +295,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}, func(user string) bool {
 			// dynamic proxy accounts act as a storage user of the main storage
 			return credsSvc.HasUser(credsSvc.MainStorage(), user) == nil
-		}))
-
-		authSvc, err := auth.NewService(conf.Api.Auth, appRedis)
-		if err != nil {
-			return err
-		}
-		if !authSvc.Enabled() {
-			logger.Warn().Msg("management api is enabled WITHOUT authentication (api.auth.enabled=false): anyone who can reach the api ports has full admin access")
-		}
+		}), api.WithS3Users(credsSvc, s3users.MinioVerifier(credsSvc.GetS3Address),
+			func(events *failover.Store) s3users.References { return s3users.PolicyReferences(policySvc, events) }),
+			api.WithConsoleUsers(authSvc))
 
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0

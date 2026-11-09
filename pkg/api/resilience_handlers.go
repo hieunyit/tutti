@@ -12,10 +12,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
+	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
@@ -28,7 +30,27 @@ func ResilienceHandlers(confRedis redis.Cmdable, known func(storage string) bool
 	for _, o := range opts {
 		o(h)
 	}
+	if h.s3users != nil {
+		h.s3users.Accounts, h.s3users.Policies, h.s3users.Redis = h.accounts, h.policies, h.redis
+		if h.s3usersRefs != nil {
+			h.s3users.Refs = h.s3usersRefs(h.store)
+		}
+	}
 	return h
+}
+
+// WithS3Users enables the S3 user RPCs. creds are the storage credentials, verify checks credentials against a
+// storage and refs builds the lookup of replications, routings and failover events that reference a user.
+func WithS3Users(creds s3users.Credentials, verify s3users.Verifier, refs func(events *failover.Store) s3users.References) ResilienceOption {
+	return func(h *resilienceHandlers) {
+		h.s3users = &s3users.Manager{Creds: creds, Verify: verify}
+		h.s3usersRefs = refs
+	}
+}
+
+// WithConsoleUsers enables the console user RPCs, backed by the auth service.
+func WithConsoleUsers(svc *auth.Service) ResilienceOption {
+	return func(h *resilienceHandlers) { h.auth = svc }
 }
 
 // ResilienceOption customizes ResilienceHandlers.
@@ -48,10 +70,13 @@ func WithProxyAccounts(sealer func() (proxyaccount.Sealer, error), userExists fu
 var _ pb.ResilienceServer = &resilienceHandlers{}
 
 type resilienceHandlers struct {
-	redis    redis.Cmdable
-	store    *failover.Store
-	policies *accesspolicy.Store
-	accounts *proxyaccount.Store
+	redis       redis.Cmdable
+	store       *failover.Store
+	policies    *accesspolicy.Store
+	accounts    *proxyaccount.Store
+	s3users     *s3users.Manager
+	s3usersRefs func(events *failover.Store) s3users.References
+	auth        *auth.Service
 	// sealer is the one given to WithProxyAccounts (nil if not configured).
 	sealer func() (proxyaccount.Sealer, error)
 	// userExists reports whether the storage user has credentials. Nil disables the check.

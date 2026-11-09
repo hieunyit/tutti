@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 type loginRequest struct {
@@ -20,6 +22,14 @@ type meResponse struct {
 	Username    string `json:"username"`
 	Role        string `json:"role"`
 	AuthEnabled bool   `json:"authEnabled"`
+	// Source is "config" (read-only) or "managed".
+	Source             string `json:"source,omitempty"`
+	MustChangePassword bool   `json:"mustChangePassword"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
@@ -94,7 +104,45 @@ func (s *Service) RegisterHTTP(mux *runtime.ServeMux) error {
 	if err := mux.HandlePath(http.MethodPost, "/auth/logout", s.handleLogout); err != nil {
 		return err
 	}
+	if err := mux.HandlePath(http.MethodPost, "/auth/password", s.handleChangePassword); err != nil {
+		return err
+	}
 	return mux.HandlePath(http.MethodGet, "/auth/me", s.handleMe)
+}
+
+// handleChangePassword lets a signed-in managed user change its own password. Other sessions of the user are revoked.
+func (s *Service) handleChangePassword(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	if !s.Enabled() {
+		writeErr(w, http.StatusConflict, "sign-in is disabled")
+		return
+	}
+	var req changePasswordRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil || req.CurrentPassword == "" || req.NewPassword == "" {
+		writeErr(w, http.StatusBadRequest, "currentPassword and newPassword are required")
+		return
+	}
+	err := s.ChangeOwnPassword(r.Context(), bearerFromRequest(r), req.CurrentPassword, req.NewPassword, s.clientIP(r))
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, ErrInvalidSession):
+		writeErr(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, ErrInvalidCredentials):
+		writeErr(w, http.StatusForbidden, "current password is incorrect")
+	case errors.Is(err, ErrTooManyAttempts):
+		w.Header().Set("Retry-After", "900")
+		writeErr(w, http.StatusTooManyRequests, ErrTooManyAttempts.Error())
+	case errors.Is(err, dom.ErrInvalidArg):
+		writeErr(w, http.StatusBadRequest, trimErrPrefix(err, dom.ErrInvalidArg))
+	case errors.Is(err, dom.ErrFailedPrecondition):
+		writeErr(w, http.StatusConflict, trimErrPrefix(err, dom.ErrFailedPrecondition))
+	default:
+		writeErr(w, http.StatusInternalServerError, "password change failed")
+	}
+}
+
+func trimErrPrefix(err, sentinel error) string {
+	return strings.TrimPrefix(err.Error(), sentinel.Error()+": ")
 }
 
 func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request, _ map[string]string) {
@@ -157,5 +205,5 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request, _ map[string]
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true})
+	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true, Source: sess.Source, MustChangePassword: sess.MustChangePassword})
 }

@@ -35,6 +35,16 @@ const (
 	Resilience_RotateProxyAccountSecret_FullMethodName = "/chorus.Resilience/RotateProxyAccountSecret"
 	Resilience_SetProxyAccountStatus_FullMethodName    = "/chorus.Resilience/SetProxyAccountStatus"
 	Resilience_DeleteProxyAccount_FullMethodName       = "/chorus.Resilience/DeleteProxyAccount"
+	Resilience_ListS3Users_FullMethodName              = "/chorus.Resilience/ListS3Users"
+	Resilience_CreateS3User_FullMethodName             = "/chorus.Resilience/CreateS3User"
+	Resilience_UpdateS3UserCredentials_FullMethodName  = "/chorus.Resilience/UpdateS3UserCredentials"
+	Resilience_DeleteS3User_FullMethodName             = "/chorus.Resilience/DeleteS3User"
+	Resilience_TestS3UserCredentials_FullMethodName    = "/chorus.Resilience/TestS3UserCredentials"
+	Resilience_ListConsoleUsers_FullMethodName         = "/chorus.Resilience/ListConsoleUsers"
+	Resilience_CreateConsoleUser_FullMethodName        = "/chorus.Resilience/CreateConsoleUser"
+	Resilience_UpdateConsoleUser_FullMethodName        = "/chorus.Resilience/UpdateConsoleUser"
+	Resilience_ResetConsoleUserPassword_FullMethodName = "/chorus.Resilience/ResetConsoleUserPassword"
+	Resilience_DeleteConsoleUser_FullMethodName        = "/chorus.Resilience/DeleteConsoleUser"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -84,6 +94,35 @@ type ResilienceClient interface {
 	SetProxyAccountStatus(ctx context.Context, in *SetProxyAccountStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// DeleteProxyAccount permanently removes a dynamic account.
 	DeleteProxyAccount(ctx context.Context, in *ProxyAccountKey, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListS3Users returns the union of all users across storages with the credential state per storage (never the
+	// secret), the proxy access key counts and the access policy summary.
+	ListS3Users(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*S3UserList, error)
+	// CreateS3User creates a user with dynamic credentials on the given storages (the main storage is required),
+	// optionally verifying them first, setting an access policy and creating the first proxy access key.
+	// Fails with FailedPrecondition if dynamic credentials are not enabled. Partial changes are rolled back.
+	CreateS3User(ctx context.Context, in *CreateS3UserRequest, opts ...grpc.CallOption) (*CreateS3UserResponse, error)
+	// UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.
+	// Credentials defined in the worker config cannot be changed (FailedPrecondition).
+	UpdateS3UserCredentials(ctx context.Context, in *UpdateS3UserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
+	// Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
+	// routings or failover events reference the user. Active access keys also block deletion unless force is set.
+	DeleteS3User(ctx context.Context, in *DeleteS3UserRequest, opts ...grpc.CallOption) (*DeleteS3UserResponse, error)
+	// TestS3UserCredentials checks credentials against one storage with a ListBuckets call.
+	// Uses the given credentials or, if not given, the stored credentials of the user.
+	TestS3UserCredentials(ctx context.Context, in *TestS3UserCredentialsRequest, opts ...grpc.CallOption) (*TestS3UserCredentialsResponse, error)
+	// ListConsoleUsers returns the users able to sign in to the management API: config users (read-only) and
+	// managed users stored in Redis. Never returns password hashes. Admin only.
+	ListConsoleUsers(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ConsoleUserList, error)
+	// CreateConsoleUser creates a managed console user with a given or a generated (returned once) password.
+	CreateConsoleUser(ctx context.Context, in *CreateConsoleUserRequest, opts ...grpc.CallOption) (*CreateConsoleUserResponse, error)
+	// UpdateConsoleUser changes the role and/or the disabled flag of a managed user. Sessions are affected immediately.
+	UpdateConsoleUser(ctx context.Context, in *UpdateConsoleUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ResetConsoleUserPassword sets or generates a new password of a managed user, forces a password change at the
+	// next login and revokes all sessions of the user.
+	ResetConsoleUserPassword(ctx context.Context, in *ResetConsoleUserPasswordRequest, opts ...grpc.CallOption) (*ResetConsoleUserPasswordResponse, error)
+	// DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
+	DeleteConsoleUser(ctx context.Context, in *ConsoleUserName, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resilienceClient struct {
@@ -244,6 +283,106 @@ func (c *resilienceClient) DeleteProxyAccount(ctx context.Context, in *ProxyAcco
 	return out, nil
 }
 
+func (c *resilienceClient) ListS3Users(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*S3UserList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(S3UserList)
+	err := c.cc.Invoke(ctx, Resilience_ListS3Users_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) CreateS3User(ctx context.Context, in *CreateS3UserRequest, opts ...grpc.CallOption) (*CreateS3UserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateS3UserResponse)
+	err := c.cc.Invoke(ctx, Resilience_CreateS3User_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) UpdateS3UserCredentials(ctx context.Context, in *UpdateS3UserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_UpdateS3UserCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) DeleteS3User(ctx context.Context, in *DeleteS3UserRequest, opts ...grpc.CallOption) (*DeleteS3UserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteS3UserResponse)
+	err := c.cc.Invoke(ctx, Resilience_DeleteS3User_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) TestS3UserCredentials(ctx context.Context, in *TestS3UserCredentialsRequest, opts ...grpc.CallOption) (*TestS3UserCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TestS3UserCredentialsResponse)
+	err := c.cc.Invoke(ctx, Resilience_TestS3UserCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) ListConsoleUsers(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ConsoleUserList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConsoleUserList)
+	err := c.cc.Invoke(ctx, Resilience_ListConsoleUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) CreateConsoleUser(ctx context.Context, in *CreateConsoleUserRequest, opts ...grpc.CallOption) (*CreateConsoleUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateConsoleUserResponse)
+	err := c.cc.Invoke(ctx, Resilience_CreateConsoleUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) UpdateConsoleUser(ctx context.Context, in *UpdateConsoleUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_UpdateConsoleUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) ResetConsoleUserPassword(ctx context.Context, in *ResetConsoleUserPasswordRequest, opts ...grpc.CallOption) (*ResetConsoleUserPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetConsoleUserPasswordResponse)
+	err := c.cc.Invoke(ctx, Resilience_ResetConsoleUserPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) DeleteConsoleUser(ctx context.Context, in *ConsoleUserName, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_DeleteConsoleUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResilienceServer is the server API for Resilience service.
 // All implementations should embed UnimplementedResilienceServer
 // for forward compatibility.
@@ -291,6 +430,35 @@ type ResilienceServer interface {
 	SetProxyAccountStatus(context.Context, *SetProxyAccountStatusRequest) (*emptypb.Empty, error)
 	// DeleteProxyAccount permanently removes a dynamic account.
 	DeleteProxyAccount(context.Context, *ProxyAccountKey) (*emptypb.Empty, error)
+	// ListS3Users returns the union of all users across storages with the credential state per storage (never the
+	// secret), the proxy access key counts and the access policy summary.
+	ListS3Users(context.Context, *emptypb.Empty) (*S3UserList, error)
+	// CreateS3User creates a user with dynamic credentials on the given storages (the main storage is required),
+	// optionally verifying them first, setting an access policy and creating the first proxy access key.
+	// Fails with FailedPrecondition if dynamic credentials are not enabled. Partial changes are rolled back.
+	CreateS3User(context.Context, *CreateS3UserRequest) (*CreateS3UserResponse, error)
+	// UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.
+	// Credentials defined in the worker config cannot be changed (FailedPrecondition).
+	UpdateS3UserCredentials(context.Context, *UpdateS3UserCredentialsRequest) (*emptypb.Empty, error)
+	// DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
+	// Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
+	// routings or failover events reference the user. Active access keys also block deletion unless force is set.
+	DeleteS3User(context.Context, *DeleteS3UserRequest) (*DeleteS3UserResponse, error)
+	// TestS3UserCredentials checks credentials against one storage with a ListBuckets call.
+	// Uses the given credentials or, if not given, the stored credentials of the user.
+	TestS3UserCredentials(context.Context, *TestS3UserCredentialsRequest) (*TestS3UserCredentialsResponse, error)
+	// ListConsoleUsers returns the users able to sign in to the management API: config users (read-only) and
+	// managed users stored in Redis. Never returns password hashes. Admin only.
+	ListConsoleUsers(context.Context, *emptypb.Empty) (*ConsoleUserList, error)
+	// CreateConsoleUser creates a managed console user with a given or a generated (returned once) password.
+	CreateConsoleUser(context.Context, *CreateConsoleUserRequest) (*CreateConsoleUserResponse, error)
+	// UpdateConsoleUser changes the role and/or the disabled flag of a managed user. Sessions are affected immediately.
+	UpdateConsoleUser(context.Context, *UpdateConsoleUserRequest) (*emptypb.Empty, error)
+	// ResetConsoleUserPassword sets or generates a new password of a managed user, forces a password change at the
+	// next login and revokes all sessions of the user.
+	ResetConsoleUserPassword(context.Context, *ResetConsoleUserPasswordRequest) (*ResetConsoleUserPasswordResponse, error)
+	// DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
+	DeleteConsoleUser(context.Context, *ConsoleUserName) (*emptypb.Empty, error)
 }
 
 // UnimplementedResilienceServer should be embedded to have
@@ -344,6 +512,36 @@ func (UnimplementedResilienceServer) SetProxyAccountStatus(context.Context, *Set
 }
 func (UnimplementedResilienceServer) DeleteProxyAccount(context.Context, *ProxyAccountKey) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteProxyAccount not implemented")
+}
+func (UnimplementedResilienceServer) ListS3Users(context.Context, *emptypb.Empty) (*S3UserList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListS3Users not implemented")
+}
+func (UnimplementedResilienceServer) CreateS3User(context.Context, *CreateS3UserRequest) (*CreateS3UserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateS3User not implemented")
+}
+func (UnimplementedResilienceServer) UpdateS3UserCredentials(context.Context, *UpdateS3UserCredentialsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateS3UserCredentials not implemented")
+}
+func (UnimplementedResilienceServer) DeleteS3User(context.Context, *DeleteS3UserRequest) (*DeleteS3UserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteS3User not implemented")
+}
+func (UnimplementedResilienceServer) TestS3UserCredentials(context.Context, *TestS3UserCredentialsRequest) (*TestS3UserCredentialsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TestS3UserCredentials not implemented")
+}
+func (UnimplementedResilienceServer) ListConsoleUsers(context.Context, *emptypb.Empty) (*ConsoleUserList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListConsoleUsers not implemented")
+}
+func (UnimplementedResilienceServer) CreateConsoleUser(context.Context, *CreateConsoleUserRequest) (*CreateConsoleUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateConsoleUser not implemented")
+}
+func (UnimplementedResilienceServer) UpdateConsoleUser(context.Context, *UpdateConsoleUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateConsoleUser not implemented")
+}
+func (UnimplementedResilienceServer) ResetConsoleUserPassword(context.Context, *ResetConsoleUserPasswordRequest) (*ResetConsoleUserPasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResetConsoleUserPassword not implemented")
+}
+func (UnimplementedResilienceServer) DeleteConsoleUser(context.Context, *ConsoleUserName) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteConsoleUser not implemented")
 }
 func (UnimplementedResilienceServer) testEmbeddedByValue() {}
 
@@ -635,6 +833,186 @@ func _Resilience_DeleteProxyAccount_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_ListS3Users_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ListS3Users(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ListS3Users_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ListS3Users(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_CreateS3User_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateS3UserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).CreateS3User(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_CreateS3User_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).CreateS3User(ctx, req.(*CreateS3UserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_UpdateS3UserCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateS3UserCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).UpdateS3UserCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_UpdateS3UserCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).UpdateS3UserCredentials(ctx, req.(*UpdateS3UserCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_DeleteS3User_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteS3UserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).DeleteS3User(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_DeleteS3User_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).DeleteS3User(ctx, req.(*DeleteS3UserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_TestS3UserCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestS3UserCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).TestS3UserCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_TestS3UserCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).TestS3UserCredentials(ctx, req.(*TestS3UserCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_ListConsoleUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ListConsoleUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ListConsoleUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ListConsoleUsers(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_CreateConsoleUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateConsoleUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).CreateConsoleUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_CreateConsoleUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).CreateConsoleUser(ctx, req.(*CreateConsoleUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_UpdateConsoleUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateConsoleUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).UpdateConsoleUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_UpdateConsoleUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).UpdateConsoleUser(ctx, req.(*UpdateConsoleUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_ResetConsoleUserPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetConsoleUserPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ResetConsoleUserPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ResetConsoleUserPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ResetConsoleUserPassword(ctx, req.(*ResetConsoleUserPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_DeleteConsoleUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConsoleUserName)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).DeleteConsoleUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_DeleteConsoleUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).DeleteConsoleUser(ctx, req.(*ConsoleUserName))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Resilience_ServiceDesc is the grpc.ServiceDesc for Resilience service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -701,6 +1079,46 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteProxyAccount",
 			Handler:    _Resilience_DeleteProxyAccount_Handler,
+		},
+		{
+			MethodName: "ListS3Users",
+			Handler:    _Resilience_ListS3Users_Handler,
+		},
+		{
+			MethodName: "CreateS3User",
+			Handler:    _Resilience_CreateS3User_Handler,
+		},
+		{
+			MethodName: "UpdateS3UserCredentials",
+			Handler:    _Resilience_UpdateS3UserCredentials_Handler,
+		},
+		{
+			MethodName: "DeleteS3User",
+			Handler:    _Resilience_DeleteS3User_Handler,
+		},
+		{
+			MethodName: "TestS3UserCredentials",
+			Handler:    _Resilience_TestS3UserCredentials_Handler,
+		},
+		{
+			MethodName: "ListConsoleUsers",
+			Handler:    _Resilience_ListConsoleUsers_Handler,
+		},
+		{
+			MethodName: "CreateConsoleUser",
+			Handler:    _Resilience_CreateConsoleUser_Handler,
+		},
+		{
+			MethodName: "UpdateConsoleUser",
+			Handler:    _Resilience_UpdateConsoleUser_Handler,
+		},
+		{
+			MethodName: "ResetConsoleUserPassword",
+			Handler:    _Resilience_ResetConsoleUserPassword_Handler,
+		},
+		{
+			MethodName: "DeleteConsoleUser",
+			Handler:    _Resilience_DeleteConsoleUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

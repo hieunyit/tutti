@@ -130,6 +130,12 @@ func (s *Store) getSealer() (Sealer, error) {
 	return s.sealer()
 }
 
+// SealingAvailable reports whether secrets can be sealed, i.e. whether Create can work.
+func (s *Store) SealingAvailable() error {
+	_, err := s.getSealer()
+	return err
+}
+
 // ValidStatus reports whether status is a known account status.
 func ValidStatus(status string) bool { return status == StatusActive || status == StatusDisabled }
 

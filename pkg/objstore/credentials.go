@@ -64,7 +64,21 @@ type CredsService interface {
 
 	SetSwiftCredentials(ctx context.Context, storage, user string, cred swift.Credentials) error
 	SetS3Credentials(ctx context.Context, storage, user string, cred s3.CredentialsV4) error
+	// DeleteUserCredentials removes the dynamic credentials of the user on the storage. Credentials defined in config
+	// cannot be deleted (dom.ErrFailedPrecondition). Returns dom.ErrNotFound if there are none.
+	DeleteUserCredentials(ctx context.Context, storage, user string) error
+	// CredentialSource tells where the credentials of the user on the storage come from: CredSourceConfig,
+	// CredSourceDynamic or "" if the user has none.
+	CredentialSource(storage, user string) string
+	// DynamicCredentialsEnabled reports whether credentials can be changed at runtime.
+	DynamicCredentialsEnabled() bool
 }
+
+// Sources of storage credentials.
+const (
+	CredSourceConfig  = "config"
+	CredSourceDynamic = "dynamic"
+)
 
 type DynamicCredentialsConfig struct {
 	MasterPassword    string        `yaml:"masterPassword"`
@@ -497,6 +511,54 @@ func (s *credsSvc) storeCred(ctx context.Context, storType dom.StorageType, stor
 	// sync local cache immediately so subsequent reads see the new credential
 	if err := s.sync(ctx); err != nil {
 		return fmt.Errorf("failed to sync credentials cache after update: %w", err)
+	}
+	return nil
+}
+
+func (s *credsSvc) DynamicCredentialsEnabled() bool { return s.config.DynamicCredentials.Enabled }
+
+func (s *credsSvc) CredentialSource(storage, user string) string {
+	if s.config.Exists(storage, user) == nil {
+		return CredSourceConfig
+	}
+	if !s.config.DynamicCredentials.Enabled {
+		return ""
+	}
+	cacheKey := credsCacheKey(storage, user)
+	s.RLock()
+	defer s.RUnlock()
+	if _, ok := s.s3Creds[cacheKey]; ok {
+		return CredSourceDynamic
+	}
+	if _, ok := s.swiftCreds[cacheKey]; ok {
+		return CredSourceDynamic
+	}
+	return ""
+}
+
+// DeleteUserCredentials removes the dynamic credentials of the user and bumps the version, so every worker and proxy
+// drops them on its next poll of Redis.
+func (s *credsSvc) DeleteUserCredentials(ctx context.Context, storage, user string) error {
+	if !s.config.DynamicCredentials.Enabled {
+		return fmt.Errorf("%w: dynamic credentials are disabled", dom.ErrFailedPrecondition)
+	}
+	if err := s.config.Exists(storage, user); err == nil {
+		return fmt.Errorf("%w: credentials of user %q on storage %q are defined in config and cannot be deleted", dom.ErrFailedPrecondition, user, storage)
+	}
+	if _, ok := s.config.Storages[storage]; !ok {
+		return fmt.Errorf("%w: storage %q not found in config", dom.ErrInvalidArg, storage)
+	}
+	tx := s.client.TxPipeline()
+	del := tx.HDel(ctx, redisHashKey, credsToRedisField(dom.S3, storage, user), credsToRedisField(dom.Swift, storage, user))
+	tx.HIncrBy(ctx, redisHashKey, redisHFieldVersion, 1)
+	if _, err := tx.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete credentials in redis: %w", err)
+	}
+	if err := s.sync(ctx); err != nil {
+		return fmt.Errorf("failed to sync credentials cache after delete: %w", err)
+	}
+	if del.Val() == 0 {
+		return fmt.Errorf("%w: dynamic credentials of user %q on storage %q", dom.ErrNotFound, user, storage)
 	}
 	return nil
 }

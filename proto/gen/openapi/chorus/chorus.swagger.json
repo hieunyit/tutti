@@ -1038,6 +1038,159 @@
         ]
       }
     },
+    "/tutti/console-users": {
+      "get": {
+        "summary": "ListConsoleUsers returns the users able to sign in to the management API: config users (read-only) and\nmanaged users stored in Redis. Never returns password hashes. Admin only.",
+        "operationId": "Resilience_ListConsoleUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusConsoleUserList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "summary": "CreateConsoleUser creates a managed console user with a given or a generated (returned once) password.",
+        "operationId": "Resilience_CreateConsoleUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusCreateConsoleUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusCreateConsoleUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "put": {
+        "summary": "UpdateConsoleUser changes the role and/or the disabled flag of a managed user. Sessions are affected immediately.",
+        "operationId": "Resilience_UpdateConsoleUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusUpdateConsoleUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/console-users/delete": {
+      "put": {
+        "summary": "DeleteConsoleUser removes a managed user. Its sessions stop working immediately.",
+        "operationId": "Resilience_DeleteConsoleUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusConsoleUserName"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/console-users/password": {
+      "put": {
+        "summary": "ResetConsoleUserPassword sets or generates a new password of a managed user, forces a password change at the\nnext login and revokes all sessions of the user.",
+        "operationId": "Resilience_ResetConsoleUserPassword",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusResetConsoleUserPasswordResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusResetConsoleUserPasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/failover/events": {
       "get": {
         "summary": "ListFailoverEvents returns the performed failovers that were not yet cleared.",
@@ -1397,6 +1550,160 @@
         ]
       }
     },
+    "/tutti/users": {
+      "get": {
+        "summary": "ListS3Users returns the union of all users across storages with the credential state per storage (never the\nsecret), the proxy access key counts and the access policy summary.",
+        "operationId": "Resilience_ListS3Users",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusS3UserList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "summary": "CreateS3User creates a user with dynamic credentials on the given storages (the main storage is required),\noptionally verifying them first, setting an access policy and creating the first proxy access key.\nFails with FailedPrecondition if dynamic credentials are not enabled. Partial changes are rolled back.",
+        "operationId": "Resilience_CreateS3User",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusCreateS3UserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusCreateS3UserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/users/credentials": {
+      "put": {
+        "summary": "UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.\nCredentials defined in the worker config cannot be changed (FailedPrecondition).",
+        "operationId": "Resilience_UpdateS3UserCredentials",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusUpdateS3UserCredentialsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/users/delete": {
+      "put": {
+        "summary": "DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.\nRefused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,\nroutings or failover events reference the user. Active access keys also block deletion unless force is set.",
+        "operationId": "Resilience_DeleteS3User",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusDeleteS3UserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusDeleteS3UserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/users/test": {
+      "post": {
+        "summary": "TestS3UserCredentials checks credentials against one storage with a ListBuckets call.\nUses the given credentials or, if not given, the stored credentials of the user.",
+        "operationId": "Resilience_TestS3UserCredentials",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusTestS3UserCredentialsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusTestS3UserCredentialsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/version": {
       "get": {
         "summary": "Get app version",
@@ -1669,6 +1976,94 @@
         }
       }
     },
+    "chorusConsoleUser": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "description": "\"admin\" or \"viewer\"."
+        },
+        "source": {
+          "type": "string",
+          "description": "\"config\" (read-only) or \"managed\"."
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "mustChangePassword": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "passwordChangedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "chorusConsoleUserList": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusConsoleUser"
+          }
+        }
+      }
+    },
+    "chorusConsoleUserName": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusCreateConsoleUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "description": "Either password or generate_password."
+        },
+        "generatePassword": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusCreateConsoleUserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/chorusConsoleUser"
+        },
+        "generatedPassword": {
+          "type": "string",
+          "description": "Set only if generate_password was requested. Returned once."
+        }
+      }
+    },
     "chorusCreateProxyAccountRequest": {
       "type": "object",
       "properties": {
@@ -1678,6 +2073,56 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "chorusCreateS3UserRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusS3UserCredential"
+          }
+        },
+        "verify": {
+          "type": "boolean",
+          "description": "Check every credential with a ListBuckets call before saving anything."
+        },
+        "createAccessKey": {
+          "type": "boolean",
+          "description": "Create the first proxy access key. Its secret is returned only once."
+        },
+        "description": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/definitions/chorusAccessPolicy",
+          "description": "Optional access policy (its user field is ignored)."
+        }
+      }
+    },
+    "chorusCreateS3UserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/chorusS3User"
+        },
+        "accessKey": {
+          "$ref": "#/definitions/chorusProxyAccountSecret",
+          "description": "Set if create_access_key was requested."
+        },
+        "verification": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusS3UserVerifyResult"
+          },
+          "description": "Set if verify was requested."
         }
       }
     },
@@ -1692,6 +2137,36 @@
         },
         "secretKey": {
           "type": "string"
+        }
+      }
+    },
+    "chorusDeleteS3UserRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Also delete active proxy access keys. Never overrides config credentials or references."
+        }
+      }
+    },
+    "chorusDeleteS3UserResponse": {
+      "type": "object",
+      "properties": {
+        "deletedStorages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deletedAccessKeys": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "deletedPolicy": {
+          "type": "boolean"
         }
       }
     },
@@ -2582,6 +3057,28 @@
       "default": "NOT_STARTED",
       "description": " - NOT_STARTED: Switch is not started yet\n - IN_PROGRESS: Switch is in progress. Draining replication events queue.\nFor switch with downtime, requests to target are blocked at this point.\n - CHECK_IN_PROGRESS: Switch is in progress. Queue is drained. Checking if source and\ndestination targets are the same. Requests are still blocked. Used only\nfor switch with downtime with enabled bucket check.\n - ERROR: Switch failed to complete in downtime window and was aborted.\nRequests to target are unblocked. Used only for switch with downtime.\nIf cron downtime_window is used, switch will be retried on next cron\nexecution.\n - SKIPPED: Switch was not able to start in given downtime window because conditions\nwere not met. Used only for switch with downtime. If cron downtime_window\nis used, switch will be retried on next cron execution.\n - DONE: Switch was successfully completed.\nAll data was replicated to replication destination target and all read\nand all requests are now routed to it."
     },
+    "chorusResetConsoleUserPasswordRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "generatePassword": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusResetConsoleUserPasswordResponse": {
+      "type": "object",
+      "properties": {
+        "generatedPassword": {
+          "type": "string"
+        }
+      }
+    },
     "chorusRotateProxyAccountSecretRequest": {
       "type": "object",
       "properties": {
@@ -2728,6 +3225,146 @@
         },
         "eTag": {
           "type": "string"
+        }
+      }
+    },
+    "chorusS3User": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusS3UserStorage"
+          },
+          "description": "One entry for every configured storage."
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "True if the user has credentials on every storage (needed for replication and failover)."
+        },
+        "accessKeys": {
+          "$ref": "#/definitions/chorusS3UserAccessKeys"
+        },
+        "policy": {
+          "$ref": "#/definitions/chorusS3UserPolicy"
+        }
+      }
+    },
+    "chorusS3UserAccessKeys": {
+      "type": "object",
+      "properties": {
+        "static": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Keys of the user defined by config (storage credentials and custom auth) reported by live proxies."
+        },
+        "dynamicActive": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "dynamicDisabled": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "chorusS3UserCredential": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusS3UserList": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusS3User"
+          }
+        },
+        "mainStorage": {
+          "type": "string"
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dynamicCredentialsEnabled": {
+          "type": "boolean",
+          "description": "True if users can be created and changed at runtime."
+        }
+      }
+    },
+    "chorusS3UserPolicy": {
+      "type": "object",
+      "properties": {
+        "hasPolicy": {
+          "type": "boolean"
+        },
+        "permission": {
+          "type": "string",
+          "description": "Effective permission: the stored one or \"read-write\"."
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "chorusS3UserStorage": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string"
+        },
+        "configured": {
+          "type": "boolean",
+          "description": "True if the user has credentials on this storage."
+        },
+        "source": {
+          "type": "string",
+          "description": "\"config\" or \"dynamic\" (empty if not configured)."
+        },
+        "accessKeyId": {
+          "type": "string",
+          "description": "Never the secret."
+        }
+      },
+      "description": "S3UserStorage is the credential state of an S3 user on one storage."
+    },
+    "chorusS3UserVerifyResult": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -3087,6 +3724,36 @@
         }
       }
     },
+    "chorusTestS3UserCredentialsRequest": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "storage": {
+          "type": "string"
+        },
+        "credential": {
+          "$ref": "#/definitions/chorusS3UserCredential",
+          "description": "Credentials to test. If not set, the stored credentials of the user are used."
+        }
+      }
+    },
+    "chorusTestS3UserCredentialsResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "chorusTrafficRates": {
       "type": "object",
       "properties": {
@@ -3263,6 +3930,22 @@
       },
       "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
     },
+    "chorusUpdateConsoleUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "description": "Empty keeps the current role."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Unset keeps the current state."
+        }
+      }
+    },
     "chorusUpdateRoutingRequest": {
       "type": "object",
       "properties": {
@@ -3277,6 +3960,21 @@
         "toStorage": {
           "type": "string",
           "title": "new destination storage name"
+        }
+      }
+    },
+    "chorusUpdateS3UserCredentialsRequest": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "credential": {
+          "$ref": "#/definitions/chorusS3UserCredential"
+        },
+        "verify": {
+          "type": "boolean",
+          "description": "Check the credentials with a ListBuckets call before saving."
         }
       }
     },

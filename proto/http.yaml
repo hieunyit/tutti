@@ -137,3 +137,31 @@ http:
     - selector: chorus.Resilience.DeleteProxyAccount
       put: /tutti/proxy-accounts/delete
       body: "*"
+    - selector: chorus.Resilience.ListS3Users
+      get: /tutti/users
+    - selector: chorus.Resilience.CreateS3User
+      post: /tutti/users
+      body: "*"
+    - selector: chorus.Resilience.UpdateS3UserCredentials
+      put: /tutti/users/credentials
+      body: "*"
+    - selector: chorus.Resilience.DeleteS3User
+      put: /tutti/users/delete
+      body: "*"
+    - selector: chorus.Resilience.TestS3UserCredentials
+      post: /tutti/users/test
+      body: "*"
+    - selector: chorus.Resilience.ListConsoleUsers
+      get: /tutti/console-users
+    - selector: chorus.Resilience.CreateConsoleUser
+      post: /tutti/console-users
+      body: "*"
+    - selector: chorus.Resilience.UpdateConsoleUser
+      put: /tutti/console-users
+      body: "*"
+    - selector: chorus.Resilience.ResetConsoleUserPassword
+      put: /tutti/console-users/password
+      body: "*"
+    - selector: chorus.Resilience.DeleteConsoleUser
+      put: /tutti/console-users/delete
+      body: "*"

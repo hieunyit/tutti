@@ -57,6 +57,8 @@ var viewerMethods = map[string]struct{}{
 	"/chorus.Resilience/ListFailoverEvents":   {},
 	"/chorus.Resilience/ListAccessPolicies":   {},
 	"/chorus.Resilience/ListProxyAccounts":    {},
+	// ListS3Users returns metadata only (no secrets). Console user RPCs and all mutations are admin-only.
+	"/chorus.Resilience/ListS3Users": {},
 }
 
 func isPublic(method string) bool {

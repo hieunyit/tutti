@@ -152,6 +152,90 @@ curl -X PUT $API/routing/update -d '{"user":"user1","bucket":"photos","toStorage
 `/tutti/proxy-accounts[/rotate|/status|/delete]`) manage runtime proxy accounts; `ListProxyAccounts` shows them with
 source `dynamic`. `ListProxyAccounts` also returns `dynamicAccounts: { "available": bool, "reason": string }`: `available` is true only if `storage.dynamicCredentials` is enabled with a `masterPassword` and encryption on (otherwise `CreateProxyAccount` fails with failed precondition and `reason` says why); the UI uses it to disable the create form. Viewer-readable. See [dynamic-creds.md](../dynamic-creds.md#runtime-managed-proxy-accounts).
 
+## S3 users API
+
+An S3 user (for example `user1`) is an identity that has credentials on each storage (from `storage.storages.<name>.credentials` in the worker config, or dynamic credentials), plus optional proxy access keys and an access policy. All RPCs are on `chorus.Resilience`; `ListS3Users` is viewer-readable, everything else is admin only. Secrets are never returned except the secret of a newly created access key, once.
+
+| RPC | REST | Description |
+|---|---|---|
+| `ListS3Users(Empty) -> S3UserList` | `GET /tutti/users` | Union of the users of all storages |
+| `CreateS3User(CreateS3UserRequest) -> CreateS3UserResponse` | `POST /tutti/users` | Create a user with dynamic credentials |
+| `UpdateS3UserCredentials(UpdateS3UserCredentialsRequest) -> Empty` | `PUT /tutti/users/credentials` | Replace the credentials on one storage |
+| `DeleteS3User(DeleteS3UserRequest) -> DeleteS3UserResponse` | `PUT /tutti/users/delete` | Remove dynamic credentials, dynamic access keys and policy |
+| `TestS3UserCredentials(TestS3UserCredentialsRequest) -> TestS3UserCredentialsResponse` | `POST /tutti/users/test` | `ListBuckets` with given or stored credentials |
+
+```bash
+# list (no secrets)
+curl $API/tutti/users
+# {"users":[{"name":"user1",
+#    "storages":[{"storage":"main","configured":true,"source":"config","accessKeyId":"testKey1"},
+#                {"storage":"f1","configured":true,"source":"dynamic","accessKeyId":"AKIA..."}],
+#    "complete":true,
+#    "accessKeys":{"static":1,"dynamicActive":1,"dynamicDisabled":0},
+#    "policy":{"hasPolicy":true,"permission":"read-only","buckets":["photos-*"]}}],
+#  "mainStorage":"main","storages":["f1","main"],"dynamicCredentialsEnabled":true}
+
+# create, verify credentials first, create the first proxy access key, set a policy
+curl -X POST $API/tutti/users -d '{"name":"user3",
+  "credentials":[{"storage":"main","accessKeyId":"minioadmin","secretAccessKey":"minioadmin"},
+                 {"storage":"f1","accessKeyId":"minioadmin","secretAccessKey":"minioadmin"}],
+  "verify":true,"createAccessKey":true,"description":"first key",
+  "policy":{"permission":"read-write","buckets":["*"]}}'
+# {"user":{...},"accessKey":{"accessKeyId":"TUT...","secretAccessKey":"...","previousSecretExpiresAt":null},
+#  "verification":[{"storage":"main","ok":true,"error":"","latencyMs":"7"}, ...]}
+
+# replace the credentials on one storage; test stored or given credentials
+curl -X PUT  $API/tutti/users/credentials -d '{"user":"user3","credential":{"storage":"f1","accessKeyId":"k","secretAccessKey":"s"},"verify":true}'
+curl -X POST $API/tutti/users/test -d '{"user":"user3","storage":"f1"}'     # stored credentials
+# {"ok":true,"error":"","latencyMs":"6"}
+
+# delete
+curl -X PUT $API/tutti/users/delete -d '{"name":"user3","force":true}'
+# {"deletedStorages":["f1","main"],"deletedAccessKeys":1,"deletedPolicy":true}
+```
+
+- `complete` is true when the user has credentials on every storage (needed for replication and failover). `source` is `config` or `dynamic`. Only S3 storages are supported for create and update.
+- User names: 1-64 characters, letters, digits, `.`, `_`, `-`, starting with a letter or digit. Existing users (on any storage, from config or dynamic) are rejected with already exists.
+- `CreateS3User` requires dynamic credentials (`storage.dynamicCredentials.enabled` with a `masterPassword`), otherwise failed precondition with the reason. The main storage credentials are required. With `verify: true` every credential is checked with `ListBuckets` before anything is saved; failures are returned as invalid argument listing each storage and error. Order of steps: verify, credentials, policy, access key; a failing step rolls back the previous ones (best effort). `createAccessKey` needs the sealing key (same requirement as `CreateProxyAccount`) and is checked up front.
+- `UpdateS3UserCredentials` fails with failed precondition `defined in config` for config-sourced credentials.
+- `DeleteS3User` is refused with failed precondition, listing every reason, if: credentials come from the worker config (never deleted by the API, `force` does not help); replications, routings or failover events reference the user (`force` does not help, delete them first); or the user has active proxy access keys (only this is overridden by `force`; disabled keys never block). Deletion order: access keys, access policy, then credentials, so a retry after a partial failure finishes the job. Proxies and workers drop deleted credentials on their next poll (`storage.dynamicCredentials.pollInterval`); the worker handling the request drops them immediately.
+- Failure examples: `{"code":9,...,"details":[{"reason":"FailedPrecondition: s3 user \"user3\" cannot be deleted: 1 replication(s) exist (main->f1): delete them first"}]}`.
+
+## Console users API
+
+Console users sign in to the management API and UI. Users defined in the worker config (`api.auth.users`) are read-only; managed users are stored in Redis and managed here. All RPCs are admin only and fail with failed precondition (`sign-in is disabled`) when `api.auth.enabled` is false.
+
+| RPC | REST | Description |
+|---|---|---|
+| `ListConsoleUsers(Empty) -> ConsoleUserList` | `GET /tutti/console-users` | Config and managed users, never hashes |
+| `CreateConsoleUser(CreateConsoleUserRequest) -> CreateConsoleUserResponse` | `POST /tutti/console-users` | `username`, `role`, `password` or `generatePassword` |
+| `UpdateConsoleUser(UpdateConsoleUserRequest) -> Empty` | `PUT /tutti/console-users` | `role`, `disabled` (unset keeps) |
+| `ResetConsoleUserPassword(ResetConsoleUserPasswordRequest) -> ResetConsoleUserPasswordResponse` | `PUT /tutti/console-users/password` | Set or generate a password, `mustChangePassword`, revokes sessions |
+| `DeleteConsoleUser(ConsoleUserName) -> Empty` | `PUT /tutti/console-users/delete` | Delete a managed user |
+| (HTTP only) | `POST /auth/password` | Any signed-in managed user: `{"currentPassword","newPassword"}` -> 204 |
+| (HTTP only) | `GET /auth/me` | Now also returns `source` (`config`/`managed`) and `mustChangePassword` |
+
+```bash
+curl -X POST $API/tutti/console-users -d '{"username":"ops","role":"viewer","generatePassword":true}'
+# {"user":{"username":"ops","role":"viewer","source":"managed","disabled":false,"mustChangePassword":true,
+#          "createdAt":"...","updatedAt":"...","lastLoginAt":null,"passwordChangedAt":"..."},
+#  "generatedPassword":"..."}            # returned once
+curl -X PUT $API/tutti/console-users -d '{"username":"ops","disabled":true}'
+curl -X PUT $API/tutti/console-users/password -d '{"username":"ops","generatePassword":true}'
+curl -X PUT $API/tutti/console-users/delete -d '{"username":"ops"}'
+curl -X POST $API/auth/password -H "Authorization: Bearer $TOKEN" -d '{"currentPassword":"...","newPassword":"at-least-12-chars"}'
+```
+
+Rules:
+
+- Password policy: 12-72 bytes (72 is the bcrypt limit), not equal to the username. Hashed with bcrypt cost 12.
+- Roles: `admin` or `viewer`. Usernames: 1-64 characters, letters, digits, `.`, `_`, `@`, `-`. A name defined in the config cannot be created (already exists); if a stored record has a config user's name, config wins.
+- You cannot delete, disable or demote yourself. The last enabled admin cannot be removed, disabled or demoted (config admins count as enabled admins). Config users cannot be modified (failed precondition `defined in config`).
+- Sessions are re-resolved on every request: a disabled or deleted user is rejected immediately, a role change applies immediately, and a password change or reset invalidates all sessions created before it (`POST /auth/password` keeps the calling session). `mustChangePassword` is informational for the UI; it is not enforced server side.
+- Login throttling (per user+IP and per user) also applies to the current-password check of `POST /auth/password`.
+- `lastLoginAt` is recorded best effort.
+- Viewers can call `ListS3Users` only; the viewer allow-list in `pkg/auth/interceptor.go` fails closed for every other new RPC.
+
 ## chorctl
 
 `chorctl` (see [tools/chorctl](../../tools/chorctl)) talks to the worker REST API (`-a/--address`, default `http://localhost:9671`). Tutti adds read-only commands:
@@ -173,6 +257,8 @@ Policies and events are written via REST/gRPC or the UI; `chorctl` has no set/de
 | `tutti:failover-policies` | config DB | hash: field = source storage, value = JSON policy | Resilience API | `{source, enabled, targets, after, maxEventLag}`; `after` is stored in nanoseconds (Go `time.Duration` JSON) |
 | `tutti:failover:user:<user>` | config DB | string (JSON) | failover controller | `{user, bucket, from, to, time, eventLag}` |
 | `tutti:failover:bucket:<user>:<bucket>` | config DB | string (JSON) | failover controller | same, for a bucket scope |
+| `tutti:console-users` | config DB | hash: field = username, value = JSON record | Console users API | `{username, role, passwordHash (bcrypt), disabled, createdAt, updatedAt, passwordChangedAt, mustChangePassword}` |
+| `tutti:console-users:last-login` | config DB | hash: field = username, value = RFC 3339 | worker at login | last login time (best effort) |
 | `tutti:failover-lock:<storage>` | lock DB (`redis.lockDB`) | lock, TTL 30 s | failover controller | held by the one proxy performing the failover |
 
 Inspect: `redis-cli --scan --pattern 'tutti:*'`, `redis-cli get tutti:failover:user:user1`, `redis-cli hgetall tutti:failover-policies`. Prefer the API for changes to policies.

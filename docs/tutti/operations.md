@@ -159,6 +159,13 @@ Failback never happens automatically. After the old storage is repaired:
 
 Until step 5 the event stays listed; it has no effect on routing.
 
+## Managing S3 users and console users
+
+- **Creating an S3 user** (`POST /tutti/users`, see [api.md](api.md#s3-users-api)) needs `storage.dynamicCredentials.enabled` with a `masterPassword` on the workers and proxies. Use `verify: true` to catch wrong keys before saving. The user should have credentials on every storage (`complete: true` in `GET /tutti/users`), otherwise replication to or failover onto a storage lacking them cannot work. Give the credentials of each storage; the proxy access key (`createAccessKey: true`) is what clients use against the proxy.
+- **Changing credentials**: `PUT /tutti/users/credentials` writes the sealed credentials to Redis; every worker and proxy picks them up on its next poll (`storage.dynamicCredentials.pollInterval`). Credentials defined in the worker config can only be changed in the config.
+- **Deleting an S3 user** drops the dynamic credentials on all storages and deletes dynamic access keys and the access policy. Delete the user's replications, routings and failover events first. If a user's credentials come from the config, remove them there (and restart) before the remaining dynamic parts can be cleaned; the API never edits config. Deleted credentials disappear from proxies and workers on the next poll; until then requests with its access key may still be served.
+- **Console users**: keep at least one admin in `api.auth.users`: it can always sign in even if all managed admins are lost or Redis data is wiped. To recover a locked-out managed user, sign in as a config admin and use `PUT /tutti/console-users/password`, or delete the record: `redis-cli -n <configDB> hdel tutti:console-users <username>`. Disabling, deleting or resetting a user invalidates its sessions immediately. A generated password is shown once; share it over a secure channel (the user is flagged `mustChangePassword` until it is changed through `POST /auth/password`).
+
 ## Multi-instance considerations
 
 - Breakers, probes and the failover controller run in **each proxy instance** with its own view. Instances can briefly disagree about a storage's state (for example a network partition seen by one of them).

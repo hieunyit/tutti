@@ -1,0 +1,550 @@
+// Package s3users manages S3 users: identities that have credentials on each storage (from the worker config or
+// dynamic credentials), proxy access keys and an access policy.
+package s3users
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/proxyaccount"
+	"github.com/hieunyit/tutti/pkg/proxystatus"
+	"github.com/hieunyit/tutti/pkg/s3"
+)
+
+// Credentials is the part of objstore.CredsService used by the manager.
+type Credentials interface {
+	MainStorage() string
+	Storages() map[string]dom.StorageType
+	ListUsers(storage string) []string
+	HasUser(storage, user string) error
+	GetS3Credentials(storage, user string) (s3.CredentialsV4, error)
+	SetS3Credentials(ctx context.Context, storage, user string, cred s3.CredentialsV4) error
+	DeleteUserCredentials(ctx context.Context, storage, user string) error
+	CredentialSource(storage, user string) string
+	DynamicCredentialsEnabled() bool
+}
+
+var _ Credentials = objstore.CredsService(nil)
+
+// Verifier performs a cheap authenticated call against the storage with the credentials.
+type Verifier func(ctx context.Context, storage string, cred s3.CredentialsV4) error
+
+// References returns human-readable reasons why the user is still in use (replications, routings, failover events).
+type References func(ctx context.Context, user string) ([]string, error)
+
+// Manager implements the S3 user operations.
+type Manager struct {
+	Creds    Credentials
+	Accounts *proxyaccount.Store
+	Policies *accesspolicy.Store
+	Redis    redis.Cmdable // proxy status documents (static key counts)
+	Verify   Verifier
+	Refs     References
+}
+
+var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+// ValidName checks a user name: 1-64 characters, letters, digits, '.', '_' and '-', starting with a letter or digit.
+func ValidName(name string) error {
+	if !nameRe.MatchString(name) {
+		return fmt.Errorf("%w: user name must be 1-64 characters: letters, digits, '.', '_' and '-', starting with a letter or digit", dom.ErrInvalidArg)
+	}
+	return nil
+}
+
+// StorageState is the credential state of a user on one storage.
+type StorageState struct {
+	Storage     string
+	Configured  bool
+	Source      string
+	AccessKeyID string
+}
+
+type KeyCounts struct{ Static, DynamicActive, DynamicDisabled int }
+
+type PolicySummary struct {
+	HasPolicy  bool
+	Permission string
+	Buckets    []string
+}
+
+// User is the listing view of an S3 user. It never contains secrets.
+type User struct {
+	Name      string
+	Storages  []StorageState
+	Complete  bool
+	KeyCounts KeyCounts
+	Policy    PolicySummary
+}
+
+// Listing is the result of List.
+type Listing struct {
+	Users       []User
+	MainStorage string
+	Storages    []string
+	Dynamic     bool
+}
+
+func (m *Manager) storageNames() []string {
+	types := m.Creds.Storages()
+	names := make([]string, 0, len(types))
+	for n := range types {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (m *Manager) accessKeyID(storage, user string) string {
+	if m.Creds.Storages()[storage] != dom.S3 {
+		return ""
+	}
+	c, err := m.Creds.GetS3Credentials(storage, user)
+	if err != nil {
+		return ""
+	}
+	return c.AccessKeyID
+}
+
+// List returns the union of users over all storages.
+func (m *Manager) List(ctx context.Context) (*Listing, error) {
+	storages := m.storageNames()
+	names := map[string]struct{}{}
+	for _, st := range storages {
+		for _, u := range m.Creds.ListUsers(st) {
+			names[u] = struct{}{}
+		}
+	}
+	static, err := m.staticKeyCounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dyn, err := m.Accounts.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	policies, err := m.Policies.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pol := make(map[string]accesspolicy.Policy, len(policies))
+	for _, p := range policies {
+		pol[p.User] = p
+	}
+	counts := map[string]*KeyCounts{}
+	for _, a := range dyn {
+		c := counts[a.User]
+		if c == nil {
+			c = &KeyCounts{}
+			counts[a.User] = c
+		}
+		if a.Status == proxyaccount.StatusActive {
+			c.DynamicActive++
+		} else {
+			c.DynamicDisabled++
+		}
+	}
+	res := &Listing{MainStorage: m.Creds.MainStorage(), Storages: storages, Dynamic: m.Creds.DynamicCredentialsEnabled()}
+	sorted := make([]string, 0, len(names))
+	for n := range names {
+		sorted = append(sorted, n)
+	}
+	sort.Strings(sorted)
+	for _, n := range sorted {
+		u := User{Name: n, Complete: true}
+		for _, st := range storages {
+			src := m.Creds.CredentialSource(st, n)
+			state := StorageState{Storage: st, Configured: src != "", Source: src}
+			if state.Configured {
+				state.AccessKeyID = m.accessKeyID(st, n)
+			} else {
+				u.Complete = false
+			}
+			u.Storages = append(u.Storages, state)
+		}
+		if c := counts[n]; c != nil {
+			u.KeyCounts = *c
+		}
+		u.KeyCounts.Static = static[n]
+		if p, ok := pol[n]; ok {
+			u.Policy = PolicySummary{HasPolicy: true, Permission: p.Permission, Buckets: p.Buckets}
+		} else {
+			d := accesspolicy.Default(n)
+			u.Policy = PolicySummary{Permission: d.Permission, Buckets: d.Buckets}
+		}
+		res.Users = append(res.Users, u)
+	}
+	return res, nil
+}
+
+// staticKeyCounts counts the distinct config-defined access keys per user reported by live proxies.
+func (m *Manager) staticKeyCounts(ctx context.Context) (map[string]int, error) {
+	res := map[string]int{}
+	if m.Redis == nil {
+		return res, nil
+	}
+	statuses, err := proxystatus.List(ctx, m.Redis)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]struct{}{}
+	for _, st := range statuses {
+		for _, a := range st.Accounts {
+			if a.Source == "dynamic" {
+				continue
+			}
+			k := a.User + "\x00" + a.AccessKeyID
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			res[a.User]++
+		}
+	}
+	return res, nil
+}
+
+// Get returns one user of the listing.
+func (m *Manager) Get(ctx context.Context, name string) (User, error) {
+	l, err := m.List(ctx)
+	if err != nil {
+		return User{}, err
+	}
+	for _, u := range l.Users {
+		if u.Name == name {
+			return u, nil
+		}
+	}
+	return User{}, fmt.Errorf("%w: s3 user %q", dom.ErrNotFound, name)
+}
+
+// Credential is the credential of a user on one storage.
+type Credential struct {
+	Storage         string
+	AccessKeyID     string
+	SecretAccessKey string
+}
+
+// VerifyResult is the outcome of checking one credential.
+type VerifyResult struct {
+	Storage   string
+	OK        bool
+	Error     string
+	LatencyMS int64
+}
+
+// CreateRequest is the input of Create.
+type CreateRequest struct {
+	Name            string
+	Credentials     []Credential
+	Verify          bool
+	CreateAccessKey bool
+	Description     string
+	Policy          *accesspolicy.Policy
+}
+
+// CreateResult is the output of Create.
+type CreateResult struct {
+	User         User
+	AccessKey    *proxyaccount.Account
+	AccessSecret string
+	Verification []VerifyResult
+}
+
+func (m *Manager) checkS3Storage(storage string) error {
+	t, ok := m.Creds.Storages()[storage]
+	if !ok {
+		return fmt.Errorf("%w: storage %q not found", dom.ErrInvalidArg, storage)
+	}
+	if t != dom.S3 {
+		return fmt.Errorf("%w: storage %q is not an S3 storage: only S3 storages are supported", dom.ErrInvalidArg, storage)
+	}
+	return nil
+}
+
+func (m *Manager) requireDynamic() error {
+	if !m.Creds.DynamicCredentialsEnabled() {
+		return fmt.Errorf("%w: dynamic credentials are not enabled (storage.dynamicCredentials.enabled with a masterPassword): S3 users cannot be created at runtime", dom.ErrFailedPrecondition)
+	}
+	return nil
+}
+
+// verifyAll checks the credentials and returns the results; the error lists all failures.
+func (m *Manager) verifyAll(ctx context.Context, creds []Credential) ([]VerifyResult, error) {
+	res := make([]VerifyResult, 0, len(creds))
+	var failed []string
+	for _, c := range creds {
+		r := m.verifyOne(ctx, c.Storage, s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey})
+		res = append(res, r)
+		if !r.OK {
+			failed = append(failed, fmt.Sprintf("storage %q: %s", c.Storage, r.Error))
+		}
+	}
+	if len(failed) > 0 {
+		return res, fmt.Errorf("%w: credential verification failed: %s", dom.ErrInvalidArg, strings.Join(failed, "; "))
+	}
+	return res, nil
+}
+
+func (m *Manager) verifyOne(ctx context.Context, storage string, cred s3.CredentialsV4) VerifyResult {
+	r := VerifyResult{Storage: storage}
+	if m.Verify == nil {
+		r.Error = "credential verification is not available on this server"
+		return r
+	}
+	start := time.Now()
+	err := m.Verify(ctx, storage, cred)
+	r.LatencyMS = time.Since(start).Milliseconds()
+	if err != nil {
+		r.Error = err.Error()
+		return r
+	}
+	r.OK = true
+	return r
+}
+
+// Create creates a user with dynamic credentials. Steps: validate, verify, store credentials, set policy, create
+// the access key. A failing step rolls back the previous ones (best effort).
+func (m *Manager) Create(ctx context.Context, req CreateRequest) (*CreateResult, error) {
+	if err := ValidName(req.Name); err != nil {
+		return nil, err
+	}
+	if err := m.requireDynamic(); err != nil {
+		return nil, err
+	}
+	if len(req.Credentials) == 0 {
+		return nil, fmt.Errorf("%w: credentials for the main storage %q are required", dom.ErrInvalidArg, m.Creds.MainStorage())
+	}
+	seen := map[string]struct{}{}
+	for _, c := range req.Credentials {
+		if err := m.checkS3Storage(c.Storage); err != nil {
+			return nil, err
+		}
+		if _, dup := seen[c.Storage]; dup {
+			return nil, fmt.Errorf("%w: duplicate credentials for storage %q", dom.ErrInvalidArg, c.Storage)
+		}
+		seen[c.Storage] = struct{}{}
+		if err := (s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey}).Validate(); err != nil {
+			return nil, fmt.Errorf("%w: storage %q: accessKeyId and secretAccessKey are required", dom.ErrInvalidArg, c.Storage)
+		}
+	}
+	if _, ok := seen[m.Creds.MainStorage()]; !ok {
+		return nil, fmt.Errorf("%w: credentials for the main storage %q are required", dom.ErrInvalidArg, m.Creds.MainStorage())
+	}
+	if req.CreateAccessKey {
+		if err := m.Accounts.SealingAvailable(); err != nil {
+			return nil, err
+		}
+	}
+	for _, st := range m.storageNames() {
+		for _, u := range m.Creds.ListUsers(st) {
+			if u == req.Name {
+				return nil, fmt.Errorf("%w: s3 user %q already exists (storage %q)", dom.ErrAlreadyExists, req.Name, st)
+			}
+		}
+	}
+	var pol *accesspolicy.Policy
+	if req.Policy != nil {
+		p := *req.Policy
+		p.User = req.Name
+		if err := p.Validate(); err != nil {
+			return nil, err
+		}
+		pol = &p
+	}
+
+	res := &CreateResult{}
+	if req.Verify {
+		v, err := m.verifyAll(ctx, req.Credentials)
+		res.Verification = v
+		if err != nil {
+			return res, err
+		}
+	}
+
+	var setStorages []string
+	rollback := func() {
+		bg := context.WithoutCancel(ctx)
+		for _, st := range setStorages {
+			_ = m.Creds.DeleteUserCredentials(bg, st, req.Name)
+		}
+	}
+	for _, c := range req.Credentials {
+		err := m.Creds.SetS3Credentials(ctx, c.Storage, req.Name, s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey})
+		if err != nil {
+			// the failing call may have stored the entry before the cache sync failed
+			setStorages = append(setStorages, c.Storage)
+			rollback()
+			return nil, err
+		}
+		setStorages = append(setStorages, c.Storage)
+	}
+	if pol != nil {
+		if err := m.Policies.Set(ctx, *pol); err != nil {
+			rollback()
+			return nil, err
+		}
+	}
+	if req.CreateAccessKey {
+		acc, secret, err := m.Accounts.Create(ctx, req.Name, req.Description)
+		if err != nil {
+			if pol != nil {
+				_ = m.Policies.Delete(context.WithoutCancel(ctx), req.Name)
+			}
+			rollback()
+			return nil, err
+		}
+		res.AccessKey, res.AccessSecret = &acc, secret
+	}
+	u, err := m.Get(ctx, req.Name)
+	if err != nil {
+		return nil, err
+	}
+	res.User = u
+	return res, nil
+}
+
+// UpdateCredentials sets or replaces the dynamic credentials of an existing user on one storage.
+func (m *Manager) UpdateCredentials(ctx context.Context, user string, c Credential, verify bool) error {
+	if err := m.requireDynamic(); err != nil {
+		return err
+	}
+	if err := m.checkS3Storage(c.Storage); err != nil {
+		return err
+	}
+	if err := (s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey}).Validate(); err != nil {
+		return fmt.Errorf("%w: accessKeyId and secretAccessKey are required", dom.ErrInvalidArg)
+	}
+	exists := false
+	for _, st := range m.storageNames() {
+		if m.Creds.CredentialSource(st, user) != "" {
+			exists = true
+		}
+	}
+	if !exists {
+		return fmt.Errorf("%w: s3 user %q", dom.ErrNotFound, user)
+	}
+	if m.Creds.CredentialSource(c.Storage, user) == objstore.CredSourceConfig {
+		return fmt.Errorf("%w: credentials of user %q on storage %q are defined in config and cannot be changed", dom.ErrFailedPrecondition, user, c.Storage)
+	}
+	if verify {
+		if _, err := m.verifyAll(ctx, []Credential{c}); err != nil {
+			return err
+		}
+	}
+	return m.Creds.SetS3Credentials(ctx, c.Storage, user, s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey})
+}
+
+// DeleteResult is the output of Delete.
+type DeleteResult struct {
+	DeletedStorages   []string
+	DeletedAccessKeys int
+	DeletedPolicy     bool
+}
+
+// Delete removes the dynamic credentials, dynamic access keys and the access policy of a user. It refuses if any
+// credentials come from config or the user is referenced by replications, routings or failover events; active
+// access keys block deletion unless force is set.
+func (m *Manager) Delete(ctx context.Context, name string, force bool) (*DeleteResult, error) {
+	if name == "" {
+		return nil, fmt.Errorf("%w: user name is required", dom.ErrInvalidArg)
+	}
+	var dynamicStorages, configStorages []string
+	for _, st := range m.storageNames() {
+		switch m.Creds.CredentialSource(st, name) {
+		case objstore.CredSourceConfig:
+			configStorages = append(configStorages, st)
+		case objstore.CredSourceDynamic:
+			dynamicStorages = append(dynamicStorages, st)
+		}
+	}
+	if len(configStorages)+len(dynamicStorages) == 0 {
+		return nil, fmt.Errorf("%w: s3 user %q", dom.ErrNotFound, name)
+	}
+	var reasons []string
+	if len(configStorages) > 0 {
+		reasons = append(reasons, fmt.Sprintf("credentials are defined in the worker config on storage(s) %s and must be removed there", strings.Join(configStorages, ", ")))
+	}
+	if m.Refs != nil {
+		refs, err := m.Refs(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, refs...)
+	}
+	accounts, err := m.Accounts.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var keys []proxyaccount.Account
+	active := 0
+	for _, a := range accounts {
+		if a.User == name {
+			keys = append(keys, a)
+			if a.Status == proxyaccount.StatusActive {
+				active++
+			}
+		}
+	}
+	if active > 0 && !force {
+		reasons = append(reasons, fmt.Sprintf("%d active proxy access key(s) exist: disable them or set force=true to delete them", active))
+	}
+	if len(reasons) > 0 {
+		return nil, fmt.Errorf("%w: s3 user %q cannot be deleted: %s", dom.ErrFailedPrecondition, name, strings.Join(reasons, "; "))
+	}
+
+	res := &DeleteResult{}
+	// cut access first (keys), then the policy, then the credentials: a retry after a failure finishes the job
+	for _, k := range keys {
+		if err := m.Accounts.Delete(ctx, k.AccessKeyID); err != nil && !errors.Is(err, dom.ErrNotFound) {
+			return res, err
+		}
+		res.DeletedAccessKeys++
+	}
+	if err := m.Policies.Delete(ctx, name); err == nil {
+		res.DeletedPolicy = true
+	} else if !errors.Is(err, dom.ErrNotFound) {
+		return res, err
+	}
+	for _, st := range dynamicStorages {
+		if err := m.Creds.DeleteUserCredentials(ctx, st, name); err != nil && !errors.Is(err, dom.ErrNotFound) {
+			return res, err
+		}
+		res.DeletedStorages = append(res.DeletedStorages, st)
+	}
+	return res, nil
+}
+
+// Test checks the given credentials, or the stored ones if cred is nil, against the storage.
+func (m *Manager) Test(ctx context.Context, user, storage string, cred *Credential) (VerifyResult, error) {
+	if err := m.checkS3Storage(storage); err != nil {
+		return VerifyResult{}, err
+	}
+	var c s3.CredentialsV4
+	if cred != nil {
+		c = s3.CredentialsV4{AccessKeyID: cred.AccessKeyID, SecretAccessKey: cred.SecretAccessKey}
+		if err := c.Validate(); err != nil {
+			return VerifyResult{}, fmt.Errorf("%w: accessKeyId and secretAccessKey are required", dom.ErrInvalidArg)
+		}
+	} else {
+		if user == "" {
+			return VerifyResult{}, fmt.Errorf("%w: user is required when no credentials are given", dom.ErrInvalidArg)
+		}
+		var err error
+		c, err = m.Creds.GetS3Credentials(storage, user)
+		if err != nil {
+			return VerifyResult{}, fmt.Errorf("%w: user %q has no credentials on storage %q", dom.ErrNotFound, user, storage)
+		}
+	}
+	return m.verifyOne(ctx, storage, c), nil
+}

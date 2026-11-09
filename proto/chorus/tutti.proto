@@ -65,6 +65,45 @@ service Resilience {
 
   // DeleteProxyAccount permanently removes a dynamic account.
   rpc DeleteProxyAccount(ProxyAccountKey) returns (google.protobuf.Empty);
+
+  // ListS3Users returns the union of all users across storages with the credential state per storage (never the
+  // secret), the proxy access key counts and the access policy summary.
+  rpc ListS3Users(google.protobuf.Empty) returns (S3UserList);
+
+  // CreateS3User creates a user with dynamic credentials on the given storages (the main storage is required),
+  // optionally verifying them first, setting an access policy and creating the first proxy access key.
+  // Fails with FailedPrecondition if dynamic credentials are not enabled. Partial changes are rolled back.
+  rpc CreateS3User(CreateS3UserRequest) returns (CreateS3UserResponse);
+
+  // UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.
+  // Credentials defined in the worker config cannot be changed (FailedPrecondition).
+  rpc UpdateS3UserCredentials(UpdateS3UserCredentialsRequest) returns (google.protobuf.Empty);
+
+  // DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
+  // Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
+  // routings or failover events reference the user. Active access keys also block deletion unless force is set.
+  rpc DeleteS3User(DeleteS3UserRequest) returns (DeleteS3UserResponse);
+
+  // TestS3UserCredentials checks credentials against one storage with a ListBuckets call.
+  // Uses the given credentials or, if not given, the stored credentials of the user.
+  rpc TestS3UserCredentials(TestS3UserCredentialsRequest) returns (TestS3UserCredentialsResponse);
+
+  // ListConsoleUsers returns the users able to sign in to the management API: config users (read-only) and
+  // managed users stored in Redis. Never returns password hashes. Admin only.
+  rpc ListConsoleUsers(google.protobuf.Empty) returns (ConsoleUserList);
+
+  // CreateConsoleUser creates a managed console user with a given or a generated (returned once) password.
+  rpc CreateConsoleUser(CreateConsoleUserRequest) returns (CreateConsoleUserResponse);
+
+  // UpdateConsoleUser changes the role and/or the disabled flag of a managed user. Sessions are affected immediately.
+  rpc UpdateConsoleUser(UpdateConsoleUserRequest) returns (google.protobuf.Empty);
+
+  // ResetConsoleUserPassword sets or generates a new password of a managed user, forces a password change at the
+  // next login and revokes all sessions of the user.
+  rpc ResetConsoleUserPassword(ResetConsoleUserPasswordRequest) returns (ResetConsoleUserPasswordResponse);
+
+  // DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
+  rpc DeleteConsoleUser(ConsoleUserName) returns (google.protobuf.Empty);
 }
 
 message CreateProxyAccountRequest {
@@ -420,4 +459,166 @@ message FailoverEventID {
   string user = 1;
   // Bucket of the event. Empty for a user-level event.
   string bucket = 2;
+}
+
+// S3UserStorage is the credential state of an S3 user on one storage.
+message S3UserStorage {
+  string storage = 1;
+  // True if the user has credentials on this storage.
+  bool configured = 2;
+  // "config" or "dynamic" (empty if not configured).
+  string source = 3;
+  // Never the secret.
+  string access_key_id = 4;
+}
+
+message S3UserAccessKeys {
+  // Keys of the user defined by config (storage credentials and custom auth) reported by live proxies.
+  int32 static = 1;
+  int32 dynamic_active = 2;
+  int32 dynamic_disabled = 3;
+}
+
+message S3UserPolicy {
+  bool has_policy = 1;
+  // Effective permission: the stored one or "read-write".
+  string permission = 2;
+  repeated string buckets = 3;
+}
+
+message S3User {
+  string name = 1;
+  // One entry for every configured storage.
+  repeated S3UserStorage storages = 2;
+  // True if the user has credentials on every storage (needed for replication and failover).
+  bool complete = 3;
+  S3UserAccessKeys access_keys = 4;
+  S3UserPolicy policy = 5;
+}
+
+message S3UserList {
+  repeated S3User users = 1;
+  string main_storage = 2;
+  repeated string storages = 3;
+  // True if users can be created and changed at runtime.
+  bool dynamic_credentials_enabled = 4;
+}
+
+message S3UserCredential {
+  string storage = 1;
+  string access_key_id = 2;
+  string secret_access_key = 3;
+}
+
+message CreateS3UserRequest {
+  string name = 1;
+  repeated S3UserCredential credentials = 2;
+  // Check every credential with a ListBuckets call before saving anything.
+  bool verify = 3;
+  // Create the first proxy access key. Its secret is returned only once.
+  bool create_access_key = 4;
+  string description = 5;
+  // Optional access policy (its user field is ignored).
+  optional AccessPolicy policy = 6;
+}
+
+message S3UserVerifyResult {
+  string storage = 1;
+  bool ok = 2;
+  string error = 3;
+  int64 latency_ms = 4;
+}
+
+message CreateS3UserResponse {
+  S3User user = 1;
+  // Set if create_access_key was requested.
+  ProxyAccountSecret access_key = 2;
+  // Set if verify was requested.
+  repeated S3UserVerifyResult verification = 3;
+}
+
+message UpdateS3UserCredentialsRequest {
+  string user = 1;
+  S3UserCredential credential = 2;
+  // Check the credentials with a ListBuckets call before saving.
+  bool verify = 3;
+}
+
+message DeleteS3UserRequest {
+  string name = 1;
+  // Also delete active proxy access keys. Never overrides config credentials or references.
+  bool force = 2;
+}
+
+message DeleteS3UserResponse {
+  repeated string deleted_storages = 1;
+  int32 deleted_access_keys = 2;
+  bool deleted_policy = 3;
+}
+
+message TestS3UserCredentialsRequest {
+  string user = 1;
+  string storage = 2;
+  // Credentials to test. If not set, the stored credentials of the user are used.
+  optional S3UserCredential credential = 3;
+}
+
+message TestS3UserCredentialsResponse {
+  bool ok = 1;
+  string error = 2;
+  int64 latency_ms = 3;
+}
+
+message ConsoleUser {
+  string username = 1;
+  // "admin" or "viewer".
+  string role = 2;
+  // "config" (read-only) or "managed".
+  string source = 3;
+  bool disabled = 4;
+  bool must_change_password = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp last_login_at = 8;
+  google.protobuf.Timestamp password_changed_at = 9;
+}
+
+message ConsoleUserList {
+  repeated ConsoleUser users = 1;
+}
+
+message ConsoleUserName {
+  string username = 1;
+}
+
+message CreateConsoleUserRequest {
+  string username = 1;
+  string role = 2;
+  // Either password or generate_password.
+  string password = 3;
+  bool generate_password = 4;
+}
+
+message CreateConsoleUserResponse {
+  ConsoleUser user = 1;
+  // Set only if generate_password was requested. Returned once.
+  string generated_password = 2;
+}
+
+message UpdateConsoleUserRequest {
+  string username = 1;
+  // Empty keeps the current role.
+  string role = 2;
+  // Unset keeps the current state.
+  optional bool disabled = 3;
+}
+
+message ResetConsoleUserPasswordRequest {
+  string username = 1;
+  string password = 2;
+  bool generate_password = 3;
+}
+
+message ResetConsoleUserPasswordResponse {
+  string generated_password = 1;
 }

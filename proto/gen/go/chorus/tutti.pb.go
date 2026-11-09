@@ -2357,6 +2357,1405 @@ func (x *FailoverEventID) GetBucket() string {
 	return ""
 }
 
+// S3UserStorage is the credential state of an S3 user on one storage.
+type S3UserStorage struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Storage string                 `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	// True if the user has credentials on this storage.
+	Configured bool `protobuf:"varint,2,opt,name=configured,proto3" json:"configured,omitempty"`
+	// "config" or "dynamic" (empty if not configured).
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// Never the secret.
+	AccessKeyId   string `protobuf:"bytes,4,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *S3UserStorage) Reset() {
+	*x = S3UserStorage{}
+	mi := &file_chorus_tutti_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserStorage) ProtoMessage() {}
+
+func (x *S3UserStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserStorage.ProtoReflect.Descriptor instead.
+func (*S3UserStorage) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *S3UserStorage) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
+func (x *S3UserStorage) GetConfigured() bool {
+	if x != nil {
+		return x.Configured
+	}
+	return false
+}
+
+func (x *S3UserStorage) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *S3UserStorage) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+type S3UserAccessKeys struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Keys of the user defined by config (storage credentials and custom auth) reported by live proxies.
+	Static          int32 `protobuf:"varint,1,opt,name=static,proto3" json:"static,omitempty"`
+	DynamicActive   int32 `protobuf:"varint,2,opt,name=dynamic_active,json=dynamicActive,proto3" json:"dynamic_active,omitempty"`
+	DynamicDisabled int32 `protobuf:"varint,3,opt,name=dynamic_disabled,json=dynamicDisabled,proto3" json:"dynamic_disabled,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *S3UserAccessKeys) Reset() {
+	*x = S3UserAccessKeys{}
+	mi := &file_chorus_tutti_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserAccessKeys) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserAccessKeys) ProtoMessage() {}
+
+func (x *S3UserAccessKeys) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserAccessKeys.ProtoReflect.Descriptor instead.
+func (*S3UserAccessKeys) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *S3UserAccessKeys) GetStatic() int32 {
+	if x != nil {
+		return x.Static
+	}
+	return 0
+}
+
+func (x *S3UserAccessKeys) GetDynamicActive() int32 {
+	if x != nil {
+		return x.DynamicActive
+	}
+	return 0
+}
+
+func (x *S3UserAccessKeys) GetDynamicDisabled() int32 {
+	if x != nil {
+		return x.DynamicDisabled
+	}
+	return 0
+}
+
+type S3UserPolicy struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	HasPolicy bool                   `protobuf:"varint,1,opt,name=has_policy,json=hasPolicy,proto3" json:"has_policy,omitempty"`
+	// Effective permission: the stored one or "read-write".
+	Permission    string   `protobuf:"bytes,2,opt,name=permission,proto3" json:"permission,omitempty"`
+	Buckets       []string `protobuf:"bytes,3,rep,name=buckets,proto3" json:"buckets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *S3UserPolicy) Reset() {
+	*x = S3UserPolicy{}
+	mi := &file_chorus_tutti_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserPolicy) ProtoMessage() {}
+
+func (x *S3UserPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserPolicy.ProtoReflect.Descriptor instead.
+func (*S3UserPolicy) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *S3UserPolicy) GetHasPolicy() bool {
+	if x != nil {
+		return x.HasPolicy
+	}
+	return false
+}
+
+func (x *S3UserPolicy) GetPermission() string {
+	if x != nil {
+		return x.Permission
+	}
+	return ""
+}
+
+func (x *S3UserPolicy) GetBuckets() []string {
+	if x != nil {
+		return x.Buckets
+	}
+	return nil
+}
+
+type S3User struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// One entry for every configured storage.
+	Storages []*S3UserStorage `protobuf:"bytes,2,rep,name=storages,proto3" json:"storages,omitempty"`
+	// True if the user has credentials on every storage (needed for replication and failover).
+	Complete      bool              `protobuf:"varint,3,opt,name=complete,proto3" json:"complete,omitempty"`
+	AccessKeys    *S3UserAccessKeys `protobuf:"bytes,4,opt,name=access_keys,json=accessKeys,proto3" json:"access_keys,omitempty"`
+	Policy        *S3UserPolicy     `protobuf:"bytes,5,opt,name=policy,proto3" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *S3User) Reset() {
+	*x = S3User{}
+	mi := &file_chorus_tutti_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3User) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3User) ProtoMessage() {}
+
+func (x *S3User) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3User.ProtoReflect.Descriptor instead.
+func (*S3User) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *S3User) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *S3User) GetStorages() []*S3UserStorage {
+	if x != nil {
+		return x.Storages
+	}
+	return nil
+}
+
+func (x *S3User) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
+func (x *S3User) GetAccessKeys() *S3UserAccessKeys {
+	if x != nil {
+		return x.AccessKeys
+	}
+	return nil
+}
+
+func (x *S3User) GetPolicy() *S3UserPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
+type S3UserList struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Users       []*S3User              `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	MainStorage string                 `protobuf:"bytes,2,opt,name=main_storage,json=mainStorage,proto3" json:"main_storage,omitempty"`
+	Storages    []string               `protobuf:"bytes,3,rep,name=storages,proto3" json:"storages,omitempty"`
+	// True if users can be created and changed at runtime.
+	DynamicCredentialsEnabled bool `protobuf:"varint,4,opt,name=dynamic_credentials_enabled,json=dynamicCredentialsEnabled,proto3" json:"dynamic_credentials_enabled,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *S3UserList) Reset() {
+	*x = S3UserList{}
+	mi := &file_chorus_tutti_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserList) ProtoMessage() {}
+
+func (x *S3UserList) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserList.ProtoReflect.Descriptor instead.
+func (*S3UserList) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *S3UserList) GetUsers() []*S3User {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *S3UserList) GetMainStorage() string {
+	if x != nil {
+		return x.MainStorage
+	}
+	return ""
+}
+
+func (x *S3UserList) GetStorages() []string {
+	if x != nil {
+		return x.Storages
+	}
+	return nil
+}
+
+func (x *S3UserList) GetDynamicCredentialsEnabled() bool {
+	if x != nil {
+		return x.DynamicCredentialsEnabled
+	}
+	return false
+}
+
+type S3UserCredential struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Storage         string                 `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	AccessKeyId     string                 `protobuf:"bytes,2,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	SecretAccessKey string                 `protobuf:"bytes,3,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *S3UserCredential) Reset() {
+	*x = S3UserCredential{}
+	mi := &file_chorus_tutti_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserCredential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserCredential) ProtoMessage() {}
+
+func (x *S3UserCredential) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserCredential.ProtoReflect.Descriptor instead.
+func (*S3UserCredential) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *S3UserCredential) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
+func (x *S3UserCredential) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *S3UserCredential) GetSecretAccessKey() string {
+	if x != nil {
+		return x.SecretAccessKey
+	}
+	return ""
+}
+
+type CreateS3UserRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Credentials []*S3UserCredential    `protobuf:"bytes,2,rep,name=credentials,proto3" json:"credentials,omitempty"`
+	// Check every credential with a ListBuckets call before saving anything.
+	Verify bool `protobuf:"varint,3,opt,name=verify,proto3" json:"verify,omitempty"`
+	// Create the first proxy access key. Its secret is returned only once.
+	CreateAccessKey bool   `protobuf:"varint,4,opt,name=create_access_key,json=createAccessKey,proto3" json:"create_access_key,omitempty"`
+	Description     string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	// Optional access policy (its user field is ignored).
+	Policy        *AccessPolicy `protobuf:"bytes,6,opt,name=policy,proto3,oneof" json:"policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateS3UserRequest) Reset() {
+	*x = CreateS3UserRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateS3UserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateS3UserRequest) ProtoMessage() {}
+
+func (x *CreateS3UserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateS3UserRequest.ProtoReflect.Descriptor instead.
+func (*CreateS3UserRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CreateS3UserRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateS3UserRequest) GetCredentials() []*S3UserCredential {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
+}
+
+func (x *CreateS3UserRequest) GetVerify() bool {
+	if x != nil {
+		return x.Verify
+	}
+	return false
+}
+
+func (x *CreateS3UserRequest) GetCreateAccessKey() bool {
+	if x != nil {
+		return x.CreateAccessKey
+	}
+	return false
+}
+
+func (x *CreateS3UserRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateS3UserRequest) GetPolicy() *AccessPolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return nil
+}
+
+type S3UserVerifyResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Storage       string                 `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	Ok            bool                   `protobuf:"varint,2,opt,name=ok,proto3" json:"ok,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	LatencyMs     int64                  `protobuf:"varint,4,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *S3UserVerifyResult) Reset() {
+	*x = S3UserVerifyResult{}
+	mi := &file_chorus_tutti_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *S3UserVerifyResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*S3UserVerifyResult) ProtoMessage() {}
+
+func (x *S3UserVerifyResult) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use S3UserVerifyResult.ProtoReflect.Descriptor instead.
+func (*S3UserVerifyResult) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *S3UserVerifyResult) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
+func (x *S3UserVerifyResult) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *S3UserVerifyResult) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *S3UserVerifyResult) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+type CreateS3UserResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	User  *S3User                `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// Set if create_access_key was requested.
+	AccessKey *ProxyAccountSecret `protobuf:"bytes,2,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
+	// Set if verify was requested.
+	Verification  []*S3UserVerifyResult `protobuf:"bytes,3,rep,name=verification,proto3" json:"verification,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateS3UserResponse) Reset() {
+	*x = CreateS3UserResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateS3UserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateS3UserResponse) ProtoMessage() {}
+
+func (x *CreateS3UserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateS3UserResponse.ProtoReflect.Descriptor instead.
+func (*CreateS3UserResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *CreateS3UserResponse) GetUser() *S3User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *CreateS3UserResponse) GetAccessKey() *ProxyAccountSecret {
+	if x != nil {
+		return x.AccessKey
+	}
+	return nil
+}
+
+func (x *CreateS3UserResponse) GetVerification() []*S3UserVerifyResult {
+	if x != nil {
+		return x.Verification
+	}
+	return nil
+}
+
+type UpdateS3UserCredentialsRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	User       string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Credential *S3UserCredential      `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"`
+	// Check the credentials with a ListBuckets call before saving.
+	Verify        bool `protobuf:"varint,3,opt,name=verify,proto3" json:"verify,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateS3UserCredentialsRequest) Reset() {
+	*x = UpdateS3UserCredentialsRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateS3UserCredentialsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateS3UserCredentialsRequest) ProtoMessage() {}
+
+func (x *UpdateS3UserCredentialsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateS3UserCredentialsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateS3UserCredentialsRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *UpdateS3UserCredentialsRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *UpdateS3UserCredentialsRequest) GetCredential() *S3UserCredential {
+	if x != nil {
+		return x.Credential
+	}
+	return nil
+}
+
+func (x *UpdateS3UserCredentialsRequest) GetVerify() bool {
+	if x != nil {
+		return x.Verify
+	}
+	return false
+}
+
+type DeleteS3UserRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Also delete active proxy access keys. Never overrides config credentials or references.
+	Force         bool `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteS3UserRequest) Reset() {
+	*x = DeleteS3UserRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteS3UserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteS3UserRequest) ProtoMessage() {}
+
+func (x *DeleteS3UserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteS3UserRequest.ProtoReflect.Descriptor instead.
+func (*DeleteS3UserRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *DeleteS3UserRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DeleteS3UserRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type DeleteS3UserResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	DeletedStorages   []string               `protobuf:"bytes,1,rep,name=deleted_storages,json=deletedStorages,proto3" json:"deleted_storages,omitempty"`
+	DeletedAccessKeys int32                  `protobuf:"varint,2,opt,name=deleted_access_keys,json=deletedAccessKeys,proto3" json:"deleted_access_keys,omitempty"`
+	DeletedPolicy     bool                   `protobuf:"varint,3,opt,name=deleted_policy,json=deletedPolicy,proto3" json:"deleted_policy,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DeleteS3UserResponse) Reset() {
+	*x = DeleteS3UserResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteS3UserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteS3UserResponse) ProtoMessage() {}
+
+func (x *DeleteS3UserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteS3UserResponse.ProtoReflect.Descriptor instead.
+func (*DeleteS3UserResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *DeleteS3UserResponse) GetDeletedStorages() []string {
+	if x != nil {
+		return x.DeletedStorages
+	}
+	return nil
+}
+
+func (x *DeleteS3UserResponse) GetDeletedAccessKeys() int32 {
+	if x != nil {
+		return x.DeletedAccessKeys
+	}
+	return 0
+}
+
+func (x *DeleteS3UserResponse) GetDeletedPolicy() bool {
+	if x != nil {
+		return x.DeletedPolicy
+	}
+	return false
+}
+
+type TestS3UserCredentialsRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	User    string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Storage string                 `protobuf:"bytes,2,opt,name=storage,proto3" json:"storage,omitempty"`
+	// Credentials to test. If not set, the stored credentials of the user are used.
+	Credential    *S3UserCredential `protobuf:"bytes,3,opt,name=credential,proto3,oneof" json:"credential,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestS3UserCredentialsRequest) Reset() {
+	*x = TestS3UserCredentialsRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestS3UserCredentialsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestS3UserCredentialsRequest) ProtoMessage() {}
+
+func (x *TestS3UserCredentialsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestS3UserCredentialsRequest.ProtoReflect.Descriptor instead.
+func (*TestS3UserCredentialsRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *TestS3UserCredentialsRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *TestS3UserCredentialsRequest) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
+func (x *TestS3UserCredentialsRequest) GetCredential() *S3UserCredential {
+	if x != nil {
+		return x.Credential
+	}
+	return nil
+}
+
+type TestS3UserCredentialsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	LatencyMs     int64                  `protobuf:"varint,3,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestS3UserCredentialsResponse) Reset() {
+	*x = TestS3UserCredentialsResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestS3UserCredentialsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestS3UserCredentialsResponse) ProtoMessage() {}
+
+func (x *TestS3UserCredentialsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestS3UserCredentialsResponse.ProtoReflect.Descriptor instead.
+func (*TestS3UserCredentialsResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *TestS3UserCredentialsResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *TestS3UserCredentialsResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *TestS3UserCredentialsResponse) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+type ConsoleUser struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	// "admin" or "viewer".
+	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	// "config" (read-only) or "managed".
+	Source             string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	Disabled           bool                   `protobuf:"varint,4,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	MustChangePassword bool                   `protobuf:"varint,5,opt,name=must_change_password,json=mustChangePassword,proto3" json:"must_change_password,omitempty"`
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	LastLoginAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_login_at,json=lastLoginAt,proto3" json:"last_login_at,omitempty"`
+	PasswordChangedAt  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=password_changed_at,json=passwordChangedAt,proto3" json:"password_changed_at,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ConsoleUser) Reset() {
+	*x = ConsoleUser{}
+	mi := &file_chorus_tutti_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsoleUser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsoleUser) ProtoMessage() {}
+
+func (x *ConsoleUser) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsoleUser.ProtoReflect.Descriptor instead.
+func (*ConsoleUser) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *ConsoleUser) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *ConsoleUser) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ConsoleUser) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *ConsoleUser) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *ConsoleUser) GetMustChangePassword() bool {
+	if x != nil {
+		return x.MustChangePassword
+	}
+	return false
+}
+
+func (x *ConsoleUser) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *ConsoleUser) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *ConsoleUser) GetLastLoginAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastLoginAt
+	}
+	return nil
+}
+
+func (x *ConsoleUser) GetPasswordChangedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PasswordChangedAt
+	}
+	return nil
+}
+
+type ConsoleUserList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*ConsoleUser         `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConsoleUserList) Reset() {
+	*x = ConsoleUserList{}
+	mi := &file_chorus_tutti_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsoleUserList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsoleUserList) ProtoMessage() {}
+
+func (x *ConsoleUserList) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsoleUserList.ProtoReflect.Descriptor instead.
+func (*ConsoleUserList) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *ConsoleUserList) GetUsers() []*ConsoleUser {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+type ConsoleUserName struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConsoleUserName) Reset() {
+	*x = ConsoleUserName{}
+	mi := &file_chorus_tutti_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsoleUserName) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsoleUserName) ProtoMessage() {}
+
+func (x *ConsoleUserName) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsoleUserName.ProtoReflect.Descriptor instead.
+func (*ConsoleUserName) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ConsoleUserName) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type CreateConsoleUserRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Role     string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	// Either password or generate_password.
+	Password         string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	GeneratePassword bool   `protobuf:"varint,4,opt,name=generate_password,json=generatePassword,proto3" json:"generate_password,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CreateConsoleUserRequest) Reset() {
+	*x = CreateConsoleUserRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateConsoleUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateConsoleUserRequest) ProtoMessage() {}
+
+func (x *CreateConsoleUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateConsoleUserRequest.ProtoReflect.Descriptor instead.
+func (*CreateConsoleUserRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *CreateConsoleUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *CreateConsoleUserRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *CreateConsoleUserRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *CreateConsoleUserRequest) GetGeneratePassword() bool {
+	if x != nil {
+		return x.GeneratePassword
+	}
+	return false
+}
+
+type CreateConsoleUserResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	User  *ConsoleUser           `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// Set only if generate_password was requested. Returned once.
+	GeneratedPassword string `protobuf:"bytes,2,opt,name=generated_password,json=generatedPassword,proto3" json:"generated_password,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CreateConsoleUserResponse) Reset() {
+	*x = CreateConsoleUserResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateConsoleUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateConsoleUserResponse) ProtoMessage() {}
+
+func (x *CreateConsoleUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateConsoleUserResponse.ProtoReflect.Descriptor instead.
+func (*CreateConsoleUserResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *CreateConsoleUserResponse) GetUser() *ConsoleUser {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *CreateConsoleUserResponse) GetGeneratedPassword() string {
+	if x != nil {
+		return x.GeneratedPassword
+	}
+	return ""
+}
+
+type UpdateConsoleUserRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Username string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	// Empty keeps the current role.
+	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	// Unset keeps the current state.
+	Disabled      *bool `protobuf:"varint,3,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateConsoleUserRequest) Reset() {
+	*x = UpdateConsoleUserRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateConsoleUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateConsoleUserRequest) ProtoMessage() {}
+
+func (x *UpdateConsoleUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateConsoleUserRequest.ProtoReflect.Descriptor instead.
+func (*UpdateConsoleUserRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *UpdateConsoleUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UpdateConsoleUserRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *UpdateConsoleUserRequest) GetDisabled() bool {
+	if x != nil && x.Disabled != nil {
+		return *x.Disabled
+	}
+	return false
+}
+
+type ResetConsoleUserPasswordRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Username         string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password         string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	GeneratePassword bool                   `protobuf:"varint,3,opt,name=generate_password,json=generatePassword,proto3" json:"generate_password,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ResetConsoleUserPasswordRequest) Reset() {
+	*x = ResetConsoleUserPasswordRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetConsoleUserPasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetConsoleUserPasswordRequest) ProtoMessage() {}
+
+func (x *ResetConsoleUserPasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetConsoleUserPasswordRequest.ProtoReflect.Descriptor instead.
+func (*ResetConsoleUserPasswordRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *ResetConsoleUserPasswordRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *ResetConsoleUserPasswordRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *ResetConsoleUserPasswordRequest) GetGeneratePassword() bool {
+	if x != nil {
+		return x.GeneratePassword
+	}
+	return false
+}
+
+type ResetConsoleUserPasswordResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	GeneratedPassword string                 `protobuf:"bytes,1,opt,name=generated_password,json=generatedPassword,proto3" json:"generated_password,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ResetConsoleUserPasswordResponse) Reset() {
+	*x = ResetConsoleUserPasswordResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetConsoleUserPasswordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetConsoleUserPasswordResponse) ProtoMessage() {}
+
+func (x *ResetConsoleUserPasswordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetConsoleUserPasswordResponse.ProtoReflect.Descriptor instead.
+func (*ResetConsoleUserPasswordResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *ResetConsoleUserPasswordResponse) GetGeneratedPassword() string {
+	if x != nil {
+		return x.GeneratedPassword
+	}
+	return ""
+}
+
 var File_chorus_tutti_proto protoreflect.FileDescriptor
 
 const file_chorus_tutti_proto_rawDesc = "" +
@@ -2548,7 +3947,121 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x06events\x18\x01 \x03(\v2\x15.chorus.FailoverEventR\x06events\"=\n" +
 	"\x0fFailoverEventID\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x16\n" +
-	"\x06bucket\x18\x02 \x01(\tR\x06bucket2\xf1\b\n" +
+	"\x06bucket\x18\x02 \x01(\tR\x06bucket\"\x85\x01\n" +
+	"\rS3UserStorage\x12\x18\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12\x1e\n" +
+	"\n" +
+	"configured\x18\x02 \x01(\bR\n" +
+	"configured\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12\"\n" +
+	"\raccess_key_id\x18\x04 \x01(\tR\vaccessKeyId\"|\n" +
+	"\x10S3UserAccessKeys\x12\x16\n" +
+	"\x06static\x18\x01 \x01(\x05R\x06static\x12%\n" +
+	"\x0edynamic_active\x18\x02 \x01(\x05R\rdynamicActive\x12)\n" +
+	"\x10dynamic_disabled\x18\x03 \x01(\x05R\x0fdynamicDisabled\"g\n" +
+	"\fS3UserPolicy\x12\x1d\n" +
+	"\n" +
+	"has_policy\x18\x01 \x01(\bR\thasPolicy\x12\x1e\n" +
+	"\n" +
+	"permission\x18\x02 \x01(\tR\n" +
+	"permission\x12\x18\n" +
+	"\abuckets\x18\x03 \x03(\tR\abuckets\"\xd4\x01\n" +
+	"\x06S3User\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x121\n" +
+	"\bstorages\x18\x02 \x03(\v2\x15.chorus.S3UserStorageR\bstorages\x12\x1a\n" +
+	"\bcomplete\x18\x03 \x01(\bR\bcomplete\x129\n" +
+	"\vaccess_keys\x18\x04 \x01(\v2\x18.chorus.S3UserAccessKeysR\n" +
+	"accessKeys\x12,\n" +
+	"\x06policy\x18\x05 \x01(\v2\x14.chorus.S3UserPolicyR\x06policy\"\xb1\x01\n" +
+	"\n" +
+	"S3UserList\x12$\n" +
+	"\x05users\x18\x01 \x03(\v2\x0e.chorus.S3UserR\x05users\x12!\n" +
+	"\fmain_storage\x18\x02 \x01(\tR\vmainStorage\x12\x1a\n" +
+	"\bstorages\x18\x03 \x03(\tR\bstorages\x12>\n" +
+	"\x1bdynamic_credentials_enabled\x18\x04 \x01(\bR\x19dynamicCredentialsEnabled\"|\n" +
+	"\x10S3UserCredential\x12\x18\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12\"\n" +
+	"\raccess_key_id\x18\x02 \x01(\tR\vaccessKeyId\x12*\n" +
+	"\x11secret_access_key\x18\x03 \x01(\tR\x0fsecretAccessKey\"\x89\x02\n" +
+	"\x13CreateS3UserRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12:\n" +
+	"\vcredentials\x18\x02 \x03(\v2\x18.chorus.S3UserCredentialR\vcredentials\x12\x16\n" +
+	"\x06verify\x18\x03 \x01(\bR\x06verify\x12*\n" +
+	"\x11create_access_key\x18\x04 \x01(\bR\x0fcreateAccessKey\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x121\n" +
+	"\x06policy\x18\x06 \x01(\v2\x14.chorus.AccessPolicyH\x00R\x06policy\x88\x01\x01B\t\n" +
+	"\a_policy\"s\n" +
+	"\x12S3UserVerifyResult\x12\x18\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12\x0e\n" +
+	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x04 \x01(\x03R\tlatencyMs\"\xb5\x01\n" +
+	"\x14CreateS3UserResponse\x12\"\n" +
+	"\x04user\x18\x01 \x01(\v2\x0e.chorus.S3UserR\x04user\x129\n" +
+	"\n" +
+	"access_key\x18\x02 \x01(\v2\x1a.chorus.ProxyAccountSecretR\taccessKey\x12>\n" +
+	"\fverification\x18\x03 \x03(\v2\x1a.chorus.S3UserVerifyResultR\fverification\"\x86\x01\n" +
+	"\x1eUpdateS3UserCredentialsRequest\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x128\n" +
+	"\n" +
+	"credential\x18\x02 \x01(\v2\x18.chorus.S3UserCredentialR\n" +
+	"credential\x12\x16\n" +
+	"\x06verify\x18\x03 \x01(\bR\x06verify\"?\n" +
+	"\x13DeleteS3UserRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\"\x98\x01\n" +
+	"\x14DeleteS3UserResponse\x12)\n" +
+	"\x10deleted_storages\x18\x01 \x03(\tR\x0fdeletedStorages\x12.\n" +
+	"\x13deleted_access_keys\x18\x02 \x01(\x05R\x11deletedAccessKeys\x12%\n" +
+	"\x0edeleted_policy\x18\x03 \x01(\bR\rdeletedPolicy\"\x9a\x01\n" +
+	"\x1cTestS3UserCredentialsRequest\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\x18\n" +
+	"\astorage\x18\x02 \x01(\tR\astorage\x12=\n" +
+	"\n" +
+	"credential\x18\x03 \x01(\v2\x18.chorus.S3UserCredentialH\x00R\n" +
+	"credential\x88\x01\x01B\r\n" +
+	"\v_credential\"d\n" +
+	"\x1dTestS3UserCredentialsResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x03 \x01(\x03R\tlatencyMs\"\xa5\x03\n" +
+	"\vConsoleUser\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12\x1a\n" +
+	"\bdisabled\x18\x04 \x01(\bR\bdisabled\x120\n" +
+	"\x14must_change_password\x18\x05 \x01(\bR\x12mustChangePassword\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12>\n" +
+	"\rlast_login_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vlastLoginAt\x12J\n" +
+	"\x13password_changed_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11passwordChangedAt\"<\n" +
+	"\x0fConsoleUserList\x12)\n" +
+	"\x05users\x18\x01 \x03(\v2\x13.chorus.ConsoleUserR\x05users\"-\n" +
+	"\x0fConsoleUserName\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"\x93\x01\n" +
+	"\x18CreateConsoleUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\x12+\n" +
+	"\x11generate_password\x18\x04 \x01(\bR\x10generatePassword\"s\n" +
+	"\x19CreateConsoleUserResponse\x12'\n" +
+	"\x04user\x18\x01 \x01(\v2\x13.chorus.ConsoleUserR\x04user\x12-\n" +
+	"\x12generated_password\x18\x02 \x01(\tR\x11generatedPassword\"x\n" +
+	"\x18UpdateConsoleUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1f\n" +
+	"\bdisabled\x18\x03 \x01(\bH\x00R\bdisabled\x88\x01\x01B\v\n" +
+	"\t_disabled\"\x86\x01\n" +
+	"\x1fResetConsoleUserPasswordRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12+\n" +
+	"\x11generate_password\x18\x03 \x01(\bR\x10generatePassword\"Q\n" +
+	" ResetConsoleUserPasswordResponse\x12-\n" +
+	"\x12generated_password\x18\x01 \x01(\tR\x11generatedPassword2\xa6\x0f\n" +
 	"\n" +
 	"Resilience\x12A\n" +
 	"\x0eGetProxyStatus\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ProxyStatusList\x12D\n" +
@@ -2565,7 +4078,17 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x12CreateProxyAccount\x12!.chorus.CreateProxyAccountRequest\x1a\x1a.chorus.ProxyAccountSecret\x12_\n" +
 	"\x18RotateProxyAccountSecret\x12'.chorus.RotateProxyAccountSecretRequest\x1a\x1a.chorus.ProxyAccountSecret\x12U\n" +
 	"\x15SetProxyAccountStatus\x12$.chorus.SetProxyAccountStatusRequest\x1a\x16.google.protobuf.Empty\x12E\n" +
-	"\x12DeleteProxyAccount\x12\x17.chorus.ProxyAccountKey\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
+	"\x12DeleteProxyAccount\x12\x17.chorus.ProxyAccountKey\x1a\x16.google.protobuf.Empty\x129\n" +
+	"\vListS3Users\x12\x16.google.protobuf.Empty\x1a\x12.chorus.S3UserList\x12I\n" +
+	"\fCreateS3User\x12\x1b.chorus.CreateS3UserRequest\x1a\x1c.chorus.CreateS3UserResponse\x12Y\n" +
+	"\x17UpdateS3UserCredentials\x12&.chorus.UpdateS3UserCredentialsRequest\x1a\x16.google.protobuf.Empty\x12I\n" +
+	"\fDeleteS3User\x12\x1b.chorus.DeleteS3UserRequest\x1a\x1c.chorus.DeleteS3UserResponse\x12d\n" +
+	"\x15TestS3UserCredentials\x12$.chorus.TestS3UserCredentialsRequest\x1a%.chorus.TestS3UserCredentialsResponse\x12C\n" +
+	"\x10ListConsoleUsers\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ConsoleUserList\x12X\n" +
+	"\x11CreateConsoleUser\x12 .chorus.CreateConsoleUserRequest\x1a!.chorus.CreateConsoleUserResponse\x12M\n" +
+	"\x11UpdateConsoleUser\x12 .chorus.UpdateConsoleUserRequest\x1a\x16.google.protobuf.Empty\x12m\n" +
+	"\x18ResetConsoleUserPassword\x12'.chorus.ResetConsoleUserPasswordRequest\x1a(.chorus.ResetConsoleUserPasswordResponse\x12D\n" +
+	"\x11DeleteConsoleUser\x12\x17.chorus.ConsoleUserName\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_tutti_proto_rawDescOnce sync.Once
@@ -2579,131 +4102,190 @@ func file_chorus_tutti_proto_rawDescGZIP() []byte {
 	return file_chorus_tutti_proto_rawDescData
 }
 
-var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
 var file_chorus_tutti_proto_goTypes = []any{
-	(*CreateProxyAccountRequest)(nil),       // 0: chorus.CreateProxyAccountRequest
-	(*ProxyAccountSecret)(nil),              // 1: chorus.ProxyAccountSecret
-	(*RotateProxyAccountSecretRequest)(nil), // 2: chorus.RotateProxyAccountSecretRequest
-	(*SetProxyAccountStatusRequest)(nil),    // 3: chorus.SetProxyAccountStatusRequest
-	(*ProxyAccountKey)(nil),                 // 4: chorus.ProxyAccountKey
-	(*ProxyAccessKey)(nil),                  // 5: chorus.ProxyAccessKey
-	(*AccessPolicy)(nil),                    // 6: chorus.AccessPolicy
-	(*AccessPolicyList)(nil),                // 7: chorus.AccessPolicyList
-	(*AccessPolicyUser)(nil),                // 8: chorus.AccessPolicyUser
-	(*ProxyAccount)(nil),                    // 9: chorus.ProxyAccount
-	(*ProxyAccountList)(nil),                // 10: chorus.ProxyAccountList
-	(*DynamicAccountsStatus)(nil),           // 11: chorus.DynamicAccountsStatus
-	(*StorageHealth)(nil),                   // 12: chorus.StorageHealth
-	(*SyncSettings)(nil),                    // 13: chorus.SyncSettings
-	(*ReplicationSettings)(nil),             // 14: chorus.ReplicationSettings
-	(*HealthSettings)(nil),                  // 15: chorus.HealthSettings
-	(*FailoverSettings)(nil),                // 16: chorus.FailoverSettings
-	(*ProxySettings)(nil),                   // 17: chorus.ProxySettings
-	(*ProxyStatus)(nil),                     // 18: chorus.ProxyStatus
-	(*TrafficRates)(nil),                    // 19: chorus.TrafficRates
-	(*StatsHistoryRequest)(nil),             // 20: chorus.StatsHistoryRequest
-	(*StatsHistoryPoint)(nil),               // 21: chorus.StatsHistoryPoint
-	(*ProxyLatestRates)(nil),                // 22: chorus.ProxyLatestRates
-	(*StatsHistory)(nil),                    // 23: chorus.StatsHistory
-	(*TrafficStats)(nil),                    // 24: chorus.TrafficStats
-	(*LatencyHistogram)(nil),                // 25: chorus.LatencyHistogram
-	(*ProxyStatusList)(nil),                 // 26: chorus.ProxyStatusList
-	(*FailoverPolicy)(nil),                  // 27: chorus.FailoverPolicy
-	(*FailoverPolicyList)(nil),              // 28: chorus.FailoverPolicyList
-	(*FailoverPolicySource)(nil),            // 29: chorus.FailoverPolicySource
-	(*FailoverEvent)(nil),                   // 30: chorus.FailoverEvent
-	(*FailoverEventList)(nil),               // 31: chorus.FailoverEventList
-	(*FailoverEventID)(nil),                 // 32: chorus.FailoverEventID
-	nil,                                     // 33: chorus.TrafficRates.RequestsByClassEntry
-	nil,                                     // 34: chorus.TrafficRates.RequestsByStorageEntry
-	nil,                                     // 35: chorus.TrafficStats.RequestsByClassEntry
-	nil,                                     // 36: chorus.TrafficStats.RequestsByStorageEntry
-	(*timestamppb.Timestamp)(nil),           // 37: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),             // 38: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                   // 39: google.protobuf.Empty
+	(*CreateProxyAccountRequest)(nil),        // 0: chorus.CreateProxyAccountRequest
+	(*ProxyAccountSecret)(nil),               // 1: chorus.ProxyAccountSecret
+	(*RotateProxyAccountSecretRequest)(nil),  // 2: chorus.RotateProxyAccountSecretRequest
+	(*SetProxyAccountStatusRequest)(nil),     // 3: chorus.SetProxyAccountStatusRequest
+	(*ProxyAccountKey)(nil),                  // 4: chorus.ProxyAccountKey
+	(*ProxyAccessKey)(nil),                   // 5: chorus.ProxyAccessKey
+	(*AccessPolicy)(nil),                     // 6: chorus.AccessPolicy
+	(*AccessPolicyList)(nil),                 // 7: chorus.AccessPolicyList
+	(*AccessPolicyUser)(nil),                 // 8: chorus.AccessPolicyUser
+	(*ProxyAccount)(nil),                     // 9: chorus.ProxyAccount
+	(*ProxyAccountList)(nil),                 // 10: chorus.ProxyAccountList
+	(*DynamicAccountsStatus)(nil),            // 11: chorus.DynamicAccountsStatus
+	(*StorageHealth)(nil),                    // 12: chorus.StorageHealth
+	(*SyncSettings)(nil),                     // 13: chorus.SyncSettings
+	(*ReplicationSettings)(nil),              // 14: chorus.ReplicationSettings
+	(*HealthSettings)(nil),                   // 15: chorus.HealthSettings
+	(*FailoverSettings)(nil),                 // 16: chorus.FailoverSettings
+	(*ProxySettings)(nil),                    // 17: chorus.ProxySettings
+	(*ProxyStatus)(nil),                      // 18: chorus.ProxyStatus
+	(*TrafficRates)(nil),                     // 19: chorus.TrafficRates
+	(*StatsHistoryRequest)(nil),              // 20: chorus.StatsHistoryRequest
+	(*StatsHistoryPoint)(nil),                // 21: chorus.StatsHistoryPoint
+	(*ProxyLatestRates)(nil),                 // 22: chorus.ProxyLatestRates
+	(*StatsHistory)(nil),                     // 23: chorus.StatsHistory
+	(*TrafficStats)(nil),                     // 24: chorus.TrafficStats
+	(*LatencyHistogram)(nil),                 // 25: chorus.LatencyHistogram
+	(*ProxyStatusList)(nil),                  // 26: chorus.ProxyStatusList
+	(*FailoverPolicy)(nil),                   // 27: chorus.FailoverPolicy
+	(*FailoverPolicyList)(nil),               // 28: chorus.FailoverPolicyList
+	(*FailoverPolicySource)(nil),             // 29: chorus.FailoverPolicySource
+	(*FailoverEvent)(nil),                    // 30: chorus.FailoverEvent
+	(*FailoverEventList)(nil),                // 31: chorus.FailoverEventList
+	(*FailoverEventID)(nil),                  // 32: chorus.FailoverEventID
+	(*S3UserStorage)(nil),                    // 33: chorus.S3UserStorage
+	(*S3UserAccessKeys)(nil),                 // 34: chorus.S3UserAccessKeys
+	(*S3UserPolicy)(nil),                     // 35: chorus.S3UserPolicy
+	(*S3User)(nil),                           // 36: chorus.S3User
+	(*S3UserList)(nil),                       // 37: chorus.S3UserList
+	(*S3UserCredential)(nil),                 // 38: chorus.S3UserCredential
+	(*CreateS3UserRequest)(nil),              // 39: chorus.CreateS3UserRequest
+	(*S3UserVerifyResult)(nil),               // 40: chorus.S3UserVerifyResult
+	(*CreateS3UserResponse)(nil),             // 41: chorus.CreateS3UserResponse
+	(*UpdateS3UserCredentialsRequest)(nil),   // 42: chorus.UpdateS3UserCredentialsRequest
+	(*DeleteS3UserRequest)(nil),              // 43: chorus.DeleteS3UserRequest
+	(*DeleteS3UserResponse)(nil),             // 44: chorus.DeleteS3UserResponse
+	(*TestS3UserCredentialsRequest)(nil),     // 45: chorus.TestS3UserCredentialsRequest
+	(*TestS3UserCredentialsResponse)(nil),    // 46: chorus.TestS3UserCredentialsResponse
+	(*ConsoleUser)(nil),                      // 47: chorus.ConsoleUser
+	(*ConsoleUserList)(nil),                  // 48: chorus.ConsoleUserList
+	(*ConsoleUserName)(nil),                  // 49: chorus.ConsoleUserName
+	(*CreateConsoleUserRequest)(nil),         // 50: chorus.CreateConsoleUserRequest
+	(*CreateConsoleUserResponse)(nil),        // 51: chorus.CreateConsoleUserResponse
+	(*UpdateConsoleUserRequest)(nil),         // 52: chorus.UpdateConsoleUserRequest
+	(*ResetConsoleUserPasswordRequest)(nil),  // 53: chorus.ResetConsoleUserPasswordRequest
+	(*ResetConsoleUserPasswordResponse)(nil), // 54: chorus.ResetConsoleUserPasswordResponse
+	nil,                                      // 55: chorus.TrafficRates.RequestsByClassEntry
+	nil,                                      // 56: chorus.TrafficRates.RequestsByStorageEntry
+	nil,                                      // 57: chorus.TrafficStats.RequestsByClassEntry
+	nil,                                      // 58: chorus.TrafficStats.RequestsByStorageEntry
+	(*timestamppb.Timestamp)(nil),            // 59: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),              // 60: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                    // 61: google.protobuf.Empty
 }
 var file_chorus_tutti_proto_depIdxs = []int32{
-	37, // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	38, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	37, // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	37, // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	37, // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	59, // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	60, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	59, // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	59, // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	59, // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
 	6,  // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
 	6,  // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
 	5,  // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
 	9,  // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
 	11, // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
-	37, // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	38, // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	38, // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	59, // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	60, // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	60, // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
 	13, // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
-	38, // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	38, // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	38, // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
+	60, // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	60, // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	60, // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
 	14, // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
 	15, // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
 	16, // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
-	37, // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	37, // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	59, // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	59, // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
 	12, // 22: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
 	17, // 23: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
 	24, // 24: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
 	19, // 25: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
-	33, // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
-	34, // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
-	37, // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	55, // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
+	56, // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
+	59, // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
 	19, // 29: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
-	37, // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	59, // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
 	19, // 31: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
-	38, // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	60, // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
 	21, // 33: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
 	22, // 34: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
-	37, // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	37, // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	35, // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
-	36, // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
+	59, // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	59, // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	57, // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
+	58, // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
 	25, // 39: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
 	18, // 40: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
 	19, // 41: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
-	38, // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	60, // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
 	27, // 43: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
-	37, // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	59, // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
 	30, // 45: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
-	39, // 46: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
-	20, // 47: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
-	39, // 48: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
-	27, // 49: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
-	29, // 50: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
-	39, // 51: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
-	32, // 52: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
-	39, // 53: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
-	6,  // 54: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
-	8,  // 55: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
-	39, // 56: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
-	0,  // 57: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
-	2,  // 58: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
-	3,  // 59: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
-	4,  // 60: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
-	26, // 61: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
-	23, // 62: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
-	28, // 63: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
-	39, // 64: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	39, // 65: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	31, // 66: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
-	39, // 67: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,  // 68: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
-	39, // 69: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	39, // 70: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10, // 71: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
-	1,  // 72: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
-	1,  // 73: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
-	39, // 74: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	39, // 75: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	61, // [61:76] is the sub-list for method output_type
-	46, // [46:61] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	33, // 46: chorus.S3User.storages:type_name -> chorus.S3UserStorage
+	34, // 47: chorus.S3User.access_keys:type_name -> chorus.S3UserAccessKeys
+	35, // 48: chorus.S3User.policy:type_name -> chorus.S3UserPolicy
+	36, // 49: chorus.S3UserList.users:type_name -> chorus.S3User
+	38, // 50: chorus.CreateS3UserRequest.credentials:type_name -> chorus.S3UserCredential
+	6,  // 51: chorus.CreateS3UserRequest.policy:type_name -> chorus.AccessPolicy
+	36, // 52: chorus.CreateS3UserResponse.user:type_name -> chorus.S3User
+	1,  // 53: chorus.CreateS3UserResponse.access_key:type_name -> chorus.ProxyAccountSecret
+	40, // 54: chorus.CreateS3UserResponse.verification:type_name -> chorus.S3UserVerifyResult
+	38, // 55: chorus.UpdateS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
+	38, // 56: chorus.TestS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
+	59, // 57: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
+	59, // 58: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
+	59, // 59: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
+	59, // 60: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
+	47, // 61: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
+	47, // 62: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
+	61, // 63: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	20, // 64: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
+	61, // 65: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	27, // 66: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
+	29, // 67: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
+	61, // 68: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	32, // 69: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
+	61, // 70: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	6,  // 71: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
+	8,  // 72: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
+	61, // 73: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	0,  // 74: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
+	2,  // 75: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
+	3,  // 76: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
+	4,  // 77: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
+	61, // 78: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
+	39, // 79: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
+	42, // 80: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
+	43, // 81: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
+	45, // 82: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
+	61, // 83: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
+	50, // 84: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
+	52, // 85: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
+	53, // 86: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
+	49, // 87: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
+	26, // 88: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
+	23, // 89: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
+	28, // 90: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
+	61, // 91: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	61, // 92: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31, // 93: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
+	61, // 94: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,  // 95: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
+	61, // 96: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	61, // 97: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10, // 98: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
+	1,  // 99: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
+	1,  // 100: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
+	61, // 101: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	61, // 102: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	37, // 103: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
+	41, // 104: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
+	61, // 105: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
+	44, // 106: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
+	46, // 107: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
+	48, // 108: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
+	51, // 109: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
+	61, // 110: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
+	54, // 111: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
+	61, // 112: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
+	88, // [88:113] is the sub-list for method output_type
+	63, // [63:88] is the sub-list for method input_type
+	63, // [63:63] is the sub-list for extension type_name
+	63, // [63:63] is the sub-list for extension extendee
+	0,  // [0:63] is the sub-list for field type_name
 }
 
 func init() { file_chorus_tutti_proto_init() }
@@ -2712,13 +4294,16 @@ func file_chorus_tutti_proto_init() {
 		return
 	}
 	file_chorus_tutti_proto_msgTypes[27].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[39].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[45].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[52].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_tutti_proto_rawDesc), len(file_chorus_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   37,
+			NumMessages:   59,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

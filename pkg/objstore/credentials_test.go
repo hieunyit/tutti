@@ -937,3 +937,62 @@ func Test_credsSvc_SealOpen(t *testing.T) {
 	r.NoError(err)
 	r.Equal("secret-value", string(opened))
 }
+
+func Test_credsSvc_DeleteUserCredentials(t *testing.T) {
+	r := require.New(t)
+	ctx := t.Context()
+	c := testutil.SetupRedis(t)
+	s3Stor := "s3storage"
+	conf := &Config{
+		Main:     s3Stor,
+		Storages: map[string]Storage{s3Stor: {CommonConfig: CommonConfig{Type: dom.S3}, S3: &validS3}},
+		DynamicCredentials: DynamicCredentialsConfig{
+			Enabled: true, MasterPassword: "superseretlongpassword", PollInterval: 50 * time.Millisecond,
+		},
+	}
+	// two instances emulate a worker and a proxy
+	a, err := NewCredsSvc(ctx, conf, c)
+	r.NoError(err)
+	b, err := NewCredsSvc(ctx, conf, c)
+	r.NoError(err)
+
+	cred := s3.CredentialsV4{AccessKeyID: "dyn_ak", SecretAccessKey: "dyn_sk"}
+	r.NoError(a.SetS3Credentials(ctx, s3Stor, "dynuser", cred))
+	r.Equal(CredSourceDynamic, a.CredentialSource(s3Stor, "dynuser"))
+	r.Equal(CredSourceConfig, a.CredentialSource(s3Stor, validUser))
+	r.Equal("", a.CredentialSource(s3Stor, "ghost"))
+	r.True(a.DynamicCredentialsEnabled())
+
+	// the other instance picks it up on its next poll
+	r.Eventually(func() bool { return b.HasUser(s3Stor, "dynuser") == nil }, 5*time.Second, 50*time.Millisecond)
+	_, _, err = b.FindS3Credentials(s3Stor, "dyn_ak")
+	r.NoError(err)
+
+	// config credentials cannot be deleted, unknown ones are not found
+	r.ErrorIs(a.DeleteUserCredentials(ctx, s3Stor, validUser), dom.ErrFailedPrecondition)
+	r.ErrorIs(a.DeleteUserCredentials(ctx, s3Stor, "ghost"), dom.ErrNotFound)
+	r.ErrorIs(a.DeleteUserCredentials(ctx, "unknownstorage", "dynuser"), dom.ErrInvalidArg)
+
+	r.NoError(a.DeleteUserCredentials(ctx, s3Stor, "dynuser"))
+	r.Error(a.HasUser(s3Stor, "dynuser"), "dropped immediately on the deleting instance")
+	_, _, err = a.FindS3Credentials(s3Stor, "dyn_ak")
+	r.ErrorIs(err, dom.ErrNotFound)
+	r.ErrorIs(a.DeleteUserCredentials(ctx, s3Stor, "dynuser"), dom.ErrNotFound)
+
+	// the other instance drops them on its next poll
+	r.Eventually(func() bool { return b.HasUser(s3Stor, "dynuser") != nil }, 5*time.Second, 50*time.Millisecond)
+	_, _, err = b.FindS3Credentials(s3Stor, "dyn_ak")
+	r.ErrorIs(err, dom.ErrNotFound)
+	r.Equal([]string{validUser}, b.ListUsers(s3Stor))
+
+	// can be recreated afterwards
+	r.NoError(a.SetS3Credentials(ctx, s3Stor, "dynuser", cred))
+	r.NoError(a.HasUser(s3Stor, "dynuser"))
+
+	// disabled dynamic credentials
+	off := &Config{Main: s3Stor, Storages: conf.Storages}
+	svc, err := NewCredsSvc(ctx, off, c)
+	r.NoError(err)
+	r.ErrorIs(svc.DeleteUserCredentials(ctx, s3Stor, "dynuser"), dom.ErrFailedPrecondition)
+	r.False(svc.DynamicCredentialsEnabled())
+}
