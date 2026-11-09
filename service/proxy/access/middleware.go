@@ -32,6 +32,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
@@ -55,6 +56,7 @@ func Middleware(lookup LookupFunc) func(next http.Handler) http.Handler {
 				req.CopySourceBucket, req.CopySourceInvalid = copySourceBucket(r.Header.Get(s3.AmzCopySource))
 			}
 			if err := pol.Authorize(req); err != nil {
+				trafficstats.Default.AccessDenied()
 				zerolog.Ctx(ctx).Info().Err(err).Str("user", user).Str("method", req.Method.String()).Msg("access policy: denied")
 				util.WriteError(ctx, w, mclient.ErrorResponse{
 					Code:       "AccessDenied",

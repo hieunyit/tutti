@@ -48,6 +48,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 	"github.com/hieunyit/tutti/pkg/util"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/hieunyit/tutti/service/proxy/access"
@@ -357,6 +358,8 @@ func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time, accoun
 			},
 		},
 	}
+	snapStats := trafficstats.Default.Snapshot()
+	st.Stats = &snapStats
 	if conf.Auth != nil {
 		st.Settings.RequireSignedContentType = conf.Auth.RequireSignedContentType
 	}

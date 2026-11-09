@@ -42,6 +42,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
 
 const (
@@ -63,18 +65,22 @@ type Error struct {
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
 
 func errSignature() *Error {
+	trafficstats.Default.ChunkedVerifyFailed()
 	return &Error{"SignatureDoesNotMatch", "The request signature that the server calculated does not match the signature that you provided. Check your AWS secret access key and signing method. For more information, see REST Authentication and SOAP Authentication.", http.StatusForbidden}
 }
 
 func errMalformed(msg string) *Error {
+	trafficstats.Default.ChunkedVerifyFailed()
 	return &Error{"InvalidRequest", "Malformed aws-chunked body: " + msg, http.StatusBadRequest}
 }
 
 func errIncomplete(msg string) *Error {
+	trafficstats.Default.ChunkedVerifyFailed()
 	return &Error{"IncompleteBody", msg, http.StatusBadRequest}
 }
 
 func errBadDigest(msg string) *Error {
+	trafficstats.Default.ChunkedVerifyFailed()
 	return &Error{"XAmzContentChecksumMismatch", msg, http.StatusBadRequest}
 }
 

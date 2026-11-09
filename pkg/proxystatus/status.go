@@ -14,6 +14,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
 
 const (
@@ -87,6 +89,8 @@ type Status struct {
 	// Accounts are the accounts able to authenticate against this proxy (no secrets).
 	Accounts []Account `json:"accounts,omitempty"`
 	Settings Settings  `json:"settings"`
+	// Stats are cumulative traffic counters since StartedAt (nil for old documents).
+	Stats *trafficstats.Snapshot `json:"stats,omitempty"`
 }
 
 // Key returns the Redis key of the app's status document.

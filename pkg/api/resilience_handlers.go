@@ -13,6 +13,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
@@ -66,6 +67,7 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 				RequireSignedContentType: st.Settings.RequireSignedContentType,
 			},
 		}
+		p.Stats = trafficStatsToPb(st.Stats)
 		for _, s := range st.Storages {
 			p.Storages = append(p.Storages, &pb.StorageHealth{
 				Name:                s.Name,
@@ -170,4 +172,37 @@ func (h *resilienceHandlers) DeleteFailoverEvent(ctx context.Context, req *pb.Fa
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+func trafficStatsToPb(s *trafficstats.Snapshot) *pb.TrafficStats {
+	if s == nil {
+		return nil
+	}
+	return &pb.TrafficStats{
+		CollectedAt:         timestamppb.New(s.CollectedAt),
+		StartedAt:           timestamppb.New(s.StartedAt),
+		RequestsTotal:       s.Requests.Total,
+		RequestsByClass:     s.Requests.ByClass,
+		RequestsByStorage:   s.Requests.ByStorage,
+		Responses_2Xx:       s.Responses.Status2xx,
+		Responses_3Xx:       s.Responses.Status3xx,
+		Responses_4Xx:       s.Responses.Status4xx,
+		Responses_5Xx:       s.Responses.Status5xx,
+		ResponsesOther:      s.Responses.Other,
+		FailFast:            s.FailFast,
+		AccessDenied:        s.AccessDenied,
+		EventRecordFailed:   s.EventRecordFailed,
+		SyncQuorumReached:   s.Sync.QuorumReached,
+		SyncBelowQuorum:     s.Sync.BelowQuorum,
+		SyncSkipped:         s.Sync.Skipped,
+		ChunkedVerifyFailed: s.ChunkedVerifyFailed,
+		BytesIn:             s.BytesIn,
+		BytesOut:            s.BytesOut,
+		Latency: &pb.LatencyHistogram{
+			Count:         s.Latency.Count,
+			SumSeconds:    s.Latency.SumSeconds,
+			BoundsSeconds: s.Latency.BoundsSeconds,
+			Buckets:       s.Latency.Buckets,
+		},
+	}
 }

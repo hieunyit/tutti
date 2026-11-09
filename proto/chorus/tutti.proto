@@ -164,6 +164,67 @@ message ProxyStatus {
   repeated StorageHealth storages = 5;
   // Effective settings.
   ProxySettings settings = 6;
+  // Built-in traffic statistics (no Prometheus needed). Absent for proxies that do not publish them.
+  // Counters are cumulative since stats.started_at: compute rates from two snapshots with the same
+  // started_at (a changed started_at means the proxy restarted and counters were reset).
+  TrafficStats stats = 7;
+}
+
+// TrafficStats are cumulative in-memory traffic counters of one proxy instance.
+// For per-replication backlog (events, events_done, event_lag) use Policy/ListReplications.
+message TrafficStats {
+  // Time the snapshot was taken.
+  google.protobuf.Timestamp collected_at = 1;
+  // Time the counters started (proxy process start).
+  google.protobuf.Timestamp started_at = 2;
+  // Total requests handled.
+  uint64 requests_total = 3;
+  // Requests by operation class: read, write, exists, manage, other.
+  map<string, uint64> requests_by_class = 4;
+  // Requests by the storage they were routed to (requests rejected before routing are not included).
+  map<string, uint64> requests_by_storage = 5;
+  // Responses with status 2xx.
+  uint64 responses_2xx = 6;
+  // Responses with status 3xx.
+  uint64 responses_3xx = 7;
+  // Responses with status 4xx.
+  uint64 responses_4xx = 8;
+  // Responses with status 5xx.
+  uint64 responses_5xx = 9;
+  // Requests rejected immediately because the storage circuit breaker is open.
+  uint64 fail_fast = 10;
+  // Requests denied by an access policy.
+  uint64 access_denied = 11;
+  // Requests answered 503 because the replication event could not be recorded.
+  uint64 event_record_failed = 12;
+  // Synchronous replication: write quorum reached.
+  uint64 sync_quorum_reached = 13;
+  // Synchronous replication: fewer copies than the write quorum.
+  uint64 sync_below_quorum = 14;
+  // Synchronous replication enabled but nothing to replicate synchronously for the request.
+  uint64 sync_skipped = 15;
+  // aws-chunked payload verification failures.
+  uint64 chunked_verify_failed = 16;
+  // Bytes read from clients (request bodies).
+  uint64 bytes_in = 17;
+  // Bytes written to clients (response bodies).
+  uint64 bytes_out = 18;
+  // Request duration histogram.
+  LatencyHistogram latency = 19;
+  // Responses with a status outside 2xx-5xx.
+  uint64 responses_other = 20;
+}
+
+// LatencyHistogram is a fixed-bucket histogram of full request durations.
+message LatencyHistogram {
+  // Number of observations.
+  uint64 count = 1;
+  // Sum of all durations in seconds (average = sum_seconds / count).
+  double sum_seconds = 2;
+  // Inclusive upper bounds of the buckets in seconds.
+  repeated double bounds_seconds = 3;
+  // Non-cumulative bucket counts: len(bounds_seconds)+1 items, the last one is the +Inf bucket.
+  repeated uint64 buckets = 4;
 }
 
 // ProxyStatusList lists live proxies.

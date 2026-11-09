@@ -28,12 +28,14 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
@@ -111,7 +113,23 @@ func replicateWithRetry(ctx context.Context, svc replication.Service, storage st
 	}
 }
 
+// opClass maps the S3 method of the request to a trafficstats operation class.
+func opClass(ctx context.Context) string {
+	switch accesspolicy.Classify(xctx.GetMethod(ctx)) {
+	case accesspolicy.ClassRead:
+		return trafficstats.ClassRead
+	case accesspolicy.ClassWrite:
+		return trafficstats.ClassWrite
+	case accesspolicy.ClassExists:
+		return trafficstats.ClassExists
+	case accesspolicy.ClassManage:
+		return trafficstats.ClassManage
+	}
+	return trafficstats.ClassOther
+}
+
 func writeEventRecordError(ctx context.Context, w http.ResponseWriter) {
+	trafficstats.Default.EventRecordFailed()
 	util.WriteError(ctx, w, minio.ErrorResponse{
 		Code:       "ServiceUnavailable",
 		Message:    "The change was applied but could not be recorded for replication. Please retry the request.",
@@ -201,6 +219,8 @@ func New(config Config) (http.Handler, error) {
 
 	// 1. init request scoped logger
 	result = config.LogMiddleware(result)
+	// 0. built-in traffic statistics: outermost, so that every response, byte and the full duration is counted
+	result = trafficstats.Default.Middleware(result)
 	return result, nil
 
 }
@@ -214,6 +234,7 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 		r = r.WithContext(ctx)
 		logger := zerolog.Ctx(r.Context())
 		logger.Debug().Msg("proxy: new request received")
+		trafficstats.SetRoute(ctx, opClass(ctx))
 
 		resp, taskList, storage, isApiErr, err := router.Route(r)
 		if err != nil {
@@ -226,6 +247,7 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 			}
 		}()
 		ctx = log.WithStorage(ctx, storage)
+		trafficstats.SetStorage(ctx, storage)
 		var syncRes syncResult
 		var synced bool
 		// TODO: is it reachable? This branch is active only if err == nil
@@ -258,6 +280,14 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 			}
 			if recordErr == nil && syncOpts.active() {
 				syncRes, synced = syncOpts.syncDestinations(replCtx, taskList)
+				switch {
+				case !synced:
+					trafficstats.Default.SyncOutcome(trafficstats.SyncSkipped)
+				case syncRes.copies < syncRes.quorum:
+					trafficstats.Default.SyncOutcome(trafficstats.SyncBelowQuorum)
+				default:
+					trafficstats.Default.SyncOutcome(trafficstats.SyncQuorum)
+				}
 				if synced && syncRes.copies < syncRes.quorum {
 					onFail := syncOpts.OnQuorumFailure
 					if onFail == "" {

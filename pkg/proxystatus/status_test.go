@@ -10,6 +10,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
 
 func TestPublisher_SerializationAndTTL(t *testing.T) {
@@ -45,4 +47,29 @@ func TestPublisher_SerializationAndTTL(t *testing.T) {
 	list, err = List(context.Background(), c)
 	require.NoError(t, err)
 	require.Empty(t, list)
+}
+
+func TestPublisher_StatsRoundTrip(t *testing.T) {
+	mr := miniredis.RunT(t)
+	c := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	col := trafficstats.New()
+	col.Request(trafficstats.ClassRead, "main")
+	col.Latency(20 * time.Millisecond)
+	col.BytesOut(42)
+	snap := col.Snapshot()
+	p := NewPublisher(c, "app1", 10*time.Second, func() Status { return Status{Stats: &snap} }, zerolog.Nop())
+	require.NoError(t, p.PublishOnce(context.Background()))
+	list, err := List(context.Background(), c)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	got := list[0].Stats
+	require.NotNil(t, got)
+	require.True(t, got.CollectedAt.Equal(snap.CollectedAt))
+	require.True(t, got.StartedAt.Equal(snap.StartedAt))
+	require.EqualValues(t, 1, got.Requests.ByStorage["main"])
+	require.EqualValues(t, 42, got.BytesOut)
+	require.Equal(t, snap.Latency.Buckets, got.Latency.Buckets)
+
+	raw, _ := mr.Get(Key("app1"))
+	require.Contains(t, raw, `"stats":{"collectedAt"`)
 }

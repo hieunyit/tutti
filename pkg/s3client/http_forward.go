@@ -32,6 +32,7 @@ import (
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
 
 func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err error) {
@@ -47,6 +48,7 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 	req = req.WithContext(ctx)
 	if c.health != nil && !c.health.Allow(c.storageName) {
 		// fail fast instead of waiting for the http timeout of an unavailable storage
+		trafficstats.Default.FailFast()
 		return nil, false, health.UnavailableError(c.storageName)
 	}
 	defer func() {

@@ -21,6 +21,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
@@ -212,4 +213,43 @@ func TestResilience_AccessPolicies(t *testing.T) {
 func protojsonMarshal(m proto.Message) (string, error) {
 	b, err := protojson.Marshal(m)
 	return string(b), err
+}
+
+func TestResilience_ProxyStatusTrafficStats(t *testing.T) {
+	ctx := context.Background()
+	c, rc, _ := resilienceClient(t)
+	col := trafficstats.New()
+	col.Request(trafficstats.ClassWrite, "main")
+	col.Response(503)
+	col.FailFast()
+	col.SyncOutcome(trafficstats.SyncBelowQuorum)
+	col.BytesIn(10)
+	col.Latency(300 * time.Millisecond)
+	snap := col.Snapshot()
+	withStats := proxystatus.NewPublisher(rc, "p1", 10*time.Second, func() proxystatus.Status {
+		return proxystatus.Status{StartedAt: time.Now(), Stats: &snap}
+	}, zerolog.Nop())
+	require.NoError(t, withStats.PublishOnce(ctx))
+	noStats := proxystatus.NewPublisher(rc, "p2", 10*time.Second, func() proxystatus.Status {
+		return proxystatus.Status{StartedAt: time.Now()}
+	}, zerolog.Nop())
+	require.NoError(t, noStats.PublishOnce(ctx))
+
+	l, err := c.GetProxyStatus(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.Len(t, l.Proxies, 2)
+	require.Nil(t, l.Proxies[1].Stats)
+	s := l.Proxies[0].Stats
+	require.NotNil(t, s)
+	require.True(t, s.CollectedAt.AsTime().Equal(snap.CollectedAt))
+	require.True(t, s.StartedAt.AsTime().Equal(snap.StartedAt))
+	require.EqualValues(t, 1, s.RequestsTotal)
+	require.EqualValues(t, 1, s.RequestsByClass["write"])
+	require.EqualValues(t, 1, s.RequestsByStorage["main"])
+	require.EqualValues(t, 1, s.Responses_5Xx)
+	require.EqualValues(t, 1, s.FailFast)
+	require.EqualValues(t, 1, s.SyncBelowQuorum)
+	require.EqualValues(t, 10, s.BytesIn)
+	require.EqualValues(t, 1, s.Latency.Count)
+	require.Len(t, s.Latency.Buckets, len(s.Latency.BoundsSeconds)+1)
 }

@@ -1830,6 +1830,38 @@
       },
       "description": "HealthSettings are the effective circuit breaker settings of a proxy."
     },
+    "chorusLatencyHistogram": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Number of observations."
+        },
+        "sumSeconds": {
+          "type": "number",
+          "format": "double",
+          "description": "Sum of all durations in seconds (average = sum_seconds / count)."
+        },
+        "boundsSeconds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Inclusive upper bounds of the buckets in seconds."
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Non-cumulative bucket counts: len(bounds_seconds)+1 items, the last one is the +Inf bucket."
+        }
+      },
+      "description": "LatencyHistogram is a fixed-bucket histogram of full request durations."
+    },
     "chorusListDiffChecksResponse": {
       "type": "object",
       "properties": {
@@ -2029,6 +2061,10 @@
         "settings": {
           "$ref": "#/definitions/chorusProxySettings",
           "description": "Effective settings."
+        },
+        "stats": {
+          "$ref": "#/definitions/chorusTrafficStats",
+          "description": "Built-in traffic statistics (no Prometheus needed). Absent for proxies that do not publish them.\nCounters are cumulative since stats.started_at: compute rates from two snapshots with the same\nstarted_at (a changed started_at means the proxy restarted and counters were reset)."
         }
       },
       "description": "ProxyStatus is the status of one live proxy instance."
@@ -2667,6 +2703,117 @@
           "description": "list of applicable replications for given user and bucket."
         }
       }
+    },
+    "chorusTrafficStats": {
+      "type": "object",
+      "properties": {
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the snapshot was taken."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the counters started (proxy process start)."
+        },
+        "requestsTotal": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Total requests handled."
+        },
+        "requestsByClass": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Requests by operation class: read, write, exists, manage, other."
+        },
+        "requestsByStorage": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "Requests by the storage they were routed to (requests rejected before routing are not included)."
+        },
+        "responses2xx": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Responses with status 2xx."
+        },
+        "responses3xx": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Responses with status 3xx."
+        },
+        "responses4xx": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Responses with status 4xx."
+        },
+        "responses5xx": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Responses with status 5xx."
+        },
+        "failFast": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Requests rejected immediately because the storage circuit breaker is open."
+        },
+        "accessDenied": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Requests denied by an access policy."
+        },
+        "eventRecordFailed": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Requests answered 503 because the replication event could not be recorded."
+        },
+        "syncQuorumReached": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Synchronous replication: write quorum reached."
+        },
+        "syncBelowQuorum": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Synchronous replication: fewer copies than the write quorum."
+        },
+        "syncSkipped": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Synchronous replication enabled but nothing to replicate synchronously for the request."
+        },
+        "chunkedVerifyFailed": {
+          "type": "string",
+          "format": "uint64",
+          "description": "aws-chunked payload verification failures."
+        },
+        "bytesIn": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Bytes read from clients (request bodies)."
+        },
+        "bytesOut": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Bytes written to clients (response bodies)."
+        },
+        "latency": {
+          "$ref": "#/definitions/chorusLatencyHistogram",
+          "description": "Request duration histogram."
+        },
+        "responsesOther": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Responses with a status outside 2xx-5xx."
+        }
+      },
+      "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
     },
     "chorusUserRouting": {
       "type": "object",
