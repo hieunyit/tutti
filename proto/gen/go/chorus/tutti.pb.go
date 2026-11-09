@@ -3756,6 +3756,619 @@ func (x *ResetConsoleUserPasswordResponse) GetGeneratedPassword() string {
 	return ""
 }
 
+// RuntimeStorage contains connection settings and metadata, never credentials secrets.
+type RuntimeStorage struct {
+	state               protoimpl.MessageState   `protogen:"open.v1"`
+	Name                string                   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Address             string                   `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	Provider            string                   `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
+	DefaultRegion       string                   `protobuf:"bytes,4,opt,name=default_region,json=defaultRegion,proto3" json:"default_region,omitempty"`
+	IsSecure            bool                     `protobuf:"varint,5,opt,name=is_secure,json=isSecure,proto3" json:"is_secure,omitempty"`
+	HttpTimeout         *durationpb.Duration     `protobuf:"bytes,6,opt,name=http_timeout,json=httpTimeout,proto3" json:"http_timeout,omitempty"`
+	HealthCheckInterval *durationpb.Duration     `protobuf:"bytes,7,opt,name=health_check_interval,json=healthCheckInterval,proto3" json:"health_check_interval,omitempty"`
+	RateLimit           *RuntimeStorageRateLimit `protobuf:"bytes,8,opt,name=rate_limit,json=rateLimit,proto3" json:"rate_limit,omitempty"`
+	Source              string                   `protobuf:"bytes,9,opt,name=source,proto3" json:"source,omitempty"`
+	IsMain              bool                     `protobuf:"varint,10,opt,name=is_main,json=isMain,proto3" json:"is_main,omitempty"`
+	Users               []*RuntimeStorageUser    `protobuf:"bytes,11,rep,name=users,proto3" json:"users,omitempty"`
+	References          []string                 `protobuf:"bytes,12,rep,name=references,proto3" json:"references,omitempty"`
+	CreatedAt           *timestamppb.Timestamp   `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           *timestamppb.Timestamp   `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *RuntimeStorage) Reset() {
+	*x = RuntimeStorage{}
+	mi := &file_chorus_tutti_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorage) ProtoMessage() {}
+
+func (x *RuntimeStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorage.ProtoReflect.Descriptor instead.
+func (*RuntimeStorage) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *RuntimeStorage) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *RuntimeStorage) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *RuntimeStorage) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *RuntimeStorage) GetDefaultRegion() string {
+	if x != nil {
+		return x.DefaultRegion
+	}
+	return ""
+}
+
+func (x *RuntimeStorage) GetIsSecure() bool {
+	if x != nil {
+		return x.IsSecure
+	}
+	return false
+}
+
+func (x *RuntimeStorage) GetHttpTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.HttpTimeout
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetHealthCheckInterval() *durationpb.Duration {
+	if x != nil {
+		return x.HealthCheckInterval
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetRateLimit() *RuntimeStorageRateLimit {
+	if x != nil {
+		return x.RateLimit
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *RuntimeStorage) GetIsMain() bool {
+	if x != nil {
+		return x.IsMain
+	}
+	return false
+}
+
+func (x *RuntimeStorage) GetUsers() []*RuntimeStorageUser {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetReferences() []string {
+	if x != nil {
+		return x.References
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *RuntimeStorage) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type RuntimeStorageRateLimit struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Enabled            bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Rpm                int32                  `protobuf:"varint,2,opt,name=rpm,proto3" json:"rpm,omitempty"`
+	IncludeMetadataApi bool                   `protobuf:"varint,3,opt,name=include_metadata_api,json=includeMetadataApi,proto3" json:"include_metadata_api,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *RuntimeStorageRateLimit) Reset() {
+	*x = RuntimeStorageRateLimit{}
+	mi := &file_chorus_tutti_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorageRateLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorageRateLimit) ProtoMessage() {}
+
+func (x *RuntimeStorageRateLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorageRateLimit.ProtoReflect.Descriptor instead.
+func (*RuntimeStorageRateLimit) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *RuntimeStorageRateLimit) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *RuntimeStorageRateLimit) GetRpm() int32 {
+	if x != nil {
+		return x.Rpm
+	}
+	return 0
+}
+
+func (x *RuntimeStorageRateLimit) GetIncludeMetadataApi() bool {
+	if x != nil {
+		return x.IncludeMetadataApi
+	}
+	return false
+}
+
+type RuntimeStorageUser struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessKeyId   string                 `protobuf:"bytes,2,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	Source        string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RuntimeStorageUser) Reset() {
+	*x = RuntimeStorageUser{}
+	mi := &file_chorus_tutti_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorageUser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorageUser) ProtoMessage() {}
+
+func (x *RuntimeStorageUser) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorageUser.ProtoReflect.Descriptor instead.
+func (*RuntimeStorageUser) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *RuntimeStorageUser) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *RuntimeStorageUser) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *RuntimeStorageUser) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+type RuntimeStorageCredential struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	User            string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	AccessKeyId     string                 `protobuf:"bytes,2,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	SecretAccessKey string                 `protobuf:"bytes,3,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RuntimeStorageCredential) Reset() {
+	*x = RuntimeStorageCredential{}
+	mi := &file_chorus_tutti_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorageCredential) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorageCredential) ProtoMessage() {}
+
+func (x *RuntimeStorageCredential) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorageCredential.ProtoReflect.Descriptor instead.
+func (*RuntimeStorageCredential) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *RuntimeStorageCredential) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *RuntimeStorageCredential) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *RuntimeStorageCredential) GetSecretAccessKey() string {
+	if x != nil {
+		return x.SecretAccessKey
+	}
+	return ""
+}
+
+type RuntimeStorageList struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Storages               []*RuntimeStorage      `protobuf:"bytes,1,rep,name=storages,proto3" json:"storages,omitempty"`
+	MainStorage            string                 `protobuf:"bytes,2,opt,name=main_storage,json=mainStorage,proto3" json:"main_storage,omitempty"`
+	ManagedStoragesEnabled bool                   `protobuf:"varint,3,opt,name=managed_storages_enabled,json=managedStoragesEnabled,proto3" json:"managed_storages_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *RuntimeStorageList) Reset() {
+	*x = RuntimeStorageList{}
+	mi := &file_chorus_tutti_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorageList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorageList) ProtoMessage() {}
+
+func (x *RuntimeStorageList) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorageList.ProtoReflect.Descriptor instead.
+func (*RuntimeStorageList) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *RuntimeStorageList) GetStorages() []*RuntimeStorage {
+	if x != nil {
+		return x.Storages
+	}
+	return nil
+}
+
+func (x *RuntimeStorageList) GetMainStorage() string {
+	if x != nil {
+		return x.MainStorage
+	}
+	return ""
+}
+
+func (x *RuntimeStorageList) GetManagedStoragesEnabled() bool {
+	if x != nil {
+		return x.ManagedStoragesEnabled
+	}
+	return false
+}
+
+type CreateRuntimeStorageRequest struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Storage       *RuntimeStorage             `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	Credentials   []*RuntimeStorageCredential `protobuf:"bytes,2,rep,name=credentials,proto3" json:"credentials,omitempty"`
+	Force         bool                        `protobuf:"varint,3,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateRuntimeStorageRequest) Reset() {
+	*x = CreateRuntimeStorageRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRuntimeStorageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRuntimeStorageRequest) ProtoMessage() {}
+
+func (x *CreateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRuntimeStorageRequest.ProtoReflect.Descriptor instead.
+func (*CreateRuntimeStorageRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *CreateRuntimeStorageRequest) GetStorage() *RuntimeStorage {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *CreateRuntimeStorageRequest) GetCredentials() []*RuntimeStorageCredential {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
+}
+
+func (x *CreateRuntimeStorageRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type UpdateRuntimeStorageRequest struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Storage       *RuntimeStorage             `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	Credentials   []*RuntimeStorageCredential `protobuf:"bytes,2,rep,name=credentials,proto3" json:"credentials,omitempty"`
+	Confirm       bool                        `protobuf:"varint,3,opt,name=confirm,proto3" json:"confirm,omitempty"`
+	Force         bool                        `protobuf:"varint,4,opt,name=force,proto3" json:"force,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateRuntimeStorageRequest) Reset() {
+	*x = UpdateRuntimeStorageRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRuntimeStorageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRuntimeStorageRequest) ProtoMessage() {}
+
+func (x *UpdateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRuntimeStorageRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRuntimeStorageRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *UpdateRuntimeStorageRequest) GetStorage() *RuntimeStorage {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *UpdateRuntimeStorageRequest) GetCredentials() []*RuntimeStorageCredential {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
+}
+
+func (x *UpdateRuntimeStorageRequest) GetConfirm() bool {
+	if x != nil {
+		return x.Confirm
+	}
+	return false
+}
+
+func (x *UpdateRuntimeStorageRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+type RuntimeStorageName struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RuntimeStorageName) Reset() {
+	*x = RuntimeStorageName{}
+	mi := &file_chorus_tutti_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeStorageName) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeStorageName) ProtoMessage() {}
+
+func (x *RuntimeStorageName) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeStorageName.ProtoReflect.Descriptor instead.
+func (*RuntimeStorageName) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *RuntimeStorageName) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type TestRuntimeStorageRequest struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Storage       *RuntimeStorage           `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	Credential    *RuntimeStorageCredential `protobuf:"bytes,2,opt,name=credential,proto3" json:"credential,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestRuntimeStorageRequest) Reset() {
+	*x = TestRuntimeStorageRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestRuntimeStorageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestRuntimeStorageRequest) ProtoMessage() {}
+
+func (x *TestRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestRuntimeStorageRequest.ProtoReflect.Descriptor instead.
+func (*TestRuntimeStorageRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *TestRuntimeStorageRequest) GetStorage() *RuntimeStorage {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *TestRuntimeStorageRequest) GetCredential() *RuntimeStorageCredential {
+	if x != nil {
+		return x.Credential
+	}
+	return nil
+}
+
 var File_chorus_tutti_proto protoreflect.FileDescriptor
 
 const file_chorus_tutti_proto_rawDesc = "" +
@@ -4061,9 +4674,67 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12+\n" +
 	"\x11generate_password\x18\x03 \x01(\bR\x10generatePassword\"Q\n" +
 	" ResetConsoleUserPasswordResponse\x12-\n" +
-	"\x12generated_password\x18\x01 \x01(\tR\x11generatedPassword2\xa6\x0f\n" +
+	"\x12generated_password\x18\x01 \x01(\tR\x11generatedPassword\"\xe4\x04\n" +
+	"\x0eRuntimeStorage\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\x12\x1a\n" +
+	"\bprovider\x18\x03 \x01(\tR\bprovider\x12%\n" +
+	"\x0edefault_region\x18\x04 \x01(\tR\rdefaultRegion\x12\x1b\n" +
+	"\tis_secure\x18\x05 \x01(\bR\bisSecure\x12<\n" +
+	"\fhttp_timeout\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\vhttpTimeout\x12M\n" +
+	"\x15health_check_interval\x18\a \x01(\v2\x19.google.protobuf.DurationR\x13healthCheckInterval\x12>\n" +
 	"\n" +
-	"Resilience\x12A\n" +
+	"rate_limit\x18\b \x01(\v2\x1f.chorus.RuntimeStorageRateLimitR\trateLimit\x12\x16\n" +
+	"\x06source\x18\t \x01(\tR\x06source\x12\x17\n" +
+	"\ais_main\x18\n" +
+	" \x01(\bR\x06isMain\x120\n" +
+	"\x05users\x18\v \x03(\v2\x1a.chorus.RuntimeStorageUserR\x05users\x12\x1e\n" +
+	"\n" +
+	"references\x18\f \x03(\tR\n" +
+	"references\x129\n" +
+	"\n" +
+	"created_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"w\n" +
+	"\x17RuntimeStorageRateLimit\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x10\n" +
+	"\x03rpm\x18\x02 \x01(\x05R\x03rpm\x120\n" +
+	"\x14include_metadata_api\x18\x03 \x01(\bR\x12includeMetadataApi\"d\n" +
+	"\x12RuntimeStorageUser\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\"\n" +
+	"\raccess_key_id\x18\x02 \x01(\tR\vaccessKeyId\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\"~\n" +
+	"\x18RuntimeStorageCredential\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\"\n" +
+	"\raccess_key_id\x18\x02 \x01(\tR\vaccessKeyId\x12*\n" +
+	"\x11secret_access_key\x18\x03 \x01(\tR\x0fsecretAccessKey\"\xa5\x01\n" +
+	"\x12RuntimeStorageList\x122\n" +
+	"\bstorages\x18\x01 \x03(\v2\x16.chorus.RuntimeStorageR\bstorages\x12!\n" +
+	"\fmain_storage\x18\x02 \x01(\tR\vmainStorage\x128\n" +
+	"\x18managed_storages_enabled\x18\x03 \x01(\bR\x16managedStoragesEnabled\"\xa9\x01\n" +
+	"\x1bCreateRuntimeStorageRequest\x120\n" +
+	"\astorage\x18\x01 \x01(\v2\x16.chorus.RuntimeStorageR\astorage\x12B\n" +
+	"\vcredentials\x18\x02 \x03(\v2 .chorus.RuntimeStorageCredentialR\vcredentials\x12\x14\n" +
+	"\x05force\x18\x03 \x01(\bR\x05force\"\xc3\x01\n" +
+	"\x1bUpdateRuntimeStorageRequest\x120\n" +
+	"\astorage\x18\x01 \x01(\v2\x16.chorus.RuntimeStorageR\astorage\x12B\n" +
+	"\vcredentials\x18\x02 \x03(\v2 .chorus.RuntimeStorageCredentialR\vcredentials\x12\x18\n" +
+	"\aconfirm\x18\x03 \x01(\bR\aconfirm\x12\x14\n" +
+	"\x05force\x18\x04 \x01(\bR\x05force\"(\n" +
+	"\x12RuntimeStorageName\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\x8f\x01\n" +
+	"\x19TestRuntimeStorageRequest\x120\n" +
+	"\astorage\x18\x01 \x01(\v2\x16.chorus.RuntimeStorageR\astorage\x12@\n" +
+	"\n" +
+	"credential\x18\x02 \x01(\v2 .chorus.RuntimeStorageCredentialR\n" +
+	"credential2\xc7\x12\n" +
+	"\n" +
+	"Resilience\x12I\n" +
+	"\x13ListRuntimeStorages\x12\x16.google.protobuf.Empty\x1a\x1a.chorus.RuntimeStorageList\x12S\n" +
+	"\x14CreateRuntimeStorage\x12#.chorus.CreateRuntimeStorageRequest\x1a\x16.chorus.RuntimeStorage\x12S\n" +
+	"\x14UpdateRuntimeStorage\x12#.chorus.UpdateRuntimeStorageRequest\x1a\x16.chorus.RuntimeStorage\x12J\n" +
+	"\x14DeleteRuntimeStorage\x12\x1a.chorus.RuntimeStorageName\x1a\x16.google.protobuf.Empty\x12^\n" +
+	"\x12TestRuntimeStorage\x12!.chorus.TestRuntimeStorageRequest\x1a%.chorus.TestS3UserCredentialsResponse\x12A\n" +
 	"\x0eGetProxyStatus\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ProxyStatusList\x12D\n" +
 	"\x0fGetStatsHistory\x12\x1b.chorus.StatsHistoryRequest\x1a\x14.chorus.StatsHistory\x12J\n" +
 	"\x14ListFailoverPolicies\x12\x16.google.protobuf.Empty\x1a\x1a.chorus.FailoverPolicyList\x12C\n" +
@@ -4102,7 +4773,7 @@ func file_chorus_tutti_proto_rawDescGZIP() []byte {
 	return file_chorus_tutti_proto_rawDescData
 }
 
-var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
+var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
 var file_chorus_tutti_proto_goTypes = []any{
 	(*CreateProxyAccountRequest)(nil),        // 0: chorus.CreateProxyAccountRequest
 	(*ProxyAccountSecret)(nil),               // 1: chorus.ProxyAccountSecret
@@ -4159,133 +4830,165 @@ var file_chorus_tutti_proto_goTypes = []any{
 	(*UpdateConsoleUserRequest)(nil),         // 52: chorus.UpdateConsoleUserRequest
 	(*ResetConsoleUserPasswordRequest)(nil),  // 53: chorus.ResetConsoleUserPasswordRequest
 	(*ResetConsoleUserPasswordResponse)(nil), // 54: chorus.ResetConsoleUserPasswordResponse
-	nil,                                      // 55: chorus.TrafficRates.RequestsByClassEntry
-	nil,                                      // 56: chorus.TrafficRates.RequestsByStorageEntry
-	nil,                                      // 57: chorus.TrafficStats.RequestsByClassEntry
-	nil,                                      // 58: chorus.TrafficStats.RequestsByStorageEntry
-	(*timestamppb.Timestamp)(nil),            // 59: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),              // 60: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                    // 61: google.protobuf.Empty
+	(*RuntimeStorage)(nil),                   // 55: chorus.RuntimeStorage
+	(*RuntimeStorageRateLimit)(nil),          // 56: chorus.RuntimeStorageRateLimit
+	(*RuntimeStorageUser)(nil),               // 57: chorus.RuntimeStorageUser
+	(*RuntimeStorageCredential)(nil),         // 58: chorus.RuntimeStorageCredential
+	(*RuntimeStorageList)(nil),               // 59: chorus.RuntimeStorageList
+	(*CreateRuntimeStorageRequest)(nil),      // 60: chorus.CreateRuntimeStorageRequest
+	(*UpdateRuntimeStorageRequest)(nil),      // 61: chorus.UpdateRuntimeStorageRequest
+	(*RuntimeStorageName)(nil),               // 62: chorus.RuntimeStorageName
+	(*TestRuntimeStorageRequest)(nil),        // 63: chorus.TestRuntimeStorageRequest
+	nil,                                      // 64: chorus.TrafficRates.RequestsByClassEntry
+	nil,                                      // 65: chorus.TrafficRates.RequestsByStorageEntry
+	nil,                                      // 66: chorus.TrafficStats.RequestsByClassEntry
+	nil,                                      // 67: chorus.TrafficStats.RequestsByStorageEntry
+	(*timestamppb.Timestamp)(nil),            // 68: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),              // 69: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                    // 70: google.protobuf.Empty
 }
 var file_chorus_tutti_proto_depIdxs = []int32{
-	59, // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	60, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	59, // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	59, // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	59, // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	6,  // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
-	6,  // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
-	5,  // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
-	9,  // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
-	11, // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
-	59, // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	60, // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	60, // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
-	13, // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
-	60, // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	60, // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	60, // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
-	14, // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
-	15, // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
-	16, // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
-	59, // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	59, // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
-	12, // 22: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
-	17, // 23: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
-	24, // 24: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
-	19, // 25: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
-	55, // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
-	56, // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
-	59, // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
-	19, // 29: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
-	59, // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
-	19, // 31: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
-	60, // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
-	21, // 33: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
-	22, // 34: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
-	59, // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	59, // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	57, // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
-	58, // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
-	25, // 39: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
-	18, // 40: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
-	19, // 41: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
-	60, // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
-	27, // 43: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
-	59, // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
-	30, // 45: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
-	33, // 46: chorus.S3User.storages:type_name -> chorus.S3UserStorage
-	34, // 47: chorus.S3User.access_keys:type_name -> chorus.S3UserAccessKeys
-	35, // 48: chorus.S3User.policy:type_name -> chorus.S3UserPolicy
-	36, // 49: chorus.S3UserList.users:type_name -> chorus.S3User
-	38, // 50: chorus.CreateS3UserRequest.credentials:type_name -> chorus.S3UserCredential
-	6,  // 51: chorus.CreateS3UserRequest.policy:type_name -> chorus.AccessPolicy
-	36, // 52: chorus.CreateS3UserResponse.user:type_name -> chorus.S3User
-	1,  // 53: chorus.CreateS3UserResponse.access_key:type_name -> chorus.ProxyAccountSecret
-	40, // 54: chorus.CreateS3UserResponse.verification:type_name -> chorus.S3UserVerifyResult
-	38, // 55: chorus.UpdateS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
-	38, // 56: chorus.TestS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
-	59, // 57: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
-	59, // 58: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
-	59, // 59: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
-	59, // 60: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
-	47, // 61: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
-	47, // 62: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
-	61, // 63: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
-	20, // 64: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
-	61, // 65: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
-	27, // 66: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
-	29, // 67: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
-	61, // 68: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
-	32, // 69: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
-	61, // 70: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
-	6,  // 71: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
-	8,  // 72: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
-	61, // 73: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
-	0,  // 74: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
-	2,  // 75: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
-	3,  // 76: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
-	4,  // 77: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
-	61, // 78: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
-	39, // 79: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
-	42, // 80: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
-	43, // 81: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
-	45, // 82: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
-	61, // 83: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
-	50, // 84: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
-	52, // 85: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
-	53, // 86: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
-	49, // 87: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
-	26, // 88: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
-	23, // 89: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
-	28, // 90: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
-	61, // 91: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	61, // 92: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	31, // 93: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
-	61, // 94: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,  // 95: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
-	61, // 96: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	61, // 97: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10, // 98: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
-	1,  // 99: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
-	1,  // 100: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
-	61, // 101: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	61, // 102: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	37, // 103: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
-	41, // 104: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
-	61, // 105: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
-	44, // 106: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
-	46, // 107: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
-	48, // 108: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
-	51, // 109: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
-	61, // 110: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
-	54, // 111: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
-	61, // 112: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
-	88, // [88:113] is the sub-list for method output_type
-	63, // [63:88] is the sub-list for method input_type
-	63, // [63:63] is the sub-list for extension type_name
-	63, // [63:63] is the sub-list for extension extendee
-	0,  // [0:63] is the sub-list for field type_name
+	68,  // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	69,  // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	68,  // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	68,  // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	68,  // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	6,   // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
+	6,   // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
+	5,   // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
+	9,   // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
+	11,  // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
+	68,  // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	69,  // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	69,  // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	13,  // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
+	69,  // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	69,  // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	69,  // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
+	14,  // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
+	15,  // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
+	16,  // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
+	68,  // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	68,  // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	12,  // 22: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
+	17,  // 23: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
+	24,  // 24: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
+	19,  // 25: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
+	64,  // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
+	65,  // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
+	68,  // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	19,  // 29: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
+	68,  // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	19,  // 31: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
+	69,  // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	21,  // 33: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
+	22,  // 34: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
+	68,  // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	68,  // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	66,  // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
+	67,  // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
+	25,  // 39: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
+	18,  // 40: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
+	19,  // 41: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
+	69,  // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	27,  // 43: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
+	68,  // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	30,  // 45: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
+	33,  // 46: chorus.S3User.storages:type_name -> chorus.S3UserStorage
+	34,  // 47: chorus.S3User.access_keys:type_name -> chorus.S3UserAccessKeys
+	35,  // 48: chorus.S3User.policy:type_name -> chorus.S3UserPolicy
+	36,  // 49: chorus.S3UserList.users:type_name -> chorus.S3User
+	38,  // 50: chorus.CreateS3UserRequest.credentials:type_name -> chorus.S3UserCredential
+	6,   // 51: chorus.CreateS3UserRequest.policy:type_name -> chorus.AccessPolicy
+	36,  // 52: chorus.CreateS3UserResponse.user:type_name -> chorus.S3User
+	1,   // 53: chorus.CreateS3UserResponse.access_key:type_name -> chorus.ProxyAccountSecret
+	40,  // 54: chorus.CreateS3UserResponse.verification:type_name -> chorus.S3UserVerifyResult
+	38,  // 55: chorus.UpdateS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
+	38,  // 56: chorus.TestS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
+	68,  // 57: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
+	68,  // 58: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
+	68,  // 59: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
+	68,  // 60: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
+	47,  // 61: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
+	47,  // 62: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
+	69,  // 63: chorus.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
+	69,  // 64: chorus.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
+	56,  // 65: chorus.RuntimeStorage.rate_limit:type_name -> chorus.RuntimeStorageRateLimit
+	57,  // 66: chorus.RuntimeStorage.users:type_name -> chorus.RuntimeStorageUser
+	68,  // 67: chorus.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
+	68,  // 68: chorus.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
+	55,  // 69: chorus.RuntimeStorageList.storages:type_name -> chorus.RuntimeStorage
+	55,  // 70: chorus.CreateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	58,  // 71: chorus.CreateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
+	55,  // 72: chorus.UpdateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	58,  // 73: chorus.UpdateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
+	55,  // 74: chorus.TestRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	58,  // 75: chorus.TestRuntimeStorageRequest.credential:type_name -> chorus.RuntimeStorageCredential
+	70,  // 76: chorus.Resilience.ListRuntimeStorages:input_type -> google.protobuf.Empty
+	60,  // 77: chorus.Resilience.CreateRuntimeStorage:input_type -> chorus.CreateRuntimeStorageRequest
+	61,  // 78: chorus.Resilience.UpdateRuntimeStorage:input_type -> chorus.UpdateRuntimeStorageRequest
+	62,  // 79: chorus.Resilience.DeleteRuntimeStorage:input_type -> chorus.RuntimeStorageName
+	63,  // 80: chorus.Resilience.TestRuntimeStorage:input_type -> chorus.TestRuntimeStorageRequest
+	70,  // 81: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	20,  // 82: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
+	70,  // 83: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	27,  // 84: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
+	29,  // 85: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
+	70,  // 86: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	32,  // 87: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
+	70,  // 88: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	6,   // 89: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
+	8,   // 90: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
+	70,  // 91: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	0,   // 92: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
+	2,   // 93: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
+	3,   // 94: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
+	4,   // 95: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
+	70,  // 96: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
+	39,  // 97: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
+	42,  // 98: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
+	43,  // 99: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
+	45,  // 100: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
+	70,  // 101: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
+	50,  // 102: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
+	52,  // 103: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
+	53,  // 104: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
+	49,  // 105: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
+	59,  // 106: chorus.Resilience.ListRuntimeStorages:output_type -> chorus.RuntimeStorageList
+	55,  // 107: chorus.Resilience.CreateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	55,  // 108: chorus.Resilience.UpdateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	70,  // 109: chorus.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
+	46,  // 110: chorus.Resilience.TestRuntimeStorage:output_type -> chorus.TestS3UserCredentialsResponse
+	26,  // 111: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
+	23,  // 112: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
+	28,  // 113: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
+	70,  // 114: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	70,  // 115: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31,  // 116: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
+	70,  // 117: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,   // 118: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
+	70,  // 119: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	70,  // 120: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10,  // 121: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
+	1,   // 122: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
+	1,   // 123: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
+	70,  // 124: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	70,  // 125: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	37,  // 126: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
+	41,  // 127: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
+	70,  // 128: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
+	44,  // 129: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
+	46,  // 130: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
+	48,  // 131: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
+	51,  // 132: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
+	70,  // 133: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
+	54,  // 134: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
+	70,  // 135: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
+	106, // [106:136] is the sub-list for method output_type
+	76,  // [76:106] is the sub-list for method input_type
+	76,  // [76:76] is the sub-list for extension type_name
+	76,  // [76:76] is the sub-list for extension extendee
+	0,   // [0:76] is the sub-list for field type_name
 }
 
 func init() { file_chorus_tutti_proto_init() }
@@ -4303,7 +5006,7 @@ func file_chorus_tutti_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_tutti_proto_rawDesc), len(file_chorus_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   59,
+			NumMessages:   68,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

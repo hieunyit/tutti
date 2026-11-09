@@ -11,6 +11,12 @@ option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
 // Resilience exposes the high-availability state of the proxies (circuit breaker status and effective
 // settings) and manages automatic failover policies and the history of performed failovers.
 service Resilience {
+  rpc ListRuntimeStorages(google.protobuf.Empty) returns (RuntimeStorageList);
+  rpc CreateRuntimeStorage(CreateRuntimeStorageRequest) returns (RuntimeStorage);
+  rpc UpdateRuntimeStorage(UpdateRuntimeStorageRequest) returns (RuntimeStorage);
+  rpc DeleteRuntimeStorage(RuntimeStorageName) returns (google.protobuf.Empty);
+  rpc TestRuntimeStorage(TestRuntimeStorageRequest) returns (TestS3UserCredentialsResponse);
+
   // GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
   // Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
   rpc GetProxyStatus(google.protobuf.Empty) returns (ProxyStatusList);
@@ -622,3 +628,29 @@ message ResetConsoleUserPasswordRequest {
 message ResetConsoleUserPasswordResponse {
   string generated_password = 1;
 }
+
+// RuntimeStorage contains connection settings and metadata, never credentials secrets.
+message RuntimeStorage {
+ string name = 1;
+ string address = 2;
+ string provider = 3;
+ string default_region = 4;
+ bool is_secure = 5;
+ google.protobuf.Duration http_timeout = 6;
+ google.protobuf.Duration health_check_interval = 7;
+ RuntimeStorageRateLimit rate_limit = 8;
+ string source = 9;
+ bool is_main = 10;
+ repeated RuntimeStorageUser users = 11;
+ repeated string references = 12;
+ google.protobuf.Timestamp created_at = 13;
+ google.protobuf.Timestamp updated_at = 14;
+}
+message RuntimeStorageRateLimit { bool enabled = 1; int32 rpm = 2; bool include_metadata_api = 3; }
+message RuntimeStorageUser { string user = 1; string access_key_id = 2; string source = 3; }
+message RuntimeStorageCredential { string user = 1; string access_key_id = 2; string secret_access_key = 3; }
+message RuntimeStorageList { repeated RuntimeStorage storages = 1; string main_storage = 2; bool managed_storages_enabled = 3; }
+message CreateRuntimeStorageRequest { RuntimeStorage storage = 1; repeated RuntimeStorageCredential credentials = 2; bool force = 3; }
+message UpdateRuntimeStorageRequest { RuntimeStorage storage = 1; repeated RuntimeStorageCredential credentials = 2; bool confirm = 3; bool force = 4; }
+message RuntimeStorageName { string name = 1; }
+message TestRuntimeStorageRequest { RuntimeStorage storage = 1; RuntimeStorageCredential credential = 2; }

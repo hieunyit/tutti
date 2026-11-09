@@ -42,6 +42,7 @@ var publicMethods = map[string]struct{}{
 //
 // GetProxyCredentials is deliberately absent: it returns secret keys.
 var viewerMethods = map[string]struct{}{
+	"/chorus.Resilience/ListRuntimeStorages":  {},
 	"/chorus.Chorus/GetStorages":              {},
 	"/chorus.Diff/List":                       {},
 	"/chorus.Diff/GetReport":                  {},

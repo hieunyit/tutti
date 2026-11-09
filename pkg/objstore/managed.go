@@ -1,0 +1,492 @@
+// Copyright 2026 hieunyit
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package objstore
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"net/url"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
+	zlog "github.com/rs/zerolog/log"
+
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/ratelimit"
+	"github.com/hieunyit/tutti/pkg/s3"
+)
+
+/*
+Managed storages are S3 storages created at runtime through the management API.
+
+Redis (config DB):
+  - HASH "tutti:storages": field = storage name, value = JSON document with the connection settings (never secrets)
+  - STRING "tutti:storages:version": incremented on every change; workers and proxies poll it like the dynamic
+    credentials and rebuild their view of the storages when it changes.
+
+The credentials of the storage users are regular dynamic credentials (sealed with the master password).
+Storages defined in the config are never overridden by managed ones.
+*/
+const (
+	managedStoragesKey        = "tutti:storages"
+	managedStoragesVersionKey = "tutti:storages:version"
+)
+
+// Sources of a storage definition.
+const (
+	StorageSourceConfig  = "config"
+	StorageSourceManaged = "managed"
+)
+
+var storageNameRe = regexp.MustCompile(`^[a-z0-9_-]{1,63}$`)
+
+// ValidStorageName checks a storage name: 1-63 characters, lowercase letters, digits, '-' and '_'.
+func ValidStorageName(name string) error {
+	if !storageNameRe.MatchString(name) {
+		return fmt.Errorf("%w: storage name must be 1-63 characters: lowercase letters, digits, '-' and '_'", dom.ErrInvalidArg)
+	}
+	return nil
+}
+
+// ManagedStorage is the runtime-managed definition of an S3 storage.
+type ManagedStorage struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+	Address   s3.StorageAddress
+	RateLimit ratelimit.RateLimit
+}
+
+// Normalize validates the definition and fills defaults (address scheme, http timeout).
+func (m ManagedStorage) Normalize() (ManagedStorage, error) {
+	if err := ValidStorageName(m.Name); err != nil {
+		return m, err
+	}
+	st := s3.Storage{StorageAddress: m.Address}
+	if err := st.Validate(); err != nil {
+		return m, fmt.Errorf("%w: %w", dom.ErrInvalidArg, err)
+	}
+	m.Address = st.StorageAddress
+	u, err := url.Parse(m.Address.Address)
+	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return m, fmt.Errorf("%w: storage address must be an HTTP(S) endpoint without credentials, path, query or fragment", dom.ErrInvalidArg)
+	}
+	m.Address.Address = strings.TrimSuffix(m.Address.Address, "/")
+	if m.Address.HttpTimeout < 0 {
+		return m, fmt.Errorf("%w: httpTimeout must not be negative", dom.ErrInvalidArg)
+	}
+	if m.Address.HealthCheckInterval < 0 || (m.Address.HealthCheckInterval > 0 && m.Address.HealthCheckInterval < time.Second) {
+		return m, fmt.Errorf("%w: healthCheckInterval must be at least 1s (or 0 for the default)", dom.ErrInvalidArg)
+	}
+	if m.RateLimit.Enabled && m.RateLimit.RPM <= 0 {
+		return m, fmt.Errorf("%w: rateLimit.rpm must be greater than zero when the rate limit is enabled", dom.ErrInvalidArg)
+	}
+	if m.RateLimit.RPM < 0 {
+		return m, fmt.Errorf("%w: rateLimit.rpm must not be negative", dom.ErrInvalidArg)
+	}
+	return m, nil
+}
+
+type managedDoc struct {
+	Name                string    `json:"name"`
+	Address             string    `json:"address"`
+	Provider            string    `json:"provider"`
+	DefaultRegion       string    `json:"defaultRegion,omitempty"`
+	IsSecure            bool      `json:"isSecure"`
+	HealthCheckInterval int64     `json:"healthCheckIntervalNs,omitempty"`
+	HttpTimeout         int64     `json:"httpTimeoutNs,omitempty"`
+	RateEnabled         bool      `json:"rateLimitEnabled,omitempty"`
+	RateRPM             int       `json:"rateLimitRpm,omitempty"`
+	RateMetadata        bool      `json:"rateLimitIncludeMetadataApi,omitempty"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
+}
+
+func (m ManagedStorage) marshal() ([]byte, error) {
+	return json.Marshal(managedDoc{
+		Name: m.Name, Address: m.Address.Address, Provider: string(m.Address.Provider), DefaultRegion: m.Address.DefaultRegion,
+		IsSecure: m.Address.IsSecure, HealthCheckInterval: int64(m.Address.HealthCheckInterval), HttpTimeout: int64(m.Address.HttpTimeout),
+		RateEnabled: m.RateLimit.Enabled, RateRPM: m.RateLimit.RPM, RateMetadata: m.RateLimit.IncludeMetadataAPI,
+		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt,
+	})
+}
+
+func unmarshalManaged(field string, raw string) (ManagedStorage, error) {
+	var d managedDoc
+	if err := json.Unmarshal([]byte(raw), &d); err != nil {
+		return ManagedStorage{}, err
+	}
+	if d.Name != field {
+		return ManagedStorage{}, fmt.Errorf("document name %q does not match field %q", d.Name, field)
+	}
+	return ManagedStorage{
+		Name: d.Name,
+		Address: s3.StorageAddress{
+			Address: d.Address, Provider: s3.Provider(d.Provider), DefaultRegion: d.DefaultRegion, IsSecure: d.IsSecure,
+			HealthCheckInterval: time.Duration(d.HealthCheckInterval), HttpTimeout: time.Duration(d.HttpTimeout),
+		},
+		RateLimit: ratelimit.RateLimit{Enabled: d.RateEnabled, RPM: d.RateRPM, IncludeMetadataAPI: d.RateMetadata},
+		CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+	}, nil
+}
+
+// storagesView is an immutable snapshot of all known storages (config + managed).
+type storagesView struct {
+	types   map[string]dom.StorageType
+	s3      map[string]s3.StorageAddress
+	rate    map[string]ratelimit.RateLimit
+	managed map[string]ManagedStorage
+}
+
+func buildView(conf *Config, managed map[string]ManagedStorage) *storagesView {
+	v := &storagesView{
+		types:   conf.Types(),
+		s3:      make(map[string]s3.StorageAddress),
+		rate:    conf.RateLimitConf(),
+		managed: managed,
+	}
+	for name, st := range conf.S3Storages() {
+		v.s3[name] = st.StorageAddress
+	}
+	for name, m := range managed {
+		if _, ok := conf.Storages[name]; ok {
+			continue // config always wins
+		}
+		v.types[name] = dom.S3
+		v.s3[name] = m.Address
+		v.rate[name] = m.RateLimit
+	}
+	return v
+}
+
+// StorageChange describes a change of the storages applied locally.
+type StorageChange struct {
+	Name string
+	// Kind is "added", "updated" or "removed".
+	Kind string
+}
+
+// ManagedStoragesOption enables runtime-managed storages stored in the given (config DB) Redis.
+func WithManagedStorages(rc redis.UniversalClient) CredsSvcOption {
+	return func(s *credsSvc) { s.managedClient = rc }
+}
+
+// CredsSvcOption customizes the credentials service.
+type CredsSvcOption func(*credsSvc)
+
+// ManagedStoragesEnabled reports whether managed storages are active (Redis given and dynamic credentials enabled).
+func (s *credsSvc) ManagedStoragesEnabled() bool {
+	return s.managedClient != nil && s.sealingAvailable() == nil
+}
+
+// Subscribe registers a callback invoked (outside any lock) after the storages changed locally, either by a poll or by
+// a change made through this service.
+func (s *credsSvc) Subscribe(fn func(changes []StorageChange)) {
+	s.listenersMu.Lock()
+	defer s.listenersMu.Unlock()
+	s.listeners = append(s.listeners, fn)
+}
+
+func (s *credsSvc) notify(changes []StorageChange) {
+	if len(changes) == 0 {
+		return
+	}
+	s.listenersMu.Lock()
+	ls := append([]func([]StorageChange){}, s.listeners...)
+	s.listenersMu.Unlock()
+	for _, fn := range ls {
+		fn(changes)
+	}
+}
+
+// RateLimits returns the rate limit settings of all storages.
+func (s *credsSvc) RateLimits() map[string]ratelimit.RateLimit {
+	return maps.Clone(s.view.Load().rate)
+}
+
+// RateLimit reads one immutable snapshot without copying the full map on the request path.
+func (s *credsSvc) RateLimit(name string) (ratelimit.RateLimit, bool) {
+	v, ok := s.view.Load().rate[name]
+	return v, ok
+}
+
+// StorageSource tells where a storage is defined: StorageSourceConfig, StorageSourceManaged or "" if unknown.
+func (s *credsSvc) StorageSource(name string) string {
+	if _, ok := s.config.Storages[name]; ok {
+		return StorageSourceConfig
+	}
+	if _, ok := s.view.Load().managed[name]; ok {
+		return StorageSourceManaged
+	}
+	return ""
+}
+
+// ListManaged returns the managed storages sorted by name.
+func (s *credsSvc) ListManaged() []ManagedStorage {
+	v := s.view.Load()
+	res := make([]ManagedStorage, 0, len(v.managed))
+	for name, m := range v.managed {
+		if _, ok := s.config.Storages[name]; ok {
+			continue
+		}
+		res = append(res, m)
+	}
+	sort.Slice(res, func(i, j int) bool { return res[i].Name < res[j].Name })
+	return res
+}
+
+// GetManaged returns one managed storage.
+func (s *credsSvc) GetManaged(name string) (ManagedStorage, bool) {
+	m, ok := s.view.Load().managed[name]
+	if _, inConf := s.config.Storages[name]; inConf {
+		return ManagedStorage{}, false
+	}
+	return m, ok
+}
+
+func (s *credsSvc) managedPrecondition() error {
+	if s.managedClient == nil {
+		return fmt.Errorf("%w: managed storages are not available on this server", dom.ErrFailedPrecondition)
+	}
+	if err := s.sealingAvailable(); err != nil {
+		return fmt.Errorf("%w: managed storages require storage.dynamicCredentials enabled with a masterPassword (encryption on): the credentials of their users are stored sealed", dom.ErrFailedPrecondition)
+	}
+	return nil
+}
+
+// CreateManaged validates and stores a new managed storage. It fails with dom.ErrAlreadyExists if the name is taken
+// by a config or managed storage.
+func (s *credsSvc) CreateManaged(ctx context.Context, m ManagedStorage) (ManagedStorage, error) {
+	if err := s.managedPrecondition(); err != nil {
+		return m, err
+	}
+	m, err := m.Normalize()
+	if err != nil {
+		return m, err
+	}
+	if _, ok := s.config.Storages[m.Name]; ok {
+		return m, fmt.Errorf("%w: storage %q is already defined in config", dom.ErrAlreadyExists, m.Name)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	m.CreatedAt, m.UpdatedAt = now, now
+	raw, err := m.marshal()
+	if err != nil {
+		return m, err
+	}
+	n, err := redis.NewScript(`if redis.call('hexists',KEYS[1],ARGV[1]) == 1 then return 0 end; redis.call('hset',KEYS[1],ARGV[1],ARGV[2]); redis.call('incr',KEYS[2]); return 1`).Run(ctx, s.managedClient, []string{managedStoragesKey, managedStoragesVersionKey}, m.Name, raw).Int()
+	if err != nil {
+		return m, fmt.Errorf("failed to store storage: %w", err)
+	}
+	if n == 0 {
+		return m, fmt.Errorf("%w: storage %q already exists", dom.ErrAlreadyExists, m.Name)
+	}
+	if err := s.syncManaged(ctx); err != nil {
+		return m, fmt.Errorf("failed to sync storages after create: %w", err)
+	}
+	return m, nil
+}
+
+// UpdateManaged replaces the settings of an existing managed storage (CreatedAt is kept).
+func (s *credsSvc) UpdateManaged(ctx context.Context, m ManagedStorage) (ManagedStorage, error) {
+	if err := s.managedPrecondition(); err != nil {
+		return m, err
+	}
+	if _, ok := s.config.Storages[m.Name]; ok {
+		return m, fmt.Errorf("%w: storage %q is defined in config and cannot be changed through the API", dom.ErrFailedPrecondition, m.Name)
+	}
+	m, err := m.Normalize()
+	if err != nil {
+		return m, err
+	}
+	rawOld, err := s.managedClient.HGet(ctx, managedStoragesKey, m.Name).Result()
+	if errors.Is(err, redis.Nil) {
+		return m, fmt.Errorf("%w: storage %q", dom.ErrNotFound, m.Name)
+	}
+	if err != nil {
+		return m, fmt.Errorf("failed to read storage from redis: %w", err)
+	}
+	old, err := unmarshalManaged(m.Name, rawOld)
+	if err != nil {
+		return m, fmt.Errorf("%w: stored storage %q is corrupted: %w", dom.ErrInternal, m.Name, err)
+	}
+	m.CreatedAt, m.UpdatedAt = old.CreatedAt, time.Now().UTC().Truncate(time.Second)
+	raw, err := m.marshal()
+	if err != nil {
+		return m, err
+	}
+	// replace only if the document is unchanged since it was read: concurrent updates fail instead of silently losing one
+	err = s.managedClient.Watch(ctx, func(tx *redis.Tx) error {
+		cur, err := tx.HGet(ctx, managedStoragesKey, m.Name).Result()
+		if err != nil {
+			return err
+		}
+		if cur != rawOld {
+			return redis.TxFailedErr
+		}
+		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
+			p.HSet(ctx, managedStoragesKey, m.Name, raw)
+			p.Incr(ctx, managedStoragesVersionKey)
+			return nil
+		})
+		return err
+	}, managedStoragesKey)
+	if errors.Is(err, redis.TxFailedErr) {
+		return m, fmt.Errorf("%w: storage %q was changed concurrently, retry", dom.ErrFailedPrecondition, m.Name)
+	}
+	if err != nil {
+		return m, fmt.Errorf("failed to update storage in redis: %w", err)
+	}
+	if err := s.syncManaged(ctx); err != nil {
+		return m, fmt.Errorf("failed to sync storages after update: %w", err)
+	}
+	return m, nil
+}
+
+// DeleteManaged removes a managed storage together with the dynamic credentials of its users. Callers must check
+// references (replications, routings, ...) before.
+func (s *credsSvc) DeleteManaged(ctx context.Context, name string) error {
+	if s.managedClient == nil {
+		return fmt.Errorf("%w: managed storages are not available on this server", dom.ErrFailedPrecondition)
+	}
+	if _, ok := s.config.Storages[name]; ok {
+		return fmt.Errorf("%w: storage %q is defined in config and cannot be deleted through the API", dom.ErrFailedPrecondition, name)
+	}
+	exists, err := s.managedClient.HExists(ctx, managedStoragesKey, name).Result()
+	if err != nil {
+		return fmt.Errorf("failed to read storage from redis: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("%w: storage %q", dom.ErrNotFound, name)
+	}
+	// credentials first: a failure leaves a storage without users, and the delete can be retried
+	if err := s.deleteAllUserCredentials(ctx, name); err != nil {
+		return err
+	}
+	tx := s.managedClient.TxPipeline()
+	tx.HDel(ctx, managedStoragesKey, name)
+	tx.Incr(ctx, managedStoragesVersionKey)
+	if _, err := tx.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete storage in redis: %w", err)
+	}
+	if err := s.syncManaged(ctx); err != nil {
+		return fmt.Errorf("failed to sync storages after delete: %w", err)
+	}
+	return nil
+}
+
+func (s *credsSvc) deleteAllUserCredentials(ctx context.Context, storage string) error {
+	if !s.config.DynamicCredentials.Enabled {
+		return nil
+	}
+	all, err := s.client.HKeys(ctx, redisHashKey).Result()
+	if err != nil {
+		return err
+	}
+	var fields []string
+	for _, field := range all {
+		typ, key, err := credsFromRedisField(field)
+		if err == nil && typ == dom.S3 {
+			if st, _ := cacheKeyToCreds(key); st == storage {
+				fields = append(fields, field)
+			}
+		}
+	}
+	if len(fields) == 0 {
+		return nil
+	}
+	tx := s.client.TxPipeline()
+	tx.HDel(ctx, redisHashKey, fields...)
+	tx.HIncrBy(ctx, redisHashKey, redisHFieldVersion, 1)
+	if _, err := tx.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete credentials of storage %q in redis: %w", storage, err)
+	}
+	return s.sync(ctx)
+}
+
+// syncManaged reloads the managed storages from Redis if their version changed.
+func (s *credsSvc) syncManaged(ctx context.Context) error {
+	if !s.ManagedStoragesEnabled() {
+		return nil
+	}
+	s.managedMu.Lock()
+	remoteVer, err := s.managedClient.Get(ctx, managedStoragesVersionKey).Int64()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		s.managedMu.Unlock()
+		return fmt.Errorf("failed to get storages version from redis: %w", err)
+	}
+	if s.managedLoaded && remoteVer == s.managedVer {
+		s.managedMu.Unlock()
+		return nil
+	}
+	docs, err := s.managedClient.HGetAll(ctx, managedStoragesKey).Result()
+	if err != nil {
+		s.managedMu.Unlock()
+		return fmt.Errorf("failed to get storages from redis: %w", err)
+	}
+	logger := zerolog.Ctx(ctx)
+	if logger.GetLevel() == zerolog.Disabled {
+		logger = &zlog.Logger
+	}
+	managed := make(map[string]ManagedStorage, len(docs))
+	for name, raw := range docs {
+		m, err := unmarshalManaged(name, raw)
+		if err == nil {
+			m, err = m.Normalize()
+		}
+		if err != nil {
+			// one broken document must not take the other storages down
+			logger.Error().Err(err).Str("storage", name).Msg("ignoring invalid managed storage document")
+			continue
+		}
+		managed[name] = m
+	}
+	old := s.view.Load()
+	nv := buildView(s.config, managed)
+	var changes []StorageChange
+	for name, m := range nv.managed {
+		if _, inConf := s.config.Storages[name]; inConf {
+			logger.Warn().Str("storage", name).Msg("managed storage ignored: a storage with this name is defined in config")
+			continue
+		}
+		prev, ok := old.managed[name]
+		switch {
+		case !ok:
+			changes = append(changes, StorageChange{Name: name, Kind: "added"})
+			logger.Info().Str("storage", name).Str("address", m.Address.Address).Msg("managed storage added")
+		case prev != m:
+			changes = append(changes, StorageChange{Name: name, Kind: "updated"})
+			logger.Info().Str("storage", name).Str("address", m.Address.Address).Msg("managed storage updated")
+		}
+	}
+	for name := range old.managed {
+		if _, ok := nv.managed[name]; !ok {
+			changes = append(changes, StorageChange{Name: name, Kind: "removed"})
+			logger.Info().Str("storage", name).Msg("managed storage removed")
+		}
+	}
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Name < changes[j].Name })
+	s.view.Store(nv)
+	s.managedVer, s.managedLoaded = remoteVer, true
+	s.managedMu.Unlock()
+	s.notify(changes)
+	return nil
+}

@@ -38,6 +38,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/test/app"
 )
 
@@ -165,7 +166,8 @@ type testEnv struct {
 type envOpts struct {
 	redis *failingRedis
 	// proxyHook mutates the proxy config before start.
-	proxyHook func(c *proxy.Config)
+	proxyHook  func(c *proxy.Config)
+	workerHook func(c *worker.Config)
 	// dynamicCreds enables dynamic credentials with encryption (master password) in proxy and worker.
 	dynamicCreds bool
 	// forwarded lists storages the proxy reaches through a forwarder.
@@ -205,6 +207,9 @@ func startEnv(t *testing.T, o envOpts) *testEnv {
 	wc, err := app.DeepCopyStruct(workerConf)
 	r.NoError(err)
 	wc.Storage = app.WorkerS3Config(mainKey, storages)
+	if o.workerHook != nil {
+		o.workerHook(wc)
+	}
 	if o.dynamicCreds {
 		dc := objstore.DynamicCredentialsConfig{Enabled: true, MasterPassword: "test-master-password", PollInterval: time.Second}
 		pc.Storage.DynamicCredentials = dc

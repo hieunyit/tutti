@@ -281,3 +281,18 @@ func (r *Registry) Snapshot() []Status {
 	sort.Slice(res, func(i, j int) bool { return res[i].Name < res[j].Name })
 	return res
 }
+
+// Remove forgets a storage removed from the runtime configuration.
+func (r *Registry) Remove(storage string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.breakers, storage)
+}
+
+// Reset gives changed connection settings a fresh breaker so the replacement can be probed.
+func (r *Registry) Reset(storage string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.breakers, storage)
+	r.get(storage)
+}

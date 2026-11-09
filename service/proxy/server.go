@@ -143,7 +143,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
-		credsSvc, err := objstore.NewCredsSvc(ctx, &credsConf, appRedis)
+		credsSvc, err := objstore.NewCredsSvc(ctx, &credsConf, appRedis, objstore.WithManagedStorages(confRedis))
 		if err != nil {
 			return err
 		}
@@ -157,19 +157,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
-		var probeTargets []health.Target
-		for name, stor := range s3Conf {
-			healthReg.Register(name)
+		manageStorageHealth(ctx, credsSvc, clientRegistry, healthReg, func(name string) {
 			if conf.Metrics.Enabled {
 				metrics.SetStorageAvailable(name, true)
 			}
-			probeTargets = append(probeTargets, health.Target{
-				Storage:  name,
-				Interval: stor.HealthCheckInterval,
-				Probe:    storageProbe(clientRegistry, credsSvc, name),
-			})
-		}
-		go healthReg.RunChecks(ctx, probeTargets...)
+		})
+		limiter.SetLookup(credsSvc.RateLimit)
 		startedAt := time.Now().UTC()
 		rateWindow := trafficstats.NewWindow(trafficstats.DefaultWindow)
 		rateWindow.Add(trafficstats.Default.Snapshot())
@@ -197,7 +190,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Failover.Enabled {
 			failoverLock := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 			defer failoverLock.Close()
-			failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := conf.Storage.Storages[name]; return ok })
+			failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok })
 			ctrl := failovercontroller.New(failovercontroller.Config{
 				DefaultAfter:       conf.Failover.After,
 				DefaultMaxEventLag: conf.Failover.MaxEventLag,
@@ -206,7 +199,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}, policySvc, healthReg, failovercontroller.RedisLocker{Client: failoverLock}, failoverStore, logger,
 				failovercontroller.WithUsers(func() []string {
 					var users []string
-					for name := range s3Conf {
+					for name := range credsSvc.Storages() {
 						users = append(users, credsSvc.ListUsers(name)...)
 					}
 					return users

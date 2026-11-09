@@ -84,13 +84,24 @@ func SwiftMethod(m swift.Method) Opt {
 
 var _ RPM = &Svc{}
 
+// SetLookup installs the runtime configuration source before requests start.
+func (s *Svc) SetLookup(lookup func(string) (RateLimit, bool)) { s.lookup = lookup }
+func (s *Svc) setting(name string) (RateLimit, bool) {
+	if s.lookup != nil {
+		return s.lookup(name)
+	}
+	v, ok := s.conf[name]
+	return v, ok
+}
+
 type Svc struct {
+	lookup  func(string) (RateLimit, bool)
 	limiter *redis_rate.Limiter
 	conf    map[string]RateLimit
 }
 
 func (s *Svc) StorReqN(ctx context.Context, storage string, n int, options ...Opt) error {
-	conf, ok := s.conf[storage]
+	conf, ok := s.setting(storage)
 	if !ok || !conf.Enabled {
 		zerolog.Ctx(ctx).Debug().Str(log.Storage, storage).Msg("rate limit disabled")
 		return nil
@@ -115,7 +126,7 @@ func (s *Svc) StorReqN(ctx context.Context, storage string, n int, options ...Op
 }
 
 func (s *Svc) StorReq(ctx context.Context, storage string, options ...Opt) error {
-	conf, ok := s.conf[storage]
+	conf, ok := s.setting(storage)
 	if !ok || !conf.Enabled {
 		zerolog.Ctx(ctx).Debug().Str(log.Storage, storage).Msg("rate limit disabled")
 		return nil

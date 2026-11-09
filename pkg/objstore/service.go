@@ -251,8 +251,9 @@ type clients struct {
 }
 
 type s3CacheVal struct {
-	client s3client.Client
-	cred   s3.CredentialsV4
+	client  s3client.Client
+	cred    s3.CredentialsV4
+	address s3.StorageAddress
 }
 
 type swiftCacheVal struct {
@@ -265,21 +266,20 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 	if err != nil {
 		return nil, err
 	}
+	s3Addr, err := r.credsSvc.GetS3Address(storage)
+	if err != nil {
+		return nil, err
+	}
 	key := credsCacheKey(storage, user)
 	// obtain read lock to check cache
 	r.RLock()
 	cacheVal, ok := r.s3Clients[key]
 	r.RUnlock()
-	if ok && cacheVal.cred == creds {
+	if ok && cacheVal.cred == creds && cacheVal.address == s3Addr {
 		// return cached client
 		return cacheVal.client, nil
 	}
 	// not found in cache or creds changed - obtain write lock to create new client
-
-	s3Addr, err := r.credsSvc.GetS3Address(storage)
-	if err != nil {
-		return nil, err
-	}
 
 	r.Lock()
 	defer r.Unlock()
@@ -289,7 +289,11 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 		return nil, err
 	}
 	cacheVal, ok = r.s3Clients[key]
-	if ok && cacheVal.cred == cred {
+	s3Addr, err = r.credsSvc.GetS3Address(storage)
+	if err != nil {
+		return nil, err
+	}
+	if ok && cacheVal.cred == cred && cacheVal.address == s3Addr {
 		return cacheVal.client, nil
 	}
 	// create new client
@@ -302,8 +306,9 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 		return nil, err
 	}
 	r.s3Clients[key] = s3CacheVal{
-		cred:   cred,
-		client: client,
+		cred:    cred,
+		address: s3Addr,
+		client:  client,
 	}
 	return client, nil
 }

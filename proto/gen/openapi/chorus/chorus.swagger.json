@@ -1550,6 +1550,153 @@
         ]
       }
     },
+    "/tutti/storages": {
+      "get": {
+        "operationId": "Resilience_ListRuntimeStorages",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorageList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "operationId": "Resilience_CreateRuntimeStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusCreateRuntimeStorageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "put": {
+        "operationId": "Resilience_UpdateRuntimeStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusUpdateRuntimeStorageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/storages/delete": {
+      "put": {
+        "operationId": "Resilience_DeleteRuntimeStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorageName"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/storages/test": {
+      "post": {
+        "operationId": "Resilience_TestRuntimeStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusTestS3UserCredentialsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusTestRuntimeStorageRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/users": {
       "get": {
         "summary": "ListS3Users returns the union of all users across storages with the credential state per storage (never the\nsecret), the proxy access key counts and the access policy summary.",
@@ -2073,6 +2220,24 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "chorusCreateRuntimeStorageRequest": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "$ref": "#/definitions/chorusRuntimeStorage"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusRuntimeStorageCredential"
+          }
+        },
+        "force": {
+          "type": "boolean"
         }
       }
     },
@@ -3167,6 +3332,132 @@
         }
       }
     },
+    "chorusRuntimeStorage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "defaultRegion": {
+          "type": "string"
+        },
+        "isSecure": {
+          "type": "boolean"
+        },
+        "httpTimeout": {
+          "type": "string"
+        },
+        "healthCheckInterval": {
+          "type": "string"
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/chorusRuntimeStorageRateLimit"
+        },
+        "source": {
+          "type": "string"
+        },
+        "isMain": {
+          "type": "boolean"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusRuntimeStorageUser"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "RuntimeStorage contains connection settings and metadata, never credentials secrets."
+    },
+    "chorusRuntimeStorageCredential": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusRuntimeStorageList": {
+      "type": "object",
+      "properties": {
+        "storages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusRuntimeStorage"
+          }
+        },
+        "mainStorage": {
+          "type": "string"
+        },
+        "managedStoragesEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusRuntimeStorageName": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusRuntimeStorageRateLimit": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "rpm": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "includeMetadataApi": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusRuntimeStorageUser": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
     "chorusS3BucketInfo": {
       "type": "object",
       "properties": {
@@ -3724,6 +4015,17 @@
         }
       }
     },
+    "chorusTestRuntimeStorageRequest": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "$ref": "#/definitions/chorusRuntimeStorage"
+        },
+        "credential": {
+          "$ref": "#/definitions/chorusRuntimeStorageCredential"
+        }
+      }
+    },
     "chorusTestS3UserCredentialsRequest": {
       "type": "object",
       "properties": {
@@ -3960,6 +4262,27 @@
         "toStorage": {
           "type": "string",
           "title": "new destination storage name"
+        }
+      }
+    },
+    "chorusUpdateRuntimeStorageRequest": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "$ref": "#/definitions/chorusRuntimeStorage"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusRuntimeStorageCredential"
+          }
+        },
+        "confirm": {
+          "type": "boolean"
+        },
+        "force": {
+          "type": "boolean"
         }
       }
     },

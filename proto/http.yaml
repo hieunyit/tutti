@@ -165,3 +165,18 @@ http:
     - selector: chorus.Resilience.DeleteConsoleUser
       put: /tutti/console-users/delete
       body: "*"
+
+    - selector: chorus.Resilience.ListRuntimeStorages
+      get: /tutti/storages
+    - selector: chorus.Resilience.CreateRuntimeStorage
+      post: /tutti/storages
+      body: "*"
+    - selector: chorus.Resilience.UpdateRuntimeStorage
+      put: /tutti/storages
+      body: "*"
+    - selector: chorus.Resilience.DeleteRuntimeStorage
+      put: /tutti/storages/delete
+      body: "*"
+    - selector: chorus.Resilience.TestRuntimeStorage
+      post: /tutti/storages/test
+      body: "*"

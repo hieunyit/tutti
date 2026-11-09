@@ -8,6 +8,8 @@ REST JSON follows protobuf JSON mapping: camelCase field names, durations as str
 
 ## Service
 
+Runtime S3 storage management is available under `/tutti/storages` (list/create/update/delete/test). See [Runtime storage management](./runtime-storages.md) for encrypted storage, live propagation, read-only configuration and deletion protection.
+
 | RPC | REST | Description |
 |---|---|---|
 | `GetProxyStatus(Empty) -> ProxyStatusList` | `GET /tutti/proxies` | Live proxy instances: breaker state per storage and effective settings |

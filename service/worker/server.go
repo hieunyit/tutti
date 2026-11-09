@@ -97,7 +97,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return fmt.Errorf("%w: unable to instrument tracing app redis", err)
 	}
 
-	credsSvc, err := objstore.NewCredsSvc(ctx, &conf.Storage, appRedis)
+	credsSvc, err := objstore.NewCredsSvc(ctx, &conf.Storage, appRedis, objstore.WithManagedStorages(confRedis))
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main)
 
-	limiter := ratelimit.New(appRedis, conf.Storage.RateLimitConf())
+	limiter := ratelimit.New(appRedis, nil)
+	limiter.SetLookup(credsSvc.RateLimit)
 	lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 	defer lockRedis.Close()
 	replicationStatusLocker := store.NewReplicationStatusLocker(lockRedis, conf.Lock.Overlap)
@@ -297,7 +298,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return credsSvc.HasUser(credsSvc.MainStorage(), user) == nil
 		}), api.WithS3Users(credsSvc, s3users.MinioVerifier(credsSvc.GetS3Address),
 			func(events *failover.Store) s3users.References { return s3users.PolicyReferences(policySvc, events) }),
-			api.WithConsoleUsers(authSvc))
+			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)))
 
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0

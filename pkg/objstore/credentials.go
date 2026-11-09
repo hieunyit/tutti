@@ -23,10 +23,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -103,16 +105,19 @@ func (c *DynamicCredentialsConfig) Validate() error {
 	return nil
 }
 
-func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient) (*credsSvc, error) {
+func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient, opts ...CredsSvcOption) (*credsSvc, error) {
 	if err := conf.DynamicCredentials.Validate(); err != nil {
 		return nil, err
 	}
 	instance := &credsSvc{
-		types:          conf.Types(),
 		s3AccessKeyIdx: buildS3AccessKeyIdxFromConf(conf),
 		config:         conf,
 		client:         rc,
 		version:        -1,
+	}
+	instance.view.Store(buildView(conf, nil))
+	for _, o := range opts {
+		o(instance)
 	}
 	if !conf.DynamicCredentials.Enabled {
 		// dynamic credentials disabled, return credentials from config only
@@ -133,9 +138,16 @@ func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient) (*
 	if err := instance.sync(ctx); err != nil {
 		return nil, fmt.Errorf("failed to sync credentials: %w", err)
 	}
+	if err := instance.syncManaged(ctx); err != nil {
+		return nil, fmt.Errorf("failed to sync managed storages: %w", err)
+	}
 	// start background sync goroutine
 	go func() {
-		ticker := time.NewTicker(conf.DynamicCredentials.PollInterval)
+		interval := conf.DynamicCredentials.PollInterval
+		if instance.ManagedStoragesEnabled() && interval > 2*time.Second {
+			interval = 2 * time.Second
+		}
+		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {
@@ -144,6 +156,9 @@ func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient) (*
 			case <-ticker.C:
 				if err := instance.sync(ctx); err != nil {
 					zerolog.Ctx(ctx).Error().Err(err).Msg("failed to sync credentials")
+				}
+				if err := instance.syncManaged(ctx); err != nil {
+					zerolog.Ctx(ctx).Error().Err(err).Msg("failed to sync managed storages")
 				}
 			}
 		}
@@ -176,11 +191,19 @@ Local cache:
 - Maps of storage:user to credentials for S3 and Swift, updated on sync if version changes in Redis.
 */
 type credsSvc struct {
-	client     redis.UniversalClient
-	types      map[string]dom.StorageType
-	config     *Config
-	swiftCreds map[string]swift.Credentials
-	s3Creds    map[string]s3.CredentialsV4
+	client redis.UniversalClient
+	// view is the snapshot of all storages (config + managed), replaced atomically on change.
+	view atomic.Pointer[storagesView]
+	// managedClient is the config DB Redis with the managed storages (nil: managed storages disabled).
+	managedClient redis.UniversalClient
+	managedMu     sync.Mutex
+	managedVer    int64
+	managedLoaded bool
+	listenersMu   sync.Mutex
+	listeners     []func([]StorageChange)
+	config        *Config
+	swiftCreds    map[string]swift.Credentials
+	s3Creds       map[string]s3.CredentialsV4
 	// index of S3 credentials by access key for chorus Proxy Auth Middleware
 	s3AccessKeyIdx map[string]s3CredsByAccessKey
 	key            []byte
@@ -211,23 +234,23 @@ func (s *credsSvc) FindS3Credentials(storage, accessKey string) (user string, cr
 }
 
 func (s *credsSvc) Storages() map[string]dom.StorageType {
-	return s.types
+	return maps.Clone(s.view.Load().types)
 }
 
 func (s *credsSvc) StorageType(storage string) (dom.StorageType, error) {
-	storConf, ok := s.config.Storages[storage]
+	t, ok := s.view.Load().types[storage]
 	if !ok {
 		return "", fmt.Errorf("%w: storage %q not found", dom.ErrNotFound, storage)
 	}
-	return storConf.CommonConfig.Type, nil
+	return t, nil
 }
 
 func (s *credsSvc) GetS3Address(storage string) (s3.StorageAddress, error) {
-	res, ok := s.config.S3Storages()[storage]
+	res, ok := s.view.Load().s3[storage]
 	if !ok {
 		return s3.StorageAddress{}, dom.ErrNotFound
 	}
-	return res.StorageAddress, nil
+	return res, nil
 }
 
 func (s *credsSvc) GetSwiftAddress(storage string) (swift.StorageAddress, error) {
@@ -239,11 +262,14 @@ func (s *credsSvc) GetSwiftAddress(storage string) (swift.StorageAddress, error)
 }
 
 func (s *credsSvc) ListUsers(storage string) []string {
-	storageConf, ok := s.config.Storages[storage]
-	if !ok {
+	view := s.view.Load()
+	storageConf, inConfig := s.config.Storages[storage]
+	var users []string
+	if inConfig {
+		users = storageConf.UserList()
+	} else if _, ok := view.types[storage]; !ok {
 		return nil
 	}
-	users := storageConf.UserList()
 	if !s.config.DynamicCredentials.Enabled {
 		// dynamic credentials disabled, return users from config only
 		return users
@@ -252,7 +278,8 @@ func (s *credsSvc) ListUsers(storage string) []string {
 	s.RLock()
 	defer s.RUnlock()
 
-	switch storageConf.CommonConfig.Type {
+	storType := view.types[storage]
+	switch storType {
 	case dom.S3:
 		for cacheKey := range s.s3Creds {
 			stor, user := cacheKeyToCreds(cacheKey)
@@ -269,9 +296,25 @@ func (s *credsSvc) ListUsers(storage string) []string {
 		}
 	default:
 		// should not happen due to prior validation of storage config
-		panic(fmt.Sprintf("unsupported storage type %q", storageConf.CommonConfig.Type))
+		panic(fmt.Sprintf("unsupported storage type %q", storType))
 	}
 	return users
+}
+
+func (s *credsSvc) sameStorType(from, to string) error {
+	types := s.view.Load().types
+	ft, ok := types[from]
+	if !ok {
+		return fmt.Errorf("%w: unknown replication source storage %q", dom.ErrInvalidArg, from)
+	}
+	tt, ok := types[to]
+	if !ok {
+		return fmt.Errorf("%w: unknown replication destination storage %q", dom.ErrInvalidArg, to)
+	}
+	if ft != tt {
+		return fmt.Errorf("%w: from_storage %q type %q is different from to_storage %q type %q", dom.ErrInvalidArg, from, ft, to, tt)
+	}
+	return nil
 }
 
 func (s *credsSvc) MainStorage() string {
@@ -279,7 +322,7 @@ func (s *credsSvc) MainStorage() string {
 }
 
 func (s *credsSvc) ValidateReplicationID(id entity.UniversalReplicationID) error {
-	if err := s.config.sameStorType(id.FromStorage(), id.ToStorage()); err != nil {
+	if err := s.sameStorType(id.FromStorage(), id.ToStorage()); err != nil {
 		// TODO: allow cross-type replication in the future?
 		return err
 	}
@@ -401,6 +444,9 @@ func (s *credsSvc) sync(ctx context.Context) error {
 }
 
 func (s *credsSvc) GetS3Credentials(storage string, user string) (s3.CredentialsV4, error) {
+	if _, ok := s.view.Load().s3[storage]; !ok {
+		return s3.CredentialsV4{}, dom.ErrNotFound
+	}
 	creds, err := s.getS3FromConfig(storage, user)
 	if !s.config.DynamicCredentials.Enabled {
 		// dynamic credentials disabled, return result from config
@@ -484,8 +530,8 @@ func (s *credsSvc) storeCred(ctx context.Context, storType dom.StorageType, stor
 	// check if storage exists in config
 	switch storType {
 	case dom.S3:
-		if _, ok := s.config.S3Storages()[storage]; !ok {
-			return fmt.Errorf("%w: storage %q not found in config", dom.ErrInvalidArg, storage)
+		if _, ok := s.view.Load().s3[storage]; !ok {
+			return fmt.Errorf("%w: storage %q not found", dom.ErrInvalidArg, storage)
 		}
 	case dom.Swift:
 		if _, ok := s.config.SwiftStorages()[storage]; !ok {
@@ -545,8 +591,8 @@ func (s *credsSvc) DeleteUserCredentials(ctx context.Context, storage, user stri
 	if err := s.config.Exists(storage, user); err == nil {
 		return fmt.Errorf("%w: credentials of user %q on storage %q are defined in config and cannot be deleted", dom.ErrFailedPrecondition, user, storage)
 	}
-	if _, ok := s.config.Storages[storage]; !ok {
-		return fmt.Errorf("%w: storage %q not found in config", dom.ErrInvalidArg, storage)
+	if _, ok := s.view.Load().types[storage]; !ok {
+		return fmt.Errorf("%w: storage %q not found", dom.ErrInvalidArg, storage)
 	}
 	tx := s.client.TxPipeline()
 	del := tx.HDel(ctx, redisHashKey, credsToRedisField(dom.S3, storage, user), credsToRedisField(dom.Swift, storage, user))
