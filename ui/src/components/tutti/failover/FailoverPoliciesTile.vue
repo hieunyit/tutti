@@ -47,6 +47,9 @@
     showDrawer.value = true;
   }
 
+  // the primary "Add policy" action lives in the page header
+  defineExpose({ openAdd });
+
   function openEdit(policy: TuttiFailoverPolicy) {
     editedPolicy.value = policy;
     showDrawer.value = true;
@@ -134,18 +137,6 @@
       {{ t('policiesTitle') }}
     </template>
 
-    <p class="failover-policies-tile__help">{{ t('help') }}</p>
-
-    <WriteGate>
-      <NButton
-        type="primary"
-        class="failover-policies-tile__add"
-        @click="openAdd"
-      >
-        {{ t('addPolicy') }}
-      </NButton>
-    </WriteGate>
-
     <NDataTable
       :columns="columns"
       :data="policies"
@@ -159,16 +150,3 @@
     />
   </CTile>
 </template>
-
-<style lang="scss" scoped>
-  .failover-policies-tile {
-    &__help {
-      margin: 0 0 16px;
-      opacity: 0.8;
-    }
-
-    &__add {
-      margin-bottom: 16px;
-    }
-  }
-</style>

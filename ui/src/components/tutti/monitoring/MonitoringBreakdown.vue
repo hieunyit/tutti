@@ -22,7 +22,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nMonitoring from './i18nMonitoring';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
-  import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
   const { t } = useI18n({ messages: i18nMonitoring });
@@ -110,7 +110,7 @@
     {
       title: t('columnStarted'),
       key: 'startedAt',
-      render: (row) => GeneralHelper.formatDateTime(row.startedAt),
+      render: (row) => formatDateTime(row.startedAt),
     },
     { title: t('columnRequests'), key: 'requests' },
     {

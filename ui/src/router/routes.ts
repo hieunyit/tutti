@@ -47,81 +47,126 @@ export const routes: RouteRecordRaw[] = [
     children: [
       {
         path: 'home',
+        meta: { navGroup: 'overview', navSection: RouteName.CHORUS_HOME },
         name: RouteName.CHORUS_HOME,
         component: ChorusHomePage,
       },
       {
         path: 'replication',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_REPLICATION,
+        },
         name: RouteName.CHORUS_REPLICATION,
         component: ChorusReplicationPage,
       },
       {
         path: 'replication/add',
-        meta: { requiresWrite: true },
+        meta: {
+          requiresWrite: true,
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_REPLICATION,
+        },
         name: RouteName.CHORUS_ADD_REPLICATION,
         component: ChorusAddReplicationPage,
       },
       {
         path: 'diff-reports',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_DIFF_REPORTS,
+        },
         name: RouteName.CHORUS_DIFF_REPORTS,
         component: ChorusDiffReportsPage,
       },
       {
         path: 'diff-reports/add',
-        meta: { requiresWrite: true },
+        meta: {
+          requiresWrite: true,
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_DIFF_REPORTS,
+        },
         name: RouteName.CHORUS_ADD_DIFF_REPORT,
         component: ChorusAddDiffReportPage,
       },
       {
         path: 'diff-reports/detail',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_DIFF_REPORTS,
+        },
         name: RouteName.CHORUS_DIFF_REPORT_DETAIL,
         component: ChorusDiffReportDetailPage,
       },
       {
         path: 'storages',
+        meta: { navGroup: 'storage', navSection: RouteName.CHORUS_STORAGES },
         name: RouteName.CHORUS_STORAGES,
         component: ChorusStoragesPage,
       },
       {
         path: 'storages/:storageName',
+        meta: { navGroup: 'storage', navSection: RouteName.CHORUS_STORAGES },
         name: RouteName.CHORUS_STORAGE_DETAILS,
         component: ChorusStorageDetailsPage,
         props: true,
       },
       {
         path: 'monitoring',
+        meta: { navGroup: 'overview', navSection: RouteName.CHORUS_MONITORING },
         name: RouteName.CHORUS_MONITORING,
         component: ChorusMonitoringPage,
       },
       {
         path: 'routing-policies',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_ROUTING_POLICIES,
+        },
         name: RouteName.CHORUS_ROUTING_POLICIES,
         component: ChorusRoutingPoliciesPage,
       },
       {
         path: 'routing-policies/add',
-        meta: { requiresWrite: true },
+        meta: {
+          requiresWrite: true,
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_ROUTING_POLICIES,
+        },
         name: RouteName.CHORUS_ADD_ROUTING_POLICY,
         component: ChorusAddRoutingPolicyPage,
       },
       {
         path: 'health',
+        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_HEALTH },
         name: RouteName.TUTTI_HEALTH,
         component: TuttiHealthPage,
       },
       {
         path: 'proxy-accounts',
+        meta: {
+          navGroup: 'access',
+          navSection: RouteName.TUTTI_PROXY_ACCOUNTS,
+        },
         name: RouteName.TUTTI_PROXY_ACCOUNTS,
         component: TuttiProxyAccountsPage,
       },
       {
         path: 'failover',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.TUTTI_FAILOVER,
+        },
         name: RouteName.TUTTI_FAILOVER,
         component: TuttiFailoverPage,
       },
       {
         path: 'storages/:storageName/credentials/:alias?',
-        meta: { requiresWrite: true },
+        meta: {
+          requiresWrite: true,
+          navGroup: 'storage',
+          navSection: RouteName.CHORUS_STORAGES,
+        },
         name: RouteName.CHORUS_SET_CREDENTIAL,
         component: ChorusSetCredentialPage,
         props: true,

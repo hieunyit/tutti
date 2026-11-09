@@ -17,14 +17,13 @@
 <script setup lang="ts">
   import { CTile } from '@clyso/clyso-ui-kit';
   import { NDataTable, NTag, type DataTableColumns } from 'naive-ui';
-  import { formatDistanceToNow } from 'date-fns';
-  import { de, enGB } from 'date-fns/locale';
-  import { storeToRefs } from 'pinia';
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nHealth from './i18nHealth';
-  import { useI18nStore } from '@/stores/i18nStore';
-  import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
+  import {
+    formatDateTime,
+    formatRelative,
+  } from '@/utils/helpers/DateTimeHelper';
   import type {
     TuttiProxyStatus,
     TuttiStorageHealth,
@@ -33,20 +32,8 @@
   const props = defineProps<{ proxy: TuttiProxyStatus }>();
 
   const { t } = useI18n({ messages: i18nHealth });
-  const { locale } = storeToRefs(useI18nStore());
-
-  function relative(date?: string): string {
-    if (!date) return '-';
-
-    return formatDistanceToNow(new Date(date), {
-      addSuffix: true,
-      locale: locale.value === 'en' ? enGB : de,
-    });
-  }
-
-  function absolute(date?: string): string | undefined {
-    return date ? GeneralHelper.formatDateTime(date) : undefined;
-  }
+  const relative = (date?: string) => formatRelative(date);
+  const absolute = (date?: string) => formatDateTime(date);
 
   const columns = computed<DataTableColumns<TuttiStorageHealth>>(() => [
     { title: t('columnStorage'), key: 'name' },

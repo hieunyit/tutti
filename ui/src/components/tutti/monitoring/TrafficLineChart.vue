@@ -33,6 +33,7 @@
   import i18nMonitoring from './i18nMonitoring';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
   import { useI18nStore } from '@/stores/i18nStore';
+  import { formatTime } from '@/utils/helpers/DateTimeHelper';
   import type { TrafficRates } from '@/utils/helpers/TrafficStatsHelper';
 
   Chart.register(
@@ -85,13 +86,7 @@
     return {
       type: 'line',
       data: {
-        labels: props.series.map((s) =>
-          new Date(s.timestamp).toLocaleTimeString(locale.value, {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          }),
-        ),
+        labels: props.series.map((s) => formatTime(s.timestamp, locale.value)),
         datasets: props.lines.map((line) => {
           const color = cssVar(line.colorVar, line.fallbackColor);
 

@@ -16,20 +16,25 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
-  import {
-    CColorSchemeToggle,
-    CDashboardHeader,
-    CDashboardLayout,
-    CLanguageSelect,
-  } from '@clyso/clyso-ui-kit';
+  import { watch } from 'vue';
+  import { useRoute } from 'vue-router';
+  import { useI18n } from 'vue-i18n';
+  import { NDrawer, NDrawerContent } from 'naive-ui';
+  import { CColorSchemeToggle, CLanguageSelect } from '@clyso/clyso-ui-kit';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
   import AuthUserMenu from '@/components/auth/AuthUserMenu.vue';
   import { useAuthStore } from '@/stores/authStore';
-  import DashboardNav from '@/components/dashboard/DashboardNav/DashboardNav.vue';
-  import DashboardLogo from '@/components/dashboard/DashboardLogo/DashboardLogo.vue';
-  import { HAS_LANG_SELECT } from '@/utils/constants/env';
+  import AppSidebar from '@/components/layout/AppSidebar.vue';
+  import AppBreadcrumbs from '@/components/layout/AppBreadcrumbs.vue';
+  import AboutDialog from '@/components/layout/AboutDialog.vue';
+  import i18nLayout from '@/components/layout/i18nLayout';
   import DashboardFooter from '@/components/dashboard/DashboardFooter/DashboardFooter.vue';
+  import { HAS_LANG_SELECT } from '@/utils/constants/env';
+  import { useSidebar } from '@/utils/composables/useSidebar';
+
+  const { t } = useI18n({ messages: i18nLayout });
+  const route = useRoute();
 
   const { locale } = storeToRefs(useI18nStore());
   const { setLocale } = useI18nStore();
@@ -38,24 +43,80 @@
 
   const { colorScheme } = storeToRefs(useColorSchemeStore());
   const { setColorScheme } = useColorSchemeStore();
+
+  const { isCollapsed, isMobile, isDrawerOpen, toggleCollapsed } = useSidebar();
+
+  watch(
+    () => route.fullPath,
+    () => {
+      isDrawerOpen.value = false;
+    },
+  );
 </script>
 
 <template>
-  <CDashboardLayout
+  <div
     class="dashboard-view"
-    :has-side-menu="false"
+    :class="{
+      'dashboard-view--collapsed': isCollapsed && !isMobile,
+      'dashboard-view--mobile': isMobile,
+    }"
   >
-    <template #header>
-      <CDashboardHeader
-        :options="[]"
-        :has-side-menu="false"
-        :has-user-menu="false"
-      >
-        <template #start>
-          <DashboardLogo />
-        </template>
+    <div
+      v-if="!isMobile"
+      class="dashboard-view__sidebar"
+    >
+      <AppSidebar
+        :collapsed="isCollapsed"
+        @toggle="toggleCollapsed"
+      />
+    </div>
 
-        <template #end>
+    <NDrawer
+      v-else
+      v-model:show="isDrawerOpen"
+      placement="left"
+      :width="264"
+    >
+      <NDrawerContent
+        :native-scrollbar="false"
+        :body-content-style="{ padding: 0, height: '100%' }"
+        class="dashboard-view__drawer-content"
+      >
+        <AppSidebar
+          is-drawer
+          @navigate="isDrawerOpen = false"
+        />
+      </NDrawerContent>
+    </NDrawer>
+
+    <div class="dashboard-view__body">
+      <header class="dashboard-view__topbar">
+        <button
+          v-if="isMobile"
+          type="button"
+          class="dashboard-view__burger"
+          :aria-label="t('openMenu')"
+          :aria-expanded="isDrawerOpen"
+          @click="isDrawerOpen = true"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M3 5h14M3 10h14M3 15h14" />
+          </svg>
+        </button>
+
+        <AppBreadcrumbs class="dashboard-view__crumbs" />
+
+        <div class="dashboard-view__controls">
           <CLanguageSelect
             v-if="HAS_LANG_SELECT"
             :value="locale"
@@ -68,58 +129,121 @@
           />
 
           <AuthUserMenu v-if="showUserMenu" />
-        </template>
-      </CDashboardHeader>
-    </template>
+        </div>
+      </header>
 
-    <main class="dashboard-view__main">
-      <DashboardNav class="dashboard-view__nav" />
-      <div class="dashboard-view__render-view">
+      <main class="dashboard-view__main">
         <RouterView />
-      </div>
-    </main>
+      </main>
 
-    <template #footer>
       <DashboardFooter />
-    </template>
-  </CDashboardLayout>
+    </div>
+
+    <AboutDialog />
+  </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .dashboard-view {
-    &__main {
-      height: 100%;
-      max-width: 100vw;
-      padding: utils.unit(5) utils.unit(8) utils.unit(12);
-      display: grid;
-      grid-template-rows: auto 1fr;
+    --sidebar-width: 248px;
 
-      @include utils.tablet-only {
-        padding: utils.unit(5) utils.unit(6) utils.unit(12);
-      }
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    min-height: 100vh;
+    max-width: 100vw;
 
-      @include utils.mobile {
-        padding: utils.unit(3) utils.unit(3) utils.unit(12);
-      }
+    &--collapsed {
+      --sidebar-width: 64px;
     }
 
-    &__nav {
-      margin-bottom: utils.unit(8);
+    &--mobile {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      z-index: 3;
+    }
+
+    &__body {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      min-height: 100vh;
     }
 
-    &__render-view {
-      min-width: 0;
-    }
-
-    ::v-deep(.c-dashboard-header) {
+    &__topbar {
+      position: sticky;
+      top: 0;
       z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 56px;
+      padding: 0 24px;
+      background-color: var(--card-color);
+      border-bottom: 1px solid var(--border-color);
+
+      @media screen and (max-width: 639px) {
+        padding: 0 12px;
+        gap: 8px;
+      }
     }
 
-    ::v-deep(.c-dashboard-layout__footer) {
-      padding: 0;
+    &__burger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-color-1);
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--button-color-2-hover);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--primary-color);
+      }
+    }
+
+    &__crumbs {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__controls {
+      display: flex;
+      align-items: center;
+      flex: none;
+      gap: 8px;
+    }
+
+    &__main {
+      flex: 1;
+      min-width: 0;
+      padding: 24px;
+
+      @media screen and (max-width: 639px) {
+        padding: 16px;
+
+        // interim until the per-page pass: wide tables scroll inside their
+        // card instead of crushing their columns or scrolling the page
+        :deep(.c-data-table-base-table) {
+          overflow-x: auto;
+        }
+
+        :deep(.c-data-table-table) {
+          min-width: 680px;
+        }
+      }
     }
   }
 </style>

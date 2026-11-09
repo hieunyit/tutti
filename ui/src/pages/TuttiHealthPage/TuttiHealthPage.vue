@@ -21,6 +21,7 @@
   import { onBeforeMount, onBeforeUnmount } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nHealth from '@/components/tutti/health/i18nHealth';
+  import PageHeader from '@/components/layout/PageHeader.vue';
   import ProxyHealthCard from '@/components/tutti/health/ProxyHealthCard.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import { useTuttiHealthStore } from '@/stores/tuttiHealthStore';
@@ -35,15 +36,16 @@
 
 <template>
   <div class="tutti-health-page">
-    <div class="tutti-health-page__header">
-      <h2>{{ t('title') }}</h2>
-      <CButton
-        :loading="isLoading"
-        @click="store.loadProxies(true)"
-      >
-        {{ t('refresh') }}
-      </CButton>
-    </div>
+    <PageHeader :title="t('title')">
+      <template #actions>
+        <CButton
+          :loading="isLoading"
+          @click="store.loadProxies(true)"
+        >
+          {{ t('refresh') }}
+        </CButton>
+      </template>
+    </PageHeader>
 
     <ChorusListError
       v-if="hasError && hasNoData"
@@ -69,17 +71,6 @@
   @use '@/styles/utils' as utils;
 
   .tutti-health-page {
-    &__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: utils.unit(4);
-
-      h2 {
-        margin: 0;
-      }
-    }
-
     &__card {
       margin-bottom: utils.unit(4);
     }

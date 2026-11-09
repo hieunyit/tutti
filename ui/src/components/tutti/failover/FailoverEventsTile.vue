@@ -29,7 +29,7 @@
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
-  import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import type { TuttiFailoverEvent } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nFailover });
@@ -66,8 +66,7 @@
     {
       title: t('columnTime'),
       key: 'time',
-      render: (row) =>
-        row.time ? GeneralHelper.formatDateTime(row.time) : '-',
+      render: (row) => formatDateTime(row.time),
     },
     {
       title: t('columnEventLag'),

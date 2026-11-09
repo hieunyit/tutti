@@ -17,6 +17,8 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    title: 'Failover',
+    refresh: 'Refresh',
     policiesTitle: 'Failover policies',
     eventsTitle: 'Failover events',
     help: 'Automatic failover only happens when the proxies run with failover.enabled and only to the listed targets, in the order shown. Failback is manual: after you have repaired the source and synchronised it, acknowledge the event.',
@@ -81,6 +83,8 @@ export default <I18nMessages>{
       'After repairing the source, perform the manual failback and then acknowledge the event. See docs/failover.md.',
   },
   [I18nLocale.DE]: {
+    title: 'Failover',
+    refresh: 'Aktualisieren',
     policiesTitle: 'Failover-Richtlinien',
     eventsTitle: 'Failover-Ereignisse',
     help: 'Automatisches Failover findet nur statt, wenn die Proxys mit failover.enabled laufen, und nur zu den aufgeführten Zielen in der angezeigten Reihenfolge. Failback erfolgt manuell: Bestätigen Sie das Ereignis, nachdem die Quelle repariert und synchronisiert wurde.',

@@ -20,6 +20,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
   import CopyButton from '@/components/chorus/common/CopyButton/CopyButton.vue';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
 
@@ -40,9 +41,7 @@
 
   const expiry = computed(() =>
     ProxyAccountHelper.hasTime(props.secret?.previousSecretExpiresAt)
-      ? new Date(
-          props.secret?.previousSecretExpiresAt as string,
-        ).toLocaleString()
+      ? formatDateTime(props.secret?.previousSecretExpiresAt)
       : null,
   );
 </script>

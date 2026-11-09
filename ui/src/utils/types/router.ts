@@ -33,9 +33,15 @@ export enum RouteName {
   TUTTI_PROXY_ACCOUNTS = 'TUTTI_PROXY_ACCOUNTS',
 }
 
+export type NavGroupId = 'overview' | 'storage' | 'dataProtection' | 'access';
+
 declare module 'vue-router' {
   interface RouteMeta {
     /** Route performs mutations: blocked for read-only (viewer) accounts. */
     requiresWrite?: boolean;
+    /** Navigation group (sidebar section + first breadcrumb). */
+    navGroup?: NavGroupId;
+    /** Sidebar item (route name) this page belongs to; also the 2nd breadcrumb. */
+    navSection?: RouteName;
   }
 }

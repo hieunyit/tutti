@@ -1,5 +1,5 @@
 <!--
-  - Copyright © 2026 Clyso GmbH
+  - Copyright © 2026 hieunyit
   -
   -  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
   -  you may not use this file except in compliance with the License.
@@ -15,87 +15,55 @@
   -->
 
 <script setup lang="ts">
-  import {
-    CDashboardFooter,
-    type DashboardFooterLink,
-    I18nLocale,
-  } from '@clyso/clyso-ui-kit';
-  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import i18nLayout from '@/components/layout/i18nLayout';
+  import { useAboutDialog } from '@/utils/composables/useAboutDialog';
+  import { APP_VERSION } from '@/utils/constants/env';
 
-  const CHORUS_URL = 'https://github.com/clyso/chorus';
-  const TUTTI_URL = 'https://github.com/hieunyit/tutti';
-
-  enum DashboardFooterLinkId {
-    TUTTI_GITHUB = 'TUTTI_GITHUB',
-    BASED_ON_PREFIX = 'BASED_ON_PREFIX',
-    BASED_ON_SUFFIX = 'BASED_ON_SUFFIX',
-  }
-
-  const { t } = useI18n({
-    messages: {
-      [I18nLocale.EN]: {
-        [DashboardFooterLinkId.TUTTI_GITHUB]: 'Tutti on GitHub',
-        [DashboardFooterLinkId.BASED_ON_PREFIX]: 'Tutti · based on',
-        [DashboardFooterLinkId.BASED_ON_SUFFIX]:
-          'by Clyso GmbH (https://github.com/clyso/chorus), licensed under AGPL-3.0 (UI) and Apache-2.0 (backend)',
-      },
-      [I18nLocale.DE]: {
-        [DashboardFooterLinkId.TUTTI_GITHUB]: 'Tutti auf GitHub',
-        [DashboardFooterLinkId.BASED_ON_PREFIX]: 'Tutti · basiert auf',
-        [DashboardFooterLinkId.BASED_ON_SUFFIX]:
-          'von Clyso GmbH (https://github.com/clyso/chorus), lizenziert unter AGPL-3.0 (UI) und Apache-2.0 (Backend)',
-      },
-    },
-  });
-
-  const footerLinks = computed<DashboardFooterLink[]>(() => [
-    {
-      id: DashboardFooterLinkId.TUTTI_GITHUB,
-      text: t(DashboardFooterLinkId.TUTTI_GITHUB),
-      url: TUTTI_URL,
-    },
-  ]);
+  const { t } = useI18n({ messages: i18nLayout });
+  const { openAbout } = useAboutDialog();
 </script>
 
 <template>
-  <CDashboardFooter
-    class="dashboard-footer"
-    :is-centered="true"
-    :links="footerLinks"
-  >
-    <template #copyright>
-      {{ t(DashboardFooterLinkId.BASED_ON_PREFIX) }}
-      <a
-        class="dashboard-footer__chorus-link"
-        :href="CHORUS_URL"
-        rel="noopener"
-        target="_blank"
-        >Chorus</a
-      >
-      {{ t(DashboardFooterLinkId.BASED_ON_SUFFIX) }}
-    </template>
-  </CDashboardFooter>
+  <footer class="dashboard-footer">
+    <span>Tutti v{{ APP_VERSION }}</span>
+    <span aria-hidden="true">·</span>
+    <button
+      type="button"
+      class="dashboard-footer__about"
+      @click="openAbout"
+    >
+      {{ t('about') }}
+    </button>
+  </footer>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .dashboard-footer {
-    ::v-deep(.container) {
-      @include utils.desktop {
-        padding: 0 utils.unit(8);
-        max-width: none;
-      }
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 24px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text-color-3);
+
+    @media screen and (max-width: 639px) {
+      padding: 12px 16px;
     }
 
-    &__chorus-link {
+    &__about {
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
       color: inherit;
       text-decoration: underline;
       text-underline-offset: 2px;
+      cursor: pointer;
 
       &:hover {
-        opacity: 0.8;
+        color: var(--text-color-1);
       }
     }
   }

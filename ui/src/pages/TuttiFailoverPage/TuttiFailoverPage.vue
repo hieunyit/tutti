@@ -15,19 +15,26 @@
   -->
 
 <script setup lang="ts">
-  import { NAlert } from 'naive-ui';
+  import { CButton } from '@clyso/clyso-ui-kit';
+  import { NAlert, NButton } from 'naive-ui';
   import { storeToRefs } from 'pinia';
-  import { onBeforeMount, onBeforeUnmount } from 'vue';
+  import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nFailover from '@/components/tutti/failover/i18nFailover';
   import FailoverPoliciesTile from '@/components/tutti/failover/FailoverPoliciesTile.vue';
   import FailoverEventsTile from '@/components/tutti/failover/FailoverEventsTile.vue';
+  import PageHeader from '@/components/layout/PageHeader.vue';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
 
   const { t } = useI18n({ messages: i18nFailover });
   const store = useTuttiFailoverStore();
-  const { hasError, proxiesWithFailoverDisabled } = storeToRefs(store);
+  const { hasError, isLoading, proxiesWithFailoverDisabled } =
+    storeToRefs(store);
+  const policiesTile = ref<InstanceType<typeof FailoverPoliciesTile> | null>(
+    null,
+  );
 
   onBeforeMount(() => store.init());
   onBeforeUnmount(() => store.$reset());
@@ -35,6 +42,28 @@
 
 <template>
   <div class="tutti-failover-page">
+    <PageHeader
+      :title="t('title')"
+      :description="t('help')"
+    >
+      <template #actions>
+        <CButton
+          :loading="isLoading"
+          @click="store.init()"
+        >
+          {{ t('refresh') }}
+        </CButton>
+        <WriteGate v-if="!hasError">
+          <NButton
+            type="primary"
+            @click="policiesTile?.openAdd()"
+          >
+            {{ t('addPolicy') }}
+          </NButton>
+        </WriteGate>
+      </template>
+    </PageHeader>
+
     <ChorusListError
       v-if="hasError"
       :title="t('errorTitle')"
@@ -51,7 +80,10 @@
         {{ t('disabledWarning', { count: proxiesWithFailoverDisabled }) }}
       </NAlert>
 
-      <FailoverPoliciesTile class="tutti-failover-page__tile" />
+      <FailoverPoliciesTile
+        ref="policiesTile"
+        class="tutti-failover-page__tile"
+      />
       <FailoverEventsTile class="tutti-failover-page__tile" />
     </template>
   </div>

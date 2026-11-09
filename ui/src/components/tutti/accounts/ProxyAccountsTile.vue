@@ -37,6 +37,7 @@
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import {
     TuttiAccessPermission,
@@ -131,25 +132,21 @@
     }
   }
 
-  function formatTime(value?: string): string {
-    return new Date(value as string).toLocaleString();
-  }
-
   function renderDynamicKey(key: TuttiDynamicKey) {
     const disabled = ProxyAccountHelper.isDisabled(key);
     const times: string[] = [];
 
     if (ProxyAccountHelper.hasTime(key.createdAt)) {
-      times.push(`${t('keyCreated')}: ${formatTime(key.createdAt)}`);
+      times.push(`${t('keyCreated')}: ${formatDateTime(key.createdAt)}`);
     }
 
     if (ProxyAccountHelper.hasTime(key.rotatedAt)) {
-      times.push(`${t('keyRotated')}: ${formatTime(key.rotatedAt)}`);
+      times.push(`${t('keyRotated')}: ${formatDateTime(key.rotatedAt)}`);
     }
 
     if (ProxyAccountHelper.hasTime(key.previousSecretExpiresAt)) {
       times.push(
-        `${t('keyPreviousValid')}: ${formatTime(key.previousSecretExpiresAt)}`,
+        `${t('keyPreviousValid')}: ${formatDateTime(key.previousSecretExpiresAt)}`,
       );
     }
 

@@ -20,11 +20,19 @@ import vue from '@vitejs/plugin-vue';
 import vueDevTools from 'vite-plugin-vue-devtools';
 import path from 'path';
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
+import { readFileSync } from 'node:fs';
+
+const { version: APP_VERSION } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
+);
 
 // https://vite.dev/config/
 const API_TARGET = process.env.VITE_DEV_API_TARGET ?? 'http://localhost:9671';
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   esbuild: {
     supported: {
       'top-level-await': true,
