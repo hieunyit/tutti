@@ -49,6 +49,14 @@
       label: t(RouteName.CHORUS_STORAGES),
     },
     {
+      name: RouteName.TUTTI_HEALTH,
+      label: t(RouteName.TUTTI_HEALTH),
+    },
+    {
+      name: RouteName.TUTTI_FAILOVER,
+      label: t(RouteName.TUTTI_FAILOVER),
+    },
+    {
       name: RouteName.CHORUS_MONITORING,
       label: t(RouteName.CHORUS_MONITORING),
     },

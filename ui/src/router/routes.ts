@@ -29,6 +29,8 @@ import ChorusSetCredentialPage from '@/pages/ChorusSetCredentialPage/ChorusSetCr
 import ChorusDiffReportsPage from '@/pages/ChorusDiffReportsPage/ChorusDiffReportsPage.vue';
 import ChorusAddDiffReportPage from '@/pages/ChorusAddDiffReportPage/ChorusAddDiffReportPage.vue';
 import ChorusDiffReportDetailPage from '@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue';
+import TuttiHealthPage from '@/pages/TuttiHealthPage/TuttiHealthPage.vue';
+import TuttiFailoverPage from '@/pages/TuttiFailoverPage/TuttiFailoverPage.vue';
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -91,6 +93,16 @@ export const routes: RouteRecordRaw[] = [
         path: 'routing-policies/add',
         name: RouteName.CHORUS_ADD_ROUTING_POLICY,
         component: ChorusAddRoutingPolicyPage,
+      },
+      {
+        path: 'health',
+        name: RouteName.TUTTI_HEALTH,
+        component: TuttiHealthPage,
+      },
+      {
+        path: 'failover',
+        name: RouteName.TUTTI_FAILOVER,
+        component: TuttiFailoverPage,
       },
       {
         path: 'storages/:storageName/credentials/:alias?',

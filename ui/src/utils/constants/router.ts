@@ -14,4 +14,4 @@
  *  limitations under the License.
  */
 
-export const ROUTE_TITLE_PROJECT_PREFIX = 'Chorus';
+export const ROUTE_TITLE_PROJECT_PREFIX = 'Tutti';

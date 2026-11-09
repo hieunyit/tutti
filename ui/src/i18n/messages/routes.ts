@@ -36,6 +36,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.CHORUS_DIFF_REPORTS]: 'Diff Reports',
     [RouteName.CHORUS_ADD_DIFF_REPORT]: 'Add Diff Report',
     [RouteName.CHORUS_DIFF_REPORT_DETAIL]: 'Diff Report Detail',
+    [RouteName.TUTTI_HEALTH]: 'Storage health',
+    [RouteName.TUTTI_FAILOVER]: 'Failover',
   },
   [I18nLocale.DE]: {
     [RouteName.LOGIN]: 'Login',
@@ -51,6 +53,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.CHORUS_DIFF_REPORTS]: 'Diff-Reports',
     [RouteName.CHORUS_ADD_DIFF_REPORT]: 'Diff-Report erstellen',
     [RouteName.CHORUS_DIFF_REPORT_DETAIL]: 'Diff-Report Details',
+    [RouteName.TUTTI_HEALTH]: 'Speicher-Zustand',
+    [RouteName.TUTTI_FAILOVER]: 'Failover',
   },
 };
 

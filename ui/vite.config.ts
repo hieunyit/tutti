@@ -22,6 +22,8 @@ import path from 'path';
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
 
 // https://vite.dev/config/
+const API_TARGET = process.env.VITE_DEV_API_TARGET ?? 'http://localhost:9671';
+
 export default defineConfig({
   esbuild: {
     supported: {
@@ -57,13 +59,13 @@ export default defineConfig({
     port: 8081,
     proxy: {
       '/api': {
-        target: 'http://localhost:9671',
+        target: API_TARGET,
         changeOrigin: true,
         secure: true,
         rewrite: (rewrite_path) => rewrite_path.replace(/^\/api/, ''),
       },
       '^/(token|spec|prometheus/api.*)': {
-        target: 'http://localhost:9671',
+        target: API_TARGET,
         changeOrigin: true,
         secure: true,
       },

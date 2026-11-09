@@ -17,80 +17,45 @@
 <script setup lang="ts">
   import {
     CDashboardFooter,
-    CIcon,
     type DashboardFooterLink,
     I18nLocale,
   } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { storeToRefs } from 'pinia';
-  import { useI18nStore } from '@/stores/i18nStore';
-  import { IconName } from '@/utils/types/icon';
 
-  const year = new Date().getFullYear();
+  const CHORUS_URL = 'https://github.com/clyso/chorus';
+  const TUTTI_URL = 'https://github.com/hieunyit/tutti';
 
   enum DashboardFooterLinkId {
-    ABOUT = 'ABOUT',
-    IMPRINT = 'IMPRINT',
-    PRIVACY_POLICY = 'PRIVACY_POLICY',
-    CONTACT_US = 'CONTACT_US',
+    TUTTI_GITHUB = 'TUTTI_GITHUB',
+    BASED_ON_PREFIX = 'BASED_ON_PREFIX',
+    BASED_ON_SUFFIX = 'BASED_ON_SUFFIX',
   }
 
   const { t } = useI18n({
     messages: {
       [I18nLocale.EN]: {
-        [DashboardFooterLinkId.ABOUT]: 'About Clyso',
-        [DashboardFooterLinkId.IMPRINT]: 'Imprint',
-        [DashboardFooterLinkId.PRIVACY_POLICY]: 'Privacy Policy',
-        [DashboardFooterLinkId.CONTACT_US]: 'Contact Us',
+        [DashboardFooterLinkId.TUTTI_GITHUB]: 'Tutti on GitHub',
+        [DashboardFooterLinkId.BASED_ON_PREFIX]: 'Tutti · based on',
+        [DashboardFooterLinkId.BASED_ON_SUFFIX]:
+          'by Clyso GmbH (https://github.com/clyso/chorus), licensed under AGPL-3.0 (UI) and Apache-2.0 (backend)',
       },
       [I18nLocale.DE]: {
-        [DashboardFooterLinkId.ABOUT]: 'Über Clyso',
-        [DashboardFooterLinkId.IMPRINT]: 'Impressum',
-        [DashboardFooterLinkId.PRIVACY_POLICY]: 'Datenschutzerklärung',
-        [DashboardFooterLinkId.CONTACT_US]: 'Kontakt',
+        [DashboardFooterLinkId.TUTTI_GITHUB]: 'Tutti auf GitHub',
+        [DashboardFooterLinkId.BASED_ON_PREFIX]: 'Tutti · basiert auf',
+        [DashboardFooterLinkId.BASED_ON_SUFFIX]:
+          'von Clyso GmbH (https://github.com/clyso/chorus), lizenziert unter AGPL-3.0 (UI) und Apache-2.0 (Backend)',
       },
     },
   });
 
-  const { locale } = storeToRefs(useI18nStore());
-
-  const footerLinks = computed<DashboardFooterLink[]>(() => {
-    return [
-      {
-        id: DashboardFooterLinkId.ABOUT,
-        text: t(DashboardFooterLinkId.ABOUT),
-        url:
-          locale.value === I18nLocale.DE
-            ? 'https://clyso.com/eu/de/about/'
-            : 'https://clyso.com/eu/en/about/',
-      },
-      {
-        id: DashboardFooterLinkId.IMPRINT,
-        text: t(DashboardFooterLinkId.IMPRINT),
-        url:
-          locale.value === I18nLocale.DE
-            ? 'https://clyso.com/eu/de/impressum/'
-            : 'https://clyso.com/eu/en/imprint/',
-      },
-      {
-        id: DashboardFooterLinkId.PRIVACY_POLICY,
-        text: t(DashboardFooterLinkId.PRIVACY_POLICY),
-        url:
-          locale.value === I18nLocale.DE
-            ? 'https://clyso.com/eu/de/datenschutz/'
-            : 'https://clyso.com/eu/en/privacy-policy/',
-      },
-      {
-        id: DashboardFooterLinkId.CONTACT_US,
-        text: t(DashboardFooterLinkId.CONTACT_US),
-        url:
-          locale.value === I18nLocale.DE
-            ? 'https://www.clyso.com/de/kontakt'
-            : 'https://www.clyso.com/en/contact',
-      },
-    ];
-  });
+  const footerLinks = computed<DashboardFooterLink[]>(() => [
+    {
+      id: DashboardFooterLinkId.TUTTI_GITHUB,
+      text: t(DashboardFooterLinkId.TUTTI_GITHUB),
+      url: TUTTI_URL,
+    },
+  ]);
 </script>
 
 <template>
@@ -99,24 +64,16 @@
     :is-centered="true"
     :links="footerLinks"
   >
-    <template #address>
-      Hohenzollernstraße 27, 80801 München, Deutschland
-    </template>
-    <template #copyright>© Copyright {{ year }} Clyso GmbH</template>
-    <template #logo>
+    <template #copyright>
+      {{ t(DashboardFooterLinkId.BASED_ON_PREFIX) }}
       <a
+        class="dashboard-footer__chorus-link"
+        :href="CHORUS_URL"
+        rel="noopener"
         target="_blank"
-        href="https://www.clyso.com/"
-        rel="noopener noreferrer"
-        class="logo-link"
+        >Chorus</a
       >
-        <CIcon
-          class="logo-link__icon"
-          :is-inline="true"
-          :name="IconName.BASE_LOGO_CLYSO"
-        />
-        Clyso
-      </a>
+      {{ t(DashboardFooterLinkId.BASED_ON_SUFFIX) }}
     </template>
   </CDashboardFooter>
 </template>
@@ -131,23 +88,13 @@
         max-width: none;
       }
     }
-  }
 
-  .logo-link {
-    font-size: 0;
-    margin-top: - utils.unit(1);
-
-    &__icon {
-      width: 100px;
-      height: auto;
-      color: var(--text-color-3);
-      transition: opacity utils.$transition-duration;
+    &__chorus-link {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
 
       &:hover {
-        opacity: 0.6;
-      }
-
-      &:active {
         opacity: 0.8;
       }
     }
