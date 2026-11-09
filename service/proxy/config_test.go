@@ -19,6 +19,7 @@ package proxy
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -70,4 +71,21 @@ auth:
 		r.NoError(err)
 		r.Equal("encryption-key!!", conf.Storage.DynamicCredentials.MasterPassword)
 	})
+}
+
+func TestReplicationConfigValidate(t *testing.T) {
+	r := require.New(t)
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.Equal("fail", conf.Replication.OnEventError)
+	r.Equal(2*time.Second, conf.Replication.EventRetryBudget)
+
+	for _, ok := range []string{"", "fail", "log"} {
+		rc := ReplicationConfig{OnEventError: ok}
+		r.NoError(rc.Validate(), ok)
+	}
+	bad := ReplicationConfig{OnEventError: "ignore"}
+	r.Error(bad.Validate())
+	neg := ReplicationConfig{OnEventError: "fail", EventRetryBudget: -time.Second}
+	r.Error(neg.Validate())
 }

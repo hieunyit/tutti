@@ -111,6 +111,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		TraceMiddleware:   nil,
 		MetricsMiddleware: nil,
 		PolicyMiddleware:  router.PolicyMiddleware(policySvc),
+		Replication: router.ReplicationOptions{
+			OnEventError:     conf.Replication.OnEventError,
+			EventRetryBudget: conf.Replication.EventRetryBudget,
+		},
 	}
 	if conf.Metrics.Enabled {
 		proxyConfig.MetricsMiddleware = metrics.ProxyMiddleware()

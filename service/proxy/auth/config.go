@@ -24,4 +24,10 @@ type Config struct {
 	AllowV2Signature bool                        `yaml:"allowV2Signature"`
 	UseStorage       string                      `yaml:"useStorage"`
 	Custom           map[string]s3.CredentialsV4 `yaml:"custom"`
+	// RequireSignedContentType rejects SigV4 requests that carry a
+	// content-type header not listed in SignedHeaders. Default false: AWS SigV4
+	// only requires host and x-amz-* headers to be signed, and clients such as
+	// MinIO mc/minio-go do not sign content-type. x-amz-* headers are always
+	// required to be signed regardless of this setting (CVE-2026-54330).
+	RequireSignedContentType bool `yaml:"requireSignedContentType"`
 }

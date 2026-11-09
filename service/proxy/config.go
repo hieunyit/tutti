@@ -20,6 +20,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/hieunyit/tutti/pkg/config"
 	"github.com/hieunyit/tutti/pkg/dom"
@@ -53,6 +54,29 @@ type Config struct {
 	Port    int          `yaml:"port"`
 	Address string       `yaml:"address"`
 	Cors    *cors.Config `yaml:"cors"`
+
+	Replication ReplicationConfig `yaml:"replication"`
+}
+
+type ReplicationConfig struct {
+	// OnEventError defines what to do when a write succeeded on the main storage but its replication event
+	// could not be recorded: "fail" (default) returns 503 so the client retries the (idempotent) request,
+	// which records the event again; "log" keeps the legacy behavior (respond with the storage response and only log).
+	OnEventError string `yaml:"onEventError"`
+	// EventRetryBudget is the total time to retry recording the event before OnEventError applies. Default 2s.
+	EventRetryBudget time.Duration `yaml:"eventRetryBudget"`
+}
+
+func (r *ReplicationConfig) Validate() error {
+	switch r.OnEventError {
+	case "", router.OnEventErrorFail, router.OnEventErrorLog:
+	default:
+		return fmt.Errorf("proxy config: invalid replication.onEventError %q: must be %q or %q", r.OnEventError, router.OnEventErrorFail, router.OnEventErrorLog)
+	}
+	if r.EventRetryBudget < 0 {
+		return fmt.Errorf("proxy config: replication.eventRetryBudget must not be negative")
+	}
+	return nil
 }
 
 func (c *Config) Validate() error {
@@ -63,6 +87,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := ValidateAuth(c.Storage, c.Auth); err != nil {
+		return err
+	}
+	if err := c.Replication.Validate(); err != nil {
 		return err
 	}
 	return nil

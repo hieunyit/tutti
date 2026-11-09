@@ -11,7 +11,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
-func TestExtractSignedHeadersRejectsUnsignedHeaders(t *testing.T) {
+func TestExtractSignedHeadersStrictRejectsUnsignedHeaders(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -75,7 +75,7 @@ func TestExtractSignedHeadersRejectsUnsignedHeaders(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "http://s3.example.com/bucket/object", nil)
 			maps.Copy(req.Header, tc.headers)
 
-			extracted, err := ExtractSignedHeaders(tc.signedHeaders, req)
+			extracted, err := ExtractSignedHeadersOpts(tc.signedHeaders, req, SignedHeaderOpts{RequireSignedContentType: true})
 			if tc.wantErr {
 				r.ErrorIs(err, dom.ErrAuth)
 				r.Nil(extracted)
@@ -85,4 +85,43 @@ func TestExtractSignedHeadersRejectsUnsignedHeaders(t *testing.T) {
 			r.Len(extracted, len(tc.signedHeaders))
 		})
 	}
+}
+
+func TestExtractSignedHeadersContentTypeOptional(t *testing.T) {
+	t.Parallel()
+
+	newReq := func(h http.Header) *http.Request {
+		req := httptest.NewRequest(http.MethodPut, "http://s3.example.com/bucket/object", nil)
+		maps.Copy(req.Header, h)
+		return req
+	}
+	ct := http.Header{"Content-Type": {"application/octet-stream"}}
+	meta := http.Header{"X-Amz-Meta-Foo": {"bar"}}
+
+	t.Run("unsigned content-type accepted when not strict", func(t *testing.T) {
+		t.Parallel()
+		_, err := ExtractSignedHeadersOpts([]string{"host"}, newReq(ct), SignedHeaderOpts{})
+		require.NoError(t, err)
+		_, err = ExtractSignedHeaders([]string{"host"}, newReq(ct))
+		require.NoError(t, err)
+	})
+	t.Run("unsigned content-type rejected when strict", func(t *testing.T) {
+		t.Parallel()
+		_, err := ExtractSignedHeadersOpts([]string{"host"}, newReq(ct), SignedHeaderOpts{RequireSignedContentType: true})
+		require.ErrorIs(t, err, dom.ErrAuth)
+	})
+	t.Run("unsigned x-amz-meta rejected in both modes", func(t *testing.T) {
+		t.Parallel()
+		for _, strict := range []bool{false, true} {
+			_, err := ExtractSignedHeadersOpts([]string{"host"}, newReq(meta), SignedHeaderOpts{RequireSignedContentType: strict})
+			require.ErrorIs(t, err, dom.ErrAuth)
+		}
+	})
+	t.Run("missing host rejected in both modes", func(t *testing.T) {
+		t.Parallel()
+		for _, strict := range []bool{false, true} {
+			_, err := ExtractSignedHeadersOpts([]string{"x-amz-date"}, newReq(http.Header{"X-Amz-Date": {"20260910T120000Z"}}), SignedHeaderOpts{RequireSignedContentType: strict})
+			require.ErrorIs(t, err, dom.ErrAuth)
+		}
+	})
 }

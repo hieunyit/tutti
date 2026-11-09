@@ -17,18 +17,23 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/replication"
+	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
@@ -40,6 +45,75 @@ type Config struct {
 	PolicyMiddleware  func(next http.Handler) http.Handler
 	// CorsMiddleware must be set only when CORS is enabled: it also makes the proxy drop backend CORS headers.
 	CorsMiddleware func(next http.Handler) http.Handler
+	// Replication defines how failures to record replication events are handled.
+	Replication ReplicationOptions
+}
+
+const (
+	// OnEventErrorFail responds with 503 if the replication event could not be recorded.
+	OnEventErrorFail = "fail"
+	// OnEventErrorLog only logs the error and forwards the storage response.
+	OnEventErrorLog = "log"
+
+	DefaultEventRetryBudget = 2 * time.Second
+	eventRetryInitialDelay  = 50 * time.Millisecond
+)
+
+// ReplicationOptions controls handling of replication event recording errors.
+type ReplicationOptions struct {
+	// OnEventError is "fail" (default) or "log".
+	OnEventError string
+	// EventRetryBudget is the total time spent retrying Replicate. Default 2s.
+	EventRetryBudget time.Duration
+}
+
+func (o ReplicationOptions) withDefaults() ReplicationOptions {
+	if o.OnEventError == "" {
+		o.OnEventError = OnEventErrorFail
+	}
+	if o.EventRetryBudget <= 0 {
+		o.EventRetryBudget = DefaultEventRetryBudget
+	}
+	return o
+}
+
+// replicateWithRetry retries Replicate with exponential backoff until deadline.
+// The deadline is shared by all tasks of a request, so a request producing many tasks
+// (e.g. DeleteObjects with 1000 keys) is still bounded by a single retry budget.
+func replicateWithRetry(ctx context.Context, svc replication.Service, storage string, task tasks.ReplicationTask, deadline time.Time) error {
+	delay := eventRetryInitialDelay
+	for {
+		err := svc.Replicate(ctx, storage, task)
+		if err == nil {
+			return nil
+		}
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return err
+		}
+		if delay > remaining {
+			delay = remaining
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Dur("retry_in", delay).Msg("unable to record replication event, retrying")
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("%w (retry aborted: %w)", err, ctx.Err())
+		case <-timer.C:
+		}
+		delay *= 2
+	}
+}
+
+func writeEventRecordError(ctx context.Context, w http.ResponseWriter) {
+	util.WriteError(ctx, w, minio.ErrorResponse{
+		Code:       "ServiceUnavailable",
+		Message:    "The change was applied but could not be recorded for replication. Please retry the request.",
+		BucketName: xctx.GetBucket(ctx),
+		Key:        xctx.GetObject(ctx),
+		StatusCode: http.StatusServiceUnavailable,
+	})
 }
 
 type StorageProxy struct {
@@ -81,7 +155,7 @@ func New(config Config) (http.Handler, error) {
 	handlers := make(map[dom.StorageType]http.Handler, len(config.Storages))
 	for storType, storProxy := range config.Storages {
 		// 9. main request handler. Forward request to storage backend and emit replication tasks
-		handler := serve(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil)
+		handler := serve(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil, config.Replication)
 		if config.TraceMiddleware != nil {
 			// 8. tracing
 			handler = config.TraceMiddleware(handler)
@@ -122,7 +196,8 @@ func New(config Config) (http.Handler, error) {
 
 }
 
-func serve(router Router, replSvc replication.Service, proxyCors bool) http.Handler {
+func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts ReplicationOptions) http.Handler {
+	replOpts = replOpts.withDefaults()
 	// Use a custom handler function instead of ServeMux to avoid automatic redirects
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := otel.Tracer("").Start(r.Context(), "Route")
@@ -149,11 +224,26 @@ func serve(router Router, replSvc replication.Service, proxyCors bool) http.Hand
 		} else {
 			replCtx, cancel := log.StartNew(ctx)
 			defer cancel()
+			// detached ctx keeps values but ignores client cancel; stop retrying when client is gone
+			retryCtx, stopRetry := withCancelFrom(replCtx, r.Context())
+			defer stopRetry()
+			deadline := time.Now().Add(replOpts.EventRetryBudget)
+			var recordErr error
 			for _, task := range taskList {
-				replErr := replSvc.Replicate(replCtx, storage, task)
+				replErr := replicateWithRetry(retryCtx, replSvc, storage, task, deadline)
 				if replErr != nil {
-					logger.Err(replErr).Msg("unable to handle replication")
+					logger.Err(replErr).
+						Str("bucket", xctx.GetBucket(ctx)).
+						Str("object", xctx.GetObject(ctx)).
+						Str("on_event_error", replOpts.OnEventError).
+						Msg("unable to handle replication")
+					recordErr = replErr
 				}
+			}
+			if recordErr != nil && replOpts.OnEventError == OnEventErrorFail {
+				// resp body is closed by defer
+				writeEventRecordError(ctx, w)
+				return
 			}
 		}
 		// Forward response to original client
@@ -181,4 +271,15 @@ func serve(router Router, replSvc replication.Service, proxyCors bool) http.Hand
 			return
 		}
 	})
+}
+
+// withCancelFrom returns a ctx with the values of base that is also canceled when
+// cancelSrc is done. The returned func releases it and must be called.
+func withCancelFrom(base, cancelSrc context.Context) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(base)
+	stop := context.AfterFunc(cancelSrc, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
 }
