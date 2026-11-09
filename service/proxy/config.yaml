@@ -8,8 +8,8 @@ replication:
   onEventError: fail
   eventRetryBudget: 2s # total time to retry recording the event (exponential backoff) before onEventError applies
   # Synchronous replication on the write path. When enabled, after the main write succeeded and the event was
-  # recorded, the proxy copies the object to the replication destinations BEFORE answering the client.
-  # The replication task stays enqueued as a safety net: destinations that fail or time out are completed by the worker.
+  # recorded, the proxy starts copying the object to the replication destinations and answers when quorum is met.
+  # The replication task stays enqueued as a safety net: failed, timed out, or pending destinations are completed by the worker.
   # Applies to object writes/deletes (PutObject, CompleteMultipartUpload, CopyObject, DeleteObject(s)); ACL/tag/bucket tasks stay async.
   # The response carries header X-Tutti-Replicas: <copies>/<1+destinations>.
   sync:

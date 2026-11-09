@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -55,7 +54,7 @@ type SyncOptions struct {
 	Syncer  ObjectSyncer
 	// WriteQuorum is the number of copies (main included) required before answering. 0 means all.
 	WriteQuorum int
-	// Timeout bounds the time spent syncing destinations per request.
+	// Timeout bounds the time spent waiting for the write quorum per request.
 	Timeout time.Duration
 	// OnQuorumFailure is "fail" (default) or "accept".
 	OnQuorumFailure string
@@ -65,10 +64,11 @@ type SyncOptions struct {
 
 // syncResult is the outcome of the synchronous replication of one request.
 type syncResult struct {
-	copies int
-	total  int
-	quorum int
-	failed map[entity.UniversalReplicationID]error
+	copies  int
+	total   int
+	quorum  int
+	failed  map[entity.UniversalReplicationID]error
+	pending []entity.UniversalReplicationID
 }
 
 func (o SyncOptions) active() bool { return o.Enabled && o.Syncer != nil }
@@ -114,15 +114,27 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 		return res, true
 	}
 
+	// Only this goroutine owns res. The channel holds every outcome even when the
+	// quorum is reached early and the remaining attempts are canceled.
+	type outcome struct {
+		id  entity.UniversalReplicationID
+		err error
+	}
+	results := make(chan outcome, len(run))
 	syncCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	synced := 0
+	pending := make(map[entity.UniversalReplicationID]struct{}, len(run))
 	for _, id := range run {
-		wg.Add(1)
+		pending[id] = struct{}{}
+	}
+	if res.copies >= res.quorum {
+		for id := range pending {
+			res.pending = append(res.pending, id)
+		}
+		return res, true
+	}
+	for _, id := range run {
 		go func() {
-			defer wg.Done()
 			to := id.ToStorage()
 			var err error
 			if o.Health != nil && !o.Health.Allow(to) {
@@ -130,6 +142,12 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 			} else {
 				gen := xctx.GetReplicationGeneration(ctx, id)
 				for _, p := range payloads {
+					if err = syncCtx.Err(); err != nil {
+						if o.Health != nil {
+							o.Health.Observe(to, err)
+						}
+						break
+					}
 					p.SetReplicationID(id, gen)
 					err = o.Syncer.Sync(syncCtx, p)
 					if o.Health != nil {
@@ -140,38 +158,58 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 					}
 				}
 			}
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				res.failed[id] = err
-			} else {
-				synced++
-			}
+			results <- outcome{id: id, err: err}
 		}()
 	}
-	wg.Wait()
-
-	res.copies = 1 + synced
+	for len(pending) != 0 && res.copies < res.quorum {
+		select {
+		case result := <-results:
+			delete(pending, result.id)
+			if result.err != nil {
+				res.failed[result.id] = result.err
+			} else {
+				res.copies++
+			}
+		case <-syncCtx.Done():
+			for id := range pending {
+				res.failed[id] = syncCtx.Err()
+			}
+			return res, true
+		}
+	}
+	for id := range pending {
+		res.pending = append(res.pending, id)
+	}
 	return res, true
 }
 
 func (r syncResult) header() string { return fmt.Sprintf("%d/%d", r.copies, r.total) }
 
-func (r syncResult) logFailures(logger *zerolog.Logger, onFailure string) {
+func (r syncResult) logUnconfirmed(logger *zerolog.Logger, onFailure string) {
 	ids := make([]string, 0, len(r.failed))
 	reasons := make([]string, 0, len(r.failed))
+	pending := make([]string, 0, len(r.pending))
 	for id, err := range r.failed {
 		ids = append(ids, fmt.Sprintf("%s->%s", id.FromStorage(), id.ToStorage()))
 		reasons = append(reasons, err.Error())
 	}
+	for _, id := range r.pending {
+		pending = append(pending, fmt.Sprintf("%s->%s", id.FromStorage(), id.ToStorage()))
+	}
 	sort.Strings(ids)
 	sort.Strings(reasons)
-	logger.Warn().
+	sort.Strings(pending)
+	event := logger.Debug()
+	if len(r.failed) != 0 || r.copies < r.quorum {
+		event = logger.Warn()
+	}
+	event.
 		Int("copies", r.copies).Int("quorum", r.quorum).Int("destinations", r.total-1).
 		Str("on_quorum_failure", onFailure).
 		Str("failed_destinations", strings.Join(ids, ",")).
+		Str("pending_destinations", strings.Join(pending, ",")).
 		Str("errors", strings.Join(reasons, "; ")).
-		Msg("sync replication: not all destinations are up to date, remaining replication is asynchronous")
+		Msg("sync replication: not all destinations were confirmed synchronously, remaining replication is asynchronous")
 }
 
 func writeQuorumError(ctx context.Context, w http.ResponseWriter) {

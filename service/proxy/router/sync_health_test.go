@@ -33,8 +33,8 @@ func TestServeSync_OpenBreakerDestinationSkipped_QuorumStillReachable(t *testing
 	r.Less(took, time.Second)
 	r.Equal(http.StatusOK, rec.Code)
 	r.Equal("2/3", rec.Header().Get(ReplicasHeader))
-	r.Equal(1, fs.calls["f1"])
-	r.Zero(fs.calls["f2"], "open destination must not be attempted")
+	r.Equal(1, fs.callsTo("f1"))
+	r.Zero(fs.callsTo("f2"), "open destination must not be attempted")
 	r.True(reg.Available("f1"))
 }
 
@@ -48,7 +48,7 @@ func TestServeSync_OpenBreaker_QuorumUnreachable_FailsFastWithoutSyncing(t *test
 	r.Less(took, time.Second)
 	r.Equal(http.StatusServiceUnavailable, rec.Code)
 	r.Contains(rec.Body.String(), "quorum")
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }
 
 func TestServeSync_OpenBreaker_QuorumUnreachable_Accept(t *testing.T) {
@@ -59,7 +59,7 @@ func TestServeSync_OpenBreaker_QuorumUnreachable_Accept(t *testing.T) {
 	rec, _ := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 5 * time.Second, Health: reg, OnQuorumFailure: OnQuorumFailureAccept}, []string{"f1", "f2"}, 1)
 	r.Equal(http.StatusOK, rec.Code)
 	r.Equal("1/3", rec.Header().Get(ReplicasHeader))
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }
 
 func TestServeSync_ObservesDestinationOutcomes(t *testing.T) {
@@ -71,10 +71,11 @@ func TestServeSync_ObservesDestinationOutcomes(t *testing.T) {
 	for range 3 {
 		runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 50 * time.Millisecond, Health: reg}, []string{"f1"}, 1)
 	}
-	r.False(reg.Available("f1"))
+	r.Eventually(func() bool { return !reg.Available("f1") }, time.Second, 10*time.Millisecond,
+		"three timed-out destinations must eventually open the breaker")
 	// now fast
 	rec, took := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 5 * time.Second, Health: reg}, []string{"f1"}, 1)
 	r.Less(took, time.Second)
 	r.Equal(http.StatusServiceUnavailable, rec.Code)
-	r.Equal(3, fs.calls["f1"])
+	r.Equal(3, fs.callsTo("f1"))
 }

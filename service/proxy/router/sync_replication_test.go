@@ -1,11 +1,13 @@
 package router
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +26,10 @@ type fakeSyncer struct {
 	hang  map[string]bool
 }
 
+type syncerFunc func(context.Context, tasks.ObjectSyncPayload) error
+
+func (f syncerFunc) Sync(ctx context.Context, p tasks.ObjectSyncPayload) error { return f(ctx, p) }
+
 func (f *fakeSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) error {
 	to := p.ID.ToStorage()
 	f.mu.Lock()
@@ -38,6 +44,22 @@ func (f *fakeSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) error 
 		return errors.New("destination down")
 	}
 	return nil
+}
+
+func (f *fakeSyncer) callsTo(storage string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls[storage]
+}
+
+func (f *fakeSyncer) totalCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	total := 0
+	for _, n := range f.calls {
+		total += n
+	}
+	return total
 }
 
 func newFakeSyncer(failTo ...string) *fakeSyncer {
@@ -81,7 +103,7 @@ func TestServeSync_Disabled(t *testing.T) {
 	rec, _ := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: false, Syncer: fs}, []string{"f1", "f2"}, 1)
 	r.Equal(http.StatusOK, rec.Code)
 	r.Empty(rec.Header().Get(ReplicasHeader))
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }
 
 func TestServeSync_AllSucceed(t *testing.T) {
@@ -91,7 +113,7 @@ func TestServeSync_AllSucceed(t *testing.T) {
 	r.Equal(http.StatusOK, rec.Code)
 	r.Equal("storage-ok", rec.Body.String())
 	r.Equal("2/2", rec.Header().Get(ReplicasHeader))
-	r.Equal(1, fs.calls["f1"])
+	r.Equal(1, fs.callsTo("f1"))
 }
 
 func TestServeSync_OneOfTwoFails_QuorumAll_503(t *testing.T) {
@@ -121,6 +143,101 @@ func TestServeSync_WriteQuorumTwoSatisfied(t *testing.T) {
 	r.Equal("2/3", rec.Header().Get(ReplicasHeader))
 }
 
+func TestServeSync_ReturnsWhenQuorumReached(t *testing.T) {
+	r := require.New(t)
+	slowStarted := make(chan struct{})
+	slowCanceled := make(chan struct{})
+	syncer := syncerFunc(func(ctx context.Context, p tasks.ObjectSyncPayload) error {
+		if p.ID.ToStorage() == "f1" {
+			<-slowStarted
+			return nil
+		}
+		close(slowStarted)
+		<-ctx.Done()
+		close(slowCanceled)
+		return ctx.Err()
+	})
+	svc := &failingReplSvc{}
+	rec, took := runSyncServe(t, svc, SyncOptions{Enabled: true, Syncer: syncer, Timeout: 2 * time.Second, WriteQuorum: 2}, []string{"f1", "f2"}, 1)
+	r.Less(took, time.Second)
+	r.Equal(http.StatusOK, rec.Code)
+	r.Equal("2/3", rec.Header().Get(ReplicasHeader))
+	r.EqualValues(1, svc.calls.Load(), "asynchronous replication event must be recorded before early return")
+	select {
+	case <-slowCanceled:
+	case <-time.After(time.Second):
+		t.Fatal("pending destination was not canceled after quorum")
+	}
+}
+
+func TestServeSync_QuorumOneSkipsDestinations(t *testing.T) {
+	r := require.New(t)
+	var calls atomic.Int32
+	syncer := syncerFunc(func(context.Context, tasks.ObjectSyncPayload) error {
+		calls.Add(1)
+		return nil
+	})
+	rec, _ := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: syncer, Timeout: time.Second, WriteQuorum: 1}, []string{"f1", "f2"}, 1)
+	r.Equal(http.StatusOK, rec.Code)
+	r.Equal("1/3", rec.Header().Get(ReplicasHeader))
+	r.Zero(calls.Load())
+}
+
+func TestServeSync_DefaultQuorumWaitsForSlowDestination(t *testing.T) {
+	r := require.New(t)
+	syncer := syncerFunc(func(ctx context.Context, p tasks.ObjectSyncPayload) error {
+		if p.ID.ToStorage() == "f1" {
+			return nil
+		}
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	rec, took := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: syncer, Timeout: 150 * time.Millisecond}, []string{"f1", "f2"}, 1)
+	r.GreaterOrEqual(took, 100*time.Millisecond)
+	r.Less(took, time.Second)
+	r.Equal(http.StatusServiceUnavailable, rec.Code)
+}
+
+func TestServeSync_FailureStillAllowsQuorumFromOtherDestination(t *testing.T) {
+	r := require.New(t)
+	slowStarted := make(chan struct{})
+	slowCanceled := make(chan struct{})
+	syncer := syncerFunc(func(ctx context.Context, p tasks.ObjectSyncPayload) error {
+		switch p.ID.ToStorage() {
+		case "f1":
+			return errors.New("destination down")
+		case "f2":
+			<-slowStarted
+			return nil
+		default:
+			close(slowStarted)
+			<-ctx.Done()
+			close(slowCanceled)
+			return ctx.Err()
+		}
+	})
+	rec, took := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: syncer, Timeout: 2 * time.Second, WriteQuorum: 2}, []string{"f1", "f2", "f3"}, 1)
+	r.Less(took, time.Second)
+	r.Equal(http.StatusOK, rec.Code)
+	r.Equal("2/4", rec.Header().Get(ReplicasHeader))
+	select {
+	case <-slowCanceled:
+	case <-time.After(time.Second):
+		t.Fatal("pending destination was not canceled after quorum")
+	}
+}
+
+func TestSyncResult_PendingOnlyLogsAtDebug(t *testing.T) {
+	r := require.New(t)
+	var out bytes.Buffer
+	logger := zerolog.New(&out).Level(zerolog.DebugLevel)
+	result := syncResult{copies: 2, total: 3, quorum: 2, pending: []entity.UniversalReplicationID{replID("f2")}}
+	result.logUnconfirmed(&logger, OnQuorumFailureFail)
+	r.Contains(out.String(), `"level":"debug"`)
+	r.Contains(out.String(), `"pending_destinations":"main->f2"`)
+	r.Contains(out.String(), `"failed_destinations":""`)
+}
+
 func TestServeSync_QuorumCappedAtDestinations(t *testing.T) {
 	r := require.New(t)
 	fs := newFakeSyncer()
@@ -134,7 +251,7 @@ func TestServeSync_MultipleTasksAllMustSucceed(t *testing.T) {
 	fs := newFakeSyncer()
 	rec, _ := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: time.Second}, []string{"f1"}, 3)
 	r.Equal(http.StatusOK, rec.Code)
-	r.Equal(3, fs.calls["f1"])
+	r.Equal(3, fs.callsTo("f1"))
 	r.Equal("2/2", rec.Header().Get(ReplicasHeader))
 }
 
@@ -154,7 +271,7 @@ func TestServeSync_NoDestinationsNoSync(t *testing.T) {
 	rec, _ := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: time.Second}, nil, 1)
 	r.Equal(http.StatusOK, rec.Code)
 	r.Empty(rec.Header().Get(ReplicasHeader))
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }
 
 func TestServeSync_NonObjectTasksNotSynced(t *testing.T) {
@@ -167,7 +284,7 @@ func TestServeSync_NonObjectTasksNotSynced(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/b/o?acl", nil).WithContext(ctx))
 	r.Equal(http.StatusOK, rec.Code)
 	r.Empty(rec.Header().Get(ReplicasHeader))
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }
 
 func TestServeSync_RecordFailureSkipsSync(t *testing.T) {
@@ -176,5 +293,5 @@ func TestServeSync_RecordFailureSkipsSync(t *testing.T) {
 	rec, _ := runSyncServe(t, &failingReplSvc{failFirst: -1}, SyncOptions{Enabled: true, Syncer: fs, Timeout: time.Second}, []string{"f1"}, 1)
 	r.Equal(http.StatusServiceUnavailable, rec.Code)
 	r.Contains(rec.Body.String(), "could not be recorded")
-	r.Empty(fs.calls)
+	r.Zero(fs.totalCalls())
 }

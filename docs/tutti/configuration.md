@@ -90,11 +90,11 @@ replication:
     onQuorumFailure: fail # or accept
 ```
 
-When enabled, after the main write succeeded and its event was recorded, the proxy copies the object to the replication destinations before answering the client. The queued replication task stays as a safety net: destinations that failed or timed out are completed by the worker.
+When enabled, after the main write succeeded and its event was recorded, the proxy starts copying the object to the replication destinations and answers when the write quorum is confirmed. The queued replication task stays as a safety net: destinations that failed, timed out, or were still pending are completed by the worker.
 
 - `enabled` (bool, default `false`).
 - `writeQuorum` (int, default `0`): number of copies, **main included**, that must exist before answering. `0` means main plus all destinations. A value larger than `1 + destinations` is capped to `1 + destinations`. Negative values are rejected.
-- `timeout` (duration, default `30s`): maximum time spent syncing destinations per request (all destinations in parallel). Must be greater than `0` when `enabled` is `true`, otherwise startup fails.
+- `timeout` (duration, default `30s`): maximum time spent waiting for the write quorum per request (destinations run in parallel). Must be greater than `0` when `enabled` is `true`, otherwise startup fails.
 - `onQuorumFailure` (`fail` | `accept`, default `fail`): what to do when fewer than `writeQuorum` copies exist. `fail` answers `503 ServiceUnavailable`; `accept` forwards the main storage response. Any other value is rejected. An empty string behaves as `fail`.
 
 Interactions:
@@ -103,6 +103,7 @@ Interactions:
 - Only object content/delete tasks are synced (see [operations](./operations.md#synchronous-replication)). ACL, tagging and bucket tasks stay asynchronous.
 - Sync is skipped for a request whose event recording failed with `onEventError: log`.
 - A destination whose circuit breaker is open is not attempted; if that makes the quorum unreachable the proxy does not wait for any destination.
+- The proxy answers as soon as the configured quorum is confirmed and cancels unfinished synchronous attempts. The already queued replication tasks let the worker finish those destinations. With `writeQuorum: 1`, no destination is attempted on the request path.
 - The proxy needs Redis lock access (`redis.lockDB`) for the destination-object lock, the same one the worker uses.
 - The response carries `X-Tutti-Replicas: <copies>/<1+destinations>`.
 

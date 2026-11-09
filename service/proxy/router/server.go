@@ -301,13 +301,13 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 					if onFail == "" {
 						onFail = OnQuorumFailureFail
 					}
-					syncRes.logFailures(logger, onFail)
+					syncRes.logUnconfirmed(logger, onFail)
 					if onFail == OnQuorumFailureFail {
 						writeQuorumError(ctx, w)
 						return
 					}
-				} else if synced && len(syncRes.failed) != 0 {
-					syncRes.logFailures(logger, syncOpts.OnQuorumFailure)
+				} else if synced && (len(syncRes.failed) != 0 || len(syncRes.pending) != 0) {
+					syncRes.logUnconfirmed(logger, syncOpts.OnQuorumFailure)
 				}
 			}
 		}

@@ -61,8 +61,8 @@ Destinations are those replications in the request context, that is, replication
 Quorum math:
 
 - `total = 1 + destinations`. `quorum = writeQuorum`, or `total` if `writeQuorum` is `0` or larger than `total`.
-- `copies = 1 + destinations that synced successfully`. All destinations are always attempted (unless skipped, see below) and the proxy waits for all of them up to `timeout`; the quorum only decides the outcome, it does not shorten the wait.
-- If `copies >= quorum`: normal response. If some destinations failed, a warning `sync replication: not all destinations are up to date, remaining replication is asynchronous` is logged and the worker completes them.
+- `copies = 1 + destinations confirmed synced before the response`. Destinations are attempted in parallel unless skipped. The proxy answers as soon as enough copies are confirmed, cancels unfinished attempts, and leaves their queued tasks for the worker. With `writeQuorum: 1`, the main copy already meets quorum and no destination is attempted. The default quorum of all destinations waits for every outcome or `timeout`.
+- If `copies >= quorum`: normal response. Failed destinations produce a warning; destinations still pending at quorum are logged at debug level. The worker completes their queued tasks.
 - If `copies < quorum`: `onQuorumFailure: fail` answers `503 ServiceUnavailable` ("the write was stored on the primary storage but the replication quorum was not reached; the change will be replicated asynchronously. Retry the request to obtain the guarantee."). `accept` forwards the main response.
 - Destinations whose breaker is open are skipped and counted as failed. If `1 + available destinations < quorum`, nothing is attempted and the request fails (or is accepted) immediately.
 
@@ -70,9 +70,9 @@ Header: `X-Tutti-Replicas: <copies>/<total>` is set on responses of synced reque
 
 Failure semantics: in all cases the main write stands and the replication task remains queued, so a destination that is down converges once it is back. `fail` only changes what the client sees.
 
-Latency trade-off: write latency becomes main write + the slowest destination (bounded by `timeout`, default 30 s). Choose `writeQuorum` and `timeout` accordingly; a small `timeout` with `onQuorumFailure: accept` bounds latency while still replicating asynchronously.
+Latency trade-off: write latency becomes main write + the time to reach quorum (bounded by `timeout`, default 30 s). With the default quorum of all destinations, this includes the slowest destination. Choose `writeQuorum` and `timeout` accordingly; a small `timeout` with `onQuorumFailure: accept` bounds latency while still replicating asynchronously.
 
-Verified: with sync mode, objects are visible on followers when the PUT returns.
+With the default quorum of all destinations, objects are visible on every follower when the PUT returns successfully. With a smaller quorum, `X-Tutti-Replicas` reports the copies confirmed before the response.
 
 ## Circuit breaker and health checks
 
