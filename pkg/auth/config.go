@@ -5,6 +5,7 @@ package auth
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 )
@@ -24,6 +25,11 @@ type Config struct {
 	SessionTTL time.Duration `yaml:"sessionTTL"`
 	// Users is the list of local users. Passwords are bcrypt hashes.
 	Users []User `yaml:"users"`
+	// TrustedProxies lists CIDRs or IPs of reverse proxies (e.g. nginx serving
+	// the web UI) whose X-Forwarded-For / X-Real-IP headers are trusted when
+	// resolving the client address for login rate limiting. Empty by default:
+	// the TCP peer address is used.
+	TrustedProxies []string `yaml:"trustedProxies"`
 }
 
 type User struct {
@@ -41,9 +47,34 @@ func validHash(h string) bool {
 	return false
 }
 
+// parseTrustedProxies parses CIDRs and bare IPs.
+func parseTrustedProxies(entries []string) ([]*net.IPNet, error) {
+	var nets []*net.IPNet
+	for _, e := range entries {
+		e = strings.TrimSpace(e)
+		if _, n, err := net.ParseCIDR(e); err == nil {
+			nets = append(nets, n)
+			continue
+		}
+		ip := net.ParseIP(e)
+		if ip == nil {
+			return nil, fmt.Errorf("auth config: trustedProxies: %q is not a valid IP or CIDR", e)
+		}
+		bits := 8 * net.IPv6len
+		if v4 := ip.To4(); v4 != nil {
+			ip, bits = v4, 8*net.IPv4len
+		}
+		nets = append(nets, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+	}
+	return nets, nil
+}
+
 func (c *Config) Validate() error {
 	if c == nil || !c.Enabled {
 		return nil
+	}
+	if _, err := parseTrustedProxies(c.TrustedProxies); err != nil {
+		return err
 	}
 	if c.SessionTTL < 0 {
 		return fmt.Errorf("auth config: sessionTTL must not be negative")

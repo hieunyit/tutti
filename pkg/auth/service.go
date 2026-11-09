@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,7 +22,11 @@ const (
 	failPrefix    = "tutti:authfail:"
 
 	maxFailures = 10
-	failWindow  = 15 * time.Minute
+	// maxUserFailures is the per-username threshold across all client
+	// addresses. It is deliberately much higher than maxFailures so that one
+	// client cannot lock a user out for everyone.
+	maxUserFailures = 100
+	failWindow      = 15 * time.Minute
 )
 
 var (
@@ -53,13 +59,18 @@ type Service struct {
 	// response timing independent of user existence.
 	dummyHash []byte
 	now       func() time.Time
+	trusted   []*net.IPNet
 }
 
 func NewService(conf Config, rdb redis.Cmdable) (*Service, error) {
 	if err := conf.Validate(); err != nil {
 		return nil, err
 	}
-	s := &Service{conf: conf, rdb: rdb, users: make(map[string]User, len(conf.Users)), now: time.Now}
+	trusted, err := parseTrustedProxies(conf.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
+	s := &Service{trusted: trusted, conf: conf, rdb: rdb, users: make(map[string]User, len(conf.Users)), now: time.Now}
 	for _, u := range conf.Users {
 		s.users[u.Username] = u
 	}
@@ -79,6 +90,11 @@ func hashToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func userFailKey(username string) string {
+	sum := sha256.Sum256([]byte(username))
+	return failPrefix + "user:" + hex.EncodeToString(sum[:])
+}
+
 func failKey(username, ip string) string {
 	sum := sha256.Sum256([]byte(username + "\x00" + ip))
 	return failPrefix + hex.EncodeToString(sum[:])
@@ -88,10 +104,18 @@ func failKey(username, ip string) string {
 // the failed-attempt counter.
 func (s *Service) Login(ctx context.Context, username, password, ip string) (*LoginResult, error) {
 	fk := failKey(username, ip)
-	if n, err := s.rdb.Get(ctx, fk).Int(); err == nil && n >= maxFailures {
-		return nil, ErrTooManyAttempts
-	} else if err != nil && !errors.Is(err, redis.Nil) {
-		return nil, fmt.Errorf("auth: rate limit lookup: %w", err)
+	uk := userFailKey(username)
+	for _, c := range []struct {
+		key string
+		max int
+	}{{fk, maxFailures}, {uk, maxUserFailures}} {
+		n, err := s.rdb.Get(ctx, c.key).Int()
+		if err == nil && n >= c.max {
+			log.Warn().Str("username", username).Str("client_ip", ip).Msg("login rejected: too many failed attempts")
+			return nil, ErrTooManyAttempts
+		} else if err != nil && !errors.Is(err, redis.Nil) {
+			return nil, fmt.Errorf("auth: rate limit lookup: %w", err)
+		}
 	}
 
 	u, found := s.users[username]
@@ -104,9 +128,12 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 		pipe := s.rdb.TxPipeline()
 		pipe.Incr(ctx, fk)
 		pipe.Expire(ctx, fk, failWindow)
+		pipe.Incr(ctx, uk)
+		pipe.Expire(ctx, uk, failWindow)
 		if _, err := pipe.Exec(ctx); err != nil {
 			return nil, fmt.Errorf("auth: record failure: %w", err)
 		}
+		log.Warn().Str("username", username).Str("client_ip", ip).Bool("known_user", found).Msg("failed login")
 		return nil, ErrInvalidCredentials
 	}
 

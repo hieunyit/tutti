@@ -41,15 +41,48 @@ func bearerFromRequest(r *http.Request) string {
 	return ""
 }
 
-// clientIP uses the TCP peer address only. X-Forwarded-For is not trusted
-// because it is client-controlled and would let attackers evade rate limits.
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
+func ipInNets(ip net.IP, nets []*net.IPNet) bool {
+	for _, n := range nets {
+		if n.Contains(ip) {
+			return true
+		}
 	}
-	return host
+	return false
 }
+
+// resolveClientIP returns the client address. X-Forwarded-For / X-Real-IP are
+// honoured only when the TCP peer is a trusted proxy; XFF is walked from right
+// to left and the first address that is not itself a trusted proxy wins.
+func resolveClientIP(r *http.Request, trusted []*net.IPNet) string {
+	peer := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		peer = host
+	}
+	peerIP := net.ParseIP(peer)
+	if len(trusted) == 0 || peerIP == nil || !ipInNets(peerIP, trusted) {
+		return peer
+	}
+	if xff := strings.Join(r.Header.Values("X-Forwarded-For"), ","); xff != "" {
+		parts := strings.Split(xff, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			p := strings.TrimSpace(parts[i])
+			ip := net.ParseIP(p)
+			if ip == nil {
+				// malformed entry: stop, cannot be trusted further
+				break
+			}
+			if !ipInNets(ip, trusted) {
+				return ip.String()
+			}
+		}
+	}
+	if xr := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); xr != nil {
+		return xr.String()
+	}
+	return peer
+}
+
+func (s *Service) clientIP(r *http.Request) string { return resolveClientIP(r, s.trusted) }
 
 // RegisterHTTP registers POST /auth/login, POST /auth/logout and GET /auth/me
 // on the grpc-gateway mux. Safe to call with auth disabled: login/logout then
@@ -74,7 +107,7 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request, _ map[stri
 		writeErr(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
-	res, err := s.Login(r.Context(), req.Username, req.Password, clientIP(r))
+	res, err := s.Login(r.Context(), req.Username, req.Password, s.clientIP(r))
 	switch {
 	case err == nil:
 		writeJSON(w, http.StatusOK, struct {

@@ -255,3 +255,77 @@ func TestHTTPMeDisabled(t *testing.T) {
 	require.Equal(t, meResponse{Role: "admin", AuthEnabled: false}, me)
 	require.Equal(t, 404, do(h, "POST", "/auth/login", `{"username":"admin","password":"adminpw"}`, "").Code)
 }
+
+func req(remote string, hdr map[string]string) *http.Request {
+	r := httptest.NewRequest("GET", "/", nil)
+	r.RemoteAddr = remote
+	for k, v := range hdr {
+		r.Header.Set(k, v)
+	}
+	return r
+}
+
+func TestResolveClientIP(t *testing.T) {
+	trusted, err := parseTrustedProxies([]string{"10.0.0.0/8", "192.168.1.5", "fd00::/8"})
+	require.NoError(t, err)
+	tests := []struct {
+		name string
+		r    *http.Request
+		want string
+	}{
+		{"untrusted peer spoofed xff", req("203.0.113.9:1", map[string]string{"X-Forwarded-For": "1.1.1.1", "X-Real-IP": "2.2.2.2"}), "203.0.113.9"},
+		{"trusted peer", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "198.51.100.7"}), "198.51.100.7"},
+		{"client-spoofed prefix ignored", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "6.6.6.6, 198.51.100.7"}), "198.51.100.7"},
+		{"chained proxies", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "6.6.6.6, 198.51.100.7, 10.1.1.1, 192.168.1.5"}), "198.51.100.7"},
+		{"x-real-ip fallback", req("10.0.0.1:1", map[string]string{"X-Real-IP": "198.51.100.8"}), "198.51.100.8"},
+		{"trusted no headers", req("10.0.0.1:1", nil), "10.0.0.1"},
+		{"all xff trusted falls to real-ip", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "10.2.2.2", "X-Real-IP": "198.51.100.9"}), "198.51.100.9"},
+		{"ipv6 client", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "2001:db8::1"}), "2001:db8::1"},
+		{"ipv6 trusted peer", req("[fd00::1]:1", map[string]string{"X-Forwarded-For": "2001:db8::2, fd00::5"}), "2001:db8::2"},
+		{"ipv6 untrusted peer", req("[2001:db8::99]:1", map[string]string{"X-Forwarded-For": "1.1.1.1"}), "2001:db8::99"},
+		{"garbage xff ignored", req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "not-an-ip"}), "10.0.0.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, resolveClientIP(tt.r, trusted))
+		})
+	}
+	// no trusted proxies configured: headers never used
+	require.Equal(t, "10.0.0.1", resolveClientIP(req("10.0.0.1:1", map[string]string{"X-Forwarded-For": "1.1.1.1"}), nil))
+}
+
+func TestTrustedProxiesValidate(t *testing.T) {
+	h := hash(t, "x")
+	users := []User{{"a", h, "admin"}}
+	require.NoError(t, (&Config{Enabled: true, Users: users, TrustedProxies: []string{"10.0.0.0/8", "127.0.0.1", "::1", "fd00::/8"}}).Validate())
+	require.ErrorContains(t, (&Config{Enabled: true, Users: users, TrustedProxies: []string{"nginx"}}).Validate(), "trustedProxies")
+	require.ErrorContains(t, (&Config{Enabled: true, Users: users, TrustedProxies: []string{"10.0.0.0/33"}}).Validate(), "trustedProxies")
+}
+
+func TestLockoutIsPerClientIP(t *testing.T) {
+	e := setup(t, true)
+	ctx := context.Background()
+	for i := 0; i < maxFailures; i++ {
+		_, err := e.svc.Login(ctx, "admin", "bad", "198.51.100.1")
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+	}
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "198.51.100.1")
+	require.ErrorIs(t, err, ErrTooManyAttempts)
+	// a different client IP can still log in as the same user
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "198.51.100.2")
+	require.NoError(t, err)
+}
+
+func TestGlobalUserThrottle(t *testing.T) {
+	e := setup(t, true)
+	ctx := context.Background()
+	for i := 0; i < maxUserFailures; i++ {
+		ip := net.IPv4(10, 1, byte(i/250), byte(i%250)).String()
+		_, err := e.svc.Login(ctx, "admin", "bad", ip)
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+	}
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.ErrorIs(t, err, ErrTooManyAttempts)
+	_, err = e.svc.Login(ctx, "view", "viewpw", "203.0.113.50")
+	require.NoError(t, err)
+}

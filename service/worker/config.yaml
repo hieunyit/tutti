@@ -19,6 +19,14 @@ api:
     sessionTTL: 12h
     # users: bcrypt hashes; generate with: htpasswd -nbBC 10 "" 'password' | tr -d ':\n'
     # role admin: all operations; viewer: read-only operations
+    # trustedProxies: CIDRs/IPs of reverse proxies (e.g. the nginx serving the web UI) whose
+    # X-Forwarded-For / X-Real-IP are trusted to find the real client address. Without it every
+    # user behind nginx shares one address. Headers from any other peer are ignored.
+    # Failed logins are limited per (username, client IP): 10 per 15 min. A second, global
+    # per-username limit of 100 per 15 min (any IP) only slows brute force down: when hit, that
+    # username gets 429 for everyone until the window expires. Trade-off: protects against
+    # distributed guessing, but a determined attacker can then still temporarily block that user.
+    trustedProxies: []
     users: []
     #  - username: admin
     #    passwordHash: "$2y$10$..."
