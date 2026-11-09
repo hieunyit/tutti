@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -38,6 +40,7 @@ type ResilienceOption func(*resilienceHandlers)
 func WithProxyAccounts(sealer func() (proxyaccount.Sealer, error), userExists func(user string) bool) ResilienceOption {
 	return func(h *resilienceHandlers) {
 		h.accounts = proxyaccount.NewStore(h.redis, sealer)
+		h.sealer = sealer
 		h.userExists = userExists
 	}
 }
@@ -49,6 +52,8 @@ type resilienceHandlers struct {
 	store    *failover.Store
 	policies *accesspolicy.Store
 	accounts *proxyaccount.Store
+	// sealer is the one given to WithProxyAccounts (nil if not configured).
+	sealer func() (proxyaccount.Sealer, error)
 	// userExists reports whether the storage user has credentials. Nil disables the check.
 	userExists func(user string) bool
 }
@@ -59,6 +64,7 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 	res := &pb.ProxyStatusList{Proxies: make([]*pb.ProxyStatus, 0, len(list))}
+	var all []trafficstats.Rates
 	for _, st := range list {
 		p := &pb.ProxyStatus{
 			AppId:     st.AppID,
@@ -99,9 +105,67 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 				LastChange:          timestamppb.New(s.LastChange),
 			})
 		}
+		if st.Rates != nil {
+			p.Rates = ratesToPb(*st.Rates)
+			all = append(all, *st.Rates)
+		}
 		res.Proxies = append(res.Proxies, p)
 	}
+	if len(all) > 0 {
+		res.TotalRates = ratesToPb(trafficstats.SumRates(all))
+	}
 	return res, nil
+}
+
+// statsRanges are the accepted GetStatsHistory ranges.
+var statsRanges = map[string]time.Duration{"5m": 5 * time.Minute, "15m": 15 * time.Minute, "1h": time.Hour, "6h": 6 * time.Hour}
+
+func (h *resilienceHandlers) GetStatsHistory(ctx context.Context, req *pb.StatsHistoryRequest) (*pb.StatsHistory, error) {
+	rng := req.GetRange()
+	if rng == "" {
+		rng = "15m"
+	}
+	d, ok := statsRanges[rng]
+	if !ok {
+		return nil, fmt.Errorf("%w: stats history: invalid range %q (use 5m, 15m, 1h or 6h)", dom.ErrInvalidArg, rng)
+	}
+	now := time.Now()
+	per, err := proxystatus.ReadHistory(ctx, h.redis, now.Add(-d))
+	if err != nil {
+		return nil, err
+	}
+	bucket := proxystatus.BucketForRange(d)
+	res := &pb.StatsHistory{Range: rng, Bucket: durationpb.New(bucket)}
+	for _, pt := range proxystatus.Aggregate(per, bucket) {
+		res.Points = append(res.Points, &pb.StatsHistoryPoint{Time: timestamppb.New(pt.Time), Rates: ratesToPb(pt.Rates)})
+	}
+	apps := make([]string, 0, len(per))
+	for a := range per {
+		apps = append(apps, a)
+	}
+	sort.Strings(apps)
+	for _, a := range apps {
+		last := per[a][len(per[a])-1]
+		res.Proxies = append(res.Proxies, &pb.ProxyLatestRates{AppId: a, Time: timestamppb.New(time.Unix(last.Time, 0)), Rates: ratesToPb(last.Rates)})
+	}
+	return res, nil
+}
+
+func ratesToPb(r trafficstats.Rates) *pb.TrafficRates {
+	return &pb.TrafficRates{
+		WindowSeconds:      r.WindowSeconds,
+		RequestsPerSec:     r.RequestsPerSec,
+		RequestsByClass:    r.ByClass,
+		RequestsByStorage:  r.ByStorage,
+		BytesInPerSec:      r.BytesInPerSec,
+		BytesOutPerSec:     r.BytesOutPerSec,
+		Status_4XxPerSec:   r.Status4xxPerSec,
+		Status_5XxPerSec:   r.Status5xxPerSec,
+		FailFastPerSec:     r.FailFastPerSec,
+		AccessDeniedPerSec: r.AccessDeniedPerSec,
+		LatencyAvgMs:       r.LatencyAvgMs,
+		LatencyP95Ms:       r.LatencyP95Ms,
+	}
 }
 
 func (h *resilienceHandlers) ListFailoverPolicies(ctx context.Context, _ *emptypb.Empty) (*pb.FailoverPolicyList, error) {

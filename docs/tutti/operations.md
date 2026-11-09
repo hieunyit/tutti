@@ -165,6 +165,6 @@ Until step 5 the event stays listed; it has no effect on routing.
 - Failover is decided by the instance(s) whose own breaker has been open for `after`; the Redis lock lets only one act per failed storage at a time, and the others re-check scopes under the lock and find nothing to do. Routing is shared through Redis, so every instance follows.
 - A failover triggered by one instance is not conditional on the other instances also seeing the storage down. Use a conservative `after`.
 - Enable `failover.enabled` consistently across instances; instances with it off never act, but follow routing.
-- Each instance publishes its status to `tutti:proxy-status:<app_id>` every 10 s with a TTL of 30 s; a stopped instance disappears from `chorctl proxies` after at most 30 s.
+- Each instance publishes its status to `tutti:proxy-status:<app_id>` every `status.interval` (default 2 s) with a TTL of 3 intervals; a stopped instance disappears from `chorctl proxies` after at most 3 intervals.
 - Sync replication settings are per instance; keep them identical or clients will see different guarantees depending on which instance they hit.
 - Failover policies and events live in the config Redis DB, and locks in the lock DB, shared by all instances and the worker.

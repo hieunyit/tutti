@@ -637,10 +637,12 @@ func (x *ProxyAccount) GetDynamicKeys() []*ProxyAccessKey {
 }
 
 type ProxyAccountList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Accounts      []*ProxyAccount        `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Accounts []*ProxyAccount        `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	// Whether CreateProxyAccount can work at all.
+	DynamicAccounts *DynamicAccountsStatus `protobuf:"bytes,2,opt,name=dynamic_accounts,json=dynamicAccounts,proto3" json:"dynamic_accounts,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ProxyAccountList) Reset() {
@@ -680,6 +682,68 @@ func (x *ProxyAccountList) GetAccounts() []*ProxyAccount {
 	return nil
 }
 
+func (x *ProxyAccountList) GetDynamicAccounts() *DynamicAccountsStatus {
+	if x != nil {
+		return x.DynamicAccounts
+	}
+	return nil
+}
+
+// DynamicAccountsStatus tells whether runtime-managed proxy accounts can be created.
+type DynamicAccountsStatus struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True if storage.dynamicCredentials is enabled with a masterPassword and encryption on.
+	Available bool `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
+	// Human readable explanation if not available.
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DynamicAccountsStatus) Reset() {
+	*x = DynamicAccountsStatus{}
+	mi := &file_chorus_tutti_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DynamicAccountsStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DynamicAccountsStatus) ProtoMessage() {}
+
+func (x *DynamicAccountsStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DynamicAccountsStatus.ProtoReflect.Descriptor instead.
+func (*DynamicAccountsStatus) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DynamicAccountsStatus) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *DynamicAccountsStatus) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 // StorageHealth is the circuit breaker state of one storage as seen by one proxy.
 type StorageHealth struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -699,7 +763,7 @@ type StorageHealth struct {
 
 func (x *StorageHealth) Reset() {
 	*x = StorageHealth{}
-	mi := &file_chorus_tutti_proto_msgTypes[11]
+	mi := &file_chorus_tutti_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -711,7 +775,7 @@ func (x *StorageHealth) String() string {
 func (*StorageHealth) ProtoMessage() {}
 
 func (x *StorageHealth) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[11]
+	mi := &file_chorus_tutti_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -724,7 +788,7 @@ func (x *StorageHealth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageHealth.ProtoReflect.Descriptor instead.
 func (*StorageHealth) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{11}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StorageHealth) GetName() string {
@@ -779,7 +843,7 @@ type SyncSettings struct {
 
 func (x *SyncSettings) Reset() {
 	*x = SyncSettings{}
-	mi := &file_chorus_tutti_proto_msgTypes[12]
+	mi := &file_chorus_tutti_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +855,7 @@ func (x *SyncSettings) String() string {
 func (*SyncSettings) ProtoMessage() {}
 
 func (x *SyncSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[12]
+	mi := &file_chorus_tutti_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +868,7 @@ func (x *SyncSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncSettings.ProtoReflect.Descriptor instead.
 func (*SyncSettings) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{12}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SyncSettings) GetEnabled() bool {
@@ -850,7 +914,7 @@ type ReplicationSettings struct {
 
 func (x *ReplicationSettings) Reset() {
 	*x = ReplicationSettings{}
-	mi := &file_chorus_tutti_proto_msgTypes[13]
+	mi := &file_chorus_tutti_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -862,7 +926,7 @@ func (x *ReplicationSettings) String() string {
 func (*ReplicationSettings) ProtoMessage() {}
 
 func (x *ReplicationSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[13]
+	mi := &file_chorus_tutti_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -875,7 +939,7 @@ func (x *ReplicationSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicationSettings.ProtoReflect.Descriptor instead.
 func (*ReplicationSettings) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{13}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ReplicationSettings) GetOnEventError() string {
@@ -912,7 +976,7 @@ type HealthSettings struct {
 
 func (x *HealthSettings) Reset() {
 	*x = HealthSettings{}
-	mi := &file_chorus_tutti_proto_msgTypes[14]
+	mi := &file_chorus_tutti_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +988,7 @@ func (x *HealthSettings) String() string {
 func (*HealthSettings) ProtoMessage() {}
 
 func (x *HealthSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[14]
+	mi := &file_chorus_tutti_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1001,7 @@ func (x *HealthSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthSettings.ProtoReflect.Descriptor instead.
 func (*HealthSettings) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{14}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *HealthSettings) GetFailureThreshold() int32 {
@@ -971,7 +1035,7 @@ type FailoverSettings struct {
 
 func (x *FailoverSettings) Reset() {
 	*x = FailoverSettings{}
-	mi := &file_chorus_tutti_proto_msgTypes[15]
+	mi := &file_chorus_tutti_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -983,7 +1047,7 @@ func (x *FailoverSettings) String() string {
 func (*FailoverSettings) ProtoMessage() {}
 
 func (x *FailoverSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[15]
+	mi := &file_chorus_tutti_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -996,7 +1060,7 @@ func (x *FailoverSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverSettings.ProtoReflect.Descriptor instead.
 func (*FailoverSettings) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{15}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *FailoverSettings) GetEnabled() bool {
@@ -1044,7 +1108,7 @@ type ProxySettings struct {
 
 func (x *ProxySettings) Reset() {
 	*x = ProxySettings{}
-	mi := &file_chorus_tutti_proto_msgTypes[16]
+	mi := &file_chorus_tutti_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1056,7 +1120,7 @@ func (x *ProxySettings) String() string {
 func (*ProxySettings) ProtoMessage() {}
 
 func (x *ProxySettings) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[16]
+	mi := &file_chorus_tutti_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1133,7 @@ func (x *ProxySettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxySettings.ProtoReflect.Descriptor instead.
 func (*ProxySettings) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{16}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ProxySettings) GetReplication() *ReplicationSettings {
@@ -1118,14 +1182,17 @@ type ProxyStatus struct {
 	// Built-in traffic statistics (no Prometheus needed). Absent for proxies that do not publish them.
 	// Counters are cumulative since stats.started_at: compute rates from two snapshots with the same
 	// started_at (a changed started_at means the proxy restarted and counters were reset).
-	Stats         *TrafficStats `protobuf:"bytes,7,opt,name=stats,proto3" json:"stats,omitempty"`
+	Stats *TrafficStats `protobuf:"bytes,7,opt,name=stats,proto3" json:"stats,omitempty"`
+	// Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).
+	// Absent for proxies that do not publish them. Settings.failover tells whether the failover controller runs.
+	Rates         *TrafficRates `protobuf:"bytes,8,opt,name=rates,proto3" json:"rates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProxyStatus) Reset() {
 	*x = ProxyStatus{}
-	mi := &file_chorus_tutti_proto_msgTypes[17]
+	mi := &file_chorus_tutti_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1137,7 +1204,7 @@ func (x *ProxyStatus) String() string {
 func (*ProxyStatus) ProtoMessage() {}
 
 func (x *ProxyStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[17]
+	mi := &file_chorus_tutti_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,7 +1217,7 @@ func (x *ProxyStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyStatus.ProtoReflect.Descriptor instead.
 func (*ProxyStatus) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{17}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ProxyStatus) GetAppId() string {
@@ -1198,6 +1265,382 @@ func (x *ProxyStatus) GetSettings() *ProxySettings {
 func (x *ProxyStatus) GetStats() *TrafficStats {
 	if x != nil {
 		return x.Stats
+	}
+	return nil
+}
+
+func (x *ProxyStatus) GetRates() *TrafficRates {
+	if x != nil {
+		return x.Rates
+	}
+	return nil
+}
+
+// TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds.
+type TrafficRates struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Time span the rates were computed over (0 right after proxy start).
+	WindowSeconds  float64 `protobuf:"fixed64,1,opt,name=window_seconds,json=windowSeconds,proto3" json:"window_seconds,omitempty"`
+	RequestsPerSec float64 `protobuf:"fixed64,2,opt,name=requests_per_sec,json=requestsPerSec,proto3" json:"requests_per_sec,omitempty"`
+	// Requests/s by operation class: read, write, exists, manage, other.
+	RequestsByClass map[string]float64 `protobuf:"bytes,3,rep,name=requests_by_class,json=requestsByClass,proto3" json:"requests_by_class,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	// Requests/s by the storage they were routed to.
+	RequestsByStorage  map[string]float64 `protobuf:"bytes,4,rep,name=requests_by_storage,json=requestsByStorage,proto3" json:"requests_by_storage,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	BytesInPerSec      float64            `protobuf:"fixed64,5,opt,name=bytes_in_per_sec,json=bytesInPerSec,proto3" json:"bytes_in_per_sec,omitempty"`
+	BytesOutPerSec     float64            `protobuf:"fixed64,6,opt,name=bytes_out_per_sec,json=bytesOutPerSec,proto3" json:"bytes_out_per_sec,omitempty"`
+	Status_4XxPerSec   float64            `protobuf:"fixed64,7,opt,name=status_4xx_per_sec,json=status4xxPerSec,proto3" json:"status_4xx_per_sec,omitempty"`
+	Status_5XxPerSec   float64            `protobuf:"fixed64,8,opt,name=status_5xx_per_sec,json=status5xxPerSec,proto3" json:"status_5xx_per_sec,omitempty"`
+	FailFastPerSec     float64            `protobuf:"fixed64,9,opt,name=fail_fast_per_sec,json=failFastPerSec,proto3" json:"fail_fast_per_sec,omitempty"`
+	AccessDeniedPerSec float64            `protobuf:"fixed64,10,opt,name=access_denied_per_sec,json=accessDeniedPerSec,proto3" json:"access_denied_per_sec,omitempty"`
+	// Mean request duration in the window. When summed over proxies: request-weighted average.
+	LatencyAvgMs float64 `protobuf:"fixed64,11,opt,name=latency_avg_ms,json=latencyAvgMs,proto3" json:"latency_avg_ms,omitempty"`
+	// 95th percentile estimated from histogram deltas. When combined over proxies or buckets: the MAXIMUM of the
+	// parts (an upper bound), because percentiles cannot be merged exactly.
+	LatencyP95Ms  float64 `protobuf:"fixed64,12,opt,name=latency_p95_ms,json=latencyP95Ms,proto3" json:"latency_p95_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrafficRates) Reset() {
+	*x = TrafficRates{}
+	mi := &file_chorus_tutti_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrafficRates) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrafficRates) ProtoMessage() {}
+
+func (x *TrafficRates) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrafficRates.ProtoReflect.Descriptor instead.
+func (*TrafficRates) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TrafficRates) GetWindowSeconds() float64 {
+	if x != nil {
+		return x.WindowSeconds
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetRequestsPerSec() float64 {
+	if x != nil {
+		return x.RequestsPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetRequestsByClass() map[string]float64 {
+	if x != nil {
+		return x.RequestsByClass
+	}
+	return nil
+}
+
+func (x *TrafficRates) GetRequestsByStorage() map[string]float64 {
+	if x != nil {
+		return x.RequestsByStorage
+	}
+	return nil
+}
+
+func (x *TrafficRates) GetBytesInPerSec() float64 {
+	if x != nil {
+		return x.BytesInPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetBytesOutPerSec() float64 {
+	if x != nil {
+		return x.BytesOutPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetStatus_4XxPerSec() float64 {
+	if x != nil {
+		return x.Status_4XxPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetStatus_5XxPerSec() float64 {
+	if x != nil {
+		return x.Status_5XxPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetFailFastPerSec() float64 {
+	if x != nil {
+		return x.FailFastPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetAccessDeniedPerSec() float64 {
+	if x != nil {
+		return x.AccessDeniedPerSec
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetLatencyAvgMs() float64 {
+	if x != nil {
+		return x.LatencyAvgMs
+	}
+	return 0
+}
+
+func (x *TrafficRates) GetLatencyP95Ms() float64 {
+	if x != nil {
+		return x.LatencyP95Ms
+	}
+	return 0
+}
+
+type StatsHistoryRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// One of "5m", "15m", "1h", "6h". Default "15m".
+	Range         string `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatsHistoryRequest) Reset() {
+	*x = StatsHistoryRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatsHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatsHistoryRequest) ProtoMessage() {}
+
+func (x *StatsHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatsHistoryRequest.ProtoReflect.Descriptor instead.
+func (*StatsHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *StatsHistoryRequest) GetRange() string {
+	if x != nil {
+		return x.Range
+	}
+	return ""
+}
+
+// StatsHistoryPoint is one time bucket with the rates summed across all proxies.
+type StatsHistoryPoint struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Time          *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=time,proto3" json:"time,omitempty"`
+	Rates         *TrafficRates          `protobuf:"bytes,2,opt,name=rates,proto3" json:"rates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatsHistoryPoint) Reset() {
+	*x = StatsHistoryPoint{}
+	mi := &file_chorus_tutti_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatsHistoryPoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatsHistoryPoint) ProtoMessage() {}
+
+func (x *StatsHistoryPoint) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatsHistoryPoint.ProtoReflect.Descriptor instead.
+func (*StatsHistoryPoint) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *StatsHistoryPoint) GetTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Time
+	}
+	return nil
+}
+
+func (x *StatsHistoryPoint) GetRates() *TrafficRates {
+	if x != nil {
+		return x.Rates
+	}
+	return nil
+}
+
+// ProxyLatestRates is the most recent history sample of one proxy.
+type ProxyLatestRates struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AppId         string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Time          *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=time,proto3" json:"time,omitempty"`
+	Rates         *TrafficRates          `protobuf:"bytes,3,opt,name=rates,proto3" json:"rates,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProxyLatestRates) Reset() {
+	*x = ProxyLatestRates{}
+	mi := &file_chorus_tutti_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProxyLatestRates) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProxyLatestRates) ProtoMessage() {}
+
+func (x *ProxyLatestRates) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProxyLatestRates.ProtoReflect.Descriptor instead.
+func (*ProxyLatestRates) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ProxyLatestRates) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *ProxyLatestRates) GetTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Time
+	}
+	return nil
+}
+
+func (x *ProxyLatestRates) GetRates() *TrafficRates {
+	if x != nil {
+		return x.Rates
+	}
+	return nil
+}
+
+type StatsHistory struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Range string                 `protobuf:"bytes,1,opt,name=range,proto3" json:"range,omitempty"`
+	// Bucket size: 10s (5m, 15m), 30s (1h), 2m (6h).
+	Bucket *durationpb.Duration `protobuf:"bytes,2,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// Ascending by time; buckets without any sample are omitted.
+	Points []*StatsHistoryPoint `protobuf:"bytes,3,rep,name=points,proto3" json:"points,omitempty"`
+	// Latest sample of every proxy that recorded one within the range.
+	Proxies       []*ProxyLatestRates `protobuf:"bytes,4,rep,name=proxies,proto3" json:"proxies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatsHistory) Reset() {
+	*x = StatsHistory{}
+	mi := &file_chorus_tutti_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatsHistory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatsHistory) ProtoMessage() {}
+
+func (x *StatsHistory) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatsHistory.ProtoReflect.Descriptor instead.
+func (*StatsHistory) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *StatsHistory) GetRange() string {
+	if x != nil {
+		return x.Range
+	}
+	return ""
+}
+
+func (x *StatsHistory) GetBucket() *durationpb.Duration {
+	if x != nil {
+		return x.Bucket
+	}
+	return nil
+}
+
+func (x *StatsHistory) GetPoints() []*StatsHistoryPoint {
+	if x != nil {
+		return x.Points
+	}
+	return nil
+}
+
+func (x *StatsHistory) GetProxies() []*ProxyLatestRates {
+	if x != nil {
+		return x.Proxies
 	}
 	return nil
 }
@@ -1252,7 +1695,7 @@ type TrafficStats struct {
 
 func (x *TrafficStats) Reset() {
 	*x = TrafficStats{}
-	mi := &file_chorus_tutti_proto_msgTypes[18]
+	mi := &file_chorus_tutti_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1264,7 +1707,7 @@ func (x *TrafficStats) String() string {
 func (*TrafficStats) ProtoMessage() {}
 
 func (x *TrafficStats) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[18]
+	mi := &file_chorus_tutti_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1277,7 +1720,7 @@ func (x *TrafficStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrafficStats.ProtoReflect.Descriptor instead.
 func (*TrafficStats) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{18}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *TrafficStats) GetCollectedAt() *timestamppb.Timestamp {
@@ -1437,7 +1880,7 @@ type LatencyHistogram struct {
 
 func (x *LatencyHistogram) Reset() {
 	*x = LatencyHistogram{}
-	mi := &file_chorus_tutti_proto_msgTypes[19]
+	mi := &file_chorus_tutti_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1449,7 +1892,7 @@ func (x *LatencyHistogram) String() string {
 func (*LatencyHistogram) ProtoMessage() {}
 
 func (x *LatencyHistogram) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[19]
+	mi := &file_chorus_tutti_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1462,7 +1905,7 @@ func (x *LatencyHistogram) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LatencyHistogram.ProtoReflect.Descriptor instead.
 func (*LatencyHistogram) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{19}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *LatencyHistogram) GetCount() uint64 {
@@ -1497,14 +1940,16 @@ func (x *LatencyHistogram) GetBuckets() []uint64 {
 type ProxyStatusList struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Live proxy instances sorted by app id.
-	Proxies       []*ProxyStatus `protobuf:"bytes,1,rep,name=proxies,proto3" json:"proxies,omitempty"`
+	Proxies []*ProxyStatus `protobuf:"bytes,1,rep,name=proxies,proto3" json:"proxies,omitempty"`
+	// Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum).
+	TotalRates    *TrafficRates `protobuf:"bytes,2,opt,name=total_rates,json=totalRates,proto3" json:"total_rates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProxyStatusList) Reset() {
 	*x = ProxyStatusList{}
-	mi := &file_chorus_tutti_proto_msgTypes[20]
+	mi := &file_chorus_tutti_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1516,7 +1961,7 @@ func (x *ProxyStatusList) String() string {
 func (*ProxyStatusList) ProtoMessage() {}
 
 func (x *ProxyStatusList) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[20]
+	mi := &file_chorus_tutti_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1529,12 +1974,19 @@ func (x *ProxyStatusList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyStatusList.ProtoReflect.Descriptor instead.
 func (*ProxyStatusList) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{20}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ProxyStatusList) GetProxies() []*ProxyStatus {
 	if x != nil {
 		return x.Proxies
+	}
+	return nil
+}
+
+func (x *ProxyStatusList) GetTotalRates() *TrafficRates {
+	if x != nil {
+		return x.TotalRates
 	}
 	return nil
 }
@@ -1558,7 +2010,7 @@ type FailoverPolicy struct {
 
 func (x *FailoverPolicy) Reset() {
 	*x = FailoverPolicy{}
-	mi := &file_chorus_tutti_proto_msgTypes[21]
+	mi := &file_chorus_tutti_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1570,7 +2022,7 @@ func (x *FailoverPolicy) String() string {
 func (*FailoverPolicy) ProtoMessage() {}
 
 func (x *FailoverPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[21]
+	mi := &file_chorus_tutti_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1583,7 +2035,7 @@ func (x *FailoverPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverPolicy.ProtoReflect.Descriptor instead.
 func (*FailoverPolicy) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{21}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *FailoverPolicy) GetSource() string {
@@ -1632,7 +2084,7 @@ type FailoverPolicyList struct {
 
 func (x *FailoverPolicyList) Reset() {
 	*x = FailoverPolicyList{}
-	mi := &file_chorus_tutti_proto_msgTypes[22]
+	mi := &file_chorus_tutti_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1644,7 +2096,7 @@ func (x *FailoverPolicyList) String() string {
 func (*FailoverPolicyList) ProtoMessage() {}
 
 func (x *FailoverPolicyList) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[22]
+	mi := &file_chorus_tutti_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1657,7 +2109,7 @@ func (x *FailoverPolicyList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverPolicyList.ProtoReflect.Descriptor instead.
 func (*FailoverPolicyList) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{22}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *FailoverPolicyList) GetPolicies() []*FailoverPolicy {
@@ -1678,7 +2130,7 @@ type FailoverPolicySource struct {
 
 func (x *FailoverPolicySource) Reset() {
 	*x = FailoverPolicySource{}
-	mi := &file_chorus_tutti_proto_msgTypes[23]
+	mi := &file_chorus_tutti_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1690,7 +2142,7 @@ func (x *FailoverPolicySource) String() string {
 func (*FailoverPolicySource) ProtoMessage() {}
 
 func (x *FailoverPolicySource) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[23]
+	mi := &file_chorus_tutti_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1703,7 +2155,7 @@ func (x *FailoverPolicySource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverPolicySource.ProtoReflect.Descriptor instead.
 func (*FailoverPolicySource) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{23}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *FailoverPolicySource) GetSource() string {
@@ -1734,7 +2186,7 @@ type FailoverEvent struct {
 
 func (x *FailoverEvent) Reset() {
 	*x = FailoverEvent{}
-	mi := &file_chorus_tutti_proto_msgTypes[24]
+	mi := &file_chorus_tutti_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1746,7 +2198,7 @@ func (x *FailoverEvent) String() string {
 func (*FailoverEvent) ProtoMessage() {}
 
 func (x *FailoverEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[24]
+	mi := &file_chorus_tutti_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1759,7 +2211,7 @@ func (x *FailoverEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverEvent.ProtoReflect.Descriptor instead.
 func (*FailoverEvent) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{24}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *FailoverEvent) GetUser() string {
@@ -1815,7 +2267,7 @@ type FailoverEventList struct {
 
 func (x *FailoverEventList) Reset() {
 	*x = FailoverEventList{}
-	mi := &file_chorus_tutti_proto_msgTypes[25]
+	mi := &file_chorus_tutti_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1827,7 +2279,7 @@ func (x *FailoverEventList) String() string {
 func (*FailoverEventList) ProtoMessage() {}
 
 func (x *FailoverEventList) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[25]
+	mi := &file_chorus_tutti_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1840,7 +2292,7 @@ func (x *FailoverEventList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverEventList.ProtoReflect.Descriptor instead.
 func (*FailoverEventList) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{25}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *FailoverEventList) GetEvents() []*FailoverEvent {
@@ -1863,7 +2315,7 @@ type FailoverEventID struct {
 
 func (x *FailoverEventID) Reset() {
 	*x = FailoverEventID{}
-	mi := &file_chorus_tutti_proto_msgTypes[26]
+	mi := &file_chorus_tutti_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1875,7 +2327,7 @@ func (x *FailoverEventID) String() string {
 func (*FailoverEventID) ProtoMessage() {}
 
 func (x *FailoverEventID) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[26]
+	mi := &file_chorus_tutti_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1888,7 +2340,7 @@ func (x *FailoverEventID) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailoverEventID.ProtoReflect.Descriptor instead.
 func (*FailoverEventID) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{26}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *FailoverEventID) GetUser() string {
@@ -1953,9 +2405,13 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x06policy\x18\x04 \x01(\v2\x14.chorus.AccessPolicyR\x06policy\x12\x1d\n" +
 	"\n" +
 	"has_policy\x18\x05 \x01(\bR\thasPolicy\x129\n" +
-	"\fdynamic_keys\x18\x06 \x03(\v2\x16.chorus.ProxyAccessKeyR\vdynamicKeys\"D\n" +
+	"\fdynamic_keys\x18\x06 \x03(\v2\x16.chorus.ProxyAccessKeyR\vdynamicKeys\"\x8e\x01\n" +
 	"\x10ProxyAccountList\x120\n" +
-	"\baccounts\x18\x01 \x03(\v2\x14.chorus.ProxyAccountR\baccounts\"\xd0\x01\n" +
+	"\baccounts\x18\x01 \x03(\v2\x14.chorus.ProxyAccountR\baccounts\x12H\n" +
+	"\x10dynamic_accounts\x18\x02 \x01(\v2\x1d.chorus.DynamicAccountsStatusR\x0fdynamicAccounts\"M\n" +
+	"\x15DynamicAccountsStatus\x12\x1c\n" +
+	"\tavailable\x18\x01 \x01(\bR\tavailable\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xd0\x01\n" +
 	"\rStorageHealth\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\bR\tavailable\x121\n" +
@@ -1985,7 +2441,7 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\vreplication\x18\x01 \x01(\v2\x1b.chorus.ReplicationSettingsR\vreplication\x12.\n" +
 	"\x06health\x18\x02 \x01(\v2\x16.chorus.HealthSettingsR\x06health\x124\n" +
 	"\bfailover\x18\x03 \x01(\v2\x18.chorus.FailoverSettingsR\bfailover\x12=\n" +
-	"\x1brequire_signed_content_type\x18\x04 \x01(\bR\x18requireSignedContentType\"\xc6\x02\n" +
+	"\x1brequire_signed_content_type\x18\x04 \x01(\bR\x18requireSignedContentType\"\xf2\x02\n" +
 	"\vProxyStatus\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\x129\n" +
@@ -1995,7 +2451,42 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x121\n" +
 	"\bstorages\x18\x05 \x03(\v2\x15.chorus.StorageHealthR\bstorages\x121\n" +
 	"\bsettings\x18\x06 \x01(\v2\x15.chorus.ProxySettingsR\bsettings\x12*\n" +
-	"\x05stats\x18\a \x01(\v2\x14.chorus.TrafficStatsR\x05stats\"\xbb\b\n" +
+	"\x05stats\x18\a \x01(\v2\x14.chorus.TrafficStatsR\x05stats\x12*\n" +
+	"\x05rates\x18\b \x01(\v2\x14.chorus.TrafficRatesR\x05rates\"\xf5\x05\n" +
+	"\fTrafficRates\x12%\n" +
+	"\x0ewindow_seconds\x18\x01 \x01(\x01R\rwindowSeconds\x12(\n" +
+	"\x10requests_per_sec\x18\x02 \x01(\x01R\x0erequestsPerSec\x12U\n" +
+	"\x11requests_by_class\x18\x03 \x03(\v2).chorus.TrafficRates.RequestsByClassEntryR\x0frequestsByClass\x12[\n" +
+	"\x13requests_by_storage\x18\x04 \x03(\v2+.chorus.TrafficRates.RequestsByStorageEntryR\x11requestsByStorage\x12'\n" +
+	"\x10bytes_in_per_sec\x18\x05 \x01(\x01R\rbytesInPerSec\x12)\n" +
+	"\x11bytes_out_per_sec\x18\x06 \x01(\x01R\x0ebytesOutPerSec\x12+\n" +
+	"\x12status_4xx_per_sec\x18\a \x01(\x01R\x0fstatus4xxPerSec\x12+\n" +
+	"\x12status_5xx_per_sec\x18\b \x01(\x01R\x0fstatus5xxPerSec\x12)\n" +
+	"\x11fail_fast_per_sec\x18\t \x01(\x01R\x0efailFastPerSec\x121\n" +
+	"\x15access_denied_per_sec\x18\n" +
+	" \x01(\x01R\x12accessDeniedPerSec\x12$\n" +
+	"\x0elatency_avg_ms\x18\v \x01(\x01R\flatencyAvgMs\x12$\n" +
+	"\x0elatency_p95_ms\x18\f \x01(\x01R\flatencyP95Ms\x1aB\n" +
+	"\x14RequestsByClassEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1aD\n" +
+	"\x16RequestsByStorageEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"+\n" +
+	"\x13StatsHistoryRequest\x12\x14\n" +
+	"\x05range\x18\x01 \x01(\tR\x05range\"o\n" +
+	"\x11StatsHistoryPoint\x12.\n" +
+	"\x04time\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12*\n" +
+	"\x05rates\x18\x02 \x01(\v2\x14.chorus.TrafficRatesR\x05rates\"\x85\x01\n" +
+	"\x10ProxyLatestRates\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12.\n" +
+	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12*\n" +
+	"\x05rates\x18\x03 \x01(\v2\x14.chorus.TrafficRatesR\x05rates\"\xbe\x01\n" +
+	"\fStatsHistory\x12\x14\n" +
+	"\x05range\x18\x01 \x01(\tR\x05range\x121\n" +
+	"\x06bucket\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x06bucket\x121\n" +
+	"\x06points\x18\x03 \x03(\v2\x19.chorus.StatsHistoryPointR\x06points\x122\n" +
+	"\aproxies\x18\x04 \x03(\v2\x18.chorus.ProxyLatestRatesR\aproxies\"\xbb\b\n" +
 	"\fTrafficStats\x12=\n" +
 	"\fcollected_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vcollectedAt\x129\n" +
 	"\n" +
@@ -2030,9 +2521,11 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\vsum_seconds\x18\x02 \x01(\x01R\n" +
 	"sumSeconds\x12%\n" +
 	"\x0ebounds_seconds\x18\x03 \x03(\x01R\rboundsSeconds\x12\x18\n" +
-	"\abuckets\x18\x04 \x03(\x04R\abuckets\"@\n" +
+	"\abuckets\x18\x04 \x03(\x04R\abuckets\"w\n" +
 	"\x0fProxyStatusList\x12-\n" +
-	"\aproxies\x18\x01 \x03(\v2\x13.chorus.ProxyStatusR\aproxies\"\xc8\x01\n" +
+	"\aproxies\x18\x01 \x03(\v2\x13.chorus.ProxyStatusR\aproxies\x125\n" +
+	"\vtotal_rates\x18\x02 \x01(\v2\x14.chorus.TrafficRatesR\n" +
+	"totalRates\"\xc8\x01\n" +
 	"\x0eFailoverPolicy\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x18\n" +
@@ -2055,10 +2548,11 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x06events\x18\x01 \x03(\v2\x15.chorus.FailoverEventR\x06events\"=\n" +
 	"\x0fFailoverEventID\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x16\n" +
-	"\x06bucket\x18\x02 \x01(\tR\x06bucket2\xab\b\n" +
+	"\x06bucket\x18\x02 \x01(\tR\x06bucket2\xf1\b\n" +
 	"\n" +
 	"Resilience\x12A\n" +
-	"\x0eGetProxyStatus\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ProxyStatusList\x12J\n" +
+	"\x0eGetProxyStatus\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ProxyStatusList\x12D\n" +
+	"\x0fGetStatsHistory\x12\x1b.chorus.StatsHistoryRequest\x1a\x14.chorus.StatsHistory\x12J\n" +
 	"\x14ListFailoverPolicies\x12\x16.google.protobuf.Empty\x1a\x1a.chorus.FailoverPolicyList\x12C\n" +
 	"\x11SetFailoverPolicy\x12\x16.chorus.FailoverPolicy\x1a\x16.google.protobuf.Empty\x12L\n" +
 	"\x14DeleteFailoverPolicy\x12\x1c.chorus.FailoverPolicySource\x1a\x16.google.protobuf.Empty\x12G\n" +
@@ -2085,7 +2579,7 @@ func file_chorus_tutti_proto_rawDescGZIP() []byte {
 	return file_chorus_tutti_proto_rawDescData
 }
 
-var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_chorus_tutti_proto_goTypes = []any{
 	(*CreateProxyAccountRequest)(nil),       // 0: chorus.CreateProxyAccountRequest
 	(*ProxyAccountSecret)(nil),              // 1: chorus.ProxyAccountSecret
@@ -2098,96 +2592,118 @@ var file_chorus_tutti_proto_goTypes = []any{
 	(*AccessPolicyUser)(nil),                // 8: chorus.AccessPolicyUser
 	(*ProxyAccount)(nil),                    // 9: chorus.ProxyAccount
 	(*ProxyAccountList)(nil),                // 10: chorus.ProxyAccountList
-	(*StorageHealth)(nil),                   // 11: chorus.StorageHealth
-	(*SyncSettings)(nil),                    // 12: chorus.SyncSettings
-	(*ReplicationSettings)(nil),             // 13: chorus.ReplicationSettings
-	(*HealthSettings)(nil),                  // 14: chorus.HealthSettings
-	(*FailoverSettings)(nil),                // 15: chorus.FailoverSettings
-	(*ProxySettings)(nil),                   // 16: chorus.ProxySettings
-	(*ProxyStatus)(nil),                     // 17: chorus.ProxyStatus
-	(*TrafficStats)(nil),                    // 18: chorus.TrafficStats
-	(*LatencyHistogram)(nil),                // 19: chorus.LatencyHistogram
-	(*ProxyStatusList)(nil),                 // 20: chorus.ProxyStatusList
-	(*FailoverPolicy)(nil),                  // 21: chorus.FailoverPolicy
-	(*FailoverPolicyList)(nil),              // 22: chorus.FailoverPolicyList
-	(*FailoverPolicySource)(nil),            // 23: chorus.FailoverPolicySource
-	(*FailoverEvent)(nil),                   // 24: chorus.FailoverEvent
-	(*FailoverEventList)(nil),               // 25: chorus.FailoverEventList
-	(*FailoverEventID)(nil),                 // 26: chorus.FailoverEventID
-	nil,                                     // 27: chorus.TrafficStats.RequestsByClassEntry
-	nil,                                     // 28: chorus.TrafficStats.RequestsByStorageEntry
-	(*timestamppb.Timestamp)(nil),           // 29: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),             // 30: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                   // 31: google.protobuf.Empty
+	(*DynamicAccountsStatus)(nil),           // 11: chorus.DynamicAccountsStatus
+	(*StorageHealth)(nil),                   // 12: chorus.StorageHealth
+	(*SyncSettings)(nil),                    // 13: chorus.SyncSettings
+	(*ReplicationSettings)(nil),             // 14: chorus.ReplicationSettings
+	(*HealthSettings)(nil),                  // 15: chorus.HealthSettings
+	(*FailoverSettings)(nil),                // 16: chorus.FailoverSettings
+	(*ProxySettings)(nil),                   // 17: chorus.ProxySettings
+	(*ProxyStatus)(nil),                     // 18: chorus.ProxyStatus
+	(*TrafficRates)(nil),                    // 19: chorus.TrafficRates
+	(*StatsHistoryRequest)(nil),             // 20: chorus.StatsHistoryRequest
+	(*StatsHistoryPoint)(nil),               // 21: chorus.StatsHistoryPoint
+	(*ProxyLatestRates)(nil),                // 22: chorus.ProxyLatestRates
+	(*StatsHistory)(nil),                    // 23: chorus.StatsHistory
+	(*TrafficStats)(nil),                    // 24: chorus.TrafficStats
+	(*LatencyHistogram)(nil),                // 25: chorus.LatencyHistogram
+	(*ProxyStatusList)(nil),                 // 26: chorus.ProxyStatusList
+	(*FailoverPolicy)(nil),                  // 27: chorus.FailoverPolicy
+	(*FailoverPolicyList)(nil),              // 28: chorus.FailoverPolicyList
+	(*FailoverPolicySource)(nil),            // 29: chorus.FailoverPolicySource
+	(*FailoverEvent)(nil),                   // 30: chorus.FailoverEvent
+	(*FailoverEventList)(nil),               // 31: chorus.FailoverEventList
+	(*FailoverEventID)(nil),                 // 32: chorus.FailoverEventID
+	nil,                                     // 33: chorus.TrafficRates.RequestsByClassEntry
+	nil,                                     // 34: chorus.TrafficRates.RequestsByStorageEntry
+	nil,                                     // 35: chorus.TrafficStats.RequestsByClassEntry
+	nil,                                     // 36: chorus.TrafficStats.RequestsByStorageEntry
+	(*timestamppb.Timestamp)(nil),           // 37: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),             // 38: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                   // 39: google.protobuf.Empty
 }
 var file_chorus_tutti_proto_depIdxs = []int32{
-	29, // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	30, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	29, // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	29, // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	29, // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	37, // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	38, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	37, // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	37, // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	37, // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
 	6,  // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
 	6,  // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
 	5,  // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
 	9,  // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
-	29, // 9: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	30, // 10: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	30, // 11: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
-	12, // 12: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
-	30, // 13: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	30, // 14: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	30, // 15: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
-	13, // 16: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
-	14, // 17: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
-	15, // 18: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
-	29, // 19: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	29, // 20: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
-	11, // 21: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
-	16, // 22: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
-	18, // 23: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
-	29, // 24: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	29, // 25: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	27, // 26: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
-	28, // 27: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
-	19, // 28: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
-	17, // 29: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
-	30, // 30: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
-	21, // 31: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
-	29, // 32: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
-	24, // 33: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
-	31, // 34: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
-	31, // 35: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
-	21, // 36: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
-	23, // 37: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
-	31, // 38: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
-	26, // 39: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
-	31, // 40: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
-	6,  // 41: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
-	8,  // 42: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
-	31, // 43: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
-	0,  // 44: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
-	2,  // 45: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
-	3,  // 46: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
-	4,  // 47: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
-	20, // 48: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
-	22, // 49: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
-	31, // 50: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	31, // 51: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	25, // 52: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
-	31, // 53: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,  // 54: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
-	31, // 55: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	31, // 56: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10, // 57: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
-	1,  // 58: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
-	1,  // 59: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
-	31, // 60: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	31, // 61: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	48, // [48:62] is the sub-list for method output_type
-	34, // [34:48] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	11, // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
+	37, // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	38, // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	38, // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	13, // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
+	38, // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	38, // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	38, // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
+	14, // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
+	15, // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
+	16, // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
+	37, // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	37, // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	12, // 22: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
+	17, // 23: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
+	24, // 24: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
+	19, // 25: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
+	33, // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
+	34, // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
+	37, // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	19, // 29: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
+	37, // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	19, // 31: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
+	38, // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	21, // 33: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
+	22, // 34: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
+	37, // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	37, // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	35, // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
+	36, // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
+	25, // 39: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
+	18, // 40: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
+	19, // 41: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
+	38, // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	27, // 43: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
+	37, // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	30, // 45: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
+	39, // 46: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	20, // 47: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
+	39, // 48: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	27, // 49: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
+	29, // 50: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
+	39, // 51: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	32, // 52: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
+	39, // 53: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	6,  // 54: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
+	8,  // 55: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
+	39, // 56: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	0,  // 57: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
+	2,  // 58: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
+	3,  // 59: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
+	4,  // 60: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
+	26, // 61: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
+	23, // 62: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
+	28, // 63: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
+	39, // 64: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	39, // 65: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31, // 66: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
+	39, // 67: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,  // 68: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
+	39, // 69: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	39, // 70: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10, // 71: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
+	1,  // 72: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
+	1,  // 73: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
+	39, // 74: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	39, // 75: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	61, // [61:76] is the sub-list for method output_type
+	46, // [46:61] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_chorus_tutti_proto_init() }
@@ -2195,14 +2711,14 @@ func file_chorus_tutti_proto_init() {
 	if File_chorus_tutti_proto != nil {
 		return
 	}
-	file_chorus_tutti_proto_msgTypes[21].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[27].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_tutti_proto_rawDesc), len(file_chorus_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

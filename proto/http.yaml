@@ -100,6 +100,8 @@ http:
       # Resilience service:
     - selector: chorus.Resilience.GetProxyStatus
       get: /tutti/proxies
+    - selector: chorus.Resilience.GetStatsHistory
+      get: /tutti/stats/history
     - selector: chorus.Resilience.ListFailoverPolicies
       get: /tutti/failover/policies
     - selector: chorus.Resilience.SetFailoverPolicy

@@ -15,6 +15,11 @@ service Resilience {
   // Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
   rpc GetProxyStatus(google.protobuf.Empty) returns (ProxyStatusList);
 
+  // GetStatsHistory returns the traffic rates of all proxies over the last `range` (5m, 15m, 1h or 6h), summed
+  // across proxies per time bucket (10s; 30s for 1h; 2m for 6h), plus the latest rates of every proxy.
+  // Proxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.
+  rpc GetStatsHistory(StatsHistoryRequest) returns (StatsHistory);
+
   // ListFailoverPolicies returns all failover policies sorted by source storage.
   rpc ListFailoverPolicies(google.protobuf.Empty) returns (FailoverPolicyList);
 
@@ -143,6 +148,16 @@ message ProxyAccount {
 
 message ProxyAccountList {
   repeated ProxyAccount accounts = 1;
+  // Whether CreateProxyAccount can work at all.
+  DynamicAccountsStatus dynamic_accounts = 2;
+}
+
+// DynamicAccountsStatus tells whether runtime-managed proxy accounts can be created.
+message DynamicAccountsStatus {
+  // True if storage.dynamicCredentials is enabled with a masterPassword and encryption on.
+  bool available = 1;
+  // Human readable explanation if not available.
+  string reason = 2;
 }
 
 // StorageHealth is the circuit breaker state of one storage as seen by one proxy.
@@ -231,6 +246,59 @@ message ProxyStatus {
   // Counters are cumulative since stats.started_at: compute rates from two snapshots with the same
   // started_at (a changed started_at means the proxy restarted and counters were reset).
   TrafficStats stats = 7;
+  // Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).
+  // Absent for proxies that do not publish them. Settings.failover tells whether the failover controller runs.
+  TrafficRates rates = 8;
+}
+
+// TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds.
+message TrafficRates {
+  // Time span the rates were computed over (0 right after proxy start).
+  double window_seconds = 1;
+  double requests_per_sec = 2;
+  // Requests/s by operation class: read, write, exists, manage, other.
+  map<string, double> requests_by_class = 3;
+  // Requests/s by the storage they were routed to.
+  map<string, double> requests_by_storage = 4;
+  double bytes_in_per_sec = 5;
+  double bytes_out_per_sec = 6;
+  double status_4xx_per_sec = 7;
+  double status_5xx_per_sec = 8;
+  double fail_fast_per_sec = 9;
+  double access_denied_per_sec = 10;
+  // Mean request duration in the window. When summed over proxies: request-weighted average.
+  double latency_avg_ms = 11;
+  // 95th percentile estimated from histogram deltas. When combined over proxies or buckets: the MAXIMUM of the
+  // parts (an upper bound), because percentiles cannot be merged exactly.
+  double latency_p95_ms = 12;
+}
+
+message StatsHistoryRequest {
+  // One of "5m", "15m", "1h", "6h". Default "15m".
+  string range = 1;
+}
+
+// StatsHistoryPoint is one time bucket with the rates summed across all proxies.
+message StatsHistoryPoint {
+  google.protobuf.Timestamp time = 1;
+  TrafficRates rates = 2;
+}
+
+// ProxyLatestRates is the most recent history sample of one proxy.
+message ProxyLatestRates {
+  string app_id = 1;
+  google.protobuf.Timestamp time = 2;
+  TrafficRates rates = 3;
+}
+
+message StatsHistory {
+  string range = 1;
+  // Bucket size: 10s (5m, 15m), 30s (1h), 2m (6h).
+  google.protobuf.Duration bucket = 2;
+  // Ascending by time; buckets without any sample are omitted.
+  repeated StatsHistoryPoint points = 3;
+  // Latest sample of every proxy that recorded one within the range.
+  repeated ProxyLatestRates proxies = 4;
 }
 
 // TrafficStats are cumulative in-memory traffic counters of one proxy instance.
@@ -294,6 +362,8 @@ message LatencyHistogram {
 message ProxyStatusList {
   // Live proxy instances sorted by app id.
   repeated ProxyStatus proxies = 1;
+  // Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum).
+  TrafficRates total_rates = 2;
 }
 
 // FailoverPolicy defines which storages may be promoted when the source storage is down.

@@ -61,6 +61,21 @@ type Config struct {
 	Health health.Config `yaml:"health"`
 	// Failover configures optional automatic failover of the routing to a replica when the main storage is down.
 	Failover FailoverConfig `yaml:"failover"`
+	// Status configures the live status document published to Redis.
+	Status StatusConfig `yaml:"status"`
+}
+
+// StatusConfig configures publishing of the proxy status document (tutti:proxy-status:<app_id>).
+type StatusConfig struct {
+	// Interval is how often the status (health, settings, stats, rates) is published. The Redis TTL is 3x. Default 2s.
+	Interval time.Duration `yaml:"interval"`
+}
+
+func (s *StatusConfig) Validate() error {
+	if s.Interval <= 0 {
+		return fmt.Errorf("proxy config: status.interval must be greater than 0")
+	}
+	return nil
 }
 
 // FailoverConfig configures the automatic failover controller. Disabled by default.
@@ -161,6 +176,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Failover.Validate(); err != nil {
+		return err
+	}
+	if err := c.Status.Validate(); err != nil {
 		return err
 	}
 	return nil

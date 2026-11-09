@@ -20,6 +20,7 @@ Defaults below are the effective values: the embedded `config.yaml` is always lo
 | `health.failureThreshold` | int | `3` | [Circuit breaker](#circuit-breaker-and-health-checks) |
 | `health.openDuration` | duration | `30s` | [Circuit breaker](#circuit-breaker-and-health-checks) |
 | `storage.storages.<name>.healthCheckInterval` | duration | `10s` | [Circuit breaker](#circuit-breaker-and-health-checks) |
+| `status.interval` | duration | `2s` | [Status](#status) |
 | `failover.enabled` | bool | `false` | [Automatic failover](#automatic-failover) |
 | `failover.checkInterval` | duration | `10s` | [Automatic failover](#automatic-failover) |
 | `failover.after` | duration | `60s` | [Automatic failover](#automatic-failover) |
@@ -114,6 +115,15 @@ Interactions:
 - Metrics (when `metrics.enabled`): `storage_available`, `storage_breaker_transitions_total`.
 
 Source: `pkg/health/`, `pkg/s3/config.go`, `service/proxy/server.go` (`storageProbe`).
+
+## Status
+
+```yaml
+status:
+  interval: 2s
+```
+
+`status.interval` (duration, default `2s`, must be greater than `0`) is how often the proxy publishes its status document (`tutti:proxy-status:<app_id>`: storage health, settings, cumulative stats and current rates) to Redis. The key TTL is 3x the interval, so a stopped proxy disappears after at most 3 intervals. Cost: one Redis `SET` of a few KB per interval per proxy (0.5 command/s at the default). Independent of it, every proxy samples its counters every second for the 10 s rate window and appends a history sample every 10 s (see [Resilience API](./api.md#getstatshistory)).
 
 ## Automatic failover
 

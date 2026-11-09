@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Resilience_GetProxyStatus_FullMethodName           = "/chorus.Resilience/GetProxyStatus"
+	Resilience_GetStatsHistory_FullMethodName          = "/chorus.Resilience/GetStatsHistory"
 	Resilience_ListFailoverPolicies_FullMethodName     = "/chorus.Resilience/ListFailoverPolicies"
 	Resilience_SetFailoverPolicy_FullMethodName        = "/chorus.Resilience/SetFailoverPolicy"
 	Resilience_DeleteFailoverPolicy_FullMethodName     = "/chorus.Resilience/DeleteFailoverPolicy"
@@ -46,6 +47,10 @@ type ResilienceClient interface {
 	// GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
 	// Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
 	GetProxyStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyStatusList, error)
+	// GetStatsHistory returns the traffic rates of all proxies over the last `range` (5m, 15m, 1h or 6h), summed
+	// across proxies per time bucket (10s; 30s for 1h; 2m for 6h), plus the latest rates of every proxy.
+	// Proxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.
+	GetStatsHistory(ctx context.Context, in *StatsHistoryRequest, opts ...grpc.CallOption) (*StatsHistory, error)
 	// ListFailoverPolicies returns all failover policies sorted by source storage.
 	ListFailoverPolicies(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*FailoverPolicyList, error)
 	// SetFailoverPolicy creates or replaces the failover policy of a source storage.
@@ -93,6 +98,16 @@ func (c *resilienceClient) GetProxyStatus(ctx context.Context, in *emptypb.Empty
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProxyStatusList)
 	err := c.cc.Invoke(ctx, Resilience_GetProxyStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) GetStatsHistory(ctx context.Context, in *StatsHistoryRequest, opts ...grpc.CallOption) (*StatsHistory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StatsHistory)
+	err := c.cc.Invoke(ctx, Resilience_GetStatsHistory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +254,10 @@ type ResilienceServer interface {
 	// GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
 	// Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
 	GetProxyStatus(context.Context, *emptypb.Empty) (*ProxyStatusList, error)
+	// GetStatsHistory returns the traffic rates of all proxies over the last `range` (5m, 15m, 1h or 6h), summed
+	// across proxies per time bucket (10s; 30s for 1h; 2m for 6h), plus the latest rates of every proxy.
+	// Proxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.
+	GetStatsHistory(context.Context, *StatsHistoryRequest) (*StatsHistory, error)
 	// ListFailoverPolicies returns all failover policies sorted by source storage.
 	ListFailoverPolicies(context.Context, *emptypb.Empty) (*FailoverPolicyList, error)
 	// SetFailoverPolicy creates or replaces the failover policy of a source storage.
@@ -283,6 +302,9 @@ type UnimplementedResilienceServer struct{}
 
 func (UnimplementedResilienceServer) GetProxyStatus(context.Context, *emptypb.Empty) (*ProxyStatusList, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProxyStatus not implemented")
+}
+func (UnimplementedResilienceServer) GetStatsHistory(context.Context, *StatsHistoryRequest) (*StatsHistory, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStatsHistory not implemented")
 }
 func (UnimplementedResilienceServer) ListFailoverPolicies(context.Context, *emptypb.Empty) (*FailoverPolicyList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFailoverPolicies not implemented")
@@ -357,6 +379,24 @@ func _Resilience_GetProxyStatus_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResilienceServer).GetProxyStatus(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_GetStatsHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatsHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).GetStatsHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_GetStatsHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).GetStatsHistory(ctx, req.(*StatsHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -605,6 +645,10 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProxyStatus",
 			Handler:    _Resilience_GetProxyStatus_Handler,
+		},
+		{
+			MethodName: "GetStatsHistory",
+			Handler:    _Resilience_GetStatsHistory_Handler,
 		},
 		{
 			MethodName: "ListFailoverPolicies",

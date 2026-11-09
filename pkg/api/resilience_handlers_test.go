@@ -253,3 +253,34 @@ func TestResilience_ProxyStatusTrafficStats(t *testing.T) {
 	require.EqualValues(t, 1, s.Latency.Count)
 	require.Len(t, s.Latency.Buckets, len(s.Latency.BoundsSeconds)+1)
 }
+
+func TestGetStatsHistory(t *testing.T) {
+	c, rc, _ := resilienceClient(t)
+	ctx := t.Context()
+	now := time.Now().Unix()
+	for app, rps := range map[string]float64{"p1": 10, "p2": 5} {
+		require.NoError(t, proxystatus.AppendSample(ctx, rc, app, proxystatus.Sample{Time: now - 20, Rates: trafficstats.Rates{RequestsPerSec: rps, LatencyP95Ms: rps}}))
+		require.NoError(t, proxystatus.AppendSample(ctx, rc, app, proxystatus.Sample{Time: now - 3600, Rates: trafficstats.Rates{RequestsPerSec: 100}}))
+	}
+	h, err := c.GetStatsHistory(ctx, &pb.StatsHistoryRequest{Range: "5m"})
+	require.NoError(t, err)
+	require.Equal(t, "5m", h.Range)
+	require.Equal(t, 10*time.Second, h.Bucket.AsDuration())
+	require.Len(t, h.Points, 1, "hour-old samples are outside 5m")
+	require.InDelta(t, 15, h.Points[0].Rates.RequestsPerSec, 1e-9)
+	require.InDelta(t, 10, h.Points[0].Rates.LatencyP95Ms, 1e-9)
+	require.Len(t, h.Proxies, 2)
+	require.Equal(t, "p1", h.Proxies[0].AppId)
+
+	h, err = c.GetStatsHistory(ctx, &pb.StatsHistoryRequest{Range: "6h"})
+	require.NoError(t, err)
+	require.Equal(t, 2*time.Minute, h.Bucket.AsDuration())
+	require.Len(t, h.Points, 2)
+
+	h, err = c.GetStatsHistory(ctx, &pb.StatsHistoryRequest{})
+	require.NoError(t, err)
+	require.Equal(t, "15m", h.Range)
+
+	_, err = c.GetStatsHistory(ctx, &pb.StatsHistoryRequest{Range: "2d"})
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+}

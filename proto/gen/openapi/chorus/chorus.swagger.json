@@ -1365,6 +1365,38 @@
         ]
       }
     },
+    "/tutti/stats/history": {
+      "get": {
+        "summary": "GetStatsHistory returns the traffic rates of all proxies over the last `range` (5m, 15m, 1h or 6h), summed\nacross proxies per time bucket (10s; 30s for 1h; 2m for 6h), plus the latest rates of every proxy.\nProxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.",
+        "operationId": "Resilience_GetStatsHistory",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusStatsHistory"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "range",
+            "description": "One of \"5m\", \"15m\", \"1h\", \"6h\". Default \"15m\".",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/version": {
       "get": {
         "summary": "Get app version",
@@ -1760,6 +1792,20 @@
           "type": "string"
         }
       }
+    },
+    "chorusDynamicAccountsStatus": {
+      "type": "object",
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "True if storage.dynamicCredentials is enabled with a masterPassword and encryption on."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Human readable explanation if not available."
+        }
+      },
+      "description": "DynamicAccountsStatus tells whether runtime-managed proxy accounts can be created."
     },
     "chorusEventSource": {
       "type": "string",
@@ -2231,6 +2277,10 @@
             "type": "object",
             "$ref": "#/definitions/chorusProxyAccount"
           }
+        },
+        "dynamicAccounts": {
+          "$ref": "#/definitions/chorusDynamicAccountsStatus",
+          "description": "Whether CreateProxyAccount can work at all."
         }
       }
     },
@@ -2250,6 +2300,22 @@
         }
       },
       "description": "ProxyAccountSecret is returned once, when a secret is generated."
+    },
+    "chorusProxyLatestRates": {
+      "type": "object",
+      "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rates": {
+          "$ref": "#/definitions/chorusTrafficRates"
+        }
+      },
+      "description": "ProxyLatestRates is the most recent history sample of one proxy."
     },
     "chorusProxySettings": {
       "type": "object",
@@ -2309,6 +2375,10 @@
         "stats": {
           "$ref": "#/definitions/chorusTrafficStats",
           "description": "Built-in traffic statistics (no Prometheus needed). Absent for proxies that do not publish them.\nCounters are cumulative since stats.started_at: compute rates from two snapshots with the same\nstarted_at (a changed started_at means the proxy restarted and counters were reset)."
+        },
+        "rates": {
+          "$ref": "#/definitions/chorusTrafficRates",
+          "description": "Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).\nAbsent for proxies that do not publish them. Settings.failover tells whether the failover controller runs."
         }
       },
       "description": "ProxyStatus is the status of one live proxy instance."
@@ -2323,6 +2393,10 @@
             "$ref": "#/definitions/chorusProxyStatus"
           },
           "description": "Live proxy instances sorted by app id."
+        },
+        "totalRates": {
+          "$ref": "#/definitions/chorusTrafficRates",
+          "description": "Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum)."
         }
       },
       "description": "ProxyStatusList lists live proxies."
@@ -2726,6 +2800,47 @@
         }
       }
     },
+    "chorusStatsHistory": {
+      "type": "object",
+      "properties": {
+        "range": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string",
+          "description": "Bucket size: 10s (5m, 15m), 30s (1h), 2m (6h)."
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusStatsHistoryPoint"
+          },
+          "description": "Ascending by time; buckets without any sample are omitted."
+        },
+        "proxies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProxyLatestRates"
+          },
+          "description": "Latest sample of every proxy that recorded one within the range."
+        }
+      }
+    },
+    "chorusStatsHistoryPoint": {
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rates": {
+          "$ref": "#/definitions/chorusTrafficRates"
+        }
+      },
+      "description": "StatsHistoryPoint is one time bucket with the rates summed across all proxies."
+    },
     "chorusStorage": {
       "type": "object",
       "properties": {
@@ -2971,6 +3086,71 @@
           "description": "list of applicable replications for given user and bucket."
         }
       }
+    },
+    "chorusTrafficRates": {
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "type": "number",
+          "format": "double",
+          "description": "Time span the rates were computed over (0 right after proxy start)."
+        },
+        "requestsPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "requestsByClass": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Requests/s by operation class: read, write, exists, manage, other."
+        },
+        "requestsByStorage": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": "Requests/s by the storage they were routed to."
+        },
+        "bytesInPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "bytesOutPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "status4xxPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "status5xxPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "failFastPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "accessDeniedPerSec": {
+          "type": "number",
+          "format": "double"
+        },
+        "latencyAvgMs": {
+          "type": "number",
+          "format": "double",
+          "description": "Mean request duration in the window. When summed over proxies: request-weighted average."
+        },
+        "latencyP95Ms": {
+          "type": "number",
+          "format": "double",
+          "description": "95th percentile estimated from histogram deltas. When combined over proxies or buckets: the MAXIMUM of the\nparts (an upper bound), because percentiles cannot be merged exactly."
+        }
+      },
+      "description": "TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds."
     },
     "chorusTrafficStats": {
       "type": "object",

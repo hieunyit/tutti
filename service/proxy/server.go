@@ -171,10 +171,29 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		go healthReg.RunChecks(ctx, probeTargets...)
 		startedAt := time.Now().UTC()
-		statusPub := proxystatus.NewPublisher(confRedis, app.AppID, health.DefaultProbeInterval, func() proxystatus.Status {
-			return proxyStatus(conf, healthReg, startedAt, proxyAccounts(conf.Auth, credsSvc))
+		rateWindow := trafficstats.NewWindow(trafficstats.DefaultWindow)
+		rateWindow.Add(trafficstats.Default.Snapshot())
+		go func() { // 1s samples keep the window fine-grained even with a long status.interval
+			t := time.NewTicker(time.Second)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					rateWindow.Add(trafficstats.Default.Snapshot())
+				}
+			}
+		}()
+		statusPub := proxystatus.NewPublisher(confRedis, app.AppID, conf.Status.Interval, func() proxystatus.Status {
+			st := proxyStatus(conf, healthReg, startedAt, proxyAccounts(conf.Auth, credsSvc))
+			rateWindow.Add(*st.Stats)
+			rates := rateWindow.Rates()
+			st.Rates = &rates
+			return st
 		}, logger)
 		go statusPub.Run(ctx)
+		go proxystatus.RunHistory(ctx, confRedis, app.AppID, rateWindow.Rates, logger)
 		if conf.Failover.Enabled {
 			failoverLock := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 			defer failoverLock.Close()

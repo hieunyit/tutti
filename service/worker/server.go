@@ -278,6 +278,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			_, ok := credsSvc.Storages()[storage]
 			return ok
 		}, api.WithProxyAccounts(func() (proxyaccount.Sealer, error) {
+			if err := credsSvc.SealingAvailable(); err != nil {
+				return nil, err
+			}
 			return credsSvc, nil
 		}, func(user string) bool {
 			// dynamic proxy accounts act as a storage user of the main storage

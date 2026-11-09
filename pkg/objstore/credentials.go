@@ -663,6 +663,10 @@ func (s *credsSvc) Open(sealed string) ([]byte, error) {
 	return s.decrypt([]byte(sealed))
 }
 
+// SealingAvailable reports whether secrets can be sealed (dynamic credentials enabled with master password, encryption on);
+// nil if so, otherwise a dom.ErrFailedPrecondition explaining why not.
+func (s *credsSvc) SealingAvailable() error { return s.sealingAvailable() }
+
 func (s *credsSvc) sealingAvailable() error {
 	dc := s.config.DynamicCredentials
 	if !dc.Enabled || dc.DisableEncryption || len(s.key) == 0 {

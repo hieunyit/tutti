@@ -149,3 +149,10 @@ func TestFailoverConfigValidate(t *testing.T) {
 	full := Config{Failover: FailoverConfig{Enabled: true}}
 	r.Error(full.Failover.Validate())
 }
+
+func TestStatusConfig_Validate(t *testing.T) {
+	r := require.New(t)
+	r.NoError((&StatusConfig{Interval: 2 * time.Second}).Validate())
+	r.Error((&StatusConfig{}).Validate())
+	r.Error((&StatusConfig{Interval: -time.Second}).Validate())
+}

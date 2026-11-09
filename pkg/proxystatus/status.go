@@ -22,7 +22,7 @@ const (
 	// KeyPrefix is the Redis key prefix of status documents.
 	KeyPrefix = "tutti:proxy-status:"
 	// DefaultInterval is the publish period when none is given.
-	DefaultInterval = 10 * time.Second
+	DefaultInterval = 2 * time.Second
 )
 
 // StorageHealth is the circuit breaker state of one storage.
@@ -91,6 +91,8 @@ type Status struct {
 	Settings Settings  `json:"settings"`
 	// Stats are cumulative traffic counters since StartedAt (nil for old documents).
 	Stats *trafficstats.Snapshot `json:"stats,omitempty"`
+	// Rates are the current traffic rates computed by the proxy over a short sliding window (nil for old documents).
+	Rates *trafficstats.Rates `json:"rates,omitempty"`
 }
 
 // Key returns the Redis key of the app's status document.

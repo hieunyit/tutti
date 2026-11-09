@@ -11,6 +11,7 @@ REST JSON follows protobuf JSON mapping: camelCase field names, durations as str
 | RPC | REST | Description |
 |---|---|---|
 | `GetProxyStatus(Empty) -> ProxyStatusList` | `GET /tutti/proxies` | Live proxy instances: breaker state per storage and effective settings |
+| `GetStatsHistory(StatsHistoryRequest) -> StatsHistory` | `GET /tutti/stats/history?range=5m\|15m\|1h\|6h` | Traffic rates over time, summed across proxies (viewer-readable) |
 | `ListFailoverPolicies(Empty) -> FailoverPolicyList` | `GET /tutti/failover/policies` | All policies sorted by source |
 | `SetFailoverPolicy(FailoverPolicy) -> Empty` | `POST /tutti/failover/policies` | Create or replace the policy of a source |
 | `DeleteFailoverPolicy(FailoverPolicySource) -> Empty` | `PUT /tutti/failover/policies/delete` | Remove a policy (not found if missing) |
@@ -54,13 +55,49 @@ curl -s http://localhost:9671/tutti/proxies
         "health": { "failureThreshold": 3, "openDuration": "30s" },
         "failover": { "enabled": true, "checkInterval": "10s", "after": "60s", "maxEventLag": 0 },
         "requireSignedContentType": false
-      }
+      },
+      "rates": {
+        "windowSeconds": 10,
+        "requestsPerSec": 42.5,
+        "requestsByClass": { "read": 30.1, "write": 12.4 },
+        "requestsByStorage": { "main": 40, "f1": 2.5 },
+        "bytesInPerSec": 1048576, "bytesOutPerSec": 524288,
+        "status4xxPerSec": 0.3, "status5xxPerSec": 0, "failFastPerSec": 0, "accessDeniedPerSec": 0,
+        "latencyAvgMs": 12.4, "latencyP95Ms": 48.1
+      },
+      "stats": { "...": "cumulative counters since startedAt (unchanged)" }
     }
+  ],
+  "totalRates": { "requestsPerSec": 42.5, "...": "rates summed across the listed proxies" }
+}
+```
+
+Each proxy publishes its document every `status.interval` (default 2 s, see [configuration](./configuration.md#status)) with a TTL of 3 intervals; a proxy that stopped publishing is not listed. Values are the effective ones. That is one Redis `SET` of a few KB per interval per proxy.
+
+`rates` are computed by the proxy itself from its cumulative counters over a sliding window of about 10 s (samples every second): no client-side diffing needed, and the values are available ~2 s after proxy start (`windowSeconds` is 0 until two samples exist). Latencies are in milliseconds; `latencyP95Ms` is estimated from histogram bucket deltas (linear interpolation, capped at the last bound, 10 s). `totalRates` sums the proxies: `latencyAvgMs` is request-weighted, `latencyP95Ms` is the maximum over proxies (an upper bound; percentiles cannot be merged exactly). `stats` (cumulative) is kept for compatibility.
+
+Failover readiness: `settings.failover` carries per proxy whether the failover controller runs (`enabled`), its `checkInterval`, `after` and `maxEventLag`. Policies only trigger on proxies with `enabled: true`; the UI uses this to warn "policies will not trigger".
+
+### GetStatsHistory
+
+```shell
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:9671/tutti/stats/history?range=15m"
+```
+
+```json
+{
+  "range": "15m",
+  "bucket": "10s",
+  "points": [
+    { "time": "2026-11-10T04:00:00Z", "rates": { "requestsPerSec": 42.5, "latencyAvgMs": 12.4, "latencyP95Ms": 48.1, "...": "same fields as proxy rates" } }
+  ],
+  "proxies": [
+    { "appId": "3f6c0a52-...", "time": "2026-11-10T04:00:07Z", "rates": { "requestsPerSec": 42.5 } }
   ]
 }
 ```
 
-Each proxy publishes its document every 10 s with a 30 s TTL; a proxy that stopped publishing is not listed. Values are the effective ones.
+`range` is `5m`, `15m` (default), `1h` or `6h`; anything else is an invalid argument. Bucket size: 10 s for 5m/15m, 30 s for 1h, 2 min for 6h. Each proxy appends a compact sample (its 10 s-window rates) every 10 s to the Redis list `tutti:proxy-stats-history:<app_id>` (LPUSH + LTRIM to 2160 entries = 6 h, EXPIRE ~6 h, so history of a dead proxy vanishes after ~6 h); the endpoint reads them, so history survives UI reloads. In a downsampled bucket the samples of one proxy are averaged first, then proxies are summed. Aggregation rules: rates are summed across proxies, `latencyAvgMs` is the request-weighted average, `latencyP95Ms` is the maximum across proxies and samples (upper bound). Buckets without any sample are omitted (gaps mean no proxy reported). `proxies` holds the latest sample of each proxy within the range.
 
 ### Policies
 
@@ -113,7 +150,7 @@ curl -X PUT $API/routing/update -d '{"user":"user1","bucket":"photos","toStorage
 
 `CreateProxyAccount`, `RotateProxyAccountSecret`, `SetProxyAccountStatus`, `DeleteProxyAccount` (all admin only,
 `/tutti/proxy-accounts[/rotate|/status|/delete]`) manage runtime proxy accounts; `ListProxyAccounts` shows them with
-source `dynamic`. See [dynamic-creds.md](../dynamic-creds.md#runtime-managed-proxy-accounts).
+source `dynamic`. `ListProxyAccounts` also returns `dynamicAccounts: { "available": bool, "reason": string }`: `available` is true only if `storage.dynamicCredentials` is enabled with a `masterPassword` and encryption on (otherwise `CreateProxyAccount` fails with failed precondition and `reason` says why); the UI uses it to disable the create form. Viewer-readable. See [dynamic-creds.md](../dynamic-creds.md#runtime-managed-proxy-accounts).
 
 ## chorctl
 
@@ -131,7 +168,8 @@ Policies and events are written via REST/gRPC or the UI; `chorctl` has no set/de
 
 | Key | DB | Type | Written by | Content |
 |---|---|---|---|---|
-| `tutti:proxy-status:<app_id>` | config DB (`redis.configDB`) | string (JSON), TTL 30 s | each proxy every 10 s | breaker state per storage, effective settings (`pkg/proxystatus`) |
+| `tutti:proxy-status:<app_id>` | config DB (`redis.configDB`) | string (JSON), TTL 3x `status.interval` | each proxy every `status.interval` (2 s) | breaker state per storage, effective settings, cumulative stats, current rates (`pkg/proxystatus`) |
+| `tutti:proxy-stats-history:<app_id>` | config DB | list (JSON samples, newest first), max 2160, TTL ~6 h | each proxy every 10 s | `{t, r: rates}` samples for `GetStatsHistory` |
 | `tutti:failover-policies` | config DB | hash: field = source storage, value = JSON policy | Resilience API | `{source, enabled, targets, after, maxEventLag}`; `after` is stored in nanoseconds (Go `time.Duration` JSON) |
 | `tutti:failover:user:<user>` | config DB | string (JSON) | failover controller | `{user, bucket, from, to, time, eventLag}` |
 | `tutti:failover:bucket:<user>:<bucket>` | config DB | string (JSON) | failover controller | same, for a bucket scope |

@@ -52,6 +52,7 @@ var viewerMethods = map[string]struct{}{
 	"/chorus.Policy/GetSwitchStatus":          {},
 	"/chorus.Policy/ListRoutings":             {},
 	"/chorus.Resilience/GetProxyStatus":       {},
+	"/chorus.Resilience/GetStatsHistory":      {},
 	"/chorus.Resilience/ListFailoverPolicies": {},
 	"/chorus.Resilience/ListFailoverEvents":   {},
 	"/chorus.Resilience/ListAccessPolicies":   {},

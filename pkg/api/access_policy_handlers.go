@@ -116,7 +116,7 @@ func (h *resilienceHandlers) ListProxyAccounts(ctx context.Context, _ *emptypb.E
 		users = append(users, u)
 	}
 	sort.Strings(users)
-	res := &pb.ProxyAccountList{Accounts: make([]*pb.ProxyAccount, 0, len(users))}
+	res := &pb.ProxyAccountList{Accounts: make([]*pb.ProxyAccount, 0, len(users)), DynamicAccounts: h.dynamicAccountsStatus()}
 	for _, u := range users {
 		a := accounts[u]
 		pol, has := byUser[u]
@@ -129,6 +129,17 @@ func (h *resilienceHandlers) ListProxyAccounts(ctx context.Context, _ *emptypb.E
 		})
 	}
 	return res, nil
+}
+
+// dynamicAccountsStatus tells whether CreateProxyAccount can work: a sealer must be configured and available.
+func (h *resilienceHandlers) dynamicAccountsStatus() *pb.DynamicAccountsStatus {
+	if h.sealer == nil {
+		return &pb.DynamicAccountsStatus{Reason: "dynamic proxy accounts are not configured on this server"}
+	}
+	if _, err := h.sealer(); err != nil {
+		return &pb.DynamicAccountsStatus{Reason: err.Error()}
+	}
+	return &pb.DynamicAccountsStatus{Available: true}
 }
 
 func sortedKeys(m map[string]struct{}) []string {

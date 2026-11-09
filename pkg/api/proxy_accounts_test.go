@@ -164,3 +164,26 @@ func TestProxyAccounts_NoMasterPassword(t *testing.T) {
 	_, err = c2.CreateProxyAccount(t.Context(), &pb.CreateProxyAccountRequest{User: "alice"})
 	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
+
+func TestListProxyAccounts_DynamicAccountsStatus(t *testing.T) {
+	ctx := t.Context()
+	c, _ := accountsClient(t) // not configured
+	l, err := c.ListProxyAccounts(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.False(t, l.DynamicAccounts.Available)
+	require.NotEmpty(t, l.DynamicAccounts.Reason)
+
+	c, _ = accountsClient(t, WithProxyAccounts(func() (proxyaccount.Sealer, error) {
+		return nil, errors.New("master password missing")
+	}, nil))
+	l, err = c.ListProxyAccounts(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.False(t, l.DynamicAccounts.Available)
+	require.Contains(t, l.DynamicAccounts.Reason, "master password missing")
+
+	c, _ = accountsClient(t, WithProxyAccounts(func() (proxyaccount.Sealer, error) { return testAesSealer{}, nil }, nil))
+	l, err = c.ListProxyAccounts(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.True(t, l.DynamicAccounts.Available)
+	require.Empty(t, l.DynamicAccounts.Reason)
+}

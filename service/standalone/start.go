@@ -33,6 +33,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/service/proxy"
 	"github.com/hieunyit/tutti/service/worker"
@@ -172,6 +173,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			Address: conf.Proxy.Address,
 			Storage: conf.Proxy.Storage,
 			Cors:    conf.Proxy.Cors,
+			Status:  proxy.StatusConfig{Interval: proxystatus.DefaultInterval},
 		}
 		proxyConf.Redis = workerConf.Redis
 

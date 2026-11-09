@@ -20,7 +20,7 @@ Tutti is a drop-in fork of Chorus (compatible protobuf package, gRPC service nam
 
 ## New Redis keys
 
-- `tutti:proxy-status:<app_id>` (config DB, TTL 30 s): written by every proxy every 10 s. This is a small recurring write per proxy.
+- `tutti:proxy-status:<app_id>` (config DB, TTL 3x interval): written by every proxy every `status.interval` (default 2 s). This is a small recurring write per proxy.
 - `tutti:failover-policies` (config DB): created only when a policy is set.
 - `tutti:failover:user:<user>`, `tutti:failover:bucket:<user>:<bucket>` (config DB): created only on an automatic failover.
 - `tutti:failover-lock:<storage>` (lock DB): only while a failover runs.

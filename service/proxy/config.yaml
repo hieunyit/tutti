@@ -40,6 +40,10 @@ failover:
   # defaults used when a policy omits `after` / `maxEventLag`:
   after: 60s
   maxEventLag: 0
+# Live status published to Redis (tutti:proxy-status:<app_id>, TTL 3x interval): storage health, settings,
+# cumulative stats and current rates. One Redis SET per interval per proxy. Must be greater than 0.
+status:
+  interval: 2s
 cors:
   enabled: false
   allowAll: false
