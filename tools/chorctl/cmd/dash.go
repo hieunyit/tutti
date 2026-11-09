@@ -24,9 +24,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/tools/chorctl/internal/api"
-	"github.com/clyso/chorus/tools/chorctl/internal/ui"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/tools/chorctl/internal/api"
+	"github.com/hieunyit/tutti/tools/chorctl/internal/ui"
 )
 
 // dashCmd represents the dash command

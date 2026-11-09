@@ -19,8 +19,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 
-	"github.com/clyso/chorus/tools/bench/pkg/bench"
-	"github.com/clyso/chorus/tools/bench/pkg/config"
+	"github.com/hieunyit/tutti/tools/bench/pkg/bench"
+	"github.com/hieunyit/tutti/tools/bench/pkg/config"
 )
 
 func main() {

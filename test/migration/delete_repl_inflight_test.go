@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/meta"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/tasks"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/test/app"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/meta"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 func fillBucket(t *testing.T, c *mclient.Client, bucket string, n, size int) {

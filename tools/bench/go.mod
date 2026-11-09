@@ -1,10 +1,10 @@
-module github.com/clyso/chorus/tools/bench
+module github.com/hieunyit/tutti/tools/bench
 
 go 1.26.10
 
 require (
 	github.com/boltdb/bolt v1.3.1
-	github.com/clyso/chorus v0.0.0-20230613144403-9f72f3d28ede
+	github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede
 	github.com/golang/protobuf v1.5.4
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.3.0
@@ -89,6 +89,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/clyso/chorus v0.0.0-20230613144403-9f72f3d28ede => ./../..
+replace github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede => ./../..
 
 tool github.com/dkorunic/betteralign/cmd/betteralign

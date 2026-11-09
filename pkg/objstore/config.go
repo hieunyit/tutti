@@ -20,8 +20,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/ratelimit"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/ratelimit"
 )
 
 type CommonConfig struct {

@@ -27,13 +27,13 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/policy"
-	"github.com/clyso/chorus/pkg/s3client"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 // check mock values:

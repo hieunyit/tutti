@@ -26,7 +26,7 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func NewServer() *server {

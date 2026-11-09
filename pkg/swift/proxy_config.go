@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 const defaultHttpTimeout = time.Minute * 10

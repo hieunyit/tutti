@@ -22,11 +22,11 @@ import (
 	"io/fs"
 	"slices"
 
-	"github.com/clyso/chorus/pkg/config"
-	"github.com/clyso/chorus/service/proxy"
-	"github.com/clyso/chorus/service/proxy/auth"
-	"github.com/clyso/chorus/service/proxy/cors"
-	"github.com/clyso/chorus/service/worker"
+	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/proxy/auth"
+	"github.com/hieunyit/tutti/service/proxy/cors"
+	"github.com/hieunyit/tutti/service/worker"
 )
 
 //go:embed config.yaml

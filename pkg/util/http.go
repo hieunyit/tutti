@@ -26,8 +26,8 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func WriteError(ctx context.Context, w http.ResponseWriter, err error) {

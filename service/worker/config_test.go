@@ -22,8 +22,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/config"
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func TestGetConfig(t *testing.T) {

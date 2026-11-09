@@ -21,9 +21,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/validate"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/validate"
 )
 
 type UploadSvc struct {

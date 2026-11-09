@@ -1,4 +1,4 @@
-module github.com/clyso/chorus
+module github.com/hieunyit/tutti
 
 go 1.26.10
 

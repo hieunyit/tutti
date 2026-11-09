@@ -21,10 +21,10 @@ import (
 
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/swift"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/swift"
 )
 
 func WithMethod(ctx context.Context, method s3.Method) context.Context {

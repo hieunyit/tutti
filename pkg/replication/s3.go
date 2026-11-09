@@ -23,13 +23,13 @@ import (
 
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/meta"
-	"github.com/clyso/chorus/pkg/policy"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/tasks"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/meta"
+	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 type Service interface {

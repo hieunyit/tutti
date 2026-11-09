@@ -27,11 +27,11 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	"github.com/minio/minio-go/v7"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/metrics"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/s3client"
-	"github.com/clyso/chorus/pkg/swift"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/metrics"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/swift"
 )
 
 var (

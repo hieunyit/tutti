@@ -25,7 +25,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/entity"
 )
 
 func TokensToEmptyStructConverter(tokens []string) (struct{}, error) {

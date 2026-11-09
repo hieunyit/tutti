@@ -26,7 +26,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 var _ io.ReadCloser = &hashReader{}

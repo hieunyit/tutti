@@ -1,4 +1,4 @@
-module github.com/clyso/chorus/tools/chorctl
+module github.com/hieunyit/tutti/tools/chorctl
 
 go 1.26.10
 
@@ -6,7 +6,7 @@ require (
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/clyso/chorus v0.0.0-20230613144403-9f72f3d28ede
+	github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0
 	github.com/sirupsen/logrus v1.10.1
 	github.com/spf13/cobra v1.10.2
@@ -60,6 +60,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688 // indirect
 )
 
-replace github.com/clyso/chorus v0.0.0-20230613144403-9f72f3d28ede => ./../..
+replace github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede => ./../..
 
 tool github.com/dkorunic/betteralign/cmd/betteralign

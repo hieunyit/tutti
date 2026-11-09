@@ -28,8 +28,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/tools/chorctl/internal/api"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/tools/chorctl/internal/api"
 )
 
 var (

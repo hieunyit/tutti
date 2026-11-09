@@ -19,8 +19,8 @@ package policy
 import (
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 type Service interface {

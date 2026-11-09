@@ -28,7 +28,7 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/signer"
 
-	"github.com/clyso/chorus/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 // List of success status.

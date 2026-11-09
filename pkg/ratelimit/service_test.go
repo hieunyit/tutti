@@ -19,8 +19,8 @@ package ratelimit
 import (
 	"testing"
 
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/swift"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/swift"
 )
 
 func Test_filterRateLimitMethods(t *testing.T) {

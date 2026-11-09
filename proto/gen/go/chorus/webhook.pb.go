@@ -577,7 +577,7 @@ const file_chorus_webhook_proto_rawDesc = "" +
 	"\x0eOBJECT_DELETED\x10\x062\x96\x01\n" +
 	"\aWebhook\x12A\n" +
 	"\vSwiftEvents\x12\x1a.chorus.SwiftEventsRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
-	"\x0fS3Notifications\x12\x1d.chorus.S3NotificationRequest\x1a\x16.google.protobuf.EmptyB)Z'github.com/clyso/chorus/proto/chorus;pbb\x06proto3"
+	"\x0fS3Notifications\x12\x1d.chorus.S3NotificationRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_webhook_proto_rawDescOnce sync.Once

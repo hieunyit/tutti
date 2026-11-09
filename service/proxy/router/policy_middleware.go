@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"net/http"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/policy"
-	"github.com/clyso/chorus/pkg/util"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/util"
 )
 
 func PolicyMiddleware(policySvc policy.Service) func(next http.Handler) http.Handler {

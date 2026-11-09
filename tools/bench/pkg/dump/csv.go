@@ -24,7 +24,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/clyso/chorus/tools/bench/pkg/config"
+	"github.com/hieunyit/tutti/tools/bench/pkg/config"
 )
 
 type BenchEvent struct {

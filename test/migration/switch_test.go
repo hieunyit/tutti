@@ -33,8 +33,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/test/app"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 func TestApi_ZeroDowntimeSwitch(t *testing.T) {

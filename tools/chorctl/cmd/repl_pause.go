@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/clyso/chorus/tools/chorctl/internal/api"
+	"github.com/hieunyit/tutti/tools/chorctl/internal/api"
 )
 
 var (

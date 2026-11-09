@@ -24,9 +24,9 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 func (s *svc) HandleMigrationS3User(ctx context.Context, t *asynq.Task) error {

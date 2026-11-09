@@ -23,9 +23,9 @@ import (
 
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/s3"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 func S3Middleware(endpointAddress string) func(next http.Handler) http.Handler {

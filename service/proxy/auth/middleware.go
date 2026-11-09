@@ -24,11 +24,11 @@ import (
 
 	mclient "github.com/minio/minio-go/v7"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/util"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/util"
 )
 
 func Middleware(conf *Config, credsSvc objstore.CredsService, endpointAddress string) *middleware {

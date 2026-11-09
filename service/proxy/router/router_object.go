@@ -22,10 +22,10 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/s3client"
-	"github.com/clyso/chorus/pkg/tasks"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 func (r *s3Router) putObject(req *http.Request) (resp *http.Response, taskList []tasks.ReplicationTask, storage string, isApiErr bool, err error) {

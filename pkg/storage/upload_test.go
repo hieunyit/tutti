@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/testutil"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/testutil"
 )
 
 func Test_svc_StoreUploadID(t *testing.T) {

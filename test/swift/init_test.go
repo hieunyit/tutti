@@ -8,13 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/metrics"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/swift"
-	"github.com/clyso/chorus/service/proxy"
-	"github.com/clyso/chorus/service/proxy/router"
-	"github.com/clyso/chorus/test/env"
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
 	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/endpoints"
@@ -23,6 +16,13 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/services"
 	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/users"
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/accounts"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/metrics"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/swift"
+	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/proxy/router"
+	"github.com/hieunyit/tutti/test/env"
 	"github.com/stretchr/testify/require"
 )
 

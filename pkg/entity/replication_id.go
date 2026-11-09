@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func UniversalFromUserReplication(policy UserReplicationPolicy) UniversalReplicationID {

@@ -22,12 +22,12 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/rpc"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/swift"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/rpc"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/swift"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 func ChorusHandlers(

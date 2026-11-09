@@ -608,7 +608,7 @@ const file_chorus_chorus_proto_rawDesc = "" +
 	"\rGetAppVersion\x12\x16.google.protobuf.Empty\x1a\x1d.chorus.GetAppVersionResponse\x12B\n" +
 	"\vGetStorages\x12\x16.google.protobuf.Empty\x1a\x1b.chorus.GetStoragesResponse\x12R\n" +
 	"\x13GetProxyCredentials\x12\x16.google.protobuf.Empty\x1a#.chorus.GetProxyCredentialsResponse\x12O\n" +
-	"\x12SetUserCredentials\x12!.chorus.SetUserCredentialsRequest\x1a\x16.google.protobuf.EmptyB)Z'github.com/clyso/chorus/proto/chorus;pbb\x06proto3"
+	"\x12SetUserCredentials\x12!.chorus.SetUserCredentialsRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_chorus_proto_rawDescOnce sync.Once

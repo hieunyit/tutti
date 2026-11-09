@@ -12,11 +12,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/store"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/test/app"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/store"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 func TestApi_Migrate_Load_test(t *testing.T) {

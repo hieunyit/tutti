@@ -8,7 +8,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/signer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 func TestGetResource(t *testing.T) {

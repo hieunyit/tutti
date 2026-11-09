@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 // AWS Signature Version '4' constants.

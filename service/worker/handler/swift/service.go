@@ -17,12 +17,12 @@ package swift
 import (
 	"context"
 
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/ratelimit"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/swift"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/service/worker/handler"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/ratelimit"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/swift"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/handler"
 )
 
 type svc struct {

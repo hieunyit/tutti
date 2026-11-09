@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/pkg/testutil"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/testutil"
 )
 
 func Test_AddUserReplicationPolicy(t *testing.T) {

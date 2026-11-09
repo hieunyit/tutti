@@ -33,10 +33,10 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/argon2"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/swift"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/swift"
 )
 
 const (

@@ -29,13 +29,13 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/features"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/service/proxy"
-	"github.com/clyso/chorus/service/worker"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/worker"
 )
 
 const (

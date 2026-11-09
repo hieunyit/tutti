@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
 )
 
 func Test_redisReplicationMATCH(t *testing.T) {

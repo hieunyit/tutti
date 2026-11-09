@@ -22,7 +22,7 @@ import (
 	"github.com/hibiken/asynq"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/clyso/chorus/pkg/log"
+	"github.com/hieunyit/tutti/pkg/log"
 )
 
 func WorkerMiddleware(tp trace.TracerProvider) asynq.MiddlewareFunc {

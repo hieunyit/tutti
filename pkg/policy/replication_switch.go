@@ -21,9 +21,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/store"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/store"
 )
 
 type ReplicationSwitchSvc interface {

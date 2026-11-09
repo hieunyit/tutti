@@ -32,9 +32,9 @@ import (
 	"github.com/rs/xid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/s3"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/test/app"
+	"github.com/hieunyit/tutti/pkg/s3"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 const (

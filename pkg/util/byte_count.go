@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func ByteCountSI(b int64) string {

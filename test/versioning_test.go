@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/clyso/chorus/test/app"
+	"github.com/hieunyit/tutti/test/app"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/require"
 )

@@ -22,9 +22,9 @@ import (
 
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/policy"
-	"github.com/clyso/chorus/pkg/tasks"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 func NewSwift(queueSvc tasks.QueueService, policySvc policy.Service) Service {

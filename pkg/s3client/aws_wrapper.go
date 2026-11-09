@@ -31,9 +31,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/metrics"
-	"github.com/clyso/chorus/pkg/s3"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/metrics"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 func newAWSClient(conf s3.StorageAddress, cred s3.CredentialsV4, storageName, userName string, metricsSvc metrics.Service) (*AWS, error) {

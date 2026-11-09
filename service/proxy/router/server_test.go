@@ -25,10 +25,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/replication"
-	"github.com/clyso/chorus/pkg/tasks"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/replication"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 // backendStub returns a response with backend CORS headers and no replication tasks.

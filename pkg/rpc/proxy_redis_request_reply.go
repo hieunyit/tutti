@@ -26,9 +26,9 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/s3"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/s3"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 const (

@@ -30,13 +30,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/metrics"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/s3client"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/tools/bench/pkg/config"
-	"github.com/clyso/chorus/tools/bench/pkg/db"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/metrics"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/tools/bench/pkg/config"
+	"github.com/hieunyit/tutti/tools/bench/pkg/db"
 )
 
 func Start(conf *config.Config) error {

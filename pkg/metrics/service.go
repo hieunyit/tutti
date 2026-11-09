@@ -22,7 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 )
 
 var countRequests = promauto.NewCounterVec(

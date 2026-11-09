@@ -26,8 +26,8 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/service/proxy/cors"
-	"github.com/clyso/chorus/test/app"
+	"github.com/hieunyit/tutti/service/proxy/cors"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 func TestProxy_Cors(t *testing.T) {

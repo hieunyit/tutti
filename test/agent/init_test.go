@@ -10,10 +10,10 @@ import (
 	"github.com/minio/minio-go/v7"
 	mcredentials "github.com/minio/minio-go/v7/pkg/credentials"
 
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/test/app"
-	"github.com/clyso/chorus/test/env"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/test/app"
+	"github.com/hieunyit/tutti/test/env"
 )
 
 const (

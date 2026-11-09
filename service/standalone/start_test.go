@@ -26,8 +26,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/clyso/chorus/pkg/dom"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/pkg/dom"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 func TestStandaloneDefaultConfig(t *testing.T) {

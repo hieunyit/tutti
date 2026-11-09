@@ -6,7 +6,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/clyso/chorus/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
 
 service Chorus {
   // Get app version

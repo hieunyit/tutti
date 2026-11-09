@@ -21,7 +21,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 )
 
 func HttpMiddleware(cfg *Config, app, appID string, flow xctx.Flow) func(next http.Handler) http.Handler {

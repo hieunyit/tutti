@@ -25,11 +25,11 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/replication"
-	"github.com/clyso/chorus/pkg/util"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/replication"
+	"github.com/hieunyit/tutti/pkg/util"
 )
 
 type Config struct {

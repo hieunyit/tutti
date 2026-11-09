@@ -30,9 +30,9 @@ import (
 
 	mclient "github.com/minio/minio-go/v7"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/s3"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 // AWS Signature Version '4' constants.

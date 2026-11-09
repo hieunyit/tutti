@@ -20,8 +20,8 @@ import (
 
 	"github.com/adhocore/gronx"
 
-	"github.com/clyso/chorus/pkg/dom"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/pkg/dom"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 func validateSwitchDonwtimeOpts(in *pb.SwitchDowntimeOpts) error {

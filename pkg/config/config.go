@@ -25,10 +25,10 @@ import (
 	stdlog "github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
-	"github.com/clyso/chorus/pkg/features"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/metrics"
-	"github.com/clyso/chorus/pkg/trace"
+	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/metrics"
+	"github.com/hieunyit/tutti/pkg/trace"
 )
 
 //go:embed config.yaml

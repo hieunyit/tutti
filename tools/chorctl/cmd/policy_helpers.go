@@ -21,8 +21,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/tools/chorctl/internal/api"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/tools/chorctl/internal/api"
 )
 
 // newPolicyClient creates a management API client and returns a Policy client.

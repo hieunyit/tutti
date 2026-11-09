@@ -817,7 +817,7 @@ const file_chorus_diff_proto_rawDesc = "" +
 	"\x10GetReportEntries\x12(.chorus.GetDiffCheckReportEntriesRequest\x1a).chorus.GetDiffCheckReportEntriesResponse\x12@\n" +
 	"\fDeleteReport\x12\x18.chorus.DiffCheckRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
 	"\x03Fix\x12\x1b.chorus.StartDiffFixRequest\x1a\x16.google.protobuf.Empty\x12;\n" +
-	"\aRestart\x12\x18.chorus.DiffCheckRequest\x1a\x16.google.protobuf.EmptyB)Z'github.com/clyso/chorus/proto/chorus;pbb\x06proto3"
+	"\aRestart\x12\x18.chorus.DiffCheckRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_diff_proto_rawDescOnce sync.Once

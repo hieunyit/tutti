@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/service/worker/handler"
-	swift_worker "github.com/clyso/chorus/service/worker/handler/swift"
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/containers"
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/handler"
+	swift_worker "github.com/hieunyit/tutti/service/worker/handler/swift"
 	"github.com/stretchr/testify/require"
 )
 

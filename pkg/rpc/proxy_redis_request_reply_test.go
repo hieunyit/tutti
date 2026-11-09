@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/testutil"
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/pkg/testutil"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 var _ Proxy = &mockProxy{}

@@ -22,7 +22,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
-	"github.com/clyso/chorus/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/entity"
 )
 
 // DropStaleReplicationTasks recognizes replication tasks by queue, not by task type:

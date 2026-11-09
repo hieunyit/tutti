@@ -4,7 +4,7 @@ package chorus;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/clyso/chorus/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
 
 service Diff {
   rpc Start(StartDiffCheckRequest) returns (google.protobuf.Empty);

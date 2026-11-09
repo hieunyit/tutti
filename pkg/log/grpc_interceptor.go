@@ -22,7 +22,7 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 )
 
 func UnaryInterceptor(cfg *Config, app, appID string) grpc.UnaryServerInterceptor {

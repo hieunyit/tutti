@@ -20,11 +20,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/tasks"
-	swift_worker "github.com/clyso/chorus/service/worker/handler/swift"
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/accounts"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	swift_worker "github.com/hieunyit/tutti/service/worker/handler/swift"
 	"github.com/stretchr/testify/require"
 )
 

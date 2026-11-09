@@ -24,12 +24,12 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/service/worker/copy"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
 const (

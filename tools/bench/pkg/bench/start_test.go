@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/clyso/chorus/tools/bench/pkg/config"
+	"github.com/hieunyit/tutti/tools/bench/pkg/config"
 )
 
 func TestStart(t *testing.T) {

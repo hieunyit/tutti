@@ -23,14 +23,14 @@ import (
 
 	"github.com/hibiken/asynq"
 
-	"github.com/clyso/chorus/pkg/meta"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/ratelimit"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/s3client"
-	"github.com/clyso/chorus/pkg/store"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/service/worker/copy"
+	"github.com/hieunyit/tutti/pkg/meta"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/ratelimit"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
 type Config struct {

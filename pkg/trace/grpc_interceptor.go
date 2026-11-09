@@ -23,7 +23,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	"github.com/clyso/chorus/pkg/log"
+	"github.com/hieunyit/tutti/pkg/log"
 )
 
 func UnaryInterceptor() grpc.UnaryServerInterceptor {

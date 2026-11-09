@@ -22,7 +22,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/entity"
 )
 
 func TokensToBucketReplicationPolicyIDConverter(tokens []string) (entity.BucketReplicationPolicyID, error) {

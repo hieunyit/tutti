@@ -22,7 +22,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/clyso/chorus/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/entity"
 )
 
 func eventQueue(p ReplicationTask) string {

@@ -3,7 +3,10 @@
 [![GoDoc](https://godoc.org/github.com/clyso/chorus?status.svg)](https://pkg.go.dev/github.com/clyso/chorus?tab=doc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/clyso/chorus)](https://goreportcard.com/report/github.com/clyso/chorus)
 
-# Chorus
+# Tutti
+
+Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH that adds synchronous multi-backend writes, write quorums, circuit breakers with automatic failover, and stricter payload handling ported from ReplicaT4. See NOTICE for attribution.
+
 ![chorus.png](./docs/media/banner.png)
 
 Chorus is a distributed, vendor-agnostic tool for backup, migration, and routing for Object Storages like S3 or OpenStack Swift. It enables:
@@ -70,9 +73,9 @@ Or install globally:
 export PATH=$PATH:$GOPATH/bin
 
 # Install binaries
-go install github.com/clyso/chorus/cmd/worker@latest
-go install github.com/clyso/chorus/cmd/proxy@latest
-go install github.com/clyso/chorus/cmd/chorus@latest
+go install github.com/hieunyit/tutti/cmd/worker@latest
+go install github.com/hieunyit/tutti/cmd/proxy@latest
+go install github.com/hieunyit/tutti/cmd/chorus@latest
 
 # Run with config
 worker -config <path-to-worker.yaml>

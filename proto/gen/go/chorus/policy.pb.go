@@ -2185,7 +2185,7 @@ const file_chorus_policy_proto_rawDesc = "" +
 	"\rDeleteRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x129\n" +
 	"\fBlockRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x12;\n" +
 	"\x0eUnblockRouting\x12\x11.chorus.RoutingID\x1a\x16.google.protobuf.Empty\x12@\n" +
-	"\tTestProxy\x12\x18.chorus.TestProxyRequest\x1a\x19.chorus.TestProxyResponseB)Z'github.com/clyso/chorus/proto/chorus;pbb\x06proto3"
+	"\tTestProxy\x12\x18.chorus.TestProxyRequest\x1a\x19.chorus.TestProxyResponseB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_policy_proto_rawDescOnce sync.Once

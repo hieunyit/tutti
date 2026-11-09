@@ -28,8 +28,8 @@ import (
 
 	"slices"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/objstore"
 )
 
 type Service struct {

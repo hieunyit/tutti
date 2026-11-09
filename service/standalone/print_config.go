@@ -21,7 +21,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/clyso/chorus/pkg/config"
+	"github.com/hieunyit/tutti/pkg/config"
 )
 
 func PrintConfig(src ...config.Opt) error {

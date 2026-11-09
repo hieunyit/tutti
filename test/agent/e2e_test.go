@@ -10,9 +10,9 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/require"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
-	"github.com/clyso/chorus/service/worker"
-	"github.com/clyso/chorus/test/app"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	"github.com/hieunyit/tutti/service/worker"
+	"github.com/hieunyit/tutti/test/app"
 )
 
 const (

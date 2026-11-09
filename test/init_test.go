@@ -17,8 +17,8 @@
 package test
 
 import (
-	"github.com/clyso/chorus/service/proxy"
-	"github.com/clyso/chorus/service/worker"
+	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/worker"
 )
 
 var (

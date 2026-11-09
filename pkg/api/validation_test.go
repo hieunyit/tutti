@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 func TestValidateSwitchDowntimeOpts(t *testing.T) {

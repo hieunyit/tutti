@@ -22,10 +22,10 @@ import (
 	"io/fs"
 	"time"
 
-	"github.com/clyso/chorus/pkg/api"
-	"github.com/clyso/chorus/pkg/config"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/service/worker/handler"
+	"github.com/hieunyit/tutti/pkg/api"
+	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/service/worker/handler"
 )
 
 //go:embed config.yaml

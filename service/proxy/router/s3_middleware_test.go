@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/s3"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 func TestS3MiddlewareRewritesVirtualHostRequestToPathStyle(t *testing.T) {

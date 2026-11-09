@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"io/fs"
 
-	"github.com/clyso/chorus/pkg/config"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/objstore"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/swift"
-	"github.com/clyso/chorus/service/proxy/auth"
-	"github.com/clyso/chorus/service/proxy/cors"
-	"github.com/clyso/chorus/service/proxy/router"
+	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/swift"
+	"github.com/hieunyit/tutti/service/proxy/auth"
+	"github.com/hieunyit/tutti/service/proxy/cors"
+	"github.com/hieunyit/tutti/service/proxy/router"
 )
 
 //go:embed config.yaml

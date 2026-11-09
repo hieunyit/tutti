@@ -22,8 +22,8 @@ import (
 
 	"github.com/hibiken/asynq"
 
-	xctx "github.com/clyso/chorus/pkg/ctx"
-	"github.com/clyso/chorus/pkg/tasks"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 func WorkerMiddleware(cfg *Config, app, appID string) asynq.MiddlewareFunc {

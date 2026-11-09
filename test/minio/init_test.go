@@ -25,11 +25,11 @@ import (
 	mclient "github.com/minio/minio-go/v7"
 	mcredentials "github.com/minio/minio-go/v7/pkg/credentials"
 
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/service/proxy"
-	"github.com/clyso/chorus/service/worker"
-	"github.com/clyso/chorus/test/app"
-	"github.com/clyso/chorus/test/env"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/service/proxy"
+	"github.com/hieunyit/tutti/service/worker"
+	"github.com/hieunyit/tutti/test/app"
+	"github.com/hieunyit/tutti/test/env"
 )
 
 const (

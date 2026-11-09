@@ -28,10 +28,10 @@ fmt:
 
 .PHONY: imports
 imports:
-	go tool goimports -local github.com/clyso/chorus -w ./cmd
-	go tool goimports -local github.com/clyso/chorus -w ./pkg
-	go tool goimports -local github.com/clyso/chorus -w ./service
-	go tool goimports -local github.com/clyso/chorus -w ./tools
+	go tool goimports -local github.com/hieunyit/tutti -w ./cmd
+	go tool goimports -local github.com/hieunyit/tutti -w ./pkg
+	go tool goimports -local github.com/hieunyit/tutti -w ./service
+	go tool goimports -local github.com/hieunyit/tutti -w ./tools
 
 .PHONY: fieldalignment
 fieldalignment:

@@ -16,7 +16,7 @@
 
 package main
 
-import "github.com/clyso/chorus/tools/chorctl/cmd"
+import "github.com/hieunyit/tutti/tools/chorctl/cmd"
 
 var (
 	version = "development"

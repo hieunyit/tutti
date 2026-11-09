@@ -34,7 +34,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 // apiServices lists the gRPC services exposed by the chorus management REST

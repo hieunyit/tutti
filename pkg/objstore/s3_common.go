@@ -24,7 +24,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 
-	"github.com/clyso/chorus/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/s3client"
 )
 
 func WrapS3common(client s3client.Client) Common {

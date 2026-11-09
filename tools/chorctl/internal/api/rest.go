@@ -32,7 +32,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	pb "github.com/clyso/chorus/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 type route struct {

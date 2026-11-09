@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 // StorageTypeFromRequest detects storage type from http request

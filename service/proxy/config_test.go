@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/clyso/chorus/pkg/config"
+	"github.com/hieunyit/tutti/pkg/config"
 )
 
 func TestGetConfigDefaults(t *testing.T) {

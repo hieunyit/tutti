@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/clyso/chorus/test/env"
-	"github.com/clyso/chorus/test/gen"
+	"github.com/hieunyit/tutti/test/env"
+	"github.com/hieunyit/tutti/test/gen"
 )
 
 const (

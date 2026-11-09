@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 const iso8601Format = "20060102T150405Z"

@@ -27,9 +27,9 @@ import (
 	"github.com/rs/zerolog"
 	stdlog "github.com/rs/zerolog/log"
 
-	"github.com/clyso/chorus/pkg/config"
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/service/proxy"
+	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/service/proxy"
 )
 
 // this information will be collected when built, by -ldflags="-X 'main.version=$(tag)' -X 'main.commit=$(commit)'".

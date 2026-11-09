@@ -25,7 +25,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/clyso/chorus/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func Server(ctx context.Context, port int, version dom.AppInfo) (start func(context.Context) error, stop func(context.Context) error) {

@@ -17,7 +17,7 @@
 package auth
 
 import (
-	"github.com/clyso/chorus/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3"
 )
 
 type Config struct {

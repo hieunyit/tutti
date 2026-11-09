@@ -25,15 +25,15 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
-	"github.com/clyso/chorus/pkg/dom"
-	"github.com/clyso/chorus/pkg/entity"
-	"github.com/clyso/chorus/pkg/features"
-	"github.com/clyso/chorus/pkg/log"
-	"github.com/clyso/chorus/pkg/meta"
-	"github.com/clyso/chorus/pkg/s3"
-	"github.com/clyso/chorus/pkg/s3client"
-	"github.com/clyso/chorus/pkg/tasks"
-	"github.com/clyso/chorus/service/worker/copy"
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/log"
+	"github.com/hieunyit/tutti/pkg/meta"
+	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
 func (s *svc) HandleBucketACL(ctx context.Context, t *asynq.Task) error {
