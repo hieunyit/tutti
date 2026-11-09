@@ -25,6 +25,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/s3"
@@ -64,8 +65,11 @@ func (p *Policy) Validate() error {
 			dom.ErrInvalidArg, ReadWrite, ReadOnly, WriteOnly, p.Permission)
 	}
 	for _, b := range p.Buckets {
-		if b == "" {
+		if strings.TrimSpace(b) == "" {
 			return fmt.Errorf("%w: access policy: empty bucket pattern", dom.ErrInvalidArg)
+		}
+		if strings.IndexFunc(b, unicode.IsSpace) >= 0 {
+			return fmt.Errorf("%w: access policy: bucket pattern %q must not contain whitespace", dom.ErrInvalidArg, b)
 		}
 		if _, err := path.Match(b, "x"); err != nil {
 			return fmt.Errorf("%w: access policy: invalid bucket pattern %q: %v", dom.ErrInvalidArg, b, err)

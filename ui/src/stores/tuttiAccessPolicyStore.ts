@@ -20,7 +20,9 @@ import { TuttiService } from '@/services/TuttiService';
 import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
 import type {
   TuttiAccessPolicyForm,
+  TuttiDynamicKeyStatus,
   TuttiProxyAccount,
+  TuttiProxyAccountSecret,
 } from '@/utils/types/tutti';
 
 interface TuttiAccessPolicyState {
@@ -99,10 +101,65 @@ export const useTuttiAccessPolicyStore = defineStore(
       }
     }
 
+    /*
+     * Dynamic key management. Secrets are only returned to the caller and are
+     * never kept in the store state.
+     */
+    async function createAccount(
+      user: string,
+      description: string,
+    ): Promise<TuttiProxyAccountSecret> {
+      const secret = await TuttiService.createProxyAccount(
+        user,
+        description.trim(),
+      );
+
+      await reloadAccounts();
+
+      return secret;
+    }
+
+    async function rotateSecret(
+      accessKeyId: string,
+      gracePeriod: string,
+    ): Promise<TuttiProxyAccountSecret> {
+      const secret = await TuttiService.rotateProxyAccountSecret(
+        accessKeyId,
+        gracePeriod,
+      );
+
+      await reloadAccounts();
+
+      return secret;
+    }
+
+    async function setKeyStatus(
+      accessKeyId: string,
+      status: TuttiDynamicKeyStatus,
+    ) {
+      await TuttiService.setProxyAccountStatus(accessKeyId, status);
+      await reloadAccounts();
+    }
+
+    async function deleteKey(accessKeyId: string) {
+      await TuttiService.deleteProxyAccount(accessKeyId);
+      await reloadAccounts();
+    }
+
     function $reset() {
       Object.assign(state, getInitialState());
     }
 
-    return { ...toRefs(state), init, savePolicy, removePolicy, $reset };
+    return {
+      ...toRefs(state),
+      init,
+      savePolicy,
+      removePolicy,
+      createAccount,
+      rotateSecret,
+      setKeyStatus,
+      deleteKey,
+      $reset,
+    };
   },
 );

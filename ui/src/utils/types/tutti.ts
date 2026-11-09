@@ -141,6 +141,27 @@ export interface TuttiProxyAccount {
   /** effective policy (read-write on "*" when none is stored) */
   policy?: TuttiAccessPolicy;
   hasPolicy?: boolean;
+  /** runtime-managed keys; their ids are also in accessKeyIds */
+  dynamicKeys?: TuttiDynamicKey[];
+}
+
+export type TuttiDynamicKeyStatus = 'active' | 'disabled';
+
+export interface TuttiDynamicKey {
+  accessKeyId: string;
+  source?: string;
+  status?: string;
+  createdAt?: string;
+  rotatedAt?: string;
+  previousSecretExpiresAt?: string;
+  description?: string;
+}
+
+export interface TuttiProxyAccountSecret {
+  accessKeyId: string;
+  /** shown exactly once, never store it */
+  secretAccessKey?: string;
+  previousSecretExpiresAt?: string;
 }
 
 export interface TuttiProxyAccountListResponse {

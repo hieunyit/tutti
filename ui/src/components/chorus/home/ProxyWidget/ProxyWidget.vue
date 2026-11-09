@@ -16,6 +16,7 @@
 
 <script setup lang="ts">
   import { onBeforeMount, ref } from 'vue';
+  import { storeToRefs } from 'pinia';
   import {
     CButton,
     CDescriptionItem,
@@ -27,6 +28,8 @@
   import ProxyCredentialsModal from './ProxyCredentialsModal.vue';
   import { type ChorusProxyCredentials } from '@/utils/types/chorus';
   import { ChorusService } from '@/services/ChorusService';
+  import { useAuthStore } from '@/stores/authStore';
+  import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
   import HomeWidget from '@/components/chorus/common/HomeWidget/HomeWidget.vue';
 
   const { t } = useI18n({
@@ -36,11 +39,14 @@
         seeCredentials: 'See Credentials',
         proxyCredentialsTitle: 'S3 Proxy Credentials',
         errorMessage: 'An error occurred while getting the proxy data.',
+        adminOnly: 'Only administrators can view proxy credentials.',
       },
       [I18nLocale.DE]: {
         credentials: 'Anmeldeinformationen',
         seeCredentials: 'Anzeigen',
         proxyCredentialsTitle: 'S3-Proxy-Anmeldeinformationen',
+        adminOnly:
+          'Nur Administratoren können die Proxy-Anmeldeinformationen sehen.',
         errorMessage:
           'Beim Abrufen der Proxy-Daten ist ein Fehler aufgetreten.',
       },
@@ -60,6 +66,8 @@
     (e: 'loading', value: boolean): void;
   }>();
 
+  const { isViewer } = storeToRefs(useAuthStore());
+  const isForbidden = ref<boolean>(false);
   const proxy = ref<ChorusProxyCredentials | null>(null);
   const hasError = ref<boolean>(false);
   const isLoading = ref<boolean>(false);
@@ -68,11 +76,24 @@
   async function getProxy() {
     isLoading.value = true;
     hasError.value = false;
+    isForbidden.value = false;
+
+    // the endpoint is admin-only: do not request it for viewers
+    if (isViewer.value) {
+      isForbidden.value = true;
+      isLoading.value = false;
+
+      return;
+    }
 
     try {
       proxy.value = await ChorusService.getProxyCredentials();
-    } catch {
-      hasError.value = true;
+    } catch (error: unknown) {
+      if (ErrorHelper.getStatusCode(error) === 403) {
+        isForbidden.value = true;
+      } else {
+        hasError.value = true;
+      }
     } finally {
       isLoading.value = false;
     }
@@ -113,8 +134,15 @@
       />
     </template>
 
+    <p
+      v-if="isForbidden"
+      class="proxy-widget__admin-only"
+    >
+      {{ t('adminOnly') }}
+    </p>
+
     <div
-      v-if="proxy"
+      v-else-if="proxy"
       class="proxy-widget__content proxy"
     >
       <CDescriptionList
@@ -163,6 +191,11 @@
     @include utils.touch {
       grid-column: auto;
       width: 100%;
+    }
+
+    &__admin-only {
+      margin: 0;
+      opacity: 0.7;
     }
 
     &__credentials-button {

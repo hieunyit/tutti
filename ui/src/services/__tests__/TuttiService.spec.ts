@@ -91,4 +91,37 @@ describe('TuttiService', () => {
       { user: 'u' },
     );
   });
+
+  it('manages dynamic proxy accounts', async () => {
+    mocked.post.mockResolvedValue({
+      data: { accessKeyId: 'A', secretAccessKey: 'S' },
+    });
+    expect(await TuttiService.createProxyAccount('u', 'd')).toEqual({
+      accessKeyId: 'A',
+      secretAccessKey: 'S',
+    });
+    expect(mocked.post).toHaveBeenCalledWith(
+      expect.stringContaining('/tutti/proxy-accounts'),
+      { user: 'u', description: 'd' },
+    );
+
+    mocked.put.mockResolvedValue({ data: {} });
+    await TuttiService.rotateProxyAccountSecret('A', '0s');
+    await TuttiService.setProxyAccountStatus('A', 'disabled');
+    await TuttiService.deleteProxyAccount('A');
+    expect(mocked.put.mock.calls).toEqual([
+      [
+        expect.stringContaining('/tutti/proxy-accounts/rotate'),
+        { accessKeyId: 'A', gracePeriod: '0s' },
+      ],
+      [
+        expect.stringContaining('/tutti/proxy-accounts/status'),
+        { accessKeyId: 'A', status: 'disabled' },
+      ],
+      [
+        expect.stringContaining('/tutti/proxy-accounts/delete'),
+        { accessKeyId: 'A' },
+      ],
+    ]);
+  });
 });

@@ -30,13 +30,19 @@
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
   import AccessPolicyDrawer from './AccessPolicyDrawer.vue';
+  import ProxyAccountCreateModal from './ProxyAccountCreateModal.vue';
+  import ProxyKeyRotateModal from './ProxyKeyRotateModal.vue';
+  import ProxySecretModal from './ProxySecretModal.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useChorusNotification } from '@/utils/composables/useChorusNotification';
   import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
+  import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import {
     TuttiAccessPermission,
+    type TuttiDynamicKey,
     type TuttiProxyAccount,
+    type TuttiProxyAccountSecret,
   } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nAccounts });
@@ -77,6 +83,126 @@
     },
   }));
 
+  const showCreate = ref(false);
+  const rotateKeyId = ref<string | null>(null);
+  /** one-time secret being displayed; cleared on close, never persisted */
+  const shownSecret = ref<TuttiProxyAccountSecret | null>(null);
+  const shownSecretKind = ref<'created' | 'rotated'>('created');
+
+  const userNames = computed(() => accounts.value.map((a) => a.user));
+
+  function onCreated(secret: TuttiProxyAccountSecret) {
+    shownSecretKind.value = 'created';
+    shownSecret.value = secret;
+  }
+
+  function onRotated(secret: TuttiProxyAccountSecret) {
+    rotateKeyId.value = null;
+    shownSecretKind.value = 'rotated';
+    shownSecret.value = secret;
+  }
+
+  function reportError(error: unknown) {
+    createNotification({
+      type: 'error',
+      title: ProxyAccountHelper.isNotConfigured(error)
+        ? t('notConfigured')
+        : (ProxyAccountHelper.getMessage(error) ?? t('actionUnknownError')),
+      duration: 8000,
+    });
+  }
+
+  async function toggleStatus(key: TuttiDynamicKey) {
+    try {
+      await store.setKeyStatus(
+        key.accessKeyId,
+        ProxyAccountHelper.isDisabled(key) ? 'active' : 'disabled',
+      );
+    } catch (error: unknown) {
+      reportError(error);
+    }
+  }
+
+  async function removeKey(key: TuttiDynamicKey) {
+    try {
+      await store.deleteKey(key.accessKeyId);
+    } catch (error: unknown) {
+      reportError(error);
+    }
+  }
+
+  function formatTime(value?: string): string {
+    return new Date(value as string).toLocaleString();
+  }
+
+  function renderDynamicKey(key: TuttiDynamicKey) {
+    const disabled = ProxyAccountHelper.isDisabled(key);
+    const times: string[] = [];
+
+    if (ProxyAccountHelper.hasTime(key.createdAt)) {
+      times.push(`${t('keyCreated')}: ${formatTime(key.createdAt)}`);
+    }
+
+    if (ProxyAccountHelper.hasTime(key.rotatedAt)) {
+      times.push(`${t('keyRotated')}: ${formatTime(key.rotatedAt)}`);
+    }
+
+    if (ProxyAccountHelper.hasTime(key.previousSecretExpiresAt)) {
+      times.push(
+        `${t('keyPreviousValid')}: ${formatTime(key.previousSecretExpiresAt)}`,
+      );
+    }
+
+    return h('div', { class: 'accounts-tile__key', key: key.accessKeyId }, [
+      h(NSpace, { size: 4, align: 'center' }, () => [
+        h('code', key.accessKeyId),
+        h(
+          NTag,
+          { size: 'tiny', round: true, type: disabled ? 'warning' : 'success' },
+          () => (disabled ? t('statusDisabled') : t('statusActive')),
+        ),
+      ]),
+      key.description
+        ? h('div', { class: 'accounts-tile__hint' }, key.description)
+        : null,
+      times.length > 0
+        ? h('div', { class: 'accounts-tile__hint' }, times.join(' | '))
+        : null,
+      h(WriteGate, null, () =>
+        h(NSpace, { size: 4 }, () => [
+          h(
+            NButton,
+            {
+              size: 'tiny',
+              onClick: () => {
+                rotateKeyId.value = key.accessKeyId;
+              },
+            },
+            () => t('rotateSecret'),
+          ),
+          h(NButton, { size: 'tiny', onClick: () => toggleStatus(key) }, () =>
+            disabled ? t('enableKey') : t('disableKey'),
+          ),
+          h(
+            NPopconfirm,
+            {
+              positiveText: t('deleteKeyAction'),
+              negativeText: t('cancel'),
+              onPositiveClick: () => removeKey(key),
+            },
+            {
+              trigger: () =>
+                h(NButton, { size: 'tiny', type: 'error' }, () =>
+                  t('deleteKey'),
+                ),
+              default: () => t('deleteKeyConfirm', { key: key.accessKeyId }),
+            },
+          ),
+        ]),
+      ),
+    ]);
+  }
+
   function sourceLabel(source: string): string {
     return source === 'custom' ? t('sourceCustom') : source;
   }
@@ -87,8 +213,8 @@
       title: t('columnKeys'),
       key: 'keys',
       render: (row) =>
-        h(NSpace, { size: 4 }, () =>
-          AccessPolicyHelper.getAccessKeys(row).map((key) =>
+        h(NSpace, { vertical: true, size: 6 }, () => [
+          ...ProxyAccountHelper.getStaticKeys(row).map((key) =>
             h(
               NSpace,
               { size: 2, key: key.accessKeyId, align: 'center' },
@@ -97,10 +223,14 @@
                 h(NTag, { size: 'tiny', round: true }, () =>
                   sourceLabel(key.source),
                 ),
+                h(NTag, { size: 'tiny', round: true, type: 'info' }, () =>
+                  t('badgeConfig'),
+                ),
               ],
             ),
           ),
-        ),
+          ...(row.dynamicKeys ?? []).map(renderDynamicKey),
+        ]),
     },
     {
       title: t('columnPermission'),
@@ -177,6 +307,17 @@
       {{ t('banner') }}
     </NAlert>
 
+    <div class="accounts-tile__toolbar">
+      <WriteGate>
+        <NButton
+          type="primary"
+          @click="showCreate = true"
+        >
+          {{ t('createAccount') }}
+        </NButton>
+      </WriteGate>
+    </div>
+
     <NDataTable
       :columns="columns"
       :data="accounts"
@@ -185,6 +326,22 @@
     >
       <template #empty>{{ t('noAccounts') }}</template>
     </NDataTable>
+
+    <ProxyAccountCreateModal
+      v-model:show="showCreate"
+      :users="userNames"
+      @created="onCreated"
+    />
+    <ProxyKeyRotateModal
+      :access-key-id="rotateKeyId"
+      @close="rotateKeyId = null"
+      @rotated="onRotated"
+    />
+    <ProxySecretModal
+      :secret="shownSecret"
+      :kind="shownSecretKind"
+      @close="shownSecret = null"
+    />
 
     <AccessPolicyDrawer
       v-model:show="showDrawer"
@@ -197,6 +354,18 @@
   .accounts-tile {
     &__banner {
       margin-bottom: 16px;
+    }
+
+    &__toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+    }
+
+    :deep(.accounts-tile__key) {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
     :deep(.accounts-tile__hint) {

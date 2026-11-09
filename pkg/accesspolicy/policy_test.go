@@ -92,6 +92,9 @@ func TestValidate(t *testing.T) {
 		"empty perm":   {User: "u"},
 		"bad glob":     {User: "u", Permission: ReadOnly, Buckets: []string{"[a"}},
 		"empty bucket": {User: "u", Permission: ReadOnly, Buckets: []string{""}},
+		"blank bucket": {User: "u", Permission: ReadOnly, Buckets: []string{"  "}},
+		"space bucket": {User: "u", Permission: ReadOnly, Buckets: []string{"my bucket"}},
+		"tab bucket":   {User: "u", Permission: ReadOnly, Buckets: []string{"a\tb"}},
 	} {
 		require.ErrorIs(t, p.Validate(), dom.ErrInvalidArg, name)
 	}

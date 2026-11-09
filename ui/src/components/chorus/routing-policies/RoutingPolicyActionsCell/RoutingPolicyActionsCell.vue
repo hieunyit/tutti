@@ -20,6 +20,7 @@
   import { h, ref } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
+  import RoutingPolicyEditModal from '../RoutingPolicyEditModal/RoutingPolicyEditModal.vue';
   import RoutingPoliciesShortList from '../RoutingPoliciesShortList/RoutingPoliciesShortList.vue';
   import type { RoutingPolicy } from '@/utils/types/chorus';
   import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
@@ -50,6 +51,7 @@
 
   const isDeleteLoading = ref(false);
   const isBlockLoading = ref(false);
+  const isEditShown = ref(false);
 
   async function deleteRoutingPolicy() {
     isDeleteLoading.value = true;
@@ -171,6 +173,28 @@
     <WriteGate>
       <div class="routing-policy-actions__list">
         <div
+          class="routing-policy-actions__item routing-policy-actions__item--edit"
+        >
+          <CTooltip :delay="1000">
+            <template #trigger>
+              <CButton
+                secondary
+                size="tiny"
+                @click="isEditShown = true"
+              >
+                <template #icon>
+                  <CIcon
+                    :is-inline="true"
+                    :name="IconName.BASE_CREATE"
+                  />
+                </template>
+              </CButton>
+            </template>
+            {{ t('actionEdit') }}
+          </CTooltip>
+        </div>
+
+        <div
           class="routing-policy-actions__item routing-policy-actions__item--block"
         >
           <CTooltip
@@ -250,6 +274,12 @@
         </div>
       </div>
     </WriteGate>
+
+    <RoutingPolicyEditModal
+      v-if="isEditShown"
+      v-model:show="isEditShown"
+      :routing-policy="routingPolicy"
+    />
   </div>
 </template>
 

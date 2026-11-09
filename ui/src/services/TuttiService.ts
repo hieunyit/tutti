@@ -19,7 +19,9 @@ import { ApiHelper } from '@/utils/helpers/ApiHelper';
 import type {
   TuttiAccessPolicy,
   TuttiAccessPolicyListResponse,
+  TuttiDynamicKeyStatus,
   TuttiProxyAccountListResponse,
+  TuttiProxyAccountSecret,
   TuttiFailoverEventId,
   TuttiFailoverEventListResponse,
   TuttiFailoverPolicy,
@@ -100,6 +102,47 @@ export abstract class TuttiService {
     await apiClient.put(
       ApiHelper.getChorusAPIUrl('/tutti/access-policies/delete'),
       { user },
+    );
+  }
+
+  static async createProxyAccount(
+    user: string,
+    description: string,
+  ): Promise<TuttiProxyAccountSecret> {
+    const { data } = await apiClient.post<TuttiProxyAccountSecret>(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
+      { user, description },
+    );
+
+    return data;
+  }
+
+  static async rotateProxyAccountSecret(
+    accessKeyId: string,
+    gracePeriod: string,
+  ): Promise<TuttiProxyAccountSecret> {
+    const { data } = await apiClient.put<TuttiProxyAccountSecret>(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/rotate'),
+      { accessKeyId, gracePeriod },
+    );
+
+    return data;
+  }
+
+  static async setProxyAccountStatus(
+    accessKeyId: string,
+    status: TuttiDynamicKeyStatus,
+  ): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/status'),
+      { accessKeyId, status },
+    );
+  }
+
+  static async deleteProxyAccount(accessKeyId: string): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/delete'),
+      { accessKeyId },
     );
   }
 }

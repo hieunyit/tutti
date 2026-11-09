@@ -155,6 +155,12 @@ export abstract class ChorusService {
     await apiClient.put(ApiHelper.getChorusAPIUrl('/routing/unblock'), payload);
   }
 
+  static async updateRoutingPolicy(
+    payload: RoutingPolicyAddRequest,
+  ): Promise<void> {
+    await apiClient.put(ApiHelper.getChorusAPIUrl('/routing/update'), payload);
+  }
+
   static async addRoutingPolicy(
     payload: RoutingPolicyAddRequest,
   ): Promise<void> {

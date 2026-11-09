@@ -271,6 +271,28 @@ export const useChorusRoutingPoliciesStore = defineStore(
       }
     }
 
+    /** Changes the target storage; rethrows the original error for the caller. */
+    async function updateRoutingPolicyTarget(
+      routingPolicy: RoutingPolicy,
+      toStorage: string,
+    ) {
+      await ChorusService.updateRoutingPolicy({
+        user: routingPolicy.user,
+        bucket: routingPolicy.bucket === '*' ? null : routingPolicy.bucket,
+        toStorage,
+      });
+
+      state.selectedRoutingPolicyIds = state.selectedRoutingPolicyIds.filter(
+        (id) => id !== routingPolicy.id,
+      );
+
+      try {
+        await getRoutingPolicies();
+      } catch {
+        // the next poll refreshes the list
+      }
+    }
+
     async function deleteRoutingPolicies(
       routingPolicies: RoutingPolicy[],
     ): Promise<{
@@ -418,6 +440,7 @@ export const useChorusRoutingPoliciesStore = defineStore(
       hasNoData,
       pagination,
       deleteRoutingPolicy,
+      updateRoutingPolicyTarget,
       deleteRoutingPolicies,
       setRoutingPolicyBlock,
       setRoutingPoliciesBlock,

@@ -18,6 +18,18 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    actionEdit: 'Change target storage',
+    editTitle: 'Change target storage',
+    editDescription: 'Select the new target storage for this routing policy.',
+    editCurrent: 'Current storage',
+    editNew: 'New target storage',
+    editPlaceholder: 'Select storage',
+    editNoStorages: 'No other storages are configured.',
+    editSave: 'Save',
+    editCancel: 'Cancel',
+    editLoadError: 'The storage list could not be loaded.',
+    editUnknownError: 'The routing policy could not be updated.',
+    editSuccessTitle: 'Routing policy updated',
     routingPoliciesTitle: 'Routing Policies',
     columnUser: 'User',
     columnBucket: 'Bucket',
@@ -98,6 +110,20 @@ export default <I18nMessages>{
     actionAddRoutingPolicy: 'Add Routing Policy',
   },
   [I18nLocale.DE]: {
+    actionEdit: 'Zielspeicher ändern',
+    editTitle: 'Zielspeicher ändern',
+    editDescription:
+      'Wählen Sie den neuen Zielspeicher für diese Routing-Richtlinie.',
+    editCurrent: 'Aktueller Speicher',
+    editNew: 'Neuer Zielspeicher',
+    editPlaceholder: 'Speicher auswählen',
+    editNoStorages: 'Es sind keine weiteren Speicher konfiguriert.',
+    editSave: 'Speichern',
+    editCancel: 'Abbrechen',
+    editLoadError: 'Die Speicherliste konnte nicht geladen werden.',
+    editUnknownError:
+      'Die Routing-Richtlinie konnte nicht aktualisiert werden.',
+    editSuccessTitle: 'Routing-Richtlinie aktualisiert',
     routingPoliciesTitle: 'Routing-Richtlinien',
     columnUser: 'Benutzer',
     columnBucket: 'Bucket',
