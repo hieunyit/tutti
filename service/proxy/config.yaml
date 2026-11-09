@@ -27,6 +27,19 @@ replication:
 health:
   failureThreshold: 3 # consecutive failures that open the breaker
   openDuration: 30s # how long it stays open before one trial request/probe is allowed
+# Optional automatic failover. Disabled by default: this is only the global safety switch and timing.
+# WHAT may fail over to WHERE is decided by per-source-storage failover policies stored in Redis
+# ({source, enabled, targets: [ordered], after, maxEventLag}); a storage without an enabled policy never fails over.
+# When a source storage has its breaker continuously open for the policy `after`, the proxy re-routes its
+# users/buckets to the first policy target that has a healthy replication from the source (init done, not
+# paused/archived, no switch, same bucket name, lag <= maxEventLag) and pauses that replication.
+# Only one proxy acts (Redis lock). Failback is never automatic, see docs. Events: Redis keys `tutti:failover:*`.
+failover:
+  enabled: false
+  checkInterval: 10s
+  # defaults used when a policy omits `after` / `maxEventLag`:
+  after: 60s
+  maxEventLag: 0
 cors:
   enabled: false
   allowAll: false

@@ -59,6 +59,37 @@ type Config struct {
 	Replication ReplicationConfig `yaml:"replication"`
 	// Health configures per-storage circuit breakers.
 	Health health.Config `yaml:"health"`
+	// Failover configures optional automatic failover of the routing to a replica when the main storage is down.
+	Failover FailoverConfig `yaml:"failover"`
+}
+
+// FailoverConfig configures the automatic failover controller. Disabled by default.
+type FailoverConfig struct {
+	Enabled bool `yaml:"enabled"`
+	// After is the default for policies that omit `after`: how long the source breaker must be continuously open.
+	After time.Duration `yaml:"after"`
+	// MaxEventLag is the default for policies that omit `maxEventLag`.
+	MaxEventLag int `yaml:"maxEventLag"`
+	// CheckInterval is how often the controller evaluates the conditions.
+	CheckInterval time.Duration `yaml:"checkInterval"`
+}
+
+func (f *FailoverConfig) Validate() error {
+	if f.MaxEventLag < 0 {
+		return fmt.Errorf("proxy config: failover.maxEventLag must not be negative")
+	}
+	if f.After < 0 || f.CheckInterval < 0 {
+		return fmt.Errorf("proxy config: failover.after and failover.checkInterval must not be negative")
+	}
+	if f.Enabled {
+		if f.After <= 0 {
+			return fmt.Errorf("proxy config: failover.after must be greater than 0 when failover is enabled")
+		}
+		if f.CheckInterval <= 0 {
+			return fmt.Errorf("proxy config: failover.checkInterval must be greater than 0 when failover is enabled")
+		}
+	}
+	return nil
 }
 
 type ReplicationConfig struct {
@@ -127,6 +158,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Health.Validate(); err != nil {
+		return err
+	}
+	if err := c.Failover.Validate(); err != nil {
 		return err
 	}
 	return nil

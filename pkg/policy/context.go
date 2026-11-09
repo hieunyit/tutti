@@ -87,11 +87,27 @@ func (r *policySvc) BuildProxyContext(ctx context.Context, user, bucket string) 
 	if err != nil {
 		return ctx, err
 	}
+	relications = dropReplicationsToRoute(relications, rotuteTo)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}
 
 	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, activeSwitch)
+}
+
+// dropReplicationsToRoute removes replications whose destination is the storage the request is routed to.
+// Such replication can only exist after a failover (routing moved to the destination, replication paused):
+// copying an object from the routed storage to itself is meaningless and must not be attempted by
+// synchronous replication or enqueued.
+func dropReplicationsToRoute(repls []entity.UniversalReplicationID, routedTo string) []entity.UniversalReplicationID {
+	n := 0
+	for _, id := range repls {
+		if id.ToStorage() != routedTo {
+			repls[n] = id
+			n++
+		}
+	}
+	return repls[:n]
 }
 
 func setReplicationGenerations(ctx context.Context,
@@ -273,6 +289,7 @@ func (r *policySvc) BuildProxyNoBucketContext(ctx context.Context, user string) 
 	if err != nil {
 		return ctx, err
 	}
+	relications = dropReplicationsToRoute(relications, rotuteTo)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}

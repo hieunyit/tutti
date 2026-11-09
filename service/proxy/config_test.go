@@ -120,3 +120,32 @@ func TestHealthConfigValidate(t *testing.T) {
 	r.Error((&health.Config{FailureThreshold: -1}).Validate())
 	r.Error((&health.Config{OpenDuration: -time.Second}).Validate())
 }
+
+func TestFailoverConfigValidate(t *testing.T) {
+	r := require.New(t)
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.False(conf.Failover.Enabled)
+	r.Equal(60*time.Second, conf.Failover.After)
+	r.Equal(0, conf.Failover.MaxEventLag)
+	r.Equal(10*time.Second, conf.Failover.CheckInterval)
+	r.NoError(conf.Failover.Validate())
+
+	ok := FailoverConfig{Enabled: true, After: time.Minute, CheckInterval: time.Second, MaxEventLag: 5}
+	r.NoError(ok.Validate())
+	// disabled config is not validated beyond sign checks
+	r.NoError((&FailoverConfig{}).Validate())
+
+	for name, bad := range map[string]FailoverConfig{
+		"negative lag":        {Enabled: true, After: time.Minute, CheckInterval: time.Second, MaxEventLag: -1},
+		"negative after":      {After: -time.Second},
+		"negative interval":   {CheckInterval: -time.Second},
+		"enabled zero after":  {Enabled: true, CheckInterval: time.Second},
+		"enabled zero ticker": {Enabled: true, After: time.Minute},
+	} {
+		r.Error(bad.Validate(), name)
+	}
+
+	full := Config{Failover: FailoverConfig{Enabled: true}}
+	r.Error(full.Failover.Validate())
+}

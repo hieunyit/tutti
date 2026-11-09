@@ -30,6 +30,7 @@ import (
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/log"
@@ -49,6 +50,7 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/hieunyit/tutti/service/proxy/auth"
 	"github.com/hieunyit/tutti/service/proxy/cors"
+	failovercontroller "github.com/hieunyit/tutti/service/proxy/failover"
 	"github.com/hieunyit/tutti/service/proxy/router"
 	"github.com/hieunyit/tutti/service/worker/copy"
 	"github.com/hieunyit/tutti/service/worker/syncer"
@@ -163,6 +165,31 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			})
 		}
 		go healthReg.RunChecks(ctx, probeTargets...)
+		if conf.Failover.Enabled {
+			failoverLock := util.NewRedis(conf.Redis, conf.Redis.LockDB)
+			defer failoverLock.Close()
+			failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := conf.Storage.Storages[name]; return ok })
+			ctrl := failovercontroller.New(failovercontroller.Config{
+				DefaultAfter:       conf.Failover.After,
+				DefaultMaxEventLag: conf.Failover.MaxEventLag,
+				CheckInterval:      conf.Failover.CheckInterval,
+				MainStorage:        conf.Storage.Main,
+			}, policySvc, healthReg, failovercontroller.RedisLocker{Client: failoverLock}, failoverStore, logger,
+				failovercontroller.WithUsers(func() []string {
+					var users []string
+					for name := range s3Conf {
+						users = append(users, credsSvc.ListUsers(name)...)
+					}
+					return users
+				}),
+				failovercontroller.WithOnFailover(func(from, to string) {
+					if conf.Metrics.Enabled {
+						metrics.CountFailover(from, to)
+					}
+				}))
+			go ctrl.Run(ctx)
+			logger.Warn().Dur("check_interval", conf.Failover.CheckInterval).Msg("automatic failover controller enabled; only storages with an enabled failover policy can fail over")
+		}
 		if conf.Replication.Sync.Enabled {
 			lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 			defer lockRedis.Close()

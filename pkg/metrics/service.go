@@ -73,6 +73,19 @@ var breakerTransitions = promauto.NewCounterVec(
 	[]string{"storage", "to"},
 )
 
+var failovers = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "failover_total",
+		Help: "Number of automatic routing failovers.",
+	},
+	[]string{"from", "to"},
+)
+
+// CountFailover counts one automatic failover of a routing scope from one storage to another.
+func CountFailover(from, to string) {
+	failovers.WithLabelValues(from, to).Inc()
+}
+
 // SetStorageAvailable sets the storage_available gauge.
 func SetStorageAvailable(storage string, available bool) {
 	v := 0.0
