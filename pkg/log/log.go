@@ -18,6 +18,7 @@ package log
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -44,8 +45,12 @@ type Config struct {
 	Json  bool   `yaml:"json"`
 }
 
+var defaultCtxLoggerMu sync.Mutex
+
 func GetLogger(cfg *Config, app, appID string) zerolog.Logger {
 	logger := CreateLogger(cfg, app, appID)
+	defaultCtxLoggerMu.Lock()
+	defer defaultCtxLoggerMu.Unlock()
 	zerolog.DefaultContextLogger = &logger
 	return logger
 }

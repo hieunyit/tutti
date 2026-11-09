@@ -19,6 +19,7 @@ package standalone
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,10 +41,10 @@ func TestStandaloneDefaultConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	done := false
+	var done atomic.Bool
 	go func() {
 		_ = Start(ctx, dom.AppInfo{}, conf)
-		done = true
+		done.Store(true)
 	}()
 
 	grpcConn, err := grpc.DialContext(ctx, fmt.Sprintf("localhost:%d", conf.Api.GrpcPort),
@@ -65,6 +66,6 @@ func TestStandaloneDefaultConfig(t *testing.T) {
 
 	cancel()
 	r.Eventually(func() bool {
-		return done
+		return done.Load()
 	}, 2*time.Second, 10*time.Millisecond, "unable to shutdown standalone")
 }

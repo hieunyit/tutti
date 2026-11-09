@@ -152,6 +152,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
+	// unmarshal into a fresh value: decoding into the shallow copy would write
+	// through pointers shared with conf (e.g. Log, Redis) and race with readers.
+	workerConf = worker.Config{}
 	err = yaml.Unmarshal(wcBytes, &workerConf)
 	if err != nil {
 		return err
@@ -177,6 +180,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
+		proxyConf = proxy.Config{}
 		err = yaml.Unmarshal(pcBytes, &proxyConf)
 		if err != nil {
 			return err
