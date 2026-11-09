@@ -272,6 +272,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf)
 
+		resilienceHandler := api.ResilienceHandlers(confRedis, func(storage string) bool {
+			_, ok := credsSvc.Storages()[storage]
+			return ok
+		})
+
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0
 
@@ -286,6 +291,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			pb.RegisterChorusServer(srv, chorusHandler)
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
+			pb.RegisterResilienceServer(srv, resilienceHandler)
 			if webhookEnabled && !webhookOnSeparatePorts {
 				pb.RegisterWebhookServer(srv, webhookHandler)
 			}
@@ -306,6 +312,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				return err
 			}
 			if err := pb.RegisterPolicyHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
+				return err
+			}
+			if err := pb.RegisterResilienceHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
 			}
 			if webhookEnabled && !webhookOnSeparatePorts {

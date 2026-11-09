@@ -16,6 +16,10 @@
       "description": "Manages chorus routing/replication policies"
     },
     {
+      "name": "Resilience",
+      "description": "Resilience exposes the high-availability state of the proxies (circuit breaker status and effective\nsettings) and manages automatic failover policies and the history of performed failovers."
+    },
+    {
       "name": "Webhook",
       "description": "Webhook service receives storage events and enqueues replication tasks.\nReturns non-200 only on transient errors (context cancelled, Redis\nunavailable) where a retry may succeed. Permanent errors (unknown storage,\ninvalid events, no replication policy) are logged server-side and return 200."
     }
@@ -910,6 +914,178 @@
         ]
       }
     },
+    "/tutti/failover/events": {
+      "get": {
+        "summary": "ListFailoverEvents returns the performed failovers that were not yet cleared.",
+        "operationId": "Resilience_ListFailoverEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverEventList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/failover/events/delete": {
+      "put": {
+        "summary": "DeleteFailoverEvent clears the record of a performed failover, e.g. after manual failback.",
+        "operationId": "Resilience_DeleteFailoverEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "FailoverEventID identifies a failover event.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverEventID"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/failover/policies": {
+      "get": {
+        "summary": "ListFailoverPolicies returns all failover policies sorted by source storage.",
+        "operationId": "Resilience_ListFailoverPolicies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverPolicyList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "post": {
+        "summary": "SetFailoverPolicy creates or replaces the failover policy of a source storage.\nSource and targets must be configured storages.",
+        "operationId": "Resilience_SetFailoverPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "FailoverPolicy defines which storages may be promoted when the source storage is down.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverPolicy"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/failover/policies/delete": {
+      "put": {
+        "summary": "DeleteFailoverPolicy removes the failover policy of a source storage.",
+        "operationId": "Resilience_DeleteFailoverPolicy",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "FailoverPolicySource identifies a failover policy.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverPolicySource"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/proxies": {
+      "get": {
+        "summary": "GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.\nProxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.",
+        "operationId": "Resilience_GetProxyStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyStatusList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/version": {
       "get": {
         "summary": "Get app version",
@@ -1260,6 +1436,143 @@
       "default": "EVENT_SOURCE_PROXY",
       "description": "Determines how ongoing data change events are captured for replication.\n\n - EVENT_SOURCE_PROXY: Default. Events captured by chorus proxy intercepting S3/Swift API calls.\n - EVENT_SOURCE_S3_NOTIFICATION: S3 bucket notifications. Worker creates SNS topic + bucket notification\npointing to its own webhook endpoint. Bucket-level replication only.\n - EVENT_SOURCE_WEBHOOK: External event source (e.g. Swift access log exporter).\nRequires webhook to be enabled in worker config. No automatic setup."
     },
+    "chorusFailoverEvent": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "User whose routing was switched."
+        },
+        "bucket": {
+          "type": "string",
+          "description": "Bucket whose routing was switched. Empty for a user-level failover."
+        },
+        "from": {
+          "type": "string",
+          "description": "Storage that was the routing target before the failover."
+        },
+        "to": {
+          "type": "string",
+          "description": "Storage promoted by the failover."
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time of the failover."
+        },
+        "eventLag": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of unreplicated events at failover time."
+        }
+      },
+      "description": "FailoverEvent describes one performed failover."
+    },
+    "chorusFailoverEventID": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "User of the event."
+        },
+        "bucket": {
+          "type": "string",
+          "description": "Bucket of the event. Empty for a user-level event."
+        }
+      },
+      "description": "FailoverEventID identifies a failover event."
+    },
+    "chorusFailoverEventList": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusFailoverEvent"
+          },
+          "description": "Events sorted by scope."
+        }
+      },
+      "description": "FailoverEventList lists performed failovers."
+    },
+    "chorusFailoverPolicy": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source storage that may fail. Required, must be a configured storage."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "True to allow the proxy to fail over automatically. An enabled policy needs at least one target."
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only storages that may be promoted, in order of preference. Must be configured and differ from the source."
+        },
+        "after": {
+          "type": "string",
+          "description": "How long the source breaker must be continuously open. Unset or zero means the proxy default."
+        },
+        "maxEventLag": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Max number of unreplicated events allowed on the replication to the target. Unset means the proxy default."
+        }
+      },
+      "description": "FailoverPolicy defines which storages may be promoted when the source storage is down."
+    },
+    "chorusFailoverPolicyList": {
+      "type": "object",
+      "properties": {
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusFailoverPolicy"
+          },
+          "description": "Policies sorted by source."
+        }
+      },
+      "description": "FailoverPolicyList lists failover policies."
+    },
+    "chorusFailoverPolicySource": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source storage of the policy."
+        }
+      },
+      "description": "FailoverPolicySource identifies a failover policy."
+    },
+    "chorusFailoverSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "True if the automatic failover controller runs in this proxy."
+        },
+        "checkInterval": {
+          "type": "string",
+          "description": "How often the controller evaluates failover conditions."
+        },
+        "after": {
+          "type": "string",
+          "description": "Default time the source breaker must be continuously open, for policies that omit it."
+        },
+        "maxEventLag": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Default max unreplicated events allowed, for policies that omit it."
+        }
+      },
+      "description": "FailoverSettings are the effective failover controller defaults of a proxy."
+    },
     "chorusGetAppVersionResponse": {
       "type": "object",
       "properties": {
@@ -1344,6 +1657,21 @@
           }
         }
       }
+    },
+    "chorusHealthSettings": {
+      "type": "object",
+      "properties": {
+        "failureThreshold": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Consecutive failures that open a breaker."
+        },
+        "openDuration": {
+          "type": "string",
+          "description": "How long an open breaker rejects requests before one trial is allowed."
+        }
+      },
+      "description": "HealthSettings are the effective circuit breaker settings of a proxy."
     },
     "chorusListDiffChecksResponse": {
       "type": "object",
@@ -1446,6 +1774,78 @@
           "type": "string"
         }
       }
+    },
+    "chorusProxySettings": {
+      "type": "object",
+      "properties": {
+        "replication": {
+          "$ref": "#/definitions/chorusReplicationSettings",
+          "description": "Replication settings."
+        },
+        "health": {
+          "$ref": "#/definitions/chorusHealthSettings",
+          "description": "Circuit breaker settings."
+        },
+        "failover": {
+          "$ref": "#/definitions/chorusFailoverSettings",
+          "description": "Failover controller defaults."
+        },
+        "requireSignedContentType": {
+          "type": "boolean",
+          "description": "True if SigV4 requests without a signed Content-Type header are rejected."
+        }
+      },
+      "description": "ProxySettings are the effective settings of a proxy."
+    },
+    "chorusProxyStatus": {
+      "type": "object",
+      "properties": {
+        "appId": {
+          "type": "string",
+          "description": "Unique id of the proxy instance."
+        },
+        "address": {
+          "type": "string",
+          "description": "Public address of the proxy."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the proxy started."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time of the last status update."
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusStorageHealth"
+          },
+          "description": "Health of every storage, as seen by this proxy."
+        },
+        "settings": {
+          "$ref": "#/definitions/chorusProxySettings",
+          "description": "Effective settings."
+        }
+      },
+      "description": "ProxyStatus is the status of one live proxy instance."
+    },
+    "chorusProxyStatusList": {
+      "type": "object",
+      "properties": {
+        "proxies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProxyStatus"
+          },
+          "description": "Live proxy instances sorted by app id."
+        }
+      },
+      "description": "ProxyStatusList lists live proxies."
     },
     "chorusReplication": {
       "type": "object",
@@ -1556,6 +1956,24 @@
         }
       },
       "description": "Additional replication options for bucket and user-level replications."
+    },
+    "chorusReplicationSettings": {
+      "type": "object",
+      "properties": {
+        "onEventError": {
+          "type": "string",
+          "description": "Behavior when the replication event cannot be recorded: \"fail\" or \"log\"."
+        },
+        "eventRetryBudget": {
+          "type": "string",
+          "description": "Total time to retry recording the replication event."
+        },
+        "sync": {
+          "$ref": "#/definitions/chorusSyncSettings",
+          "description": "Synchronous replication settings."
+        }
+      },
+      "description": "ReplicationSettings are the effective replication settings of a proxy."
     },
     "chorusReplicationSwitch": {
       "type": "object",
@@ -1831,6 +2249,34 @@
         }
       }
     },
+    "chorusStorageHealth": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Storage name as configured."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "True while the circuit breaker is closed."
+        },
+        "consecutiveFailures": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of consecutive availability failures."
+        },
+        "lastError": {
+          "type": "string",
+          "description": "Last availability error, empty if none."
+        },
+        "lastChange": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time of the last breaker state change."
+        }
+      },
+      "description": "StorageHealth is the circuit breaker state of one storage as seen by one proxy."
+    },
     "chorusSwiftCredential": {
       "type": "object",
       "properties": {
@@ -1964,6 +2410,29 @@
           "description": "Max Amount of time to wait for uncompleted multipart uploads to finish\nbefore switching targets. Default is 1 hour."
         }
       }
+    },
+    "chorusSyncSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "True if objects are copied to destinations before answering the client."
+        },
+        "writeQuorum": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of copies (main included) required before answering. 0 means main plus all destinations."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Max time spent syncing destinations per request."
+        },
+        "onQuorumFailure": {
+          "type": "string",
+          "description": "Behavior when the quorum is not reached: \"fail\" responds 503, \"accept\" forwards the main response."
+        }
+      },
+      "description": "SyncSettings are the effective synchronous replication settings of a proxy."
     },
     "chorusTestProxyRequest": {
       "type": "object",

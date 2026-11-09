@@ -94,3 +94,19 @@ http:
     - selector: chorus.Webhook.S3Notifications
       post: "/webhook/{storage}/s3-notifications"
       body: "*"
+      # Resilience service:
+    - selector: chorus.Resilience.GetProxyStatus
+      get: /tutti/proxies
+    - selector: chorus.Resilience.ListFailoverPolicies
+      get: /tutti/failover/policies
+    - selector: chorus.Resilience.SetFailoverPolicy
+      post: /tutti/failover/policies
+      body: "*"
+    - selector: chorus.Resilience.DeleteFailoverPolicy
+      put: /tutti/failover/policies/delete
+      body: "*"
+    - selector: chorus.Resilience.ListFailoverEvents
+      get: /tutti/failover/events
+    - selector: chorus.Resilience.DeleteFailoverEvent
+      put: /tutti/failover/events/delete
+      body: "*"

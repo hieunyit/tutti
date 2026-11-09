@@ -38,6 +38,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/rpc"
@@ -165,6 +166,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			})
 		}
 		go healthReg.RunChecks(ctx, probeTargets...)
+		startedAt := time.Now().UTC()
+		statusPub := proxystatus.NewPublisher(confRedis, app.AppID, health.DefaultProbeInterval, func() proxystatus.Status {
+			return proxyStatus(conf, healthReg, startedAt)
+		}, logger)
+		go statusPub.Run(ctx)
 		if conf.Failover.Enabled {
 			failoverLock := util.NewRedis(conf.Redis, conf.Redis.LockDB)
 			defer failoverLock.Close()
@@ -311,4 +317,43 @@ func storageProbe(clients objstore.Clients, creds objstore.CredsService, storage
 		_, err = c.S3().ListBuckets(ctx)
 		return err
 	}
+}
+
+// proxyStatus builds the status document published to Redis (config DB, tutti:proxy-status:<app_id>).
+func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time) proxystatus.Status {
+	snap := reg.Snapshot()
+	storages := make([]proxystatus.StorageHealth, 0, len(snap))
+	for _, s := range snap {
+		storages = append(storages, proxystatus.StorageHealth{
+			Name: s.Name, Available: s.Available, ConsecutiveFailures: s.ConsecutiveFailures,
+			LastError: s.LastError, LastChange: s.LastChange,
+		})
+	}
+	hc := conf.Health.WithDefaults()
+	st := proxystatus.Status{
+		Address:   conf.Address,
+		StartedAt: startedAt,
+		Storages:  storages,
+		Settings: proxystatus.Settings{
+			Replication: proxystatus.ReplicationSettings{
+				OnEventError:     conf.Replication.OnEventError,
+				EventRetryBudget: conf.Replication.EventRetryBudget,
+				Sync: proxystatus.SyncSettings{
+					Enabled:         conf.Replication.Sync.Enabled,
+					WriteQuorum:     conf.Replication.Sync.WriteQuorum,
+					Timeout:         conf.Replication.Sync.Timeout,
+					OnQuorumFailure: conf.Replication.Sync.OnQuorumFailure,
+				},
+			},
+			Health: proxystatus.HealthSettings{FailureThreshold: hc.FailureThreshold, OpenDuration: hc.OpenDuration},
+			Failover: proxystatus.FailoverSettings{
+				Enabled: conf.Failover.Enabled, CheckInterval: conf.Failover.CheckInterval,
+				After: conf.Failover.After, MaxEventLag: conf.Failover.MaxEventLag,
+			},
+		},
+	}
+	if conf.Auth != nil {
+		st.Settings.RequireSignedContentType = conf.Auth.RequireSignedContentType
+	}
+	return st
 }

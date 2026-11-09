@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package chorus;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+
+// Resilience exposes the high-availability state of the proxies (circuit breaker status and effective
+// settings) and manages automatic failover policies and the history of performed failovers.
+service Resilience {
+  // GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
+  // Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
+  rpc GetProxyStatus(google.protobuf.Empty) returns (ProxyStatusList);
+
+  // ListFailoverPolicies returns all failover policies sorted by source storage.
+  rpc ListFailoverPolicies(google.protobuf.Empty) returns (FailoverPolicyList);
+
+  // SetFailoverPolicy creates or replaces the failover policy of a source storage.
+  // Source and targets must be configured storages.
+  rpc SetFailoverPolicy(FailoverPolicy) returns (google.protobuf.Empty);
+
+  // DeleteFailoverPolicy removes the failover policy of a source storage.
+  rpc DeleteFailoverPolicy(FailoverPolicySource) returns (google.protobuf.Empty);
+
+  // ListFailoverEvents returns the performed failovers that were not yet cleared.
+  rpc ListFailoverEvents(google.protobuf.Empty) returns (FailoverEventList);
+
+  // DeleteFailoverEvent clears the record of a performed failover, e.g. after manual failback.
+  rpc DeleteFailoverEvent(FailoverEventID) returns (google.protobuf.Empty);
+}
+
+// StorageHealth is the circuit breaker state of one storage as seen by one proxy.
+message StorageHealth {
+  // Storage name as configured.
+  string name = 1;
+  // True while the circuit breaker is closed.
+  bool available = 2;
+  // Number of consecutive availability failures.
+  int32 consecutive_failures = 3;
+  // Last availability error, empty if none.
+  string last_error = 4;
+  // Time of the last breaker state change.
+  google.protobuf.Timestamp last_change = 5;
+}
+
+// SyncSettings are the effective synchronous replication settings of a proxy.
+message SyncSettings {
+  // True if objects are copied to destinations before answering the client.
+  bool enabled = 1;
+  // Number of copies (main included) required before answering. 0 means main plus all destinations.
+  int32 write_quorum = 2;
+  // Max time spent syncing destinations per request.
+  google.protobuf.Duration timeout = 3;
+  // Behavior when the quorum is not reached: "fail" responds 503, "accept" forwards the main response.
+  string on_quorum_failure = 4;
+}
+
+// ReplicationSettings are the effective replication settings of a proxy.
+message ReplicationSettings {
+  // Behavior when the replication event cannot be recorded: "fail" or "log".
+  string on_event_error = 1;
+  // Total time to retry recording the replication event.
+  google.protobuf.Duration event_retry_budget = 2;
+  // Synchronous replication settings.
+  SyncSettings sync = 3;
+}
+
+// HealthSettings are the effective circuit breaker settings of a proxy.
+message HealthSettings {
+  // Consecutive failures that open a breaker.
+  int32 failure_threshold = 1;
+  // How long an open breaker rejects requests before one trial is allowed.
+  google.protobuf.Duration open_duration = 2;
+}
+
+// FailoverSettings are the effective failover controller defaults of a proxy.
+message FailoverSettings {
+  // True if the automatic failover controller runs in this proxy.
+  bool enabled = 1;
+  // How often the controller evaluates failover conditions.
+  google.protobuf.Duration check_interval = 2;
+  // Default time the source breaker must be continuously open, for policies that omit it.
+  google.protobuf.Duration after = 3;
+  // Default max unreplicated events allowed, for policies that omit it.
+  int32 max_event_lag = 4;
+}
+
+// ProxySettings are the effective settings of a proxy.
+message ProxySettings {
+  // Replication settings.
+  ReplicationSettings replication = 1;
+  // Circuit breaker settings.
+  HealthSettings health = 2;
+  // Failover controller defaults.
+  FailoverSettings failover = 3;
+  // True if SigV4 requests without a signed Content-Type header are rejected.
+  bool require_signed_content_type = 4;
+}
+
+// ProxyStatus is the status of one live proxy instance.
+message ProxyStatus {
+  // Unique id of the proxy instance.
+  string app_id = 1;
+  // Public address of the proxy.
+  string address = 2;
+  // Time the proxy started.
+  google.protobuf.Timestamp started_at = 3;
+  // Time of the last status update.
+  google.protobuf.Timestamp updated_at = 4;
+  // Health of every storage, as seen by this proxy.
+  repeated StorageHealth storages = 5;
+  // Effective settings.
+  ProxySettings settings = 6;
+}
+
+// ProxyStatusList lists live proxies.
+message ProxyStatusList {
+  // Live proxy instances sorted by app id.
+  repeated ProxyStatus proxies = 1;
+}
+
+// FailoverPolicy defines which storages may be promoted when the source storage is down.
+message FailoverPolicy {
+  // Source storage that may fail. Required, must be a configured storage.
+  string source = 1;
+  // True to allow the proxy to fail over automatically. An enabled policy needs at least one target.
+  bool enabled = 2;
+  // Only storages that may be promoted, in order of preference. Must be configured and differ from the source.
+  repeated string targets = 3;
+  // How long the source breaker must be continuously open. Unset or zero means the proxy default.
+  google.protobuf.Duration after = 4;
+  // Max number of unreplicated events allowed on the replication to the target. Unset means the proxy default.
+  optional int32 max_event_lag = 5;
+}
+
+// FailoverPolicyList lists failover policies.
+message FailoverPolicyList {
+  // Policies sorted by source.
+  repeated FailoverPolicy policies = 1;
+}
+
+// FailoverPolicySource identifies a failover policy.
+message FailoverPolicySource {
+  // Source storage of the policy.
+  string source = 1;
+}
+
+// FailoverEvent describes one performed failover.
+message FailoverEvent {
+  // User whose routing was switched.
+  string user = 1;
+  // Bucket whose routing was switched. Empty for a user-level failover.
+  string bucket = 2;
+  // Storage that was the routing target before the failover.
+  string from = 3;
+  // Storage promoted by the failover.
+  string to = 4;
+  // Time of the failover.
+  google.protobuf.Timestamp time = 5;
+  // Number of unreplicated events at failover time.
+  int32 event_lag = 6;
+}
+
+// FailoverEventList lists performed failovers.
+message FailoverEventList {
+  // Events sorted by scope.
+  repeated FailoverEvent events = 1;
+}
+
+// FailoverEventID identifies a failover event.
+message FailoverEventID {
+  // User of the event.
+  string user = 1;
+  // Bucket of the event. Empty for a user-level event.
+  string bucket = 2;
+}
