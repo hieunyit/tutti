@@ -45,13 +45,18 @@ type Config struct {
 	Json  bool   `yaml:"json"`
 }
 
-var defaultCtxLoggerMu sync.Mutex
+var defaultCtxLoggerOnce sync.Once
 
+// GetLogger creates a logger and, the first time it is called in the process, installs it as
+// zerolog's default context logger. zerolog reads that global without synchronization, so it
+// must never be written once other goroutines may log: in standalone mode the worker and proxy
+// start concurrently and both call GetLogger after the standalone launcher already did.
 func GetLogger(cfg *Config, app, appID string) zerolog.Logger {
 	logger := CreateLogger(cfg, app, appID)
-	defaultCtxLoggerMu.Lock()
-	defer defaultCtxLoggerMu.Unlock()
-	zerolog.DefaultContextLogger = &logger
+	defaultCtxLoggerOnce.Do(func() {
+		l := logger
+		zerolog.DefaultContextLogger = &l
+	})
 	return logger
 }
 
