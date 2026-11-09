@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/hieunyit/tutti/pkg/api"
+	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/log"
@@ -277,6 +278,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return ok
 		})
 
+		authSvc, err := auth.NewService(conf.Api.Auth, appRedis)
+		if err != nil {
+			return err
+		}
+		if !authSvc.Enabled() {
+			logger.Warn().Msg("management api is enabled WITHOUT authentication (api.auth.enabled=false): anyone who can reach the api ports has full admin access")
+		}
+
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0
 
@@ -296,7 +305,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				pb.RegisterWebhookServer(srv, webhookHandler)
 			}
 		}
-		start, stop, err := api.NewGrpcServer(conf.Api.GrpcPort, registerServices, tp, conf.Log, app)
+		start, stop, err := api.NewGrpcServer(conf.Api.GrpcPort, registerServices, tp, conf.Log, app,
+			api.WithAuthInterceptors(authSvc.UnaryInterceptor(), authSvc.StreamInterceptor()))
 		if err != nil {
 			return err
 		}
@@ -305,6 +315,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return err
 		}
 		start, stop, err = api.GRPCGateway(ctx, conf.Api, func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error {
+			if err := authSvc.RegisterHTTP(mux); err != nil {
+				return err
+			}
 			if err := pb.RegisterChorusHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
 			}

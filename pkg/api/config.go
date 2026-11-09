@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/hieunyit/tutti/pkg/auth"
 )
 
 type Config struct {
@@ -28,6 +30,7 @@ type Config struct {
 	HttpPort int           `yaml:"httpPort"`
 	Enabled  bool          `yaml:"enabled"`
 	Secure   bool          `yaml:"secure"`
+	Auth     auth.Config   `yaml:"auth"`
 }
 
 type WebhookConfig struct {

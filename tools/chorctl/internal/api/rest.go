@@ -81,6 +81,11 @@ var restRoutes = map[string]route{
 	pb.Policy_TestProxy_FullMethodName:      {http.MethodPost, "/test-proxy"},
 }
 
+var bearerToken string
+
+// SetToken sets the session token sent as "Authorization: Bearer" on every request.
+func SetToken(t string) { bearerToken = t }
+
 // Conn calls the chorus management API over HTTP/JSON via the grpc-gateway
 // REST endpoints. It implements grpc.ClientConnInterface so that the
 // generated gRPC client stubs (pb.NewChorusClient, pb.NewPolicyClient, ...)
@@ -123,6 +128,9 @@ func (c *Conn) Invoke(ctx context.Context, method string, args, reply any, _ ...
 		return status.Errorf(codes.Internal, "failed to build request for %s: %v", method, err)
 	}
 	httpReq.Header.Set("Accept", "application/json")
+	if bearerToken != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+bearerToken)
+	}
 	if body != nil {
 		httpReq.Header.Set("Content-Type", "application/json")
 	}

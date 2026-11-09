@@ -14,6 +14,15 @@ api:
   grpcPort: 9670
   httpPort: 9671
   secure: false
+  auth:
+    enabled: false # set true to require login (Bearer session token) for the management api. Disabled by default for upgrade compatibility
+    sessionTTL: 12h
+    # users: bcrypt hashes; generate with: htpasswd -nbBC 10 "" 'password' | tr -d ':\n'
+    # role admin: all operations; viewer: read-only operations
+    users: []
+    #  - username: admin
+    #    passwordHash: "$2y$10$..."
+    #    role: admin
   webhook:
     enabled: false # enable chorus webhook for event sources like S3 bucket notification or swift access logs
     grpcPort: 0 # host grpc webhook on a separate port. By default will be hosted with management API

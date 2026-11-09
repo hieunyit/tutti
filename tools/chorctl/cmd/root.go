@@ -24,6 +24,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/hieunyit/tutti/tools/chorctl/internal/api"
 )
 
 var cfgFile string
@@ -32,6 +34,7 @@ var (
 	address     = ""
 	user        = ""
 	insecureTLS = false
+	token       = ""
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -70,6 +73,8 @@ func init() {
 	_ = viper.BindPFlag("user", rootCmd.PersistentFlags().Lookup("user"))
 	_ = viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
 
+	rootCmd.PersistentFlags().StringVar(&token, "token", "", "session token for the management API (env TUTTI_TOKEN; default: saved by 'chorctl login' in ~/.config/tutti/token)")
+
 	verbose := rootCmd.PersistentFlags().BoolP("verbose", "v", false, "prints additional log information")
 	if verbose != nil && *verbose {
 		logrus.SetLevel(logrus.InfoLevel)
@@ -103,4 +108,5 @@ func initConfig() {
 	}
 	address = viper.GetString("address")
 	insecureTLS = viper.GetBool("insecure")
+	api.SetToken(resolveToken())
 }

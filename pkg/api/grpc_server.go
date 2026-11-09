@@ -46,11 +46,49 @@ import (
 
 type RegisterServicesFunc func(srv *grpc.Server)
 
-func NewGrpcServer(port int, register RegisterServicesFunc, tracer otel_trace.TracerProvider, logConf *log.Config, version dom.AppInfo) (start func(context.Context) error, stop func(context.Context) error, err error) {
+// ServerOption customizes NewGrpcServer.
+type ServerOption func(*serverOpts)
+
+type serverOpts struct {
+	unary  []grpc.UnaryServerInterceptor
+	stream []grpc.StreamServerInterceptor
+}
+
+// WithAuthInterceptors installs authentication interceptors. They run before
+// error conversion so their gRPC status codes (Unauthenticated,
+// PermissionDenied) reach the client unchanged.
+func WithAuthInterceptors(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) ServerOption {
+	return func(o *serverOpts) {
+		o.unary = append(o.unary, u)
+		o.stream = append(o.stream, s)
+	}
+}
+
+func NewGrpcServer(port int, register RegisterServicesFunc, tracer otel_trace.TracerProvider, logConf *log.Config, version dom.AppInfo, options ...ServerOption) (start func(context.Context) error, stop func(context.Context) error, err error) {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, nil, err
 	}
+	var so serverOpts
+	for _, o := range options {
+		o(&so)
+	}
+	unary := []grpc.UnaryServerInterceptor{
+		prometheus.UnaryServerInterceptor,
+		grpc_ctxtags.UnaryServerInterceptor(),
+		log.UnaryInterceptor(logConf, version.App, version.AppID),
+		trace.UnaryInterceptor(),
+	}
+	unary = append(unary, so.unary...)
+	unary = append(unary, ErrorInterceptor(), unaryServerAccessLog, unaryServerRecover)
+	stream := []grpc.StreamServerInterceptor{
+		prometheus.StreamServerInterceptor,
+		grpc_ctxtags.StreamServerInterceptor(),
+		log.StreamInterceptor(logConf, version.App, version.AppID),
+		trace.StreamInterceptor(),
+	}
+	stream = append(stream, so.stream...)
+	stream = append(stream, ErrorStreamInterceptor(), streamServerAccessLog, streamServerRecover)
 
 	srv := grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -62,24 +100,8 @@ func NewGrpcServer(port int, register RegisterServicesFunc, tracer otel_trace.Tr
 			PermitWithoutStream: true,
 		}),
 		grpc.StatsHandler(otelgrpc.NewServerHandler(otelgrpc.WithTracerProvider(tracer))),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			prometheus.UnaryServerInterceptor,
-			grpc_ctxtags.UnaryServerInterceptor(),
-			log.UnaryInterceptor(logConf, version.App, version.AppID),
-			trace.UnaryInterceptor(),
-			ErrorInterceptor(),
-			unaryServerAccessLog,
-			unaryServerRecover,
-		)),
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			prometheus.StreamServerInterceptor,
-			grpc_ctxtags.StreamServerInterceptor(),
-			log.StreamInterceptor(logConf, version.App, version.AppID),
-			trace.StreamInterceptor(),
-			ErrorStreamInterceptor(),
-			streamServerAccessLog,
-			streamServerRecover,
-		)))
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unary...)),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(stream...)))
 
 	register(srv)
 	return func(ctx context.Context) error {
