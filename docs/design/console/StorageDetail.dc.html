@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti storage detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:#344054}
+.sub{font-size:12px;color:#667085}
+.dt{font-size:12px;color:#667085}
+.dd{font-size:14px;color:#101828;margin:2px 0 0}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="storages" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Storages" page="main" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <a href="Storages.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none">‹ All storages</a>
+      <div style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 360px">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap"><h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">main</h1><span style="font-size: 12px; font-weight: 600; color: #2952CC; background: #EEF3FF; border-radius: 6px; padding: 2px 8px">Main</span><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px">● Unavailable</span></div>
+          <span class="mono">http://minio-a:9000 · MinIO · us-east-1 · TLS off</span>
+        </div>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Test connection</button>
+        <a href="Failover.dc.html" style="height: 36px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #2952CC; background: #2952CC; color: #FFFFFF; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none">Failover policy</a>
+      </div>
+
+      <div role="tablist" aria-label="Storage sections" style="display: flex; gap: 24px; border-bottom: 1px solid #E4E7EC; font-size: 14px; overflow-x: auto">
+        <button type="button" role="tab" aria-selected="true" style="border: 0; background: transparent; padding: 10px 0; font: inherit; font-weight: 600; color: #2952CC; box-shadow: inset 0 -2px 0 #2952CC; cursor: pointer">Overview</button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 10px 0; font: inherit; color: #475467; cursor: pointer">Health by proxy</button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 10px 0; font: inherit; color: #475467; cursor: pointer">Users <span class="sub">3</span></button>
+        <button type="button" role="tab" aria-selected="false" style="border: 0; background: transparent; padding: 10px 0; font: inherit; color: #475467; cursor: pointer">Settings</button>
+      </div>
+
+      <div role="alert" style="display: flex; gap: 12px; align-items: flex-start; background: #FEF3F2; border: 1px solid #FECDCA; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #912018">
+        <strong style="color: #7A271A">Unavailable for 2 min 10 s on 2 of 2 proxies.</strong>
+        <span>Last error: <span class="mono" style="color: #912018">dial tcp 10.0.0.12:9000: connection refused</span>. Requests fail fast while the breaker is open; failover to follower starts after 30 s.</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px">
+        <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Traffic, last 15 min</h2>
+          <svg role="img" aria-label="Requests per second dropped to zero at 13:02" viewBox="0 0 600 140" style="width: 100%; height: 140px">
+            <line x1="0" y1="120" x2="600" y2="120" stroke="#D0D5DD"></line>
+            <polyline points="0,60 60,52 120,64 180,48 240,58 300,50 360,62 380,118 600,118" fill="none" stroke="#2952CC" stroke-width="2"></polyline>
+            <line x1="380" y1="10" x2="380" y2="120" stroke="#B42318" stroke-dasharray="4 3"></line>
+            <text x="388" y="22" font-size="11" fill="#B42318">13:02 unavailable</text>
+          </svg>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+            <div><div class="dt">Requests / s</div><div class="dd">0.0</div></div>
+            <div><div class="dt">p95 latency</div><div class="dd">–</div></div>
+            <div><div class="dt">Fail-fast / s</div><div class="dd" style="color: #B54708">3.1</div></div>
+          </div>
+        </section>
+        <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start">
+          <h2 style="grid-column: 1 / -1; margin: 0; font-size: 15px; font-weight: 600">Data protection</h2>
+          <div><div class="dt">Replications from here</div><div class="dd">2 · 1 paused</div></div>
+          <div><div class="dt">Routing policies to here</div><div class="dd">user1 (all buckets)</div></div>
+          <div><div class="dt">Failover</div><div class="dd">→ follower after 30 s</div></div>
+          <div><div class="dt">Open failover events</div><div class="dd">1</div></div>
+          <div><div class="dt">Circuit breaker</div><div class="dd" style="color: #B42318">Open · retry in 18 s</div></div>
+          <div><div class="dt">Rate limit</div><div class="dd">600 requests / min</div></div>
+        </section>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3; display: flex; align-items: center"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Health by proxy</h2><span style="margin-left: auto" class="sub">checked every 10 s · breaker opens after 3 failures</span></div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">Proxy</th><th scope="col">Status</th><th scope="col" class="num">Consecutive failures</th><th scope="col">Last error</th><th scope="col">Last change</th><th scope="col">Last report</th></tr></thead>
+            <tbody>
+              <tr><td><span style="font-weight: 600">proxy-a</span> <span class="mono">10.0.1.4:9669</span></td><td><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px">● Unavailable</span></td><td class="num">14</td><td class="mono">connection refused</td><td>13:02:41</td><td>2 s ago</td></tr>
+              <tr><td><span style="font-weight: 600">proxy-b</span> <span class="mono">10.0.1.5:9669</span></td><td><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px">● Unavailable</span></td><td class="num">13</td><td class="mono">i/o timeout</td><td>13:02:44</td><td>1 s ago</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #EEF0F3; display: flex; align-items: center"><h2 style="margin: 0; font-size: 15px; font-weight: 600">Users on this storage</h2><a href="Users.dc.html" style="margin-left: auto; font-size: 13px; font-weight: 600">Manage users</a></div>
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">User</th><th scope="col">Access key ID</th><th scope="col">Source</th><th scope="col">Last verified</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight: 600">user1</td><td class="mono">minioadmin</td><td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 1px 6px">Config</span></td><td>–</td><td style="text-align: right" class="sub">Managed in config file</td></tr>
+              <tr><td style="font-weight: 600">user3</td><td class="mono">AKIA3Q…7Z</td><td><span style="font-size: 12px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 1px 6px">Managed</span></td><td>10 Nov 2026, 09:14</td><td style="text-align: right"><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer">Update credentials</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

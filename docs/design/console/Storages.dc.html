@@ -15,8 +15,10 @@ a{color:#2952CC}a:hover{color:#1D3C99}
 .tbl{width:100%;border-collapse:collapse;font-size:13px}
 .tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
 .tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:#344054}
+.sub{font-size:12px;color:#667085}
 </style>
 </helmet>
 <div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
@@ -24,13 +26,21 @@ a{color:#2952CC}a:hover{color:#1D3C99}
   <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
     <dc-import name="Topbar" section="Storage" page="Storages" hint-size="100%,56px"></dc-import>
     <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
-      <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
         <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
           <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Storages</h1>
-          <p style="margin: 0; font-size: 14px; color: #475467">S3 endpoints configured on the worker and proxies, with live health from every proxy.</p>
+          <p style="margin: 0; font-size: 14px; color: #475467">Every S3 backend Tutti writes to, with live health, traffic and user coverage from all proxies.</p>
         </div>
+        <span style="font-size: 13px; color: #667085; display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #12B76A"></span>Live · updated 2 s ago</span>
         <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Refresh</button>
       </div>
+
+      <section aria-label="Summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Available</span><span style="font-size: 24px; font-weight: 700"><span style="color: #B42318">1</span> / 2</span><span class="sub">main unavailable on 2 of 2 proxies</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Requests / s</span><span style="font-size: 24px; font-weight: 700">7.7</span><span class="sub">all storages, last 10 s</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">User coverage</span><span style="font-size: 24px; font-weight: 700; color: #B54708">2 / 3</span><span class="sub">user3 has no credentials on follower</span></div>
+        <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-size: 13px; color: #475467">Reporting proxies</span><span style="font-size: 24px; font-weight: 700">2 / 2</span><span class="sub">health checks every 10 s</span></div>
+      </section>
 
       <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
         <div style="padding: 12px 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #EEF0F3">
@@ -43,46 +53,38 @@ a{color:#2952CC}a:hover{color:#1D3C99}
             <button type="button" aria-pressed="false" style="border: 0; border-left: 1px solid #D0D5DD; background: #FFFFFF; padding: 0 12px; height: 34px; font: inherit; cursor: pointer">Available 1</button>
             <button type="button" aria-pressed="false" style="border: 0; border-left: 1px solid #D0D5DD; background: #FFFFFF; padding: 0 12px; height: 34px; font: inherit; cursor: pointer">Unavailable 1</button>
           </div>
-          <span style="margin-left: auto; font-size: 12px; color: #667085">Storages are defined in config and read-only here.</span>
+          <span style="margin-left: auto" class="sub">Storages are defined in the worker and proxy config.</span>
         </div>
         <div style="overflow-x: auto">
           <table class="tbl">
-            <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Endpoint</th><th scope="col">Provider</th><th scope="col" class="num">Users</th><th scope="col">Health</th><th scope="col">Failover target</th><th scope="col" class="num">p95 latency</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th></tr></thead>
+            <thead><tr><th scope="col">Storage</th><th scope="col">Health</th><th scope="col">Circuit breaker</th><th scope="col" class="num">Req/s</th><th scope="col" class="num">Error rate</th><th scope="col">Users</th><th scope="col">Replication</th><th scope="col">Failover</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Open</span></th></tr></thead>
             <tbody>
               <tr style="background: #FFFBFA">
-                <td><div style="display: flex; flex-direction: column"><span style="font-weight: 600">main</span><span style="font-size: 12px; color: #667085">us-east-1 · TLS off</span></div></td>
-                <td><span style="font-size: 12px; font-weight: 600; color: #2952CC; background: #EEF3FF; border-radius: 6px; padding: 2px 8px">Main</span></td>
-                <td class="mono">http://minio-a:9000</td>
-                <td>MinIO</td>
-                <td class="num">2</td>
-                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px; align-self: flex-start">● Unavailable</span><span style="font-size: 12px; color: #667085">since 13:02:41 · 14 failed checks</span></div></td>
-                <td>follower</td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="display: flex; gap: 8px; align-items: center"><a href="StorageDetail.dc.html" style="font-weight: 600; color: #101828; text-decoration: none">main</a><span style="font-size: 11px; font-weight: 600; color: #2952CC; background: #EEF3FF; border-radius: 6px; padding: 1px 6px">Main</span></span><span class="mono">http://minio-a:9000 · MinIO</span></div></td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #B42318; background: #FEF3F2; border-radius: 999px; padding: 2px 8px; align-self: flex-start">● Unavailable</span><span class="sub">2 of 2 proxies · since 13:02:41</span></div></td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 600; color: #B42318">Open</span><span class="sub">14 failed checks · retry in 18 s</span></div></td>
+                <td class="num">0.0</td>
                 <td class="num">–</td>
-                <td><a href="Storages.dc.html" style="font-size: 13px; font-weight: 600">Details</a></td>
+                <td><span>3 users</span></td>
+                <td><span class="sub">source of 2</span></td>
+                <td><span style="font-size: 13px">→ follower</span><br><span class="sub">after 30 s</span></td>
+                <td style="text-align: right"><a href="StorageDetail.dc.html" aria-label="Open main" style="display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 1px solid #D0D5DD; border-radius: 8px; color: #344054; text-decoration: none">›</a></td>
               </tr>
               <tr>
-                <td><div style="display: flex; flex-direction: column"><span style="font-weight: 600">follower</span><span style="font-size: 12px; color: #667085">us-east-1 · TLS off</span></div></td>
-                <td><span style="font-size: 12px; font-weight: 600; color: #475467; background: #F2F4F7; border-radius: 6px; padding: 2px 8px">Follower</span></td>
-                <td class="mono">http://minio-b:9000</td>
-                <td>MinIO</td>
-                <td class="num">2</td>
-                <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">● Available</span></td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="display: flex; gap: 8px; align-items: center"><a href="StorageDetail.dc.html" style="font-weight: 600; color: #101828; text-decoration: none">follower</a><span style="font-size: 11px; font-weight: 600; color: #475467; background: #F2F4F7; border-radius: 6px; padding: 1px 6px">Follower</span></span><span class="mono">http://minio-b:9000 · MinIO</span></div></td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px; align-self: flex-start">● Available</span><span class="sub">2 of 2 proxies · p95 9.6 ms</span></div></td>
+                <td><span style="font-size: 13px">Closed</span></td>
+                <td class="num">7.7</td>
+                <td class="num">0.0 %</td>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span>2 users</span><span style="font-size: 12px; color: #B54708">user3 missing</span></div></td>
+                <td><span class="sub">target of 2 · lag 0</span></td>
                 <td>–</td>
-                <td class="num">9.6 ms</td>
-                <td><a href="Storages.dc.html" style="font-size: 13px; font-weight: 600">Details</a></td>
+                <td style="text-align: right"><a href="StorageDetail.dc.html" aria-label="Open follower" style="display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 1px solid #D0D5DD; border-radius: 8px; color: #344054; text-decoration: none">›</a></td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div style="padding: 10px 16px; border-top: 1px solid #EEF0F3; font-size: 12px; color: #667085">2 storages · health reported by 1 proxy · checked every 10 s</div>
-      </section>
-
-      <section aria-label="Storage details: main" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
-        <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px"><h2 style="margin: 0; font-size: 15px; font-weight: 600">main</h2><span style="font-size: 12px; color: #667085">Expanded details (opens from Details)</span></div>
-        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #667085">Last error</span><span class="mono">dial tcp 10.0.0.12:9000: connection refused</span></div>
-        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #667085">Circuit breaker</span><span style="font-size: 13px">Open · retry in 18 s</span></div>
-        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #667085">Credentials</span><span style="font-size: 13px">user1, user2 · <a href="Storages.dc.html">Manage</a></span></div>
-        <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #667085">Rate limit</span><span style="font-size: 13px">600 requests / min</span></div>
+        <div style="padding: 10px 16px; border-top: 1px solid #EEF0F3" class="sub">2 storages · health from 2 proxies · the worst state across proxies is shown</div>
       </section>
     </main>
   </div>

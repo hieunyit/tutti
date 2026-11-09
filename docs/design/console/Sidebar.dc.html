@@ -43,7 +43,7 @@ body{margin:0}
   </div>
 </nav>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["dashboard","monitoring","storages","health","replication","routing","failover","diff","accounts","docs","api"],"default":"dashboard"},"$preview":{"width":248,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["dashboard","monitoring","storages","proxies","replication","routing","failover","diff","users","accounts","console","docs","api"],"default":"dashboard"},"$preview":{"width":248,"height":900}}'>
 class Component extends DCLogic {
   renderVals() {
     const active = this.props.active ?? 'dashboard';
@@ -58,7 +58,9 @@ class Component extends DCLogic {
       diff: 'M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 3v18',
       key: 'M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z',
       docs: 'M4 4h11l5 5v11H4zM15 4v5h5M8 13h8M8 17h6',
-      api: 'M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16'
+      api: 'M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16',
+      users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+      admin: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'
     };
     const mk = (id, label, icon, href, badge) => ({
       label, icon, href, badge: badge || '',
@@ -68,9 +70,10 @@ class Component extends DCLogic {
     return {
       groups: [
         { label: 'Overview', items: [mk('dashboard', 'Dashboard', I.dash, 'Main.dc.html', '2'), mk('monitoring', 'Monitoring', I.mon, 'Monitoring.dc.html')] },
-        { label: 'Storage', items: [mk('storages', 'Storages', I.stor, 'Storages.dc.html'), mk('health', 'Storage health', I.health, 'Storages.dc.html')] },
+        { label: 'Storage', items: [mk('storages', 'Storages', I.stor, 'Storages.dc.html'), mk('proxies', 'Proxies', I.health, 'Proxies.dc.html')] },
         { label: 'Data protection', items: [mk('replication', 'Replication', I.repl, 'Main.dc.html'), mk('routing', 'Routing policies', I.route, 'Main.dc.html'), mk('failover', 'Failover', I.fail, 'Failover.dc.html', '1'), mk('diff', 'Diff reports', I.diff, 'Main.dc.html')] },
-        { label: 'Access', items: [mk('accounts', 'Proxy accounts', I.key, 'ProxyAccounts.dc.html')] },
+        { label: 'Access', items: [mk('users', 'Users', I.users, 'Users.dc.html'), mk('accounts', 'Access keys', I.key, 'ProxyAccounts.dc.html')] },
+        { label: 'Administration', items: [mk('console', 'Console users', I.admin, 'ConsoleUsers.dc.html')] },
         { label: 'Help', items: [mk('docs', 'Documentation', I.docs, 'Docs.dc.html'), mk('api', 'API reference', I.api, 'Docs.dc.html')] }
       ]
     };

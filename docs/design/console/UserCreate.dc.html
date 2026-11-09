@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create user</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.sub{font-size:12px;color:#667085}
+.inp{height:36px;border:1px solid #D0D5DD;border-radius:8px;padding:0 12px;font:inherit;font-size:14px;font-weight:400;box-sizing:border-box;width:100%}
+.lbl{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="users" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Users" page="Create user" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1100px">
+      <a href="Users.dc.html" style="font-size: 13px; font-weight: 600; text-decoration: none">‹ Users</a>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Create user</h1>
+        <p style="margin: 0; font-size: 14px; color: #475467">Register an S3 identity on every storage, then give clients a key and permissions.</p>
+      </div>
+
+      <ol aria-label="Steps" style="list-style: none; margin: 0; padding: 0; display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px">
+        <li style="display: flex; align-items: center; gap: 8px; color: #067647"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #ECFDF3; display: flex; align-items: center; justify-content: center; font-weight: 700">✓</span>Identity</li>
+        <li aria-hidden="true" style="color: #D0D5DD">—</li>
+        <li aria-current="step" style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #2952CC"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #2952CC; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">2</span>Storage credentials</li>
+        <li aria-hidden="true" style="color: #D0D5DD">—</li>
+        <li style="display: flex; align-items: center; gap: 8px; color: #667085"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; border: 1px solid #D0D5DD; display: flex; align-items: center; justify-content: center">3</span>Access key and permissions</li>
+      </ol>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; flex-direction: column; gap: 4px"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Credentials for user3 on each storage</h2><p style="margin: 0; font-size: 13px; color: #475467">Use an access key that exists on that storage. Secrets are encrypted with the master password before they are stored.</p></div>
+
+        <div style="border: 1px solid #E4E7EC; border-radius: 10px; padding: 16px; display: grid; grid-template-columns: 160px repeat(2, minmax(0, 1fr)) auto; gap: 12px; align-items: end">
+          <div style="display: flex; flex-direction: column; gap: 4px"><strong style="font-size: 14px">main</strong><span class="sub">Main · minio-a:9000</span></div>
+          <label class="lbl">Access key ID<input class="inp" value="AKIA3QEXAMPLE7Z" style="font-family: 'JetBrains Mono', monospace"></label>
+          <label class="lbl">Secret access key<input class="inp" type="password" value="secretsecretsecret"></label>
+          <span style="height: 36px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #067647; font-weight: 600">✓ Verified · 14 ms</span>
+        </div>
+
+        <div style="border: 1px solid #FDA29B; border-radius: 10px; padding: 16px; display: grid; grid-template-columns: 160px repeat(2, minmax(0, 1fr)) auto; gap: 12px; align-items: end">
+          <div style="display: flex; flex-direction: column; gap: 4px"><strong style="font-size: 14px">follower</strong><span class="sub">Follower · minio-b:9000</span></div>
+          <label class="lbl">Access key ID<input class="inp" value="AKIA3QEXAMPLE7Z" style="font-family: 'JetBrains Mono', monospace"></label>
+          <label class="lbl">Secret access key<input class="inp" type="password" value="wrongsecret" style="border-color: #FDA29B"></label>
+          <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; cursor: pointer">Verify</button>
+          <span role="alert" style="grid-column: 2 / -1; font-size: 13px; color: #B42318">follower rejected the credentials: SignatureDoesNotMatch. Check the secret.</span>
+        </div>
+
+        <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px"><input type="checkbox" style="margin-top: 3px"><span style="display: flex; flex-direction: column; gap: 2px">Use the same credentials on all storages<span class="sub">For storages that share one identity provider.</span></span></label>
+        <div style="display: flex; gap: 12px; align-items: flex-start; background: #F9FAFB; border: 1px solid #E4E7EC; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #475467">
+          <span aria-hidden="true">ⓘ</span><span>You can skip a storage and add it later, but replication and failover for this user only work on storages where it has credentials.</span>
+        </div>
+      </section>
+
+      <div style="display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap">
+        <a href="Users.dc.html" style="height: 36px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; color: #101828; border-radius: 8px; font-size: 14px; text-decoration: none">Cancel</a>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #D0D5DD; background: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; cursor: pointer">Back</button>
+          <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #2952CC; background: #2952CC; color: #FFFFFF; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Continue</button>
+        </div>
+      </div>
+
+      <section aria-label="Step 3 preview" style="background: #FFFFFF; border: 1px dashed #D0D5DD; border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px">
+        <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Step 3 · Access key and permissions</h2><span class="sub">Preview of the next step</span></div>
+        <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px"><input type="checkbox" checked style="margin-top: 3px"><span style="display: flex; flex-direction: column; gap: 2px">Create a first access key<span class="sub">The secret is shown once after the user is created.</span></span></label>
+        <label class="lbl">Key description<input class="inp" placeholder="e.g. backup agent"></label>
+        <label class="lbl">Permission<select class="inp"><option>Read-write</option><option>Read-only</option><option>Write-only</option></select></label>
+        <label class="lbl">Buckets<input class="inp" placeholder="All buckets, or patterns like ci-*, reports"><span class="sub" style="font-weight: 400">Comma-separated glob patterns. Empty means all buckets.</span></label>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutti proxies</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F7FA}
+a{color:#2952CC}a:hover{color:#1D3C99}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:#475467;font-size:12px;padding:10px 16px;background:#F9FAFB;border-bottom:1px solid #E4E7EC;white-space:nowrap}
+.tbl td{padding:12px 16px;border-bottom:1px solid #EEF0F3;color:#101828;white-space:nowrap;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:#344054}
+.sub{font-size:12px;color:#667085}
+.on{font-size:12px;font-weight:600;color:#067647;background:#ECFDF3;border-radius:6px;padding:2px 8px}
+.off{font-size:12px;font-weight:600;color:#B42318;background:#FEF3F2;border-radius:6px;padding:2px 8px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #101828; background: #F5F7FA">
+  <dc-import name="Sidebar" active="proxies" hint-size="248px,900px"></dc-import>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <dc-import name="Topbar" section="Storage" page="Proxies" hint-size="100%,56px"></dc-import>
+    <main style="padding: 24px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; width: 100%; max-width: 1600px">
+      <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700">Proxies</h1>
+          <p style="margin: 0; font-size: 14px; color: #475467">S3 proxy instances that report to this worker, with their effective settings. A proxy disappears 6 s after it stops reporting.</p>
+        </div>
+        <span style="font-size: 13px; color: #667085; display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #12B76A"></span>Live · 2 s</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: flex-start; background: #FFFAEB; border: 1px solid #FEDF89; border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #7A2E0E">
+        <span aria-hidden="true">!</span><span><strong>Settings differ between proxies.</strong> proxy-b has automatic failover off and a write quorum of 1. Clients get different behaviour depending on the proxy they reach.</span>
+      </div>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+        <div style="overflow-x: auto">
+          <table class="tbl">
+            <thead><tr><th scope="col">Proxy</th><th scope="col">Status</th><th scope="col">Version</th><th scope="col">Uptime</th><th scope="col" class="num">Req/s</th><th scope="col" class="num">p95</th><th scope="col" class="num">5xx/s</th><th scope="col">Storages</th><th scope="col">Failover</th><th scope="col">Sync replication</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">proxy-a</span><span class="mono">http://10.0.1.4:9669</span></div></td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">● Reporting</span><br><span class="sub">2 s ago</span></td>
+                <td class="mono">0.1.0</td>
+                <td>3 d 4 h</td>
+                <td class="num">5.1</td>
+                <td class="num">9.2 ms</td>
+                <td class="num">0.00</td>
+                <td><span style="color: #B42318; font-weight: 600">1</span> / 2 available</td>
+                <td><span class="on">On</span> <span class="sub">after 30 s</span></td>
+                <td><span class="on">On</span> <span class="sub">quorum all · 5 s</span></td>
+              </tr>
+              <tr style="background: #FFFCF5">
+                <td><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">proxy-b</span><span class="mono">http://10.0.1.5:9669</span></div></td>
+                <td><span style="font-size: 12px; font-weight: 600; color: #067647; background: #ECFDF3; border-radius: 999px; padding: 2px 8px">● Reporting</span><br><span class="sub">1 s ago</span></td>
+                <td class="mono">0.1.0</td>
+                <td>12 min</td>
+                <td class="num">2.6</td>
+                <td class="num">10.1 ms</td>
+                <td class="num">0.03</td>
+                <td><span style="color: #B42318; font-weight: 600">1</span> / 2 available</td>
+                <td><span class="off">Off</span></td>
+                <td><span class="on">On</span> <span class="sub" style="color: #B54708">quorum 1 · 5 s</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center"><h2 style="margin: 0; font-size: 15px; font-weight: 600">proxy-a · effective settings</h2><span style="margin-left: auto" class="sub">from the proxy's config, read-only</span></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; font-size: 14px">
+          <div><div class="sub">Health threshold</div>3 failures</div>
+          <div><div class="sub">Breaker open for</div>30 s</div>
+          <div><div class="sub">Status interval</div>2 s</div>
+          <div><div class="sub">Signed Content-Type</div>Not required</div>
+          <div><div class="sub">SigV2</div>Disabled</div>
+          <div><div class="sub">Trusted proxies</div><span class="mono">10.0.0.0/8</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
