@@ -6,3 +6,43 @@ Copyright © Clyso GmbH, licensed under the Apache License, Version 2.0.
 
 It incorporates ideas and code ported from ReplicaT4
 (https://github.com/barreeeiroo/ReplicaT4), licensed under the MIT License.
+
+License split
+-------------
+
+- Backend (everything outside ui/: proxy, worker, standalone, chorctl, pkg/, proto/,
+  tests, deploy): Apache License, Version 2.0, see LICENSE.
+  Original code Copyright © Clyso GmbH; Tutti modifications Copyright 2026 hieunyit.
+
+- Web UI (ui/): GNU Affero General Public License, Version 3.0
+  (https://www.gnu.org/licenses/agpl-3.0.html).
+  Original code Copyright © Clyso GmbH; Tutti modifications (branding, storage health
+  and failover pages) Copyright © 2026 hieunyit, under the same license.
+
+- Parts derived from ReplicaT4 (synchronous multi-backend writes with write quorums,
+  stricter payload handling): MIT License, reproduced below.
+
+ReplicaT4 license
+-----------------
+
+MIT License
+
+Copyright (c) 2025 Diego Barreiro Perez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
