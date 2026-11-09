@@ -28,15 +28,28 @@ import (
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/s3/chunked"
 )
 
 func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	s3Err := mclient.ErrorResponse{}
 	logLevel := zerolog.ErrorLevel
 
+	var chunkedErr *chunked.Error
 	switch {
 	case errors.As(err, &s3Err):
 		logLevel = zerolog.InfoLevel
+	case errors.As(err, &chunkedErr):
+		// aws-chunked payload decoding / verification failure
+		logLevel = zerolog.WarnLevel
+		s3Err = mclient.ErrorResponse{
+			XMLName:    xml.Name{},
+			Code:       chunkedErr.Code,
+			Message:    chunkedErr.Message,
+			BucketName: xctx.GetBucket(ctx),
+			Key:        xctx.GetObject(ctx),
+			StatusCode: chunkedErr.StatusCode,
+		}
 	case errors.Is(err, dom.ErrAuth):
 		logLevel = zerolog.WarnLevel
 		s3Err = mclient.ErrorResponse{

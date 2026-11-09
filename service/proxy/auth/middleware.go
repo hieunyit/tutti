@@ -28,6 +28,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3/chunked"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
@@ -65,7 +66,7 @@ type middleware struct {
 
 func (m *middleware) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, payloadHash, err := m.isReqAuthenticated(r)
+		user, payloadHash, sig, err := m.authenticate(r)
 		if err != nil {
 			util.WriteError(r.Context(), w, err)
 			return
@@ -75,6 +76,12 @@ func (m *middleware) Wrap(next http.Handler) http.Handler {
 		// header: it is part of the new signature, and the storage would
 		// otherwise fall back to sha256("") and reject it.
 		r.Header.Set(s3.AmzContentSha256, payloadHash)
+		if chunked.IsStreaming(payloadHash) {
+			if err = m.decodeStreamingBody(r, payloadHash, sig); err != nil {
+				util.WriteError(r.Context(), w, err)
+				return
+			}
+		}
 		if !isRequestSignatureV4(r) && isRequestPresignedSignatureV4(r) {
 			// the presigned query-string auth params were validated:
 			// strip them so that the request forwarded to the backend
@@ -119,19 +126,27 @@ func (m *middleware) getCred(accessKey string) (credMeta, error) {
 // authenticated user together with the payload hash the signature was
 // verified against.
 func (m *middleware) isReqAuthenticated(r *http.Request) (string, string, error) {
+	user, hash, _, err := m.authenticate(r)
+	return user, hash, err
+}
+
+// authenticate is isReqAuthenticated that also returns the signing material
+// of a SigV4 header signature (nil for any other kind of authentication).
+func (m *middleware) authenticate(r *http.Request) (string, string, *signingInfo, error) {
 	switch {
 	case isRequestSignatureV4(r):
 		sha256sum := getContentSha256Cksum(r)
-		user, err := m.doesSignatureV4Match(sha256sum, r)
-		return user, sha256sum, err
+		user, sig, err := m.doesSignatureV4Match(sha256sum, r)
+		return user, sha256sum, sig, err
 	case isRequestPresignedSignatureV4(r):
-		return m.doesPresignedSignatureV4Match(r)
+		user, hash, err := m.doesPresignedSignatureV4Match(r)
+		return user, hash, nil, err
 	case m.allowV2 && isRequestSignatureV2(r):
 		// a V2 signature does not cover the payload
 		user, err := m.doesSignatureV2Match(r)
-		return user, unsignedPayload, err
+		return user, unsignedPayload, nil, err
 	}
-	return "", unsignedPayload, mclient.ErrorResponse{
+	return "", unsignedPayload, nil, mclient.ErrorResponse{
 		XMLName:    xml.Name{},
 		Code:       "CredentialsNotSupported",
 		Message:    "This request does not support given credentials type.",
