@@ -58,8 +58,9 @@ func PolicyHandlers(
 	replicationStatusLocker *store.ReplicationStatusLocker,
 	userLocker *store.UserLocker,
 	webhookConf *WebhookConfig,
+	opts ...PolicyOption,
 ) pb.PolicyServer {
-	return &policyHandlers{
+	h := &policyHandlers{
 		credsSvc:                credsSvc,
 		clients:                 clients,
 		queueSvc:                queueSvc,
@@ -72,6 +73,19 @@ func PolicyHandlers(
 		userLocker:              userLocker,
 		webhookConf:             webhookConf,
 	}
+	for _, o := range opts {
+		o(h)
+	}
+	return h
+}
+
+// PolicyOption customizes PolicyHandlers.
+type PolicyOption func(*policyHandlers)
+
+// WithPolicyStorageLocker makes replication and routing creation take the per-storage lock shared with runtime
+// storage update/delete (WithStorageLocker), so a reference cannot appear while a storage is being deleted.
+func WithPolicyStorageLocker(l *StorageLocker) PolicyOption {
+	return func(h *policyHandlers) { h.storageLocker = l }
 }
 
 var _ pb.PolicyServer = &policyHandlers{}
@@ -88,6 +102,7 @@ type policyHandlers struct {
 	replicationStatusLocker *store.ReplicationStatusLocker
 	userLocker              *store.UserLocker
 	webhookConf             *WebhookConfig
+	storageLocker           *StorageLocker
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
@@ -99,22 +114,31 @@ func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicat
 	if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
 		return nil, err
 	}
-	// acquire user lock
+	// acquire user lock, then the lock of both storages (the replication references them)
 	err = h.inUserLock(ctx, req.Id.User, func() error {
-		if userRepl, ok := uid.AsUserID(); ok {
-			// create user replication
-			return h.addUserReplication(ctx, userRepl, req)
-		} else if bucketRepl, ok := uid.AsBucketID(); ok {
-			// create bucket replication
-			return h.addBucketReplication(ctx, bucketRepl, req)
-		} else {
-			return fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
-		}
+		return h.storageLocker.With(ctx, []string{uid.FromStorage(), uid.ToStorage()}, func(ctx context.Context) error {
+			// the storage may have been deleted while waiting for the lock
+			if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
+				return err
+			}
+			return h.addReplicationLocked(ctx, uid, req)
+		})
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+func (h *policyHandlers) addReplicationLocked(ctx context.Context, uid entity.UniversalReplicationID, req *pb.AddReplicationRequest) error {
+	if userRepl, ok := uid.AsUserID(); ok {
+		// create user replication
+		return h.addUserReplication(ctx, userRepl, req)
+	} else if bucketRepl, ok := uid.AsBucketID(); ok {
+		// create bucket replication
+		return h.addBucketReplication(ctx, bucketRepl, req)
+	}
+	return fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
 }
 
 func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID entity.UserReplicationPolicy, req *pb.AddReplicationRequest) (err error) {
@@ -765,13 +789,19 @@ func (h *policyHandlers) AddRouting(ctx context.Context, req *pb.AddRoutingReque
 		return nil, err
 	}
 	err := h.inUserLock(ctx, req.User, func() error {
-		if req.Bucket != nil && *req.Bucket != "" {
-			return h.policySvc.SetBucketRouting(ctx, entity.BucketRoutingPolicyID{
-				User:   req.User,
-				Bucket: *req.Bucket,
-			}, req.ToStorage)
-		}
-		return h.policySvc.SetUserRouting(ctx, req.User, req.ToStorage)
+		return h.storageLocker.With(ctx, []string{req.ToStorage}, func(ctx context.Context) error {
+			// the storage may have been deleted while waiting for the lock
+			if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
+				return err
+			}
+			if req.Bucket != nil && *req.Bucket != "" {
+				return h.policySvc.SetBucketRouting(ctx, entity.BucketRoutingPolicyID{
+					User:   req.User,
+					Bucket: *req.Bucket,
+				}, req.ToStorage)
+			}
+			return h.policySvc.SetUserRouting(ctx, req.User, req.ToStorage)
+		})
 	})
 	if err != nil {
 		return nil, err
@@ -791,13 +821,18 @@ func (h *policyHandlers) UpdateRouting(ctx context.Context, req *pb.UpdateRoutin
 		return nil, err
 	}
 	err := h.inUserLock(ctx, req.User, func() error {
-		if req.Bucket != nil && *req.Bucket != "" {
-			return h.policySvc.UpdateBucketRouting(ctx, entity.BucketRoutingPolicyID{
-				User:   req.User,
-				Bucket: *req.Bucket,
-			}, req.ToStorage)
-		}
-		return h.policySvc.UpdateUserRouting(ctx, req.User, req.ToStorage)
+		return h.storageLocker.With(ctx, []string{req.ToStorage}, func(ctx context.Context) error {
+			if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
+				return err
+			}
+			if req.Bucket != nil && *req.Bucket != "" {
+				return h.policySvc.UpdateBucketRouting(ctx, entity.BucketRoutingPolicyID{
+					User:   req.User,
+					Bucket: *req.Bucket,
+				}, req.ToStorage)
+			}
+			return h.policySvc.UpdateUserRouting(ctx, req.User, req.ToStorage)
+		})
 	})
 	if err != nil {
 		return nil, err

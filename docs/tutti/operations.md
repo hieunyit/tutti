@@ -50,7 +50,7 @@ Log line to watch: `unable to handle replication` with fields `bucket`, `object`
 
 Source: `service/proxy/router/sync_replication.go`, `service/proxy/server.go`, `test/sync_replication_test.go`.
 
-With `replication.sync.enabled: true` the proxy, after a successful main write and successful event recording, copies the object to every replication destination of the request in parallel and only then answers.
+With `replication.sync.enabled: true` the proxy, after a successful main write and successful event recording, attempts replication destinations in parallel and answers once the configured write quorum is confirmed (or the quorum attempt fails).
 
 What is synced: only `ObjectSyncPayload` tasks, which are produced by `PutObject`, `CopyObject`, `CompleteMultipartUpload`, `DeleteObject` and `DeleteObjects`. In practice: object content and deletes. ACL, tagging and bucket-level tasks (including ACL/tag tasks that accompany a PutObject) stay asynchronous and are processed by the worker.
 
@@ -166,6 +166,12 @@ Until step 5 the event stays listed; it has no effect on routing.
 - **Deleting an S3 user** drops the dynamic credentials on all storages and deletes dynamic access keys and the access policy. Delete the user's replications, routings and failover events first. If a user's credentials come from the config, remove them there (and restart) before the remaining dynamic parts can be cleaned; the API never edits config. Deleted credentials disappear from proxies and workers on the next poll; until then requests with its access key may still be served.
 - **Console users**: keep at least one admin in `api.auth.users`: it can always sign in even if all managed admins are lost or Redis data is wiped. To recover a locked-out managed user, sign in as a config admin and use `PUT /tutti/console-users/password`, or delete the record: `redis-cli -n <configDB> hdel tutti:console-users <username>`. Disabling, deleting or resetting a user invalidates its sessions immediately. A generated password is shown once; share it over a secure channel (the user is flagged `mustChangePassword` until it is changed through `POST /auth/password`).
 
+## Sign-in lockouts and webhook protection
+
+- Brute-force protection never locks a **known** (username, IP) pair out because of other addresses' failures: addresses that signed in successfully as the user in the last 30 days skip the username-wide limit. A user who signs in from a new address while someone sprays the account sees delayed responses (up to 30 s) and, beyond 1000 failures in 15 minutes, `429`; wait for the window to expire or sign in from a known address. Counters live in the meta DB under `tutti:authfail:*`; known addresses under `tutti:authknown:*` (30 day TTL). To clear a blocked pair immediately: `redis-cli -n <metaDB> del $(redis-cli -n <metaDB> --scan --pattern 'tutti:authfail:*')` (resets all counters). Details: [configuration](configuration.md#login-protection-worker).
+- Set `api.webhook.token` whenever webhooks share the main API port; configure MinIO with `auth_token` ([configuration](configuration.md#webhook-token-worker)). `GET /auth/me` carries `warnings: ["webhook_unauthenticated"]` while webhooks are open.
+- Request bodies of DeleteObjects and bucket XML calls are limited to 4 MiB; larger ones get `400 EntityTooLarge`.
+
 ## Multi-instance considerations
 
 - Breakers, probes and the failover controller run in **each proxy instance** with its own view. Instances can briefly disagree about a storage's state (for example a network partition seen by one of them).
@@ -175,3 +181,17 @@ Until step 5 the event stays listed; it has no effect on routing.
 - Each instance publishes its status to `tutti:proxy-status:<app_id>` every `status.interval` (default 2 s) with a TTL of 3 intervals; a stopped instance disappears from `chorctl proxies` after at most 3 intervals.
 - Sync replication settings are per instance; keep them identical or clients will see different guarantees depending on which instance they hit.
 - Failover policies and events live in the config Redis DB, and locks in the lock DB, shared by all instances and the worker.
+
+## Concurrent administration and replication changes
+
+Console user mutations use Redis compare-and-swap with the last-enabled-admin check in the same atomic operation. Concurrent changes to different fields preserve the latest record. S3 user create, credential update and delete operations serialize by username across workers with a renewable Redis lock. Access-policy updates replace the complete policy for one username atomically; concurrent replacements use last-writer-wins semantics. Runtime storage update and delete take a Redis lock per storage name (`tutti:storage:lock:<name>`, lock DB) and re-check references inside it; creating a replication, routing or failover policy takes the same lock for the storages it references, so a reference cannot appear between the check and the delete (a conflicting call waits up to 10 s, then fails with a retry message). These safeguards are not a transaction spanning storage lifecycle, direct policy operations and user changes: coordinate dependent administrative operations.
+
+Replication definitions cannot be edited in place. Pause/resume controls runtime activity; changing source, destination, scope or event source requires a separately planned migration. Deleting archives the existing replication status and purges its queues, so do not treat delete and recreate as an atomic edit. Confirm queued work is drained and validate source/target consistency when replacing a replication.
+
+See [performance and Redis recovery](./performance-and-redis.md) for the measured baseline, backup/restore commands and production durability requirements.
+
+## See also
+
+- [Runbooks](./runbooks.md): step-by-step procedures for failover, failback, Redis incidents, key rotation and console lockout.
+- [Storage accounts](./storage-accounts.md): credentials and policies for each storage (connection account planned for Phase 2).
+- [Redis operations](./redis-operations.md): Redis keys by kind, persistence, Sentinel, backup and restore, monitoring.

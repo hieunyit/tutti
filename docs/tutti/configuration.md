@@ -61,6 +61,39 @@ api:
 
 Passwords of managed users must be 12-72 bytes and are stored as bcrypt (cost 12). Sessions live in the meta DB (`redis.metaDB`). With `api.auth.enabled: false` the console users API returns failed precondition (`sign-in is disabled`).
 
+### Login protection (worker)
+
+Failed sign-ins are counted per (username, client IP) and per username across all addresses (Redis, 15 minute window):
+
+- **Per (username, IP)**: 10 failures block that pair for the rest of the window (`429`), even with the right password. A successful login clears this counter. `remainingAttempts` in the `401` response is the remaining budget of the pair.
+- **Per username, all addresses**: after 100 failures, addresses that have **not** logged in successfully as that user in the last 30 days are delayed progressively (1 s, doubling every 10 further failures, capped at 30 s; the delay never blocks other users or other requests), and beyond 1000 failures in the window they are refused (`429`). Addresses that logged in successfully as that user in the last 30 days (remembered per (username, IP) in Redis) are **not** affected, so an attacker spraying passwords from many addresses cannot lock a known administrator out; the per-(username, IP) budget still applies to them. A successful login never resets the username-wide counter. `remainingAttempts` reports the username-wide ceiling for unknown addresses once it is the tighter bound.
+- Behind a reverse proxy set `api.auth.trustedProxies`; the client IP is then taken from `X-Forwarded-For` / `X-Real-IP` of trusted peers only (unchanged).
+
+Source: `pkg/auth/service.go` (`throttled`, `userDelay`).
+
+### Webhook token (worker)
+
+```yaml
+api:
+  webhook:
+    enabled: true
+    baseUrl: https://tutti-api.example.com
+    token: "long-random-secret"   # optional but strongly recommended
+```
+
+The webhook endpoints (`/chorus.Webhook/*`, HTTP `/webhook/{storage}/s3-notifications` and `/webhook/{storage}/swift`) cannot use console sign-in, so they are public unless `api.webhook.token` is set. When set, every webhook call on both the main API ports and the separate `api.webhook.grpcPort`/`httpPort` must carry the token as `Authorization: Bearer <token>` or `X-Tutti-Webhook-Token: <token>` (gRPC metadata for gRPC calls); it is compared in constant time and a missing or wrong token gets `401` / `Unauthenticated`. Rotate it by changing the config and restarting the workers, then updating the notification targets.
+
+When webhooks are enabled on the main API port (no `grpcPort`) and no token is set, the worker logs a warning at startup and `GET /auth/me` returns `"warnings": ["webhook_unauthenticated"]` so the UI can show a banner. Use the token, or run the webhooks on separate ports that only the storage systems can reach.
+
+Configuring the storage side:
+
+- **MinIO**: set the token as the webhook target `auth_token` (MinIO sends it as `Authorization: Bearer <token>`):
+  `mc admin config set myminio notify_webhook:tutti endpoint="https://tutti-api.example.com/webhook/<storage>/s3-notifications" auth_token="long-random-secret"` then `mc admin service restart myminio`.
+- **Ceph RGW** (topic with an HTTP endpoint): the endpoint URL cannot carry headers; use a reverse proxy in front of the webhook port that adds `Authorization: Bearer <token>` or `X-Tutti-Webhook-Token`, or restrict the webhook port by network.
+- The `token` is read-only config; do not put it in a URL.
+
+Source: `pkg/auth/webhook_token.go`, `pkg/api/config.go` (`WebhookConfig`).
+
 ## Replication event recording
 
 ```yaml

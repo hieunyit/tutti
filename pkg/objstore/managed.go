@@ -397,17 +397,30 @@ func (s *credsSvc) deleteAllUserCredentials(ctx context.Context, storage string)
 	if !s.config.DynamicCredentials.Enabled {
 		return nil
 	}
-	all, err := s.client.HKeys(ctx, redisHashKey).Result()
-	if err != nil {
-		return err
-	}
+	// HSCAN with a MATCH on the storage prefix instead of HKEYS: the hash holds the credentials of every storage and
+	// user, and HKEYS would load and transfer all of its fields in one blocking call. Fields are collected first and
+	// deleted afterwards so the scan is not disturbed.
 	var fields []string
-	for _, field := range all {
-		typ, key, err := credsFromRedisField(field)
-		if err == nil && typ == dom.S3 {
-			if st, _ := cacheKeyToCreds(key); st == storage {
-				fields = append(fields, field)
+	match := string(dom.S3) + ":" + globEscape(storage) + ":*"
+	var cursor uint64
+	for {
+		page, next, err := s.client.HScan(ctx, redisHashKey, cursor, match, 500).Result()
+		if err != nil {
+			return err
+		}
+		// page holds field, value, field, value...
+		for i := 0; i+1 < len(page); i += 2 {
+			field := page[i]
+			typ, key, err := credsFromRedisField(field)
+			if err == nil && typ == dom.S3 {
+				if st, _ := cacheKeyToCreds(key); st == storage {
+					fields = append(fields, field)
+				}
 			}
+		}
+		cursor = next
+		if cursor == 0 {
+			break
 		}
 	}
 	if len(fields) == 0 {
@@ -489,4 +502,9 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 	s.managedMu.Unlock()
 	s.notify(changes)
 	return nil
+}
+
+// globEscape escapes Redis glob metacharacters in s.
+func globEscape(s string) string {
+	return strings.NewReplacer(`\`, `\\`, "*", `\*`, "?", `\?`, "[", `\[`, "]", `\]`).Replace(s)
 }

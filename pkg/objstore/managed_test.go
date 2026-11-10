@@ -6,6 +6,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -148,4 +149,52 @@ func TestManagedStorageCapabilityRequiresEncryption(t *testing.T) {
 	require.False(t, svc.ManagedStoragesEnabled())
 	_, err = svc.CreateManaged(t.Context(), ManagedStorage{Name: "archive", Address: s3.StorageAddress{Address: "http://localhost:9001", Provider: s3.ProviderMinIO}})
 	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+}
+
+func TestDeleteManagedRemovesOnlyThatStoragesCredentials(t *testing.T) {
+	rc := testutil.SetupRedis(t)
+	a, err := NewCredsSvc(t.Context(), managedTestConf(), rc, WithManagedStorages(rc))
+	require.NoError(t, err)
+	for _, n := range []string{"archive", "archive2", "arch"} {
+		_, err = a.CreateManaged(t.Context(), ManagedStorage{Name: n, Address: s3.StorageAddress{Address: "http://localhost:9001", Provider: s3.ProviderMinIO}})
+		require.NoError(t, err)
+	}
+	cr := s3.CredentialsV4{AccessKeyID: "key", SecretAccessKey: "secret"}
+	const users = 600 // more than one HSCAN page
+	for i := 0; i < users; i++ {
+		u := "user" + strconv.Itoa(i)
+		require.NoError(t, a.SetS3Credentials(t.Context(), "archive", u, cr))
+		if i%3 == 0 {
+			require.NoError(t, a.SetS3Credentials(t.Context(), "archive2", u, cr))
+			require.NoError(t, a.SetS3Credentials(t.Context(), "arch", u, cr))
+		}
+	}
+	require.NoError(t, a.DeleteManaged(t.Context(), "archive"))
+	raw, err := rc.HKeys(t.Context(), redisHashKey).Result()
+	require.NoError(t, err)
+	var archive, archive2, glob int
+	for _, f := range raw {
+		switch {
+		case strings.HasPrefix(f, "S3:archive:"):
+			archive++
+		case strings.HasPrefix(f, "S3:archive2:"):
+			archive2++
+		case strings.HasPrefix(f, "S3:arch:"):
+			glob++
+		}
+	}
+	require.Zero(t, archive)
+	require.Equal(t, users/3, archive2)
+	require.Equal(t, users/3, glob, "storages sharing a name prefix are untouched")
+	// deleting a storage whose name prefixes another removes only its own fields
+	require.NoError(t, a.DeleteManaged(t.Context(), "arch"))
+	raw, _ = rc.HKeys(t.Context(), redisHashKey).Result()
+	archive2 = 0
+	for _, f := range raw {
+		require.False(t, strings.HasPrefix(f, "S3:arch:"))
+		if strings.HasPrefix(f, "S3:archive2:") {
+			archive2++
+		}
+	}
+	require.Equal(t, users/3, archive2)
 }

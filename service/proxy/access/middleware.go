@@ -19,8 +19,10 @@ package access
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/xml"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -68,6 +70,9 @@ func Middleware(lookup LookupFunc) func(next http.Handler) http.Handler {
 				return
 			}
 			if req.Method == s3.ListBuckets && !pol.AllBuckets() {
+				// The response is parsed and rewritten: ask the storage for plain XML. (A gzip body from a storage
+				// that compresses anyway is decoded in finish.)
+				r.Header.Del("Accept-Encoding")
 				fw := &filterWriter{ResponseWriter: w, pol: pol, status: http.StatusOK}
 				next.ServeHTTP(fw, r)
 				fw.finish(ctx)
@@ -129,6 +134,18 @@ type listBucketsResult struct {
 
 func (f *filterWriter) finish(ctx context.Context) {
 	body := f.buf.Bytes()
+	if f.status == http.StatusOK && strings.EqualFold(f.ResponseWriter.Header().Get("Content-Encoding"), "gzip") {
+		zr, err := gzip.NewReader(bytes.NewReader(body))
+		if err == nil {
+			body, err = io.ReadAll(io.LimitReader(zr, 64<<20))
+		}
+		if err != nil {
+			// cannot decode: never leak the unfiltered list
+			zerolog.Ctx(ctx).Error().Err(err).Msg("access policy: unable to decode gzip ListBuckets response")
+			f.status = http.StatusInternalServerError
+			body = nil
+		}
+	}
 	if f.status == http.StatusOK {
 		var res listBucketsResult
 		if err := xml.Unmarshal(body, &res); err != nil {

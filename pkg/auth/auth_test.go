@@ -331,29 +331,113 @@ func TestLockoutIsPerClientIP(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGlobalUserThrottle(t *testing.T) {
-	e := setup(t, true)
-	ctx := context.Background()
-	for i := 0; i < maxUserFailures; i++ {
-		ip := net.IPv4(10, 1, byte(i/250), byte(i%250)).String()
-		_, err := e.svc.Login(ctx, "admin", "bad", ip)
-		require.ErrorIs(t, err, ErrInvalidCredentials)
-	}
-	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
-	require.ErrorIs(t, err, ErrTooManyAttempts)
-	_, err = e.svc.Login(ctx, "view", "viewpw", "203.0.113.50")
-	require.NoError(t, err)
+func (e *env) fakeSleep() *[]time.Duration {
+	var delays []time.Duration
+	e.svc.sleep = func(_ context.Context, d time.Duration) error { delays = append(delays, d); return nil }
+	return &delays
 }
 
-func TestRemainingAttemptsUsesTighterUsernameWideBudget(t *testing.T) {
+func (e *env) spray(t *testing.T, username string, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		ip := net.IPv4(10, byte(1+i/60000), byte(i/250%240), byte(i%250)).String()
+		require.NoError(t, e.svc.recordFailure(context.Background(), username, ip))
+	}
+}
+
+func TestUserBudgetDelaysUnknownIPButNotKnownIP(t *testing.T) {
 	e := setup(t, true)
+	delays := e.fakeSleep()
+	ctx := context.Background()
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.7") // remember this pair
+	require.NoError(t, err)
+	e.spray(t, "admin", maxUserFailures)
+
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.7")
+	require.NoError(t, err, "known pair is not blocked or delayed")
+	require.Empty(t, *delays)
+
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.NoError(t, err, "unknown IP is delayed, not blocked")
+	require.Equal(t, []time.Duration{minDelay}, *delays)
+	// other users are unaffected
+	_, err = e.svc.Login(ctx, "view", "viewpw", "203.0.113.50")
+	require.NoError(t, err)
+	require.Len(t, *delays, 1)
+	// a successful login does not reset the username-wide counter
+	n, err := e.mr.Get(userFailKey("admin"))
+	require.NoError(t, err)
+	require.Equal(t, "100", n)
+}
+
+func TestUserBudgetDelayGrowsAndCaps(t *testing.T) {
+	require.Equal(t, time.Duration(0), userDelay(maxUserFailures-1))
+	require.Equal(t, time.Second, userDelay(maxUserFailures))
+	require.Equal(t, 2*time.Second, userDelay(maxUserFailures+delayStep))
+	require.Equal(t, 16*time.Second, userDelay(maxUserFailures+4*delayStep))
+	require.Equal(t, maxDelay, userDelay(maxUserFailures+5*delayStep))
+	require.Equal(t, maxDelay, userDelay(maxUserHardFailures-1))
+}
+
+func TestUserBudgetHardCeilingRefusesUnknownOnly(t *testing.T) {
+	e := setup(t, true)
+	delays := e.fakeSleep()
+	ctx := context.Background()
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.7")
+	require.NoError(t, err)
+	e.spray(t, "admin", maxUserHardFailures)
+
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.ErrorIs(t, err, ErrTooManyAttempts)
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.7")
+	require.NoError(t, err, "attacker spraying from many IPs cannot lock out the known admin address")
+	require.Empty(t, *delays)
+	_, err = e.svc.Login(ctx, "view", "viewpw", "203.0.113.50")
+	require.NoError(t, err)
+
+	// the per-(user, IP) budget still applies to a known pair
+	for i := 0; i < maxFailures; i++ {
+		_, err = e.svc.Login(ctx, "admin", "bad", "203.0.113.7")
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+	}
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.7")
+	require.ErrorIs(t, err, ErrTooManyAttempts)
+}
+
+func TestUserBudgetCountersExpire(t *testing.T) {
+	e := setup(t, true)
+	e.fakeSleep()
+	ctx := context.Background()
+	e.spray(t, "admin", maxUserHardFailures)
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.ErrorIs(t, err, ErrTooManyAttempts)
+	e.mr.FastForward(failWindow + time.Second)
+	_, err = e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.NoError(t, err)
+
+	// known marker expires after 30 days
+	require.True(t, e.mr.Exists(knownKey("admin", "203.0.113.50")))
+	e.mr.FastForward(knownTTL + time.Second)
+	require.False(t, e.mr.Exists(knownKey("admin", "203.0.113.50")))
+}
+
+func TestUserBudgetDelayHonoursContext(t *testing.T) {
+	e := setup(t, true)
+	e.spray(t, "admin", maxUserFailures)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err := e.svc.Login(ctx, "admin", "adminpw", "203.0.113.50")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(start), 900*time.Millisecond)
+}
+
+func TestRemainingAttemptsUsesHardCeilingForUnknownIPs(t *testing.T) {
+	e := setup(t, true)
+	e.fakeSleep()
 	ctx := context.Background()
 	for _, username := range []string{"admin", "ghost"} {
-		for i := 0; i < maxUserFailures-2; i++ {
-			ip := net.IPv4(10, 2, byte(i/250), byte(i%250)).String()
-			require.NoError(t, e.svc.recordFailure(ctx, username, ip))
-		}
-
+		e.spray(t, username, maxUserHardFailures-2)
 		_, err := e.svc.Login(ctx, username, "bad", "198.51.100.40")
 		var credentialErr *InvalidCredentialsError
 		require.ErrorAs(t, err, &credentialErr)

@@ -38,6 +38,9 @@ type WebhookConfig struct {
 	GrpcPort int    `yaml:"grpcPort"`
 	HttpPort int    `yaml:"httpPort"`
 	Enabled  bool   `yaml:"enabled"`
+	// Token, when set, must accompany every webhook call as "Authorization: Bearer <token>" or the
+	// X-Tutti-Webhook-Token header (gRPC metadata for gRPC calls). Empty keeps webhooks unauthenticated.
+	Token string `yaml:"token"`
 }
 
 func (c *WebhookConfig) Validate() error {

@@ -40,6 +40,12 @@ type StorageReferences func(context.Context, string) ([]string, error)
 func WithRuntimeStorages(creds RuntimeStorages, refs StorageReferences) ResilienceOption {
 	return func(h *resilienceHandlers) { h.runtimeStorages = creds; h.runtimeRefs = refs }
 }
+
+// WithStorageLocker makes runtime storage update/delete and failover policy writes take the per-storage lock shared
+// with PolicyHandlers (WithPolicyStorageLocker).
+func WithStorageLocker(l *StorageLocker) ResilienceOption {
+	return func(h *resilienceHandlers) { h.storageLocker = l }
+}
 func (h *resilienceHandlers) storageManager() (RuntimeStorages, error) {
 	if h.runtimeStorages == nil {
 		return nil, fmt.Errorf("%w: runtime storage management unavailable", dom.ErrFailedPrecondition)
@@ -192,7 +198,7 @@ func (h *resilienceHandlers) CreateRuntimeStorage(ctx context.Context, req *pb.C
 	}
 	return h.runtimeStoragePb(ctx, m.Name)
 }
-func (h *resilienceHandlers) UpdateRuntimeStorage(ctx context.Context, req *pb.UpdateRuntimeStorageRequest) (*pb.RuntimeStorage, error) {
+func (h *resilienceHandlers) UpdateRuntimeStorage(ctx context.Context, req *pb.UpdateRuntimeStorageRequest) (out *pb.RuntimeStorage, err error) {
 	c, err := h.storageManager()
 	if err != nil {
 		return nil, err
@@ -201,6 +207,18 @@ func (h *resilienceHandlers) UpdateRuntimeStorage(ctx context.Context, req *pb.U
 	if err != nil {
 		return nil, err
 	}
+	// The reference check and the update run under the storage lock: replications, routings and failover policies
+	// take the same lock when they are created, so no reference can appear in between.
+	err = h.storageLocker.With(ctx, []string{m.Name}, func(ctx context.Context) error {
+		var e error
+		out, e = h.updateRuntimeStorageLocked(ctx, c, m, req)
+		return e
+	})
+	return out, err
+}
+
+func (h *resilienceHandlers) updateRuntimeStorageLocked(ctx context.Context, c RuntimeStorages, m objstore.ManagedStorage, req *pb.UpdateRuntimeStorageRequest) (*pb.RuntimeStorage, error) {
+	var err error
 	if c.StorageSource(m.Name) != objstore.StorageSourceManaged {
 		return nil, fmt.Errorf("%w: only managed storages can be updated", dom.ErrFailedPrecondition)
 	}
@@ -281,14 +299,19 @@ func (h *resilienceHandlers) DeleteRuntimeStorage(ctx context.Context, req *pb.R
 	if h.runtimeRefs == nil {
 		return nil, fmt.Errorf("%w: reference protection unavailable", dom.ErrFailedPrecondition)
 	}
-	refs, err := h.runtimeRefs(ctx, req.Name)
+	// Check references and delete under the storage lock so a concurrent replication, routing or failover policy
+	// creation cannot add a reference between the check and the deletion.
+	err = h.storageLocker.With(ctx, []string{req.Name}, func(ctx context.Context) error {
+		refs, err := h.runtimeRefs(ctx, req.Name)
+		if err != nil {
+			return err
+		}
+		if len(refs) > 0 {
+			return fmt.Errorf("%w: storage is referenced: %s", dom.ErrFailedPrecondition, strings.Join(refs, "; "))
+		}
+		return c.DeleteManaged(ctx, req.Name)
+	})
 	if err != nil {
-		return nil, err
-	}
-	if len(refs) > 0 {
-		return nil, fmt.Errorf("%w: storage is referenced: %s", dom.ErrFailedPrecondition, strings.Join(refs, "; "))
-	}
-	if err = c.DeleteManaged(ctx, req.Name); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

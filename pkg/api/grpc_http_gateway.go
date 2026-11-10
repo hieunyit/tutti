@@ -30,12 +30,15 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/hieunyit/tutti/pkg/auth"
 )
 
 type RegisterHandlersFunc func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
 func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFunc) (start func(context.Context) error, stop func(context.Context) error, err error) {
 	mux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(auth.GatewayHeaderMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions:   protojson.MarshalOptions{EmitUnpopulated: true},
 			UnmarshalOptions: protojson.UnmarshalOptions{DiscardUnknown: true},
@@ -59,7 +62,7 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 	withCors := cors.New(cors.Options{
 		AllowOriginFunc:  func(origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token", auth.WebhookTokenHeader},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,

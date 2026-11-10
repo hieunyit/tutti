@@ -25,10 +25,25 @@ const (
 
 	maxFailures = 10
 	// maxUserFailures is the per-username threshold across all client
-	// addresses. It is deliberately much higher than maxFailures so that one
-	// client cannot lock a user out for everyone.
+	// addresses. Beyond it, (user, IP) pairs that never logged in successfully
+	// are slowed down with a progressive delay; pairs that did are unaffected.
 	maxUserFailures = 100
-	failWindow      = 15 * time.Minute
+	// maxUserHardFailures is the hard per-username ceiling: unknown client
+	// addresses are refused beyond it. Known (user, IP) pairs are never refused
+	// by the username-wide budget, so an attacker spraying from many addresses
+	// cannot lock the real user out.
+	maxUserHardFailures = 1000
+	failWindow          = 15 * time.Minute
+
+	knownPrefix = "tutti:authknown:"
+	// knownTTL is how long a successful (user, IP) login is remembered.
+	knownTTL = 30 * 24 * time.Hour
+
+	// Progressive delay applied to unknown IPs over the username-wide budget:
+	// minDelay doubled every delayStep failures, capped at maxDelay.
+	minDelay  = time.Second
+	maxDelay  = 30 * time.Second
+	delayStep = 10
 )
 
 var (
@@ -80,6 +95,36 @@ type Service struct {
 	managed *UserStore
 	// bcryptCost overrides BcryptCost (tests).
 	bcryptCost int
+	// sleep waits for d or until ctx is done (replaced in tests).
+	sleep func(ctx context.Context, d time.Duration) error
+	// warnings are static operator warnings reported by GET /auth/me.
+	warnings []string
+}
+
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// userDelay is the progressive delay for an unknown IP when the username-wide failure count is n.
+func userDelay(n int) time.Duration {
+	if n < maxUserFailures {
+		return 0
+	}
+	step := (n - maxUserFailures) / delayStep
+	if step >= 5 { // 1s<<5 = 32s > maxDelay
+		return maxDelay
+	}
+	if d := minDelay << step; d < maxDelay {
+		return d
+	}
+	return maxDelay
 }
 
 // Option customizes a Service.
@@ -91,6 +136,11 @@ func WithManagedUsers(rdb redis.Cmdable) Option {
 	return func(s *Service) { s.managed = NewUserStore(rdb) }
 }
 
+// WithWarnings sets static warnings reported by GET /auth/me (e.g. WarningWebhookUnauthenticated).
+func WithWarnings(w ...string) Option {
+	return func(s *Service) { s.warnings = w }
+}
+
 func NewService(conf Config, rdb redis.Cmdable, opts ...Option) (*Service, error) {
 	if err := conf.Validate(); err != nil {
 		return nil, err
@@ -99,7 +149,7 @@ func NewService(conf Config, rdb redis.Cmdable, opts ...Option) (*Service, error
 	if err != nil {
 		return nil, err
 	}
-	s := &Service{trusted: trusted, conf: conf, rdb: rdb, users: make(map[string]User, len(conf.Users)), now: time.Now}
+	s := &Service{trusted: trusted, conf: conf, rdb: rdb, users: make(map[string]User, len(conf.Users)), now: time.Now, sleep: sleepCtx}
 	for _, u := range conf.Users {
 		s.users[u.Username] = u
 	}
@@ -125,6 +175,11 @@ func hashToken(token string) string {
 func userFailKey(username string) string {
 	sum := sha256.Sum256([]byte(username))
 	return failPrefix + "user:" + hex.EncodeToString(sum[:])
+}
+
+func knownKey(username, ip string) string {
+	sum := sha256.Sum256([]byte(username + "\x00" + ip))
+	return knownPrefix + hex.EncodeToString(sum[:])
 }
 
 func failKey(username, ip string) string {
@@ -169,19 +224,40 @@ func (s *Service) lookup(ctx context.Context, username string) (account, bool, e
 	}, true, nil
 }
 
-// throttled reports ErrTooManyAttempts if the username/ip pair or the username reached its failure limit.
+// throttled enforces the login budgets:
+//   - the (user, IP) budget always applies and refuses with ErrTooManyAttempts;
+//   - the username-wide budget never blocks a (user, IP) pair that logged in successfully in the last 30 days;
+//   - other addresses are delayed progressively once the username-wide count reaches maxUserFailures and refused
+//     beyond maxUserHardFailures.
 func (s *Service) throttled(ctx context.Context, username, ip string) error {
-	for _, c := range []struct {
-		key string
-		max int
-	}{{failKey(username, ip), maxFailures}, {userFailKey(username), maxUserFailures}} {
-		n, err := s.rdb.Get(ctx, c.key).Int()
-		if err == nil && n >= c.max {
-			log.Warn().Str("username", username).Str("client_ip", ip).Msg("login rejected: too many failed attempts")
-			return ErrTooManyAttempts
-		} else if err != nil && !errors.Is(err, redis.Nil) {
-			return fmt.Errorf("auth: rate limit lookup: %w", err)
-		}
+	n, err := s.rdb.Get(ctx, failKey(username, ip)).Int()
+	if err == nil && n >= maxFailures {
+		log.Warn().Str("username", username).Str("client_ip", ip).Msg("login rejected: too many failed attempts")
+		return ErrTooManyAttempts
+	} else if err != nil && !errors.Is(err, redis.Nil) {
+		return fmt.Errorf("auth: rate limit lookup: %w", err)
+	}
+	un, err := s.rdb.Get(ctx, userFailKey(username)).Int()
+	if errors.Is(err, redis.Nil) || (err == nil && un < maxUserFailures) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("auth: rate limit lookup: %w", err)
+	}
+	known, err := s.rdb.Exists(ctx, knownKey(username, ip)).Result()
+	if err != nil {
+		return fmt.Errorf("auth: rate limit lookup: %w", err)
+	}
+	if known > 0 {
+		return nil
+	}
+	if un >= maxUserHardFailures {
+		log.Warn().Str("username", username).Str("client_ip", ip).Msg("login rejected: username-wide failure ceiling reached")
+		return ErrTooManyAttempts
+	}
+	d := userDelay(un)
+	log.Warn().Str("username", username).Str("client_ip", ip).Dur("delay", d).Msg("login delayed: username-wide failure budget exceeded")
+	if err := s.sleep(ctx, d); err != nil {
+		return err
 	}
 	return nil
 }
@@ -227,8 +303,12 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 		}
 		log.Warn().Str("username", username).Str("client_ip", ip).Bool("known_user", found).Bool("disabled", u.Disabled).Msg("failed login")
 		remaining := maxFailures - pairFailures
-		if userRemaining := maxUserFailures - userFailures; userRemaining < remaining {
-			remaining = userRemaining
+		// The username-wide budget only slows unknown addresses down; it is reported once it is the tighter bound
+		// (hard ceiling) for pairs that never logged in successfully.
+		if userRemaining := maxUserHardFailures - userFailures; userRemaining < remaining {
+			if known, kerr := s.rdb.Exists(ctx, knownKey(username, ip)).Result(); kerr == nil && known == 0 {
+				remaining = userRemaining
+			}
 		}
 		if remaining < 0 {
 			remaining = 0
@@ -250,7 +330,11 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 	if err := s.rdb.Set(ctx, sessionPrefix+hashToken(token), data, ttl).Err(); err != nil {
 		return nil, fmt.Errorf("auth: store session: %w", err)
 	}
+	// Clears only this (user, IP) counter: the username-wide counter must keep counting other addresses' failures.
 	_ = s.rdb.Del(ctx, failKey(username, ip)).Err()
+	if err := s.rdb.Set(ctx, knownKey(username, ip), 1, knownTTL).Err(); err != nil {
+		log.Warn().Err(err).Str("username", username).Msg("unable to remember known login address")
+	}
 	if u.Source == SourceManaged {
 		if err := s.managed.TouchLogin(ctx, u.Username, now); err != nil {
 			log.Warn().Err(err).Str("username", u.Username).Msg("unable to record last login")

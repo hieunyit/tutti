@@ -209,15 +209,30 @@ func closeResponse(resp *http.Response) {
 	}
 }
 
+// MaxXMLBodySize bounds XML request bodies buffered by ExtractReqBody. S3 allows 1000 keys per DeleteObjects
+// (about 2 MiB); 4 MiB leaves headroom.
+const MaxXMLBodySize = 4 << 20
+
+// ExtractReqBody buffers and unmarshals an XML request body, restoring r.Body for forwarding. Bodies over
+// MaxXMLBodySize fail with an S3 EntityTooLarge (HTTP 400) error that util.WriteError renders as is.
 func ExtractReqBody(r *http.Request, body any) error {
-	var b bytes.Buffer
-	_, err := b.ReadFrom(r.Body)
+	if r.Body == nil {
+		return xml.Unmarshal(nil, body)
+	}
+	data, err := io.ReadAll(io.LimitReader(r.Body, MaxXMLBodySize+1))
 	if err != nil {
 		return err
 	}
-	r.Body = io.NopCloser(&b)
+	if len(data) > MaxXMLBodySize {
+		return mclient.ErrorResponse{
+			Code:       "EntityTooLarge",
+			Message:    fmt.Sprintf("Your request body exceeds the maximum allowed size of %d bytes.", MaxXMLBodySize),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	r.Body = io.NopCloser(bytes.NewReader(data))
 
-	return xml.Unmarshal(b.Bytes(), body)
+	return xml.Unmarshal(data, body)
 }
 
 func ExtractRespBody(r *http.Response, body any) error {

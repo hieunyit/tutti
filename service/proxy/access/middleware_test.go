@@ -17,6 +17,7 @@
 package access
 
 import (
+	"compress/gzip"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -105,4 +106,63 @@ func TestListBucketsFiltered(t *testing.T) {
 	// all buckets: untouched
 	rec = run(t, pols, "ro", s3.ListBuckets, "", nil)
 	require.Contains(t, rec.Body.String(), "secret")
+}
+
+// A storage that gzips ListBuckets when asked must not break filtering: Accept-Encoding is dropped before forwarding.
+func TestListBucketsFilteredWithGzipUpstream(t *testing.T) {
+	pols := map[string]accesspolicy.Policy{"scoped": {User: "scoped", Permission: accesspolicy.ReadOnly, Buckets: []string{"photos-*", "logs"}}}
+	lookup := func(_ context.Context, u string) (accesspolicy.Policy, bool) { p, ok := pols[u]; return p, ok }
+	var seenAcceptEncoding string
+	h := Middleware(lookup)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenAcceptEncoding = r.Header.Get("Accept-Encoding")
+		w.Header().Set("Content-Type", "application/xml")
+		if strings.Contains(seenAcceptEncoding, "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			zw := gzip.NewWriter(w)
+			_, _ = zw.Write([]byte(listXML))
+			_ = zw.Close()
+			return
+		}
+		_, _ = w.Write([]byte(listXML))
+	}))
+	{
+		t.Run("header dropped", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("Accept-Encoding", "gzip")
+			ctx := log.WithUser(req.Context(), "scoped")
+			ctx = log.WithMethod(ctx, s3.ListBuckets)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req.WithContext(ctx))
+			require.Equal(t, 200, rec.Code)
+			require.Empty(t, seenAcceptEncoding, "Accept-Encoding must not be forwarded when a filter applies")
+			require.Empty(t, rec.Header().Get("Content-Encoding"))
+			require.Contains(t, rec.Body.String(), "photos-1")
+			require.NotContains(t, rec.Body.String(), "secret")
+		})
+	}
+
+	// defense in depth: a storage that gzips regardless is decoded, never leaked or garbled
+	h = Middleware(lookup)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		zw := gzip.NewWriter(w)
+		_, _ = zw.Write([]byte(listXML))
+		_ = zw.Close()
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := log.WithMethod(log.WithUser(req.Context(), "scoped"), s3.ListBuckets)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req.WithContext(ctx))
+	require.Equal(t, 200, rec.Code)
+	require.Contains(t, rec.Body.String(), "photos-1")
+	require.NotContains(t, rec.Body.String(), "secret")
+
+	// undecodable gzip: fail closed
+	h = Middleware(lookup)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		_, _ = w.Write([]byte("not gzip"))
+	}))
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req.WithContext(ctx))
+	require.Equal(t, 500, rec.Code)
+	require.NotContains(t, rec.Body.String(), "secret")
 }

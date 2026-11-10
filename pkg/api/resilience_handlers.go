@@ -72,6 +72,7 @@ var _ pb.ResilienceServer = &resilienceHandlers{}
 type resilienceHandlers struct {
 	runtimeStorages RuntimeStorages
 	runtimeRefs     StorageReferences
+	storageLocker   *StorageLocker
 	redis           redis.Cmdable
 	store           *failover.Store
 	policies        *accesspolicy.Store
@@ -229,7 +230,10 @@ func (h *resilienceHandlers) SetFailoverPolicy(ctx context.Context, req *pb.Fail
 		v := int(*req.MaxEventLag)
 		p.MaxEventLag = &v
 	}
-	if err := h.store.SetFailoverPolicy(ctx, p); err != nil {
+	// the policy references its source and targets: serialize with runtime storage update/delete
+	if err := h.storageLocker.With(ctx, append([]string{p.Source}, p.Targets...), func(ctx context.Context) error {
+		return h.store.SetFailoverPolicy(ctx, p)
+	}); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

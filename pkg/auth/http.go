@@ -25,6 +25,8 @@ type meResponse struct {
 	// Source is "config" (read-only) or "managed".
 	Source             string `json:"source,omitempty"`
 	MustChangePassword bool   `json:"mustChangePassword"`
+	// Warnings lists operator warnings (stable codes, e.g. "webhook_unauthenticated") the UI may display.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type changePasswordRequest struct {
@@ -202,7 +204,7 @@ func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request, _ map[str
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 	if !s.Enabled() {
-		writeJSON(w, http.StatusOK, meResponse{Role: RoleAdmin, AuthEnabled: false})
+		writeJSON(w, http.StatusOK, meResponse{Role: RoleAdmin, AuthEnabled: false, Warnings: s.warnings})
 		return
 	}
 	sess, err := s.Authenticate(r.Context(), bearerFromRequest(r))
@@ -214,5 +216,5 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request, _ map[string]
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true, Source: sess.Source, MustChangePassword: sess.MustChangePassword})
+	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true, Source: sess.Source, MustChangePassword: sess.MustChangePassword, Warnings: s.warnings})
 }
