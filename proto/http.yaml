@@ -145,6 +145,9 @@ http:
     - selector: chorus.Resilience.UpdateS3UserCredentials
       put: /tutti/users/credentials
       body: "*"
+    - selector: chorus.Resilience.DeleteS3UserCredentials
+      put: /tutti/users/credentials/delete
+      body: "*"
     - selector: chorus.Resilience.DeleteS3User
       put: /tutti/users/delete
       body: "*"

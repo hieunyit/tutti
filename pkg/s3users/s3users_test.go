@@ -473,3 +473,57 @@ func TestTest(t *testing.T) {
 	_, err = m.Test(ctx, "user1", "nope", nil)
 	require.ErrorIs(t, err, dom.ErrInvalidArg)
 }
+
+func TestDeleteCredentials_Rules(t *testing.T) {
+	ctx := context.Background()
+	f := newFake(true)
+	m := newManager(t, f)
+	_, err := m.Create(ctx, CreateRequest{Name: "user3", Credentials: both})
+	require.NoError(t, err)
+
+	// config credentials are never removed
+	err = m.DeleteCredentials(ctx, "user1", "main")
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.Contains(t, err.Error(), "defined in config")
+	// unknown override
+	require.ErrorIs(t, m.DeleteCredentials(ctx, "ghost", "main"), dom.ErrNotFound)
+	require.ErrorIs(t, m.DeleteCredentials(ctx, "user3", "nope"), dom.ErrInvalidArg)
+
+	// referenced and no connection account: refused with the reasons
+	m.Refs = func(context.Context, string) ([]string, error) { return []string{"1 replication(s) exist"}, nil }
+	err = m.DeleteCredentials(ctx, "user3", "main")
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.Contains(t, err.Error(), "replication")
+	require.Contains(t, f.dyn["main"], "user3", "nothing removed on refusal")
+
+	// a connection account makes the removal safe even when referenced
+	withConnection(f, "main")
+	require.NoError(t, m.DeleteCredentials(ctx, "user3", "main"))
+	require.NotContains(t, f.dyn["main"], "user3")
+	require.Contains(t, f.dyn["backup"], "user3", "other storages untouched")
+
+	// not referenced: removed without a connection account
+	m.Refs = func(context.Context, string) ([]string, error) { return nil, nil }
+	require.NoError(t, m.DeleteCredentials(ctx, "user3", "backup"))
+	require.Equal(t, []string{"main:user3", "backup:user3"}, f.deleted)
+}
+
+func TestDeleteCredentials_UsesUserLock(t *testing.T) {
+	ctx := context.Background()
+	f := newFake(true)
+	m := newManager(t, f)
+	_, err := m.Create(ctx, CreateRequest{Name: "user3", Credentials: both})
+	require.NoError(t, err)
+	held := make(chan struct{})
+	release := make(chan struct{})
+	go func() {
+		_ = m.withUserLock(ctx, "user3", func(context.Context) error { close(held); <-release; return nil })
+	}()
+	<-held
+	short, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	err = m.DeleteCredentials(short, "user3", "main")
+	require.Error(t, err, "blocked while another mutation holds the user lock")
+	require.Contains(t, f.dyn["main"], "user3")
+	close(release)
+}

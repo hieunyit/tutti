@@ -20,9 +20,7 @@ export default {
     removeOverride: 'Remove override',
     overrideRemoved: 'Override removed.',
     removeOverrideConfirm:
-      'Remove the override of {name} on {storage}? Requests will use the connection account.',
-    removeUnavailable:
-      'Removing an override is not supported by this backend version.',
+      'Remove the override of user {name} on storage {storage}? Requests will use the connection account.',
     users: 'Users',
     usersHint:
       'S3 identities with permissions and access keys. Storages are reached through their connection account unless a user has an override.',
@@ -195,8 +193,6 @@ export default {
     overrideRemoved: 'Überschreibung entfernt.',
     removeOverrideConfirm:
       'Überschreibung von {name} auf {storage} entfernen? Anfragen nutzen dann das Verbindungskonto.',
-    removeUnavailable:
-      'Das Entfernen einer Überschreibung wird von dieser Backend-Version nicht unterstützt.',
     users: 'Benutzer',
     usersHint:
       'S3-Identitäten mit Berechtigungen und Zugriffsschlüsseln. Speicher werden über ihr Verbindungskonto erreicht, sofern ein Benutzer keine Überschreibung hat.',

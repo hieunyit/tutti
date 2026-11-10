@@ -16,6 +16,9 @@
       "description": "Manages chorus routing/replication policies"
     },
     {
+      "name": "ProtectionGroups"
+    },
+    {
       "name": "Resilience",
       "description": "Resilience exposes the high-availability state of the proxies (circuit breaker status and effective\nsettings) and manages automatic failover policies and the history of performed failovers."
     },
@@ -1340,6 +1343,336 @@
         ]
       }
     },
+    "/tutti/protection-groups": {
+      "get": {
+        "operationId": "ProtectionGroups_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroupList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "ProtectionGroups"
+        ]
+      },
+      "post": {
+        "operationId": "ProtectionGroups_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroup"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusCreateProtectionGroupRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      },
+      "put": {
+        "operationId": "ProtectionGroups_Update",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroup"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroup"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/abort-switch": {
+      "post": {
+        "operationId": "ProtectionGroups_AbortSwitch",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroupID"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/automatic-freeze": {
+      "put": {
+        "operationId": "ProtectionGroups_SetAutomaticFreeze",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionAutomaticFreeze"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/automatic-freeze/status": {
+      "get": {
+        "operationId": "ProtectionGroups_GetAutomaticFreeze",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionAutomaticFreeze"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/clear-writer": {
+      "post": {
+        "operationId": "ProtectionGroups_ClearWriter",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionWriterClearRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/delete": {
+      "post": {
+        "summary": "Detach management; routing, replication and stored objects are preserved.",
+        "operationId": "ProtectionGroups_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroupID"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/switchover": {
+      "post": {
+        "operationId": "ProtectionGroups_Switchover",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroupSwitchRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/{id}": {
+      "get": {
+        "operationId": "ProtectionGroups_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionGroupStatus"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/protection-groups/{id}/writers": {
+      "get": {
+        "operationId": "ProtectionGroups_ListWriters",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProtectionWriters"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
     "/tutti/proxies": {
       "get": {
         "summary": "GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.\nProxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.",
@@ -1882,6 +2215,40 @@
         ]
       }
     },
+    "/tutti/users/credentials/delete": {
+      "put": {
+        "summary": "DeleteS3UserCredentials removes the dynamic per-user credentials (override) of a user on one storage; the user\nthen falls back to the storage connection account. Admin only. FailedPrecondition if the credentials come from\nconfig, or if the user would be left without credentials on a storage without connection account while\nreplications, routings or failover events reference the user.",
+        "operationId": "Resilience_DeleteS3UserCredentials",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusDeleteS3UserCredentialsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/users/delete": {
       "put": {
         "summary": "DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.\nRefused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,\nroutings or failover events reference the user. Active access keys also block deletion unless force is set.",
@@ -2348,6 +2715,17 @@
         }
       }
     },
+    "chorusCreateProtectionGroupRequest": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/chorusProtectionGroup"
+        },
+        "adoptExisting": {
+          "type": "boolean"
+        }
+      }
+    },
     "chorusCreateProxyAccountRequest": {
       "type": "object",
       "properties": {
@@ -2447,6 +2825,17 @@
           "type": "string"
         },
         "secretKey": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusDeleteS3UserCredentialsRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "storage": {
           "type": "string"
         }
       }
@@ -2971,6 +3360,232 @@
         },
         "bucket": {
           "type": "string"
+        }
+      }
+    },
+    "chorusProtectionAutomaticFreeze": {
+      "type": "object",
+      "properties": {
+        "frozen": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusProtectionGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "copies": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "maxEventLag": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        },
+        "electorate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxSwitchesPerHour": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "primary": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64"
+        },
+        "revision": {
+          "type": "string",
+          "format": "int64"
+        },
+        "state": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "frozen": {
+          "type": "boolean"
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProtectionGroupEvent"
+          }
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "quarantined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "chorusProtectionGroupEvent": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "string",
+          "format": "int64"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "automatic": {
+          "type": "boolean"
+        },
+        "eventLag": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "chorusProtectionGroupID": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusProtectionGroupList": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProtectionGroup"
+          }
+        }
+      }
+    },
+    "chorusProtectionGroupMemberStatus": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "initialized": {
+          "type": "boolean"
+        },
+        "eventLag": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "current": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusProtectionGroupStatus": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/chorusProtectionGroup"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProtectionGroupMemberStatus"
+          }
+        },
+        "healthyCopies": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "activeWriters": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "chorusProtectionGroupSwitchRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusProtectionWriterClearRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "externallyFenced": {
+          "type": "boolean"
+        },
+        "worker": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusProtectionWriters": {
+      "type": "object",
+      "properties": {
+        "writers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "workers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

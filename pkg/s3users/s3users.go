@@ -566,6 +566,47 @@ func (m *Manager) updateCredentialsLocked(ctx context.Context, user string, c Cr
 	return m.Creds.SetS3Credentials(ctx, c.Storage, user, s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey})
 }
 
+// DeleteCredentials removes the dynamic per-user override of one storage. Config credentials cannot be removed.
+// The removal is refused when the user would be left without credentials on the storage (no override, no
+// connection account) while replications, routings or failover events still reference the user.
+func (m *Manager) DeleteCredentials(ctx context.Context, user, storage string) error {
+	if err := ValidName(user); err != nil {
+		return err
+	}
+	return m.withUserLock(ctx, user, func(ctx context.Context) error {
+		return m.deleteCredentialsLocked(ctx, user, storage)
+	})
+}
+
+func (m *Manager) deleteCredentialsLocked(ctx context.Context, user, storage string) error {
+	if err := m.requireDynamic(); err != nil {
+		return err
+	}
+	if err := m.checkS3Storage(storage); err != nil {
+		return err
+	}
+	switch m.Creds.CredentialSource(storage, user) {
+	case "":
+		return fmt.Errorf("%w: user %q has no credentials on storage %q", dom.ErrNotFound, user, storage)
+	case objstore.CredSourceConfig:
+		return fmt.Errorf("%w: credentials of user %q on storage %q are defined in config and cannot be removed", dom.ErrFailedPrecondition, user, storage)
+	}
+	if !m.hasConnectionAccount(storage) && m.Refs != nil {
+		refs, err := m.Refs(ctx, user)
+		if err != nil {
+			return err
+		}
+		if len(refs) > 0 {
+			return fmt.Errorf("%w: user %q would be left without credentials on storage %q (no connection account) while still in use: %s",
+				dom.ErrFailedPrecondition, user, storage, strings.Join(refs, "; "))
+		}
+	}
+	if err := m.Creds.DeleteUserCredentials(ctx, storage, user); err != nil && !errors.Is(err, dom.ErrNotFound) {
+		return err
+	}
+	return nil
+}
+
 // DeleteResult is the output of Delete.
 type DeleteResult struct {
 	DeletedStorages   []string

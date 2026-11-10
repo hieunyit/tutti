@@ -46,6 +46,7 @@ const (
 	Resilience_ListS3Users_FullMethodName                    = "/chorus.Resilience/ListS3Users"
 	Resilience_CreateS3User_FullMethodName                   = "/chorus.Resilience/CreateS3User"
 	Resilience_UpdateS3UserCredentials_FullMethodName        = "/chorus.Resilience/UpdateS3UserCredentials"
+	Resilience_DeleteS3UserCredentials_FullMethodName        = "/chorus.Resilience/DeleteS3UserCredentials"
 	Resilience_DeleteS3User_FullMethodName                   = "/chorus.Resilience/DeleteS3User"
 	Resilience_TestS3UserCredentials_FullMethodName          = "/chorus.Resilience/TestS3UserCredentials"
 	Resilience_ListConsoleUsers_FullMethodName               = "/chorus.Resilience/ListConsoleUsers"
@@ -126,6 +127,11 @@ type ResilienceClient interface {
 	// UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.
 	// Credentials defined in the worker config cannot be changed (FailedPrecondition).
 	UpdateS3UserCredentials(ctx context.Context, in *UpdateS3UserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DeleteS3UserCredentials removes the dynamic per-user credentials (override) of a user on one storage; the user
+	// then falls back to the storage connection account. Admin only. FailedPrecondition if the credentials come from
+	// config, or if the user would be left without credentials on a storage without connection account while
+	// replications, routings or failover events reference the user.
+	DeleteS3UserCredentials(ctx context.Context, in *DeleteS3UserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
 	// Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
 	// routings or failover events reference the user. Active access keys also block deletion unless force is set.
@@ -415,6 +421,16 @@ func (c *resilienceClient) UpdateS3UserCredentials(ctx context.Context, in *Upda
 	return out, nil
 }
 
+func (c *resilienceClient) DeleteS3UserCredentials(ctx context.Context, in *DeleteS3UserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Resilience_DeleteS3UserCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resilienceClient) DeleteS3User(ctx context.Context, in *DeleteS3UserRequest, opts ...grpc.CallOption) (*DeleteS3UserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteS3UserResponse)
@@ -556,6 +572,11 @@ type ResilienceServer interface {
 	// UpdateS3UserCredentials sets or replaces the dynamic credentials of an existing user on one storage.
 	// Credentials defined in the worker config cannot be changed (FailedPrecondition).
 	UpdateS3UserCredentials(context.Context, *UpdateS3UserCredentialsRequest) (*emptypb.Empty, error)
+	// DeleteS3UserCredentials removes the dynamic per-user credentials (override) of a user on one storage; the user
+	// then falls back to the storage connection account. Admin only. FailedPrecondition if the credentials come from
+	// config, or if the user would be left without credentials on a storage without connection account while
+	// replications, routings or failover events reference the user.
+	DeleteS3UserCredentials(context.Context, *DeleteS3UserCredentialsRequest) (*emptypb.Empty, error)
 	// DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
 	// Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
 	// routings or failover events reference the user. Active access keys also block deletion unless force is set.
@@ -661,6 +682,9 @@ func (UnimplementedResilienceServer) CreateS3User(context.Context, *CreateS3User
 }
 func (UnimplementedResilienceServer) UpdateS3UserCredentials(context.Context, *UpdateS3UserCredentialsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateS3UserCredentials not implemented")
+}
+func (UnimplementedResilienceServer) DeleteS3UserCredentials(context.Context, *DeleteS3UserCredentialsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteS3UserCredentials not implemented")
 }
 func (UnimplementedResilienceServer) DeleteS3User(context.Context, *DeleteS3UserRequest) (*DeleteS3UserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteS3User not implemented")
@@ -1171,6 +1195,24 @@ func _Resilience_UpdateS3UserCredentials_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_DeleteS3UserCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteS3UserCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).DeleteS3UserCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_DeleteS3UserCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).DeleteS3UserCredentials(ctx, req.(*DeleteS3UserCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Resilience_DeleteS3User_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteS3UserRequest)
 	if err := dec(in); err != nil {
@@ -1407,6 +1449,10 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateS3UserCredentials",
 			Handler:    _Resilience_UpdateS3UserCredentials_Handler,
+		},
+		{
+			MethodName: "DeleteS3UserCredentials",
+			Handler:    _Resilience_DeleteS3UserCredentials_Handler,
 		},
 		{
 			MethodName: "DeleteS3User",

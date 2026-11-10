@@ -122,7 +122,7 @@
     <NFormItem
       class="storage-form__wide"
       :label="t('endpoint')"
-      :feedback="changed('address') || t('tlsHint')"
+      :feedback="changed('address')"
       ><NInput
         :value="modelValue.address"
         :disabled="readonly"

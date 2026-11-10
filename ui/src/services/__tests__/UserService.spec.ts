@@ -63,3 +63,11 @@ it('omits the credential envelope when testing saved credentials', async () => {
     { user: 'alice', storage: 'main' },
   );
 });
+
+it('removes a per-user override with name and storage', async () => {
+  await TuttiService.removeUserCredential('alice', 'main');
+  expect(apiClient.put).toHaveBeenCalledWith(
+    expect.stringContaining('/tutti/users/credentials/delete'),
+    { name: 'alice', storage: 'main' },
+  );
+});

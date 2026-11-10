@@ -220,7 +220,7 @@ export abstract class TuttiService {
   ): Promise<void> {
     await apiClient.put(
       ApiHelper.getChorusAPIUrl('/tutti/users/credentials/delete'),
-      { user: name, storage },
+      { name, storage },
     );
   }
 

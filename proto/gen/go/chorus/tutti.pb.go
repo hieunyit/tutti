@@ -3057,6 +3057,58 @@ func (x *UpdateS3UserCredentialsRequest) GetVerify() bool {
 	return false
 }
 
+type DeleteS3UserCredentialsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Storage       string                 `protobuf:"bytes,2,opt,name=storage,proto3" json:"storage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteS3UserCredentialsRequest) Reset() {
+	*x = DeleteS3UserCredentialsRequest{}
+	mi := &file_chorus_tutti_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteS3UserCredentialsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteS3UserCredentialsRequest) ProtoMessage() {}
+
+func (x *DeleteS3UserCredentialsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteS3UserCredentialsRequest.ProtoReflect.Descriptor instead.
+func (*DeleteS3UserCredentialsRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *DeleteS3UserCredentialsRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DeleteS3UserCredentialsRequest) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
 type DeleteS3UserRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -3068,7 +3120,7 @@ type DeleteS3UserRequest struct {
 
 func (x *DeleteS3UserRequest) Reset() {
 	*x = DeleteS3UserRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[43]
+	mi := &file_chorus_tutti_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3080,7 +3132,7 @@ func (x *DeleteS3UserRequest) String() string {
 func (*DeleteS3UserRequest) ProtoMessage() {}
 
 func (x *DeleteS3UserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[43]
+	mi := &file_chorus_tutti_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3093,7 +3145,7 @@ func (x *DeleteS3UserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteS3UserRequest.ProtoReflect.Descriptor instead.
 func (*DeleteS3UserRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{43}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *DeleteS3UserRequest) GetName() string {
@@ -3121,7 +3173,7 @@ type DeleteS3UserResponse struct {
 
 func (x *DeleteS3UserResponse) Reset() {
 	*x = DeleteS3UserResponse{}
-	mi := &file_chorus_tutti_proto_msgTypes[44]
+	mi := &file_chorus_tutti_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3133,7 +3185,7 @@ func (x *DeleteS3UserResponse) String() string {
 func (*DeleteS3UserResponse) ProtoMessage() {}
 
 func (x *DeleteS3UserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[44]
+	mi := &file_chorus_tutti_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3146,7 +3198,7 @@ func (x *DeleteS3UserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteS3UserResponse.ProtoReflect.Descriptor instead.
 func (*DeleteS3UserResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{44}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteS3UserResponse) GetDeletedStorages() []string {
@@ -3182,7 +3234,7 @@ type TestS3UserCredentialsRequest struct {
 
 func (x *TestS3UserCredentialsRequest) Reset() {
 	*x = TestS3UserCredentialsRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[45]
+	mi := &file_chorus_tutti_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3194,7 +3246,7 @@ func (x *TestS3UserCredentialsRequest) String() string {
 func (*TestS3UserCredentialsRequest) ProtoMessage() {}
 
 func (x *TestS3UserCredentialsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[45]
+	mi := &file_chorus_tutti_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3207,7 +3259,7 @@ func (x *TestS3UserCredentialsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestS3UserCredentialsRequest.ProtoReflect.Descriptor instead.
 func (*TestS3UserCredentialsRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{45}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *TestS3UserCredentialsRequest) GetUser() string {
@@ -3242,7 +3294,7 @@ type TestS3UserCredentialsResponse struct {
 
 func (x *TestS3UserCredentialsResponse) Reset() {
 	*x = TestS3UserCredentialsResponse{}
-	mi := &file_chorus_tutti_proto_msgTypes[46]
+	mi := &file_chorus_tutti_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3254,7 +3306,7 @@ func (x *TestS3UserCredentialsResponse) String() string {
 func (*TestS3UserCredentialsResponse) ProtoMessage() {}
 
 func (x *TestS3UserCredentialsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[46]
+	mi := &file_chorus_tutti_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3267,7 +3319,7 @@ func (x *TestS3UserCredentialsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestS3UserCredentialsResponse.ProtoReflect.Descriptor instead.
 func (*TestS3UserCredentialsResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{46}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *TestS3UserCredentialsResponse) GetOk() bool {
@@ -3310,7 +3362,7 @@ type ConsoleUser struct {
 
 func (x *ConsoleUser) Reset() {
 	*x = ConsoleUser{}
-	mi := &file_chorus_tutti_proto_msgTypes[47]
+	mi := &file_chorus_tutti_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3322,7 +3374,7 @@ func (x *ConsoleUser) String() string {
 func (*ConsoleUser) ProtoMessage() {}
 
 func (x *ConsoleUser) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[47]
+	mi := &file_chorus_tutti_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3335,7 +3387,7 @@ func (x *ConsoleUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConsoleUser.ProtoReflect.Descriptor instead.
 func (*ConsoleUser) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{47}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ConsoleUser) GetUsername() string {
@@ -3410,7 +3462,7 @@ type ConsoleUserList struct {
 
 func (x *ConsoleUserList) Reset() {
 	*x = ConsoleUserList{}
-	mi := &file_chorus_tutti_proto_msgTypes[48]
+	mi := &file_chorus_tutti_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3422,7 +3474,7 @@ func (x *ConsoleUserList) String() string {
 func (*ConsoleUserList) ProtoMessage() {}
 
 func (x *ConsoleUserList) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[48]
+	mi := &file_chorus_tutti_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3435,7 +3487,7 @@ func (x *ConsoleUserList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConsoleUserList.ProtoReflect.Descriptor instead.
 func (*ConsoleUserList) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{48}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ConsoleUserList) GetUsers() []*ConsoleUser {
@@ -3454,7 +3506,7 @@ type ConsoleUserName struct {
 
 func (x *ConsoleUserName) Reset() {
 	*x = ConsoleUserName{}
-	mi := &file_chorus_tutti_proto_msgTypes[49]
+	mi := &file_chorus_tutti_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3466,7 +3518,7 @@ func (x *ConsoleUserName) String() string {
 func (*ConsoleUserName) ProtoMessage() {}
 
 func (x *ConsoleUserName) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[49]
+	mi := &file_chorus_tutti_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3479,7 +3531,7 @@ func (x *ConsoleUserName) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConsoleUserName.ProtoReflect.Descriptor instead.
 func (*ConsoleUserName) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{49}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ConsoleUserName) GetUsername() string {
@@ -3502,7 +3554,7 @@ type CreateConsoleUserRequest struct {
 
 func (x *CreateConsoleUserRequest) Reset() {
 	*x = CreateConsoleUserRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[50]
+	mi := &file_chorus_tutti_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3514,7 +3566,7 @@ func (x *CreateConsoleUserRequest) String() string {
 func (*CreateConsoleUserRequest) ProtoMessage() {}
 
 func (x *CreateConsoleUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[50]
+	mi := &file_chorus_tutti_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3527,7 +3579,7 @@ func (x *CreateConsoleUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateConsoleUserRequest.ProtoReflect.Descriptor instead.
 func (*CreateConsoleUserRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{50}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CreateConsoleUserRequest) GetUsername() string {
@@ -3569,7 +3621,7 @@ type CreateConsoleUserResponse struct {
 
 func (x *CreateConsoleUserResponse) Reset() {
 	*x = CreateConsoleUserResponse{}
-	mi := &file_chorus_tutti_proto_msgTypes[51]
+	mi := &file_chorus_tutti_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3581,7 +3633,7 @@ func (x *CreateConsoleUserResponse) String() string {
 func (*CreateConsoleUserResponse) ProtoMessage() {}
 
 func (x *CreateConsoleUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[51]
+	mi := &file_chorus_tutti_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3594,7 +3646,7 @@ func (x *CreateConsoleUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateConsoleUserResponse.ProtoReflect.Descriptor instead.
 func (*CreateConsoleUserResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{51}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *CreateConsoleUserResponse) GetUser() *ConsoleUser {
@@ -3624,7 +3676,7 @@ type UpdateConsoleUserRequest struct {
 
 func (x *UpdateConsoleUserRequest) Reset() {
 	*x = UpdateConsoleUserRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[52]
+	mi := &file_chorus_tutti_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3636,7 +3688,7 @@ func (x *UpdateConsoleUserRequest) String() string {
 func (*UpdateConsoleUserRequest) ProtoMessage() {}
 
 func (x *UpdateConsoleUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[52]
+	mi := &file_chorus_tutti_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3649,7 +3701,7 @@ func (x *UpdateConsoleUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConsoleUserRequest.ProtoReflect.Descriptor instead.
 func (*UpdateConsoleUserRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{52}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *UpdateConsoleUserRequest) GetUsername() string {
@@ -3684,7 +3736,7 @@ type ResetConsoleUserPasswordRequest struct {
 
 func (x *ResetConsoleUserPasswordRequest) Reset() {
 	*x = ResetConsoleUserPasswordRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[53]
+	mi := &file_chorus_tutti_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3696,7 +3748,7 @@ func (x *ResetConsoleUserPasswordRequest) String() string {
 func (*ResetConsoleUserPasswordRequest) ProtoMessage() {}
 
 func (x *ResetConsoleUserPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[53]
+	mi := &file_chorus_tutti_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3709,7 +3761,7 @@ func (x *ResetConsoleUserPasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetConsoleUserPasswordRequest.ProtoReflect.Descriptor instead.
 func (*ResetConsoleUserPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{53}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ResetConsoleUserPasswordRequest) GetUsername() string {
@@ -3742,7 +3794,7 @@ type ResetConsoleUserPasswordResponse struct {
 
 func (x *ResetConsoleUserPasswordResponse) Reset() {
 	*x = ResetConsoleUserPasswordResponse{}
-	mi := &file_chorus_tutti_proto_msgTypes[54]
+	mi := &file_chorus_tutti_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3754,7 +3806,7 @@ func (x *ResetConsoleUserPasswordResponse) String() string {
 func (*ResetConsoleUserPasswordResponse) ProtoMessage() {}
 
 func (x *ResetConsoleUserPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[54]
+	mi := &file_chorus_tutti_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3767,7 +3819,7 @@ func (x *ResetConsoleUserPasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetConsoleUserPasswordResponse.ProtoReflect.Descriptor instead.
 func (*ResetConsoleUserPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{54}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ResetConsoleUserPasswordResponse) GetGeneratedPassword() string {
@@ -3809,7 +3861,7 @@ type RuntimeStorage struct {
 
 func (x *RuntimeStorage) Reset() {
 	*x = RuntimeStorage{}
-	mi := &file_chorus_tutti_proto_msgTypes[55]
+	mi := &file_chorus_tutti_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3821,7 +3873,7 @@ func (x *RuntimeStorage) String() string {
 func (*RuntimeStorage) ProtoMessage() {}
 
 func (x *RuntimeStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[55]
+	mi := &file_chorus_tutti_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3834,7 +3886,7 @@ func (x *RuntimeStorage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorage.ProtoReflect.Descriptor instead.
 func (*RuntimeStorage) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{55}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *RuntimeStorage) GetName() string {
@@ -3981,7 +4033,7 @@ type RuntimeStorageRateLimit struct {
 
 func (x *RuntimeStorageRateLimit) Reset() {
 	*x = RuntimeStorageRateLimit{}
-	mi := &file_chorus_tutti_proto_msgTypes[56]
+	mi := &file_chorus_tutti_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3993,7 +4045,7 @@ func (x *RuntimeStorageRateLimit) String() string {
 func (*RuntimeStorageRateLimit) ProtoMessage() {}
 
 func (x *RuntimeStorageRateLimit) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[56]
+	mi := &file_chorus_tutti_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4006,7 +4058,7 @@ func (x *RuntimeStorageRateLimit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorageRateLimit.ProtoReflect.Descriptor instead.
 func (*RuntimeStorageRateLimit) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{56}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *RuntimeStorageRateLimit) GetEnabled() bool {
@@ -4041,7 +4093,7 @@ type RuntimeStorageUser struct {
 
 func (x *RuntimeStorageUser) Reset() {
 	*x = RuntimeStorageUser{}
-	mi := &file_chorus_tutti_proto_msgTypes[57]
+	mi := &file_chorus_tutti_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4053,7 +4105,7 @@ func (x *RuntimeStorageUser) String() string {
 func (*RuntimeStorageUser) ProtoMessage() {}
 
 func (x *RuntimeStorageUser) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[57]
+	mi := &file_chorus_tutti_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4066,7 +4118,7 @@ func (x *RuntimeStorageUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorageUser.ProtoReflect.Descriptor instead.
 func (*RuntimeStorageUser) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{57}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *RuntimeStorageUser) GetUser() string {
@@ -4101,7 +4153,7 @@ type RuntimeStorageCredential struct {
 
 func (x *RuntimeStorageCredential) Reset() {
 	*x = RuntimeStorageCredential{}
-	mi := &file_chorus_tutti_proto_msgTypes[58]
+	mi := &file_chorus_tutti_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4113,7 +4165,7 @@ func (x *RuntimeStorageCredential) String() string {
 func (*RuntimeStorageCredential) ProtoMessage() {}
 
 func (x *RuntimeStorageCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[58]
+	mi := &file_chorus_tutti_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4126,7 +4178,7 @@ func (x *RuntimeStorageCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorageCredential.ProtoReflect.Descriptor instead.
 func (*RuntimeStorageCredential) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{58}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *RuntimeStorageCredential) GetUser() string {
@@ -4161,7 +4213,7 @@ type RuntimeStorageList struct {
 
 func (x *RuntimeStorageList) Reset() {
 	*x = RuntimeStorageList{}
-	mi := &file_chorus_tutti_proto_msgTypes[59]
+	mi := &file_chorus_tutti_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4173,7 +4225,7 @@ func (x *RuntimeStorageList) String() string {
 func (*RuntimeStorageList) ProtoMessage() {}
 
 func (x *RuntimeStorageList) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[59]
+	mi := &file_chorus_tutti_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4186,7 +4238,7 @@ func (x *RuntimeStorageList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorageList.ProtoReflect.Descriptor instead.
 func (*RuntimeStorageList) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{59}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *RuntimeStorageList) GetStorages() []*RuntimeStorage {
@@ -4225,7 +4277,7 @@ type CreateRuntimeStorageRequest struct {
 
 func (x *CreateRuntimeStorageRequest) Reset() {
 	*x = CreateRuntimeStorageRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[60]
+	mi := &file_chorus_tutti_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4237,7 +4289,7 @@ func (x *CreateRuntimeStorageRequest) String() string {
 func (*CreateRuntimeStorageRequest) ProtoMessage() {}
 
 func (x *CreateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[60]
+	mi := &file_chorus_tutti_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4250,7 +4302,7 @@ func (x *CreateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRuntimeStorageRequest.ProtoReflect.Descriptor instead.
 func (*CreateRuntimeStorageRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{60}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *CreateRuntimeStorageRequest) GetStorage() *RuntimeStorage {
@@ -4305,7 +4357,7 @@ type UpdateRuntimeStorageRequest struct {
 
 func (x *UpdateRuntimeStorageRequest) Reset() {
 	*x = UpdateRuntimeStorageRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[61]
+	mi := &file_chorus_tutti_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4317,7 +4369,7 @@ func (x *UpdateRuntimeStorageRequest) String() string {
 func (*UpdateRuntimeStorageRequest) ProtoMessage() {}
 
 func (x *UpdateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[61]
+	mi := &file_chorus_tutti_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4330,7 +4382,7 @@ func (x *UpdateRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRuntimeStorageRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRuntimeStorageRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{61}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *UpdateRuntimeStorageRequest) GetStorage() *RuntimeStorage {
@@ -4391,7 +4443,7 @@ type RuntimeStorageName struct {
 
 func (x *RuntimeStorageName) Reset() {
 	*x = RuntimeStorageName{}
-	mi := &file_chorus_tutti_proto_msgTypes[62]
+	mi := &file_chorus_tutti_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4403,7 +4455,7 @@ func (x *RuntimeStorageName) String() string {
 func (*RuntimeStorageName) ProtoMessage() {}
 
 func (x *RuntimeStorageName) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[62]
+	mi := &file_chorus_tutti_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4416,7 +4468,7 @@ func (x *RuntimeStorageName) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeStorageName.ProtoReflect.Descriptor instead.
 func (*RuntimeStorageName) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{62}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *RuntimeStorageName) GetName() string {
@@ -4436,7 +4488,7 @@ type TestRuntimeStorageRequest struct {
 
 func (x *TestRuntimeStorageRequest) Reset() {
 	*x = TestRuntimeStorageRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[63]
+	mi := &file_chorus_tutti_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4448,7 +4500,7 @@ func (x *TestRuntimeStorageRequest) String() string {
 func (*TestRuntimeStorageRequest) ProtoMessage() {}
 
 func (x *TestRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[63]
+	mi := &file_chorus_tutti_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4461,7 +4513,7 @@ func (x *TestRuntimeStorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestRuntimeStorageRequest.ProtoReflect.Descriptor instead.
 func (*TestRuntimeStorageRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{63}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *TestRuntimeStorageRequest) GetStorage() *RuntimeStorage {
@@ -4489,7 +4541,7 @@ type ConnectionAccount struct {
 
 func (x *ConnectionAccount) Reset() {
 	*x = ConnectionAccount{}
-	mi := &file_chorus_tutti_proto_msgTypes[64]
+	mi := &file_chorus_tutti_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4501,7 +4553,7 @@ func (x *ConnectionAccount) String() string {
 func (*ConnectionAccount) ProtoMessage() {}
 
 func (x *ConnectionAccount) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[64]
+	mi := &file_chorus_tutti_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4514,7 +4566,7 @@ func (x *ConnectionAccount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionAccount.ProtoReflect.Descriptor instead.
 func (*ConnectionAccount) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{64}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ConnectionAccount) GetAccessKeyId() string {
@@ -4549,7 +4601,7 @@ type ConnectionAccountInfo struct {
 
 func (x *ConnectionAccountInfo) Reset() {
 	*x = ConnectionAccountInfo{}
-	mi := &file_chorus_tutti_proto_msgTypes[65]
+	mi := &file_chorus_tutti_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4561,7 +4613,7 @@ func (x *ConnectionAccountInfo) String() string {
 func (*ConnectionAccountInfo) ProtoMessage() {}
 
 func (x *ConnectionAccountInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[65]
+	mi := &file_chorus_tutti_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4574,7 +4626,7 @@ func (x *ConnectionAccountInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionAccountInfo.ProtoReflect.Descriptor instead.
 func (*ConnectionAccountInfo) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{65}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ConnectionAccountInfo) GetConfigured() bool {
@@ -4632,7 +4684,7 @@ type StorageTestFeatures struct {
 
 func (x *StorageTestFeatures) Reset() {
 	*x = StorageTestFeatures{}
-	mi := &file_chorus_tutti_proto_msgTypes[66]
+	mi := &file_chorus_tutti_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4644,7 +4696,7 @@ func (x *StorageTestFeatures) String() string {
 func (*StorageTestFeatures) ProtoMessage() {}
 
 func (x *StorageTestFeatures) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[66]
+	mi := &file_chorus_tutti_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4657,7 +4709,7 @@ func (x *StorageTestFeatures) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageTestFeatures.ProtoReflect.Descriptor instead.
 func (*StorageTestFeatures) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{66}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *StorageTestFeatures) GetVersioning() bool {
@@ -4712,7 +4764,7 @@ type StorageTestOptions struct {
 
 func (x *StorageTestOptions) Reset() {
 	*x = StorageTestOptions{}
-	mi := &file_chorus_tutti_proto_msgTypes[67]
+	mi := &file_chorus_tutti_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4724,7 +4776,7 @@ func (x *StorageTestOptions) String() string {
 func (*StorageTestOptions) ProtoMessage() {}
 
 func (x *StorageTestOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[67]
+	mi := &file_chorus_tutti_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4737,7 +4789,7 @@ func (x *StorageTestOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageTestOptions.ProtoReflect.Descriptor instead.
 func (*StorageTestOptions) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{67}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *StorageTestOptions) GetProbeBucketPrefix() string {
@@ -4787,7 +4839,7 @@ type StorageTestStep struct {
 
 func (x *StorageTestStep) Reset() {
 	*x = StorageTestStep{}
-	mi := &file_chorus_tutti_proto_msgTypes[68]
+	mi := &file_chorus_tutti_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4799,7 +4851,7 @@ func (x *StorageTestStep) String() string {
 func (*StorageTestStep) ProtoMessage() {}
 
 func (x *StorageTestStep) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[68]
+	mi := &file_chorus_tutti_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4812,7 +4864,7 @@ func (x *StorageTestStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageTestStep.ProtoReflect.Descriptor instead.
 func (*StorageTestStep) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{68}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *StorageTestStep) GetId() string {
@@ -4898,7 +4950,7 @@ type StorageTestResult struct {
 
 func (x *StorageTestResult) Reset() {
 	*x = StorageTestResult{}
-	mi := &file_chorus_tutti_proto_msgTypes[69]
+	mi := &file_chorus_tutti_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4910,7 +4962,7 @@ func (x *StorageTestResult) String() string {
 func (*StorageTestResult) ProtoMessage() {}
 
 func (x *StorageTestResult) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[69]
+	mi := &file_chorus_tutti_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4923,7 +4975,7 @@ func (x *StorageTestResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageTestResult.ProtoReflect.Descriptor instead.
 func (*StorageTestResult) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{69}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *StorageTestResult) GetTestedAt() *timestamppb.Timestamp {
@@ -5003,7 +5055,7 @@ type TestStorageConnectionRequest struct {
 
 func (x *TestStorageConnectionRequest) Reset() {
 	*x = TestStorageConnectionRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[70]
+	mi := &file_chorus_tutti_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5015,7 +5067,7 @@ func (x *TestStorageConnectionRequest) String() string {
 func (*TestStorageConnectionRequest) ProtoMessage() {}
 
 func (x *TestStorageConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[70]
+	mi := &file_chorus_tutti_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5028,7 +5080,7 @@ func (x *TestStorageConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestStorageConnectionRequest.ProtoReflect.Descriptor instead.
 func (*TestStorageConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{70}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *TestStorageConnectionRequest) GetName() string {
@@ -5072,7 +5124,7 @@ type RotateStorageConnectionAccountRequest struct {
 
 func (x *RotateStorageConnectionAccountRequest) Reset() {
 	*x = RotateStorageConnectionAccountRequest{}
-	mi := &file_chorus_tutti_proto_msgTypes[71]
+	mi := &file_chorus_tutti_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5084,7 +5136,7 @@ func (x *RotateStorageConnectionAccountRequest) String() string {
 func (*RotateStorageConnectionAccountRequest) ProtoMessage() {}
 
 func (x *RotateStorageConnectionAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_tutti_proto_msgTypes[71]
+	mi := &file_chorus_tutti_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5097,7 +5149,7 @@ func (x *RotateStorageConnectionAccountRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use RotateStorageConnectionAccountRequest.ProtoReflect.Descriptor instead.
 func (*RotateStorageConnectionAccountRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_tutti_proto_rawDescGZIP(), []int{71}
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *RotateStorageConnectionAccountRequest) GetName() string {
@@ -5381,7 +5433,10 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\n" +
 	"credential\x18\x02 \x01(\v2\x18.chorus.S3UserCredentialR\n" +
 	"credential\x12\x16\n" +
-	"\x06verify\x18\x03 \x01(\bR\x06verify\"?\n" +
+	"\x06verify\x18\x03 \x01(\bR\x06verify\"N\n" +
+	"\x1eDeleteS3UserCredentialsRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\astorage\x18\x02 \x01(\tR\astorage\"?\n" +
 	"\x13DeleteS3UserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05force\x18\x02 \x01(\bR\x05force\"\x98\x01\n" +
@@ -5559,7 +5614,7 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\vnew_account\x18\x02 \x01(\v2\x19.chorus.ConnectionAccountR\n" +
 	"newAccount\x124\n" +
 	"\aoptions\x18\x03 \x01(\v2\x1a.chorus.StorageTestOptionsR\aoptions\x12\x14\n" +
-	"\x05force\x18\x04 \x01(\bR\x05force2\xd3\x14\n" +
+	"\x05force\x18\x04 \x01(\bR\x05force2\xae\x15\n" +
 	"\n" +
 	"Resilience\x12I\n" +
 	"\x13ListRuntimeStorages\x12\x16.google.protobuf.Empty\x1a\x1a.chorus.RuntimeStorageList\x12S\n" +
@@ -5587,7 +5642,8 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x12DeleteProxyAccount\x12\x17.chorus.ProxyAccountKey\x1a\x16.google.protobuf.Empty\x129\n" +
 	"\vListS3Users\x12\x16.google.protobuf.Empty\x1a\x12.chorus.S3UserList\x12I\n" +
 	"\fCreateS3User\x12\x1b.chorus.CreateS3UserRequest\x1a\x1c.chorus.CreateS3UserResponse\x12Y\n" +
-	"\x17UpdateS3UserCredentials\x12&.chorus.UpdateS3UserCredentialsRequest\x1a\x16.google.protobuf.Empty\x12I\n" +
+	"\x17UpdateS3UserCredentials\x12&.chorus.UpdateS3UserCredentialsRequest\x1a\x16.google.protobuf.Empty\x12Y\n" +
+	"\x17DeleteS3UserCredentials\x12&.chorus.DeleteS3UserCredentialsRequest\x1a\x16.google.protobuf.Empty\x12I\n" +
 	"\fDeleteS3User\x12\x1b.chorus.DeleteS3UserRequest\x1a\x1c.chorus.DeleteS3UserResponse\x12d\n" +
 	"\x15TestS3UserCredentials\x12$.chorus.TestS3UserCredentialsRequest\x1a%.chorus.TestS3UserCredentialsResponse\x12C\n" +
 	"\x10ListConsoleUsers\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ConsoleUserList\x12X\n" +
@@ -5608,7 +5664,7 @@ func file_chorus_tutti_proto_rawDescGZIP() []byte {
 	return file_chorus_tutti_proto_rawDescData
 }
 
-var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 76)
+var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 77)
 var file_chorus_tutti_proto_goTypes = []any{
 	(*CreateProxyAccountRequest)(nil),             // 0: chorus.CreateProxyAccountRequest
 	(*ProxyAccountSecret)(nil),                    // 1: chorus.ProxyAccountSecret
@@ -5653,89 +5709,90 @@ var file_chorus_tutti_proto_goTypes = []any{
 	(*S3UserVerifyResult)(nil),                    // 40: chorus.S3UserVerifyResult
 	(*CreateS3UserResponse)(nil),                  // 41: chorus.CreateS3UserResponse
 	(*UpdateS3UserCredentialsRequest)(nil),        // 42: chorus.UpdateS3UserCredentialsRequest
-	(*DeleteS3UserRequest)(nil),                   // 43: chorus.DeleteS3UserRequest
-	(*DeleteS3UserResponse)(nil),                  // 44: chorus.DeleteS3UserResponse
-	(*TestS3UserCredentialsRequest)(nil),          // 45: chorus.TestS3UserCredentialsRequest
-	(*TestS3UserCredentialsResponse)(nil),         // 46: chorus.TestS3UserCredentialsResponse
-	(*ConsoleUser)(nil),                           // 47: chorus.ConsoleUser
-	(*ConsoleUserList)(nil),                       // 48: chorus.ConsoleUserList
-	(*ConsoleUserName)(nil),                       // 49: chorus.ConsoleUserName
-	(*CreateConsoleUserRequest)(nil),              // 50: chorus.CreateConsoleUserRequest
-	(*CreateConsoleUserResponse)(nil),             // 51: chorus.CreateConsoleUserResponse
-	(*UpdateConsoleUserRequest)(nil),              // 52: chorus.UpdateConsoleUserRequest
-	(*ResetConsoleUserPasswordRequest)(nil),       // 53: chorus.ResetConsoleUserPasswordRequest
-	(*ResetConsoleUserPasswordResponse)(nil),      // 54: chorus.ResetConsoleUserPasswordResponse
-	(*RuntimeStorage)(nil),                        // 55: chorus.RuntimeStorage
-	(*RuntimeStorageRateLimit)(nil),               // 56: chorus.RuntimeStorageRateLimit
-	(*RuntimeStorageUser)(nil),                    // 57: chorus.RuntimeStorageUser
-	(*RuntimeStorageCredential)(nil),              // 58: chorus.RuntimeStorageCredential
-	(*RuntimeStorageList)(nil),                    // 59: chorus.RuntimeStorageList
-	(*CreateRuntimeStorageRequest)(nil),           // 60: chorus.CreateRuntimeStorageRequest
-	(*UpdateRuntimeStorageRequest)(nil),           // 61: chorus.UpdateRuntimeStorageRequest
-	(*RuntimeStorageName)(nil),                    // 62: chorus.RuntimeStorageName
-	(*TestRuntimeStorageRequest)(nil),             // 63: chorus.TestRuntimeStorageRequest
-	(*ConnectionAccount)(nil),                     // 64: chorus.ConnectionAccount
-	(*ConnectionAccountInfo)(nil),                 // 65: chorus.ConnectionAccountInfo
-	(*StorageTestFeatures)(nil),                   // 66: chorus.StorageTestFeatures
-	(*StorageTestOptions)(nil),                    // 67: chorus.StorageTestOptions
-	(*StorageTestStep)(nil),                       // 68: chorus.StorageTestStep
-	(*StorageTestResult)(nil),                     // 69: chorus.StorageTestResult
-	(*TestStorageConnectionRequest)(nil),          // 70: chorus.TestStorageConnectionRequest
-	(*RotateStorageConnectionAccountRequest)(nil), // 71: chorus.RotateStorageConnectionAccountRequest
-	nil,                           // 72: chorus.TrafficRates.RequestsByClassEntry
-	nil,                           // 73: chorus.TrafficRates.RequestsByStorageEntry
-	nil,                           // 74: chorus.TrafficStats.RequestsByClassEntry
-	nil,                           // 75: chorus.TrafficStats.RequestsByStorageEntry
-	(*timestamppb.Timestamp)(nil), // 76: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 77: google.protobuf.Duration
-	(*emptypb.Empty)(nil),         // 78: google.protobuf.Empty
+	(*DeleteS3UserCredentialsRequest)(nil),        // 43: chorus.DeleteS3UserCredentialsRequest
+	(*DeleteS3UserRequest)(nil),                   // 44: chorus.DeleteS3UserRequest
+	(*DeleteS3UserResponse)(nil),                  // 45: chorus.DeleteS3UserResponse
+	(*TestS3UserCredentialsRequest)(nil),          // 46: chorus.TestS3UserCredentialsRequest
+	(*TestS3UserCredentialsResponse)(nil),         // 47: chorus.TestS3UserCredentialsResponse
+	(*ConsoleUser)(nil),                           // 48: chorus.ConsoleUser
+	(*ConsoleUserList)(nil),                       // 49: chorus.ConsoleUserList
+	(*ConsoleUserName)(nil),                       // 50: chorus.ConsoleUserName
+	(*CreateConsoleUserRequest)(nil),              // 51: chorus.CreateConsoleUserRequest
+	(*CreateConsoleUserResponse)(nil),             // 52: chorus.CreateConsoleUserResponse
+	(*UpdateConsoleUserRequest)(nil),              // 53: chorus.UpdateConsoleUserRequest
+	(*ResetConsoleUserPasswordRequest)(nil),       // 54: chorus.ResetConsoleUserPasswordRequest
+	(*ResetConsoleUserPasswordResponse)(nil),      // 55: chorus.ResetConsoleUserPasswordResponse
+	(*RuntimeStorage)(nil),                        // 56: chorus.RuntimeStorage
+	(*RuntimeStorageRateLimit)(nil),               // 57: chorus.RuntimeStorageRateLimit
+	(*RuntimeStorageUser)(nil),                    // 58: chorus.RuntimeStorageUser
+	(*RuntimeStorageCredential)(nil),              // 59: chorus.RuntimeStorageCredential
+	(*RuntimeStorageList)(nil),                    // 60: chorus.RuntimeStorageList
+	(*CreateRuntimeStorageRequest)(nil),           // 61: chorus.CreateRuntimeStorageRequest
+	(*UpdateRuntimeStorageRequest)(nil),           // 62: chorus.UpdateRuntimeStorageRequest
+	(*RuntimeStorageName)(nil),                    // 63: chorus.RuntimeStorageName
+	(*TestRuntimeStorageRequest)(nil),             // 64: chorus.TestRuntimeStorageRequest
+	(*ConnectionAccount)(nil),                     // 65: chorus.ConnectionAccount
+	(*ConnectionAccountInfo)(nil),                 // 66: chorus.ConnectionAccountInfo
+	(*StorageTestFeatures)(nil),                   // 67: chorus.StorageTestFeatures
+	(*StorageTestOptions)(nil),                    // 68: chorus.StorageTestOptions
+	(*StorageTestStep)(nil),                       // 69: chorus.StorageTestStep
+	(*StorageTestResult)(nil),                     // 70: chorus.StorageTestResult
+	(*TestStorageConnectionRequest)(nil),          // 71: chorus.TestStorageConnectionRequest
+	(*RotateStorageConnectionAccountRequest)(nil), // 72: chorus.RotateStorageConnectionAccountRequest
+	nil,                           // 73: chorus.TrafficRates.RequestsByClassEntry
+	nil,                           // 74: chorus.TrafficRates.RequestsByStorageEntry
+	nil,                           // 75: chorus.TrafficStats.RequestsByClassEntry
+	nil,                           // 76: chorus.TrafficStats.RequestsByStorageEntry
+	(*timestamppb.Timestamp)(nil), // 77: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 78: google.protobuf.Duration
+	(*emptypb.Empty)(nil),         // 79: google.protobuf.Empty
 }
 var file_chorus_tutti_proto_depIdxs = []int32{
-	76,  // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	77,  // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	76,  // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	76,  // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	76,  // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	77,  // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	78,  // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	77,  // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	77,  // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
 	6,   // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
 	6,   // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
 	5,   // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
 	9,   // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
 	11,  // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
-	76,  // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	77,  // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	77,  // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	77,  // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	78,  // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	78,  // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
 	13,  // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
-	77,  // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	77,  // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	77,  // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
+	78,  // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	78,  // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	78,  // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
 	14,  // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
 	15,  // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
 	16,  // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
-	76,  // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	76,  // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	77,  // 20: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	77,  // 21: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
 	12,  // 22: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
 	17,  // 23: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
 	24,  // 24: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
 	19,  // 25: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
-	72,  // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
-	73,  // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
-	76,  // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	73,  // 26: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
+	74,  // 27: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
+	77,  // 28: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
 	19,  // 29: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
-	76,  // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	77,  // 30: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
 	19,  // 31: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
-	77,  // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	78,  // 32: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
 	21,  // 33: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
 	22,  // 34: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
-	76,  // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	76,  // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	74,  // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
-	75,  // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
+	77,  // 35: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	77,  // 36: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	75,  // 37: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
+	76,  // 38: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
 	25,  // 39: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
 	18,  // 40: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
 	19,  // 41: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
-	77,  // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	78,  // 42: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
 	27,  // 43: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
-	76,  // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	77,  // 44: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
 	30,  // 45: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
 	33,  // 46: chorus.S3User.storages:type_name -> chorus.S3UserStorage
 	34,  // 47: chorus.S3User.access_keys:type_name -> chorus.S3UserAccessKeys
@@ -5748,110 +5805,112 @@ var file_chorus_tutti_proto_depIdxs = []int32{
 	40,  // 54: chorus.CreateS3UserResponse.verification:type_name -> chorus.S3UserVerifyResult
 	38,  // 55: chorus.UpdateS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
 	38,  // 56: chorus.TestS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
-	76,  // 57: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
-	76,  // 58: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
-	76,  // 59: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
-	76,  // 60: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
-	47,  // 61: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
-	47,  // 62: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
-	77,  // 63: chorus.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
-	77,  // 64: chorus.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
-	56,  // 65: chorus.RuntimeStorage.rate_limit:type_name -> chorus.RuntimeStorageRateLimit
-	57,  // 66: chorus.RuntimeStorage.users:type_name -> chorus.RuntimeStorageUser
-	76,  // 67: chorus.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
-	76,  // 68: chorus.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
-	65,  // 69: chorus.RuntimeStorage.connection_account:type_name -> chorus.ConnectionAccountInfo
-	69,  // 70: chorus.RuntimeStorage.last_test:type_name -> chorus.StorageTestResult
-	76,  // 71: chorus.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
-	55,  // 72: chorus.RuntimeStorageList.storages:type_name -> chorus.RuntimeStorage
-	55,  // 73: chorus.CreateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
-	58,  // 74: chorus.CreateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
-	64,  // 75: chorus.CreateRuntimeStorageRequest.connection_account:type_name -> chorus.ConnectionAccount
-	67,  // 76: chorus.CreateRuntimeStorageRequest.test_options:type_name -> chorus.StorageTestOptions
-	55,  // 77: chorus.UpdateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
-	58,  // 78: chorus.UpdateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
-	64,  // 79: chorus.UpdateRuntimeStorageRequest.connection_account:type_name -> chorus.ConnectionAccount
-	67,  // 80: chorus.UpdateRuntimeStorageRequest.test_options:type_name -> chorus.StorageTestOptions
-	55,  // 81: chorus.TestRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
-	58,  // 82: chorus.TestRuntimeStorageRequest.credential:type_name -> chorus.RuntimeStorageCredential
-	76,  // 83: chorus.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
-	76,  // 84: chorus.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
-	66,  // 85: chorus.StorageTestOptions.features:type_name -> chorus.StorageTestFeatures
-	76,  // 86: chorus.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
-	68,  // 87: chorus.StorageTestResult.steps:type_name -> chorus.StorageTestStep
-	55,  // 88: chorus.TestStorageConnectionRequest.storage:type_name -> chorus.RuntimeStorage
-	64,  // 89: chorus.TestStorageConnectionRequest.connection_account:type_name -> chorus.ConnectionAccount
-	67,  // 90: chorus.TestStorageConnectionRequest.options:type_name -> chorus.StorageTestOptions
-	64,  // 91: chorus.RotateStorageConnectionAccountRequest.new_account:type_name -> chorus.ConnectionAccount
-	67,  // 92: chorus.RotateStorageConnectionAccountRequest.options:type_name -> chorus.StorageTestOptions
-	78,  // 93: chorus.Resilience.ListRuntimeStorages:input_type -> google.protobuf.Empty
-	60,  // 94: chorus.Resilience.CreateRuntimeStorage:input_type -> chorus.CreateRuntimeStorageRequest
-	61,  // 95: chorus.Resilience.UpdateRuntimeStorage:input_type -> chorus.UpdateRuntimeStorageRequest
-	62,  // 96: chorus.Resilience.DeleteRuntimeStorage:input_type -> chorus.RuntimeStorageName
-	63,  // 97: chorus.Resilience.TestRuntimeStorage:input_type -> chorus.TestRuntimeStorageRequest
-	62,  // 98: chorus.Resilience.GetRuntimeStorage:input_type -> chorus.RuntimeStorageName
-	70,  // 99: chorus.Resilience.TestStorageConnection:input_type -> chorus.TestStorageConnectionRequest
-	71,  // 100: chorus.Resilience.RotateStorageConnectionAccount:input_type -> chorus.RotateStorageConnectionAccountRequest
-	78,  // 101: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	77,  // 57: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 58: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
+	77,  // 59: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
+	77,  // 60: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
+	48,  // 61: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
+	48,  // 62: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
+	78,  // 63: chorus.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
+	78,  // 64: chorus.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
+	57,  // 65: chorus.RuntimeStorage.rate_limit:type_name -> chorus.RuntimeStorageRateLimit
+	58,  // 66: chorus.RuntimeStorage.users:type_name -> chorus.RuntimeStorageUser
+	77,  // 67: chorus.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
+	77,  // 68: chorus.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
+	66,  // 69: chorus.RuntimeStorage.connection_account:type_name -> chorus.ConnectionAccountInfo
+	70,  // 70: chorus.RuntimeStorage.last_test:type_name -> chorus.StorageTestResult
+	77,  // 71: chorus.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
+	56,  // 72: chorus.RuntimeStorageList.storages:type_name -> chorus.RuntimeStorage
+	56,  // 73: chorus.CreateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	59,  // 74: chorus.CreateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
+	65,  // 75: chorus.CreateRuntimeStorageRequest.connection_account:type_name -> chorus.ConnectionAccount
+	68,  // 76: chorus.CreateRuntimeStorageRequest.test_options:type_name -> chorus.StorageTestOptions
+	56,  // 77: chorus.UpdateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	59,  // 78: chorus.UpdateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
+	65,  // 79: chorus.UpdateRuntimeStorageRequest.connection_account:type_name -> chorus.ConnectionAccount
+	68,  // 80: chorus.UpdateRuntimeStorageRequest.test_options:type_name -> chorus.StorageTestOptions
+	56,  // 81: chorus.TestRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
+	59,  // 82: chorus.TestRuntimeStorageRequest.credential:type_name -> chorus.RuntimeStorageCredential
+	77,  // 83: chorus.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
+	77,  // 84: chorus.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
+	67,  // 85: chorus.StorageTestOptions.features:type_name -> chorus.StorageTestFeatures
+	77,  // 86: chorus.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
+	69,  // 87: chorus.StorageTestResult.steps:type_name -> chorus.StorageTestStep
+	56,  // 88: chorus.TestStorageConnectionRequest.storage:type_name -> chorus.RuntimeStorage
+	65,  // 89: chorus.TestStorageConnectionRequest.connection_account:type_name -> chorus.ConnectionAccount
+	68,  // 90: chorus.TestStorageConnectionRequest.options:type_name -> chorus.StorageTestOptions
+	65,  // 91: chorus.RotateStorageConnectionAccountRequest.new_account:type_name -> chorus.ConnectionAccount
+	68,  // 92: chorus.RotateStorageConnectionAccountRequest.options:type_name -> chorus.StorageTestOptions
+	79,  // 93: chorus.Resilience.ListRuntimeStorages:input_type -> google.protobuf.Empty
+	61,  // 94: chorus.Resilience.CreateRuntimeStorage:input_type -> chorus.CreateRuntimeStorageRequest
+	62,  // 95: chorus.Resilience.UpdateRuntimeStorage:input_type -> chorus.UpdateRuntimeStorageRequest
+	63,  // 96: chorus.Resilience.DeleteRuntimeStorage:input_type -> chorus.RuntimeStorageName
+	64,  // 97: chorus.Resilience.TestRuntimeStorage:input_type -> chorus.TestRuntimeStorageRequest
+	63,  // 98: chorus.Resilience.GetRuntimeStorage:input_type -> chorus.RuntimeStorageName
+	71,  // 99: chorus.Resilience.TestStorageConnection:input_type -> chorus.TestStorageConnectionRequest
+	72,  // 100: chorus.Resilience.RotateStorageConnectionAccount:input_type -> chorus.RotateStorageConnectionAccountRequest
+	79,  // 101: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
 	20,  // 102: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
-	78,  // 103: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	79,  // 103: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
 	27,  // 104: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
 	29,  // 105: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
-	78,  // 106: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	79,  // 106: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
 	32,  // 107: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
-	78,  // 108: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	79,  // 108: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
 	6,   // 109: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
 	8,   // 110: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
-	78,  // 111: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	79,  // 111: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
 	0,   // 112: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
 	2,   // 113: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
 	3,   // 114: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
 	4,   // 115: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
-	78,  // 116: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
+	79,  // 116: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
 	39,  // 117: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
 	42,  // 118: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
-	43,  // 119: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
-	45,  // 120: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
-	78,  // 121: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
-	50,  // 122: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
-	52,  // 123: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
-	53,  // 124: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
-	49,  // 125: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
-	59,  // 126: chorus.Resilience.ListRuntimeStorages:output_type -> chorus.RuntimeStorageList
-	55,  // 127: chorus.Resilience.CreateRuntimeStorage:output_type -> chorus.RuntimeStorage
-	55,  // 128: chorus.Resilience.UpdateRuntimeStorage:output_type -> chorus.RuntimeStorage
-	78,  // 129: chorus.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
-	46,  // 130: chorus.Resilience.TestRuntimeStorage:output_type -> chorus.TestS3UserCredentialsResponse
-	55,  // 131: chorus.Resilience.GetRuntimeStorage:output_type -> chorus.RuntimeStorage
-	69,  // 132: chorus.Resilience.TestStorageConnection:output_type -> chorus.StorageTestResult
-	55,  // 133: chorus.Resilience.RotateStorageConnectionAccount:output_type -> chorus.RuntimeStorage
-	26,  // 134: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
-	23,  // 135: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
-	28,  // 136: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
-	78,  // 137: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	78,  // 138: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	31,  // 139: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
-	78,  // 140: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,   // 141: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
-	78,  // 142: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	78,  // 143: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10,  // 144: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
-	1,   // 145: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
-	1,   // 146: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
-	78,  // 147: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	78,  // 148: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	37,  // 149: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
-	41,  // 150: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
-	78,  // 151: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
-	44,  // 152: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
-	46,  // 153: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
-	48,  // 154: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
-	51,  // 155: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
-	78,  // 156: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
-	54,  // 157: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
-	78,  // 158: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
-	126, // [126:159] is the sub-list for method output_type
-	93,  // [93:126] is the sub-list for method input_type
+	43,  // 119: chorus.Resilience.DeleteS3UserCredentials:input_type -> chorus.DeleteS3UserCredentialsRequest
+	44,  // 120: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
+	46,  // 121: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
+	79,  // 122: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
+	51,  // 123: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
+	53,  // 124: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
+	54,  // 125: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
+	50,  // 126: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
+	60,  // 127: chorus.Resilience.ListRuntimeStorages:output_type -> chorus.RuntimeStorageList
+	56,  // 128: chorus.Resilience.CreateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	56,  // 129: chorus.Resilience.UpdateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	79,  // 130: chorus.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
+	47,  // 131: chorus.Resilience.TestRuntimeStorage:output_type -> chorus.TestS3UserCredentialsResponse
+	56,  // 132: chorus.Resilience.GetRuntimeStorage:output_type -> chorus.RuntimeStorage
+	70,  // 133: chorus.Resilience.TestStorageConnection:output_type -> chorus.StorageTestResult
+	56,  // 134: chorus.Resilience.RotateStorageConnectionAccount:output_type -> chorus.RuntimeStorage
+	26,  // 135: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
+	23,  // 136: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
+	28,  // 137: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
+	79,  // 138: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	79,  // 139: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31,  // 140: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
+	79,  // 141: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,   // 142: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
+	79,  // 143: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	79,  // 144: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10,  // 145: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
+	1,   // 146: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
+	1,   // 147: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
+	79,  // 148: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	79,  // 149: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	37,  // 150: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
+	41,  // 151: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
+	79,  // 152: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
+	79,  // 153: chorus.Resilience.DeleteS3UserCredentials:output_type -> google.protobuf.Empty
+	45,  // 154: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
+	47,  // 155: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
+	49,  // 156: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
+	52,  // 157: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
+	79,  // 158: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
+	55,  // 159: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
+	79,  // 160: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
+	127, // [127:161] is the sub-list for method output_type
+	93,  // [93:127] is the sub-list for method input_type
 	93,  // [93:93] is the sub-list for extension type_name
 	93,  // [93:93] is the sub-list for extension extendee
 	0,   // [0:93] is the sub-list for field type_name
@@ -5864,15 +5923,15 @@ func file_chorus_tutti_proto_init() {
 	}
 	file_chorus_tutti_proto_msgTypes[27].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[39].OneofWrappers = []any{}
-	file_chorus_tutti_proto_msgTypes[45].OneofWrappers = []any{}
-	file_chorus_tutti_proto_msgTypes[52].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[46].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[53].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_tutti_proto_rawDesc), len(file_chorus_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   76,
+			NumMessages:   77,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

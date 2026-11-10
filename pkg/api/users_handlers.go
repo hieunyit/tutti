@@ -97,6 +97,20 @@ func (h *resilienceHandlers) UpdateS3UserCredentials(ctx context.Context, req *p
 	return &emptypb.Empty{}, nil
 }
 
+func (h *resilienceHandlers) DeleteS3UserCredentials(ctx context.Context, req *pb.DeleteS3UserCredentialsRequest) (*emptypb.Empty, error) {
+	m, err := h.users()
+	if err != nil {
+		return nil, err
+	}
+	if req.GetName() == "" || req.GetStorage() == "" {
+		return nil, fmt.Errorf("%w: name and storage are required", dom.ErrInvalidArg)
+	}
+	if err := m.DeleteCredentials(ctx, req.GetName(), req.GetStorage()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
 func (h *resilienceHandlers) DeleteS3User(ctx context.Context, req *pb.DeleteS3UserRequest) (*pb.DeleteS3UserResponse, error) {
 	m, err := h.users()
 	if err != nil {

@@ -94,6 +94,12 @@ service Resilience {
   // Credentials defined in the worker config cannot be changed (FailedPrecondition).
   rpc UpdateS3UserCredentials(UpdateS3UserCredentialsRequest) returns (google.protobuf.Empty);
 
+  // DeleteS3UserCredentials removes the dynamic per-user credentials (override) of a user on one storage; the user
+  // then falls back to the storage connection account. Admin only. FailedPrecondition if the credentials come from
+  // config, or if the user would be left without credentials on a storage without connection account while
+  // replications, routings or failover events reference the user.
+  rpc DeleteS3UserCredentials(DeleteS3UserCredentialsRequest) returns (google.protobuf.Empty);
+
   // DeleteS3User removes the dynamic credentials, dynamic proxy access keys and the access policy of a user.
   // Refused with FailedPrecondition (listing all reasons) if any credentials come from config or if replications,
   // routings or failover events reference the user. Active access keys also block deletion unless force is set.
@@ -564,6 +570,11 @@ message UpdateS3UserCredentialsRequest {
   S3UserCredential credential = 2;
   // Check the credentials with a ListBuckets call before saving.
   bool verify = 3;
+}
+
+message DeleteS3UserCredentialsRequest {
+  string name = 1;
+  string storage = 2;
 }
 
 message DeleteS3UserRequest {

@@ -198,6 +198,7 @@ An S3 user (for example `user1`) is an identity with optional proxy access keys 
 | `ListS3Users(Empty) -> S3UserList` | `GET /tutti/users` | Union of the users of all storages |
 | `CreateS3User(CreateS3UserRequest) -> CreateS3UserResponse` | `POST /tutti/users` | Create a user with dynamic credentials |
 | `UpdateS3UserCredentials(UpdateS3UserCredentialsRequest) -> Empty` | `PUT /tutti/users/credentials` | Replace the credentials on one storage |
+| `DeleteS3UserCredentials(DeleteS3UserCredentialsRequest) -> Empty` | `PUT /tutti/users/credentials/delete` | Remove the dynamic per-user override on one storage (admin only; config credentials and in-use users without a connection account are refused) |
 | `DeleteS3User(DeleteS3UserRequest) -> DeleteS3UserResponse` | `PUT /tutti/users/delete` | Remove dynamic credentials, dynamic access keys and policy |
 | `TestS3UserCredentials(TestS3UserCredentialsRequest) -> TestS3UserCredentialsResponse` | `POST /tutti/users/test` | `ListBuckets` with given or stored credentials |
 

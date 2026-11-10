@@ -161,6 +161,8 @@ func TestConnectionAccountsEndToEnd(t *testing.T) {
 		found = found || x.(map[string]any)["name"] == "keyless"
 	}
 	require.True(t, found, "identity-only users are listed")
+	// a user without an override has nothing to remove
+	e.restStatus(t, http.MethodPut, "/tutti/users/credentials/delete", map[string]any{"name": "keyless", "storage": mainKey}, http.StatusNotFound)
 
 	// --- its Tutti key creates a bucket, writes and reads through the proxy; the proxy signs with tutti-svc
 	client := e.keyClient(t, key["accessKeyId"].(string), key["secretAccessKey"].(string))

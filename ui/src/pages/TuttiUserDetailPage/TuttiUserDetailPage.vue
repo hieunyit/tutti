@@ -2,7 +2,6 @@
 <script setup lang="ts">
   import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import axios from 'axios';
   import { useRouter } from 'vue-router';
   import { NButton, NInput, NModal, NCheckbox } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
@@ -128,12 +127,7 @@
       removeStorage.value = null;
       await load();
     } catch (e) {
-      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
-
-      error.value =
-        status === 404 || status === 405 || status === 501
-          ? t('removeUnavailable')
-          : (ProxyAccountHelper.getMessage(e) ?? t('error'));
+      error.value = ProxyAccountHelper.getMessage(e) ?? t('error');
     } finally {
       busy.value = false;
     }
