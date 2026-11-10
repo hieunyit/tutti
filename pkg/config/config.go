@@ -26,6 +26,7 @@ import (
 	stdlog "github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/metrics"
@@ -36,11 +37,12 @@ import (
 var configFile embed.FS
 
 type Common struct {
-	Log      *log.Config      `yaml:"log,omitempty"`
-	Trace    *trace.Config    `yaml:"trace,omitempty"`
-	Metrics  *metrics.Config  `yaml:"metrics,omitempty"`
-	Redis    *Redis           `yaml:"redis,omitempty"`
-	Features *features.Config `yaml:"features,omitempty"`
+	Log          *log.Config         `yaml:"log,omitempty"`
+	Trace        *trace.Config       `yaml:"trace,omitempty"`
+	Metrics      *metrics.Config     `yaml:"metrics,omitempty"`
+	Redis        *Redis              `yaml:"redis,omitempty"`
+	Features     *features.Config    `yaml:"features,omitempty"`
+	ControlPlane controlplane.Config `yaml:"controlPlane,omitempty"`
 }
 
 type Redis struct {
@@ -221,6 +223,9 @@ func Get(conf any, sources ...Opt) error {
 	if err = applyEnvOverrides(base, "CFG"); err != nil {
 		return err
 	}
+	if err = applySubtreeEnvOverrides(base, "TUTTI_CONTROLPLANE_", []string{"controlPlane"}); err != nil {
+		return err
+	}
 
 	yamlBytes, err := yaml.Marshal(base)
 	if err != nil {
@@ -251,6 +256,10 @@ func (c *Common) Validate() error {
 	}
 	if c.Trace == nil {
 		return fmt.Errorf("app config: empty Trace config")
+	}
+	c.ControlPlane = c.ControlPlane.WithDefaults()
+	if err := c.ControlPlane.Validate(); err != nil {
+		return err
 	}
 
 	return nil

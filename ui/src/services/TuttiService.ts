@@ -26,6 +26,8 @@ import type {
   TuttiFailoverEventListResponse,
   TuttiFailoverPolicy,
   TuttiFailoverPolicyListResponse,
+  TuttiProxyFleetConfig,
+  TuttiProxySettingsOverride,
   TuttiProxyStatusListResponse,
   TuttiStatsHistory,
   TuttiStatsRange,
@@ -50,6 +52,29 @@ export abstract class TuttiService {
     const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
       ApiHelper.getChorusAPIUrl('/tutti/proxies'),
       { signal },
+    );
+
+    return data;
+  }
+
+  static async getProxyFleetConfig(
+    signal?: AbortSignal,
+  ): Promise<TuttiProxyFleetConfig> {
+    const { data } = await apiClient.get<TuttiProxyFleetConfig>(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
+      { signal },
+    );
+
+    return data;
+  }
+
+  static async setProxyFleetConfig(payload: {
+    defaults?: TuttiProxySettingsOverride;
+    groups?: Record<string, TuttiProxySettingsOverride>;
+  }): Promise<TuttiProxyFleetConfig> {
+    const { data } = await apiClient.put<TuttiProxyFleetConfig>(
+      ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
+      payload,
     );
 
     return data;

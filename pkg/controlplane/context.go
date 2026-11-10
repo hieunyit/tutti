@@ -57,3 +57,32 @@ var ErrReadOnly = fmt.Errorf("%w: control plane is read-only", dom.ErrFailedPrec
 
 // IsConflict reports whether err is ErrVersionConflict.
 func IsConflict(err error) bool { return errors.Is(err, ErrVersionConflict) }
+
+// IsUnavailable reports whether err indicates that PostgreSQL is unreachable or timed out (rather than a domain error),
+// in which case reads should fall back to the Redis projection and writes should return 503 Unavailable.
+func IsUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, dom.ErrNotFound) ||
+		errors.Is(err, dom.ErrAlreadyExists) ||
+		errors.Is(err, dom.ErrInvalidArg) ||
+		errors.Is(err, dom.ErrFailedPrecondition) ||
+		errors.Is(err, dom.ErrRoutingBlock) ||
+		errors.Is(err, dom.ErrAuth) {
+		return false
+	}
+	return true
+}
+
+// WrapWriteError translates a PostgreSQL write failure into dom.ErrUnavailable (503) while preserving domain errors
+// and ErrReadOnly.
+func WrapWriteError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrReadOnly) || !IsUnavailable(err) {
+		return err
+	}
+	return fmt.Errorf("%w: control plane database unavailable: %v", dom.ErrUnavailable, err)
+}

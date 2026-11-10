@@ -33,6 +33,8 @@ import (
 	"github.com/hieunyit/tutti/pkg/api"
 	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/config"
+	"github.com/hieunyit/tutti/pkg/controlplane"
+	"github.com/hieunyit/tutti/pkg/controlplane/pg"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
@@ -101,7 +103,27 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return fmt.Errorf("%w: unable to instrument tracing app redis", err)
 	}
 
-	credsSvc, err := objstore.NewCredsSvc(ctx, &conf.Storage, appRedis, objstore.WithManagedStorages(confRedis))
+	var cpStore controlplane.Store
+	var cpPublisher *pg.Publisher
+	if conf.ControlPlane.WithDefaults().Backend == controlplane.BackendPostgres {
+		pgStore, err := pg.Open(ctx, conf.ControlPlane)
+		if err != nil {
+			return fmt.Errorf("unable to open control-plane postgres store: %w", err)
+		}
+		defer pgStore.Close()
+		cpStore = pgStore
+		cpPublisher = pg.NewPublisher(pgStore, confRedis, conf.ControlPlane.Outbox, logger)
+		cpPublisher.MetaRedis = appRedis
+		cpPublisher.OnStats = metrics.SetControlPlaneOutbox
+		cpPublisher.OnFailure = func(error) { metrics.CountControlPlaneOutboxFailure() }
+		logger.Info().Bool("read_only", conf.ControlPlane.ReadOnly).Msg("control-plane postgres connected")
+	}
+
+	credsOpts := []objstore.CredsSvcOption{objstore.WithManagedStorages(confRedis)}
+	if cpStore != nil {
+		credsOpts = append(credsOpts, objstore.WithControlPlane(cpStore))
+	}
+	credsSvc, err := objstore.NewCredsSvc(ctx, &conf.Storage, appRedis, credsOpts...)
 	if err != nil {
 		return err
 	}
@@ -121,7 +143,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
-	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main)
+	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main).WithControlPlane(cpStore)
 
 	limiter := ratelimit.New(appRedis, nil)
 	limiter.SetLookup(credsSvc.RateLimit)
@@ -140,13 +162,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	checkSvc := handler.NewDiffSvc(confRedis, clientRegistry, queueSvc)
 	checkCtrl := handler.NewDiffCtrl(checkSvc, queueSvc)
 
+	accessPolicyStore := accesspolicy.NewStore(confRedis).WithControlPlane(cpStore)
 	bucketScope := accesspolicy.NewScope(func(storage, user string) bool {
 		return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
-	}, accesspolicy.NewStore(confRedis))
-	groupStore := protectiongroups.NewStore(confRedis)
+	}, accessPolicyStore)
+	groupStore := protectiongroups.NewStore(confRedis).WithControlPlane(cpStore)
 	groupService := &protectiongroups.Service{Store: groupStore, Backend: policySvc.ProtectionBackend(),
 		Resyncer:            protectiongroups.NewS3Resyncer(clientRegistry, bucketScope),
-		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accesspolicy.NewStore(confRedis)),
+		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accessPolicyStore),
 		Reports:             func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 
@@ -274,9 +297,33 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	logger.Info().Msg("registered diff fix workers")
 
 	server := util.NewServer()
+	if cpPublisher != nil {
+		err = server.Add("controlplane_outbox", func(ctx context.Context) error { cpPublisher.Run(ctx); return nil }, func(context.Context) error { return nil })
+		if err != nil {
+			return err
+		}
+	}
 	err = server.Add("protection_groups", func(ctx context.Context) error { groupService.Run(ctx, time.Second); return nil }, func(context.Context) error { return nil })
 	if err != nil {
 		return err
+	}
+	if conf.Metrics.Enabled {
+		users := func() []string {
+			var out []string
+			for name := range credsSvc.Storages() {
+				out = append(out, credsSvc.ListUsers(name)...)
+			}
+			return out
+		}
+		err = server.Add("replication_metrics", func(ctx context.Context) error {
+			policy.RunReplicationMetrics(ctx, policySvc, users, 15*time.Second, func(err error) {
+				logger.Warn().Err(err).Msg("unable to collect replication metrics")
+			})
+			return nil
+		}, func(context.Context) error { return nil })
+		if err != nil {
+			return err
+		}
 	}
 	err = server.Add("queue_workers", func(ctx context.Context) error {
 		err := srv.Start(mux)
@@ -306,6 +353,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		webhookSharesMainPort := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort <= 0
 		var authOpts []auth.Option
 		authOpts = append(authOpts, auth.WithManagedUsers(confRedis))
+		if cpStore != nil {
+			authOpts = append(authOpts, auth.WithControlPlane(cpStore))
+		}
 		if webhookSharesMainPort && conf.Api.Webhook.Token == "" {
 			logger.Warn().Msg("webhook api is served on the main api port WITHOUT api.webhook.token: anyone who can reach the api can inject fake bucket events. Set api.webhook.token or use separate webhook ports")
 			authOpts = append(authOpts, auth.WithWarnings(auth.WarningWebhookUnauthenticated))
@@ -342,7 +392,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				}
 			}),
 			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)),
-			api.WithStorageLocker(storageLocker))
+			api.WithStorageLocker(storageLocker), api.WithControlPlane(cpStore, conf.ControlPlane))
 
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0

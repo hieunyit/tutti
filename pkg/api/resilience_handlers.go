@@ -13,6 +13,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/auth"
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
@@ -30,13 +31,28 @@ func ResilienceHandlers(confRedis redis.Cmdable, known func(storage string) bool
 	for _, o := range opts {
 		o(h)
 	}
+	if h.cpStore != nil {
+		h.store.WithControlPlane(h.cpStore)
+		h.policies.WithControlPlane(h.cpStore)
+		h.accounts.WithControlPlane(h.cpStore)
+	}
 	if h.s3users != nil {
 		h.s3users.Accounts, h.s3users.Policies, h.s3users.Redis = h.accounts, h.policies, h.redis
+		h.s3users.CP = h.cpStore
 		if h.s3usersRefs != nil {
 			h.s3users.Refs = h.s3usersRefs(h.store)
 		}
 	}
 	return h
+}
+
+// WithControlPlane attaches a PostgreSQL control-plane store and config to the resilience handlers, enabling the
+// audit log RPC and switching failover policies/events, access policies, proxy accounts and S3 users to PostgreSQL.
+func WithControlPlane(cp controlplane.Store, cfg controlplane.Config) ResilienceOption {
+	return func(h *resilienceHandlers) {
+		h.cpStore = cp
+		h.cpConfig = cfg
+	}
 }
 
 // WithS3Users enables the S3 user RPCs. creds are the storage credentials, verify checks credentials against a
@@ -80,6 +96,8 @@ type resilienceHandlers struct {
 	s3users         *s3users.Manager
 	s3usersRefs     func(events *failover.Store) s3users.References
 	auth            *auth.Service
+	cpStore         controlplane.Store
+	cpConfig        controlplane.Config
 	// sealer is the one given to WithProxyAccounts (nil if not configured).
 	sealer func() (proxyaccount.Sealer, error)
 	// userExists reports whether the storage user has credentials. Nil disables the check.
@@ -92,13 +110,20 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 	res := &pb.ProxyStatusList{Proxies: make([]*pb.ProxyStatus, 0, len(list))}
+	if fc, err := proxystatus.NewFleetConfigStore(h.redis).Get(ctx); err == nil && fc != nil {
+		res.ConfigVersion = fc.Version
+	}
 	var all []trafficstats.Rates
 	for _, st := range list {
 		p := &pb.ProxyStatus{
-			AppId:     st.AppID,
-			Address:   st.Address,
-			StartedAt: timestamppb.New(st.StartedAt),
-			UpdatedAt: timestamppb.New(st.UpdatedAt),
+			AppId:                 st.AppID,
+			Address:               st.Address,
+			Group:                 st.Group,
+			StartedAt:             timestamppb.New(st.StartedAt),
+			UpdatedAt:             timestamppb.New(st.UpdatedAt),
+			AppliedConfigVersion:  st.AppliedConfigVersion,
+			PendingRestart:        st.PendingRestart,
+			PendingRestartReasons: st.PendingRestartReasons,
 			Settings: &pb.ProxySettings{
 				Replication: &pb.ReplicationSettings{
 					OnEventError:     st.Settings.Replication.OnEventError,
@@ -121,6 +146,10 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 					MaxEventLag:   int32(st.Settings.Failover.MaxEventLag),
 				},
 				RequireSignedContentType: st.Settings.RequireSignedContentType,
+				ReadHeaderTimeout:        durationpb.New(st.Settings.ReadHeaderTimeout),
+				WriterLease:              durationpb.New(st.Settings.WriterLease),
+				DrainDelay:               durationpb.New(st.Settings.DrainDelay),
+				ReadyMaxStaleness:        durationpb.New(st.Settings.ReadyMaxStaleness),
 			},
 		}
 		p.Stats = trafficStatsToPb(st.Stats)

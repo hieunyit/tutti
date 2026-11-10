@@ -14,9 +14,10 @@
  *  limitations under the License.
  */
 
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
+import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
 import {
   DashboardHelper,
   type DashboardSources,
@@ -38,12 +39,17 @@ export function computeNavBadges(
   sources: DashboardSources,
   lastUpdated: number | null,
   now: number,
+  /** protection groups with copies below wanted, frozen or in error */
+  protectionAttention = 0,
 ): NavBadgeCounts {
+  const counts: NavBadgeCounts = {};
+
+  if (protectionAttention > 0) counts.protection = protectionAttention;
+
   if (lastUpdated === null || now - lastUpdated > NAV_BADGE_MAX_AGE_MS) {
-    return {};
+    return counts;
   }
 
-  const counts: NavBadgeCounts = {};
   const attention = DashboardHelper.getAttentionItems(sources, now).length;
 
   if (attention > 0) counts.attention = attention;
@@ -55,7 +61,39 @@ export function computeNavBadges(
   return counts;
 }
 
+const PROTECTION_BADGE_INTERVAL_MS = 30_000;
+let protectionConsumers = 0;
+let protectionTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Keeps the protection-group counter fresh while a sidebar is mounted. */
+function useProtectionBadgePolling() {
+  const protection = useTuttiProtectionStore();
+
+  onMounted(() => {
+    protectionConsumers += 1;
+
+    if (protectionConsumers > 1) return;
+
+    protection.refresh().catch(() => undefined);
+    protectionTimer = setInterval(() => {
+      if (!document.hidden) protection.refresh().catch(() => undefined);
+    }, PROTECTION_BADGE_INTERVAL_MS);
+  });
+
+  onBeforeUnmount(() => {
+    protectionConsumers = Math.max(0, protectionConsumers - 1);
+
+    if (protectionConsumers === 0 && protectionTimer !== null) {
+      clearInterval(protectionTimer);
+      protectionTimer = null;
+    }
+  });
+}
+
 export function useNavBadges() {
+  useProtectionBadgePolling();
+
+  const protection = useTuttiProtectionStore();
   const store = useTuttiDashboardStore();
   const { storages, replications, proxies, events, policies, lastUpdated } =
     storeToRefs(store);
@@ -72,6 +110,7 @@ export function useNavBadges() {
       },
       lastUpdated.value,
       now.value,
+      protection.attentionCount,
     ),
   );
 }

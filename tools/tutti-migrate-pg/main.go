@@ -5,6 +5,7 @@
 //	tutti-migrate-pg [flags] schema     apply the SQL migrations to PostgreSQL
 //	tutti-migrate-pg [flags] migrate    copy Redis -> PostgreSQL (idempotent; --dry-run only reports)
 //	tutti-migrate-pg [flags] verify     compare Redis and PostgreSQL; exit code 2 on any difference
+//	tutti-migrate-pg [flags] republish  rebuild Redis projection from PostgreSQL via the outbox
 //
 // See docs/tutti/control-plane-db.md.
 package main
@@ -44,7 +45,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	out := fs.String("out", "", "also write the JSON report to this file")
 	timeout := fs.Duration("timeout", 30*time.Minute, "overall timeout")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "usage: tutti-migrate-pg [flags] schema|migrate|verify")
+		fmt.Fprintln(stderr, "usage: tutti-migrate-pg [flags] schema|migrate|verify|republish")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -85,7 +86,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "schema up to date; applied migrations: %v\n", applied)
 		return exitOK
-	case "migrate", "verify":
+	case "migrate", "verify", "republish":
 	default:
 		fs.Usage()
 		return exitFailure
@@ -101,41 +102,49 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitFailure
 	}
 	defer closeRedis()
-	data, err := migrate.ReadRedis(ctx, src)
-	if err != nil {
-		fmt.Fprintln(stderr, "error: reading Redis:", err)
-		return exitFailure
-	}
 
 	var rep *migrate.Report
-	switch cmd {
-	case "migrate":
-		var target *migrate.Data
-		if store != nil {
-			if v, err := pg.SchemaVersion(ctx, store.Pool()); err != nil || v == 0 {
-				if *dry {
-					fmt.Fprintln(stderr, "note: PostgreSQL schema is not applied yet; reporting against an empty target")
-				} else {
-					fmt.Fprintln(stderr, "error: PostgreSQL schema is not applied; run `tutti-migrate-pg schema` first")
+	if cmd == "republish" {
+		rep, err = migrate.Republish(ctx, store, src, migrate.RepublishOptions{DryRun: *dry})
+		if err != nil {
+			fmt.Fprintln(stderr, "error:", err)
+			return exitFailure
+		}
+	} else {
+		data, err := migrate.ReadRedis(ctx, src)
+		if err != nil {
+			fmt.Fprintln(stderr, "error: reading Redis:", err)
+			return exitFailure
+		}
+		switch cmd {
+		case "migrate":
+			var target *migrate.Data
+			if store != nil {
+				if v, err := pg.SchemaVersion(ctx, store.Pool()); err != nil || v == 0 {
+					if *dry {
+						fmt.Fprintln(stderr, "note: PostgreSQL schema is not applied yet; reporting against an empty target")
+					} else {
+						fmt.Fprintln(stderr, "error: PostgreSQL schema is not applied; run `tutti-migrate-pg schema` first")
+						return exitFailure
+					}
+				} else if target, err = migrate.ReadPG(ctx, store.Repos()); err != nil {
+					fmt.Fprintln(stderr, "error: reading PostgreSQL:", err)
 					return exitFailure
 				}
-			} else if target, err = migrate.ReadPG(ctx, store.Repos()); err != nil {
+			}
+			var cs controlplane.Store // keep a nil *pg.Store out of the interface
+			if store != nil {
+				cs = store
+			}
+			rep = migrate.Import(ctx, cs, data, migrate.ImportOptions{DryRun: *dry, Target: target})
+		case "verify":
+			target, err := migrate.ReadPG(ctx, store.Repos())
+			if err != nil {
 				fmt.Fprintln(stderr, "error: reading PostgreSQL:", err)
 				return exitFailure
 			}
+			rep = migrate.Verify(data, target)
 		}
-		var cs controlplane.Store // keep a nil *pg.Store out of the interface
-		if store != nil {
-			cs = store
-		}
-		rep = migrate.Import(ctx, cs, data, migrate.ImportOptions{DryRun: *dry, Target: target})
-	case "verify":
-		target, err := migrate.ReadPG(ctx, store.Repos())
-		if err != nil {
-			fmt.Fprintln(stderr, "error: reading PostgreSQL:", err)
-			return exitFailure
-		}
-		rep = migrate.Verify(data, target)
 	}
 
 	if *out != "" {

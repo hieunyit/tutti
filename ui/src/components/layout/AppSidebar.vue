@@ -21,12 +21,30 @@
   import { useI18n } from 'vue-i18n';
   import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
-  import { NAV_GROUPS } from '@/utils/constants/navigation';
+  import { i18n } from '@/i18n';
+  import { NAV_GROUPS, type NavItem } from '@/utils/constants/navigation';
   import { useAboutDialog } from '@/utils/composables/useAboutDialog';
   import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
+  import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
   import { RouteName } from '@/utils/types/router';
+
+  i18n.global.mergeLocaleMessage('en', {
+    [AUDIT_LOG_ROUTE_NAME]: 'Audit log',
+  });
+  i18n.global.mergeLocaleMessage('de', {
+    [AUDIT_LOG_ROUTE_NAME]: 'Audit-Protokoll',
+  });
+  i18n.global.mergeLocaleMessage('vi', {
+    [AUDIT_LOG_ROUTE_NAME]: 'Nhật ký kiểm toán',
+  });
+
+  const AUDIT_NAV_ITEM: NavItem = {
+    routeName: AUDIT_LOG_ROUTE_NAME as unknown as RouteName,
+    iconPath:
+      'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 7h6m-6 4h4',
+  };
 
   const props = defineProps<{
     /** icon-only rail (desktop only) */
@@ -46,13 +64,29 @@
   const badges = useNavBadges();
   const { isAdmin } = storeToRefs(useAuthStore());
   const groups = computed(() =>
-    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value),
+    NAV_GROUPS.map((group) => {
+      if (group.id !== 'administration') {
+        return !group.adminOnly || isAdmin.value
+          ? group
+          : { ...group, items: [] };
+      }
+
+      const baseItems = isAdmin.value ? group.items : [];
+      const hasAudit = baseItems.some(
+        (item) => String(item.routeName) === AUDIT_LOG_ROUTE_NAME,
+      );
+
+      return {
+        ...group,
+        items: hasAudit ? baseItems : [...baseItems, AUDIT_NAV_ITEM],
+      };
+    }).filter((group) => group.items.length > 0),
   );
 
   const isRail = computed(() => Boolean(props.collapsed) && !props.isDrawer);
 
-  const activeItem = computed<RouteName | undefined>(
-    () => route.meta.navSection ?? (route.name as RouteName | undefined),
+  const activeItem = computed<string | undefined>(() =>
+    String(route.meta.navSection ?? route.name ?? ''),
   );
 
   function handleAbout() {

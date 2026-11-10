@@ -36,8 +36,15 @@ const bumpScript = `local v = redis.call('incr', KEYS[1]); redis.call('publish',
 type Publisher struct {
 	Store *Store
 	Redis redis.UniversalClient
-	Log   zerolog.Logger
-	cfg   controlplane.OutboxConfig
+	// MetaRedis is the optional separate Redis client for the meta role (which holds chorus:dynamic_creds).
+	// When nil, Redis is used for all keys.
+	MetaRedis redis.UniversalClient
+	Log       zerolog.Logger
+	// OnStats is called after each active RunOnce cycle with the remaining pending count and oldest entry age.
+	OnStats func(pending int64, oldest time.Duration)
+	// OnFailure is called whenever applying an outbox entry to Redis fails.
+	OnFailure func(err error)
+	cfg       controlplane.OutboxConfig
 
 	mu sync.Mutex
 }
@@ -111,6 +118,9 @@ func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 		if err := p.apply(ctx, r.ops); err != nil {
 			blocked[r.key] = true
 			res.Failed++
+			if p.OnFailure != nil {
+				p.OnFailure(err)
+			}
 			p.Log.Warn().Err(err).Int64("outbox_id", r.id).Str("object", r.key).Int("attempts", r.attempts+1).Msg("control plane outbox: publish failed, will retry")
 			delay := p.cfg.RetryBackoff << min(r.attempts, 20)
 			if delay <= 0 || delay > p.cfg.MaxBackoff {
@@ -127,7 +137,15 @@ func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 		}
 		res.Published++
 	}
-	return res, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return res, err
+	}
+	if p.OnStats != nil {
+		if n, oldest, serr := p.Pending(ctx); serr == nil {
+			p.OnStats(n, oldest)
+		}
+	}
+	return res, nil
 }
 
 func truncate(s string, n int) string {
@@ -143,15 +161,50 @@ func (p *Publisher) apply(ctx context.Context, raw []byte) error {
 	if err := json.Unmarshal(raw, &ops); err != nil {
 		return fmt.Errorf("decode ops: %w", err)
 	}
-	_, err := p.Redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		for _, op := range ops {
-			if err := queue(ctx, pipe, op); err != nil {
-				return err
+	if p.MetaRedis == nil || p.MetaRedis == p.Redis {
+		_, err := p.Redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			for _, op := range ops {
+				if err := queue(ctx, pipe, op); err != nil {
+					return err
+				}
 			}
+			return nil
+		})
+		return err
+	}
+	var cfgOps, metaOps []RedisOp
+	for _, op := range ops {
+		if op.Key == KeyDynamicCreds {
+			metaOps = append(metaOps, op)
+		} else {
+			cfgOps = append(cfgOps, op)
 		}
-		return nil
-	})
-	return err
+	}
+	if len(cfgOps) > 0 {
+		if _, err := p.Redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			for _, op := range cfgOps {
+				if err := queue(ctx, pipe, op); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	if len(metaOps) > 0 {
+		if _, err := p.MetaRedis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			for _, op := range metaOps {
+				if err := queue(ctx, pipe, op); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func queue(ctx context.Context, pipe redis.Pipeliner, op RedisOp) error {

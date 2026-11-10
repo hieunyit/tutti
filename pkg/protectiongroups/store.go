@@ -10,16 +10,46 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
 
-type Store struct{ Redis redis.UniversalClient }
+type Store struct {
+	Redis redis.UniversalClient
+	CP    controlplane.Store
+}
 
 func NewStore(r redis.UniversalClient) *Store { return &Store{Redis: r} }
+
+// WithControlPlane attaches a PostgreSQL control-plane store as the source of truth for desired group configuration
+// (GroupSpec), while runtime promotion and fence state (PromotionState) remains in Redis.
+func (s *Store) WithControlPlane(cp controlplane.Store) *Store {
+	s.CP = cp
+	return s
+}
+
 func (s *Store) Get(ctx context.Context, id string) (Group, error) {
+	if s.CP != nil {
+		doc, err := s.CP.Repos().ProtectionGroups.Get(ctx, id)
+		if errors.Is(err, dom.ErrNotFound) {
+			return Group{}, dom.ErrNotFound
+		}
+		if err == nil {
+			var pgGroup Group
+			if uerr := json.Unmarshal(doc.Value.JSON, &pgGroup); uerr != nil {
+				return Group{}, uerr
+			}
+			return s.mergeWithRedisPromotion(ctx, pgGroup), nil
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Str("group", id).Msg("protectiongroups: PostgreSQL read failed, falling back to Redis")
+	}
+	return s.getRedis(ctx, id)
+}
+
+func (s *Store) getRedis(ctx context.Context, id string) (Group, error) {
 	raw, err := s.Redis.HGet(ctx, GroupsKey, id).Result()
 	if errors.Is(err, redis.Nil) {
 		return Group{}, dom.ErrNotFound
@@ -28,19 +58,100 @@ func (s *Store) Get(ctx context.Context, id string) (Group, error) {
 		return Group{}, err
 	}
 	var g Group
-	err = json.Unmarshal([]byte(raw), &g)
-	return g, err
+	if err := json.Unmarshal([]byte(raw), &g); err != nil {
+		return Group{}, err
+	}
+	if pRaw, err := s.Redis.HGet(ctx, PromotionKey, id).Result(); err == nil {
+		var p PromotionState
+		if json.Unmarshal([]byte(pRaw), &p) == nil && p.Revision >= g.Revision {
+			g.ApplyPromotion(p)
+		}
+	}
+	return g, nil
 }
+
+func (s *Store) mergeWithRedisPromotion(ctx context.Context, pgGroup Group) Group {
+	rGroup, err := s.getRedis(ctx, pgGroup.ID)
+	if err != nil {
+		// Redis lost or missing this group: heal Redis from the authoritative PostgreSQL record.
+		healed := MergeGroup(pgGroup.Spec(), pgGroup.Promotion())
+		if healed.Revision == 0 {
+			healed.Revision = 1
+		}
+		_ = s.healRedis(ctx, healed)
+		return healed
+	}
+	prom := rGroup.Promotion()
+	merged := MergeGroup(pgGroup.Spec(), prom)
+	if !rGroup.Spec().Equal(pgGroup.Spec()) {
+		_ = s.healRedis(ctx, merged)
+	}
+	return merged
+}
+
+func (s *Store) healRedis(ctx context.Context, g Group) error {
+	raw, err := json.Marshal(g)
+	if err != nil {
+		return err
+	}
+	promRaw, err := json.Marshal(g.Promotion())
+	if err != nil {
+		return err
+	}
+	docs, err := s.Redis.HGetAll(ctx, GroupsKey).Result()
+	if err != nil {
+		return err
+	}
+	index, err := scopeIndex(docs, &g, "")
+	if err != nil {
+		return err
+	}
+	currentIndex, err := s.Redis.HGetAll(ctx, ScopeIndexKey).Result()
+	if err != nil {
+		return err
+	}
+	_, err = s.Redis.TxPipelined(ctx, func(p redis.Pipeliner) error {
+		p.HSet(ctx, GroupsKey, g.ID, raw)
+		p.HSet(ctx, PromotionKey, g.ID, promRaw)
+		writeIndex(ctx, p, currentIndex, index)
+		return nil
+	})
+	return err
+}
+
 func (s *Store) List(ctx context.Context) ([]Group, error) {
+	if s.CP != nil {
+		docs, err := s.CP.Repos().ProtectionGroups.List(ctx)
+		if err == nil {
+			out := make([]Group, 0, len(docs))
+			for _, d := range docs {
+				var pgGroup Group
+				if uerr := json.Unmarshal(d.Value.JSON, &pgGroup); uerr != nil {
+					return nil, uerr
+				}
+				out = append(out, s.mergeWithRedisPromotion(ctx, pgGroup))
+			}
+			sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+			return out, nil
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("protectiongroups: PostgreSQL list failed, falling back to Redis")
+	}
 	raw, err := s.Redis.HGetAll(ctx, GroupsKey).Result()
 	if err != nil {
 		return nil, err
 	}
+	proms, _ := s.Redis.HGetAll(ctx, PromotionKey).Result()
 	out := make([]Group, 0, len(raw))
-	for _, v := range raw {
+	for id, v := range raw {
 		var g Group
 		if err := json.Unmarshal([]byte(v), &g); err != nil {
 			return nil, err
+		}
+		if pRaw, ok := proms[id]; ok {
+			var p PromotionState
+			if json.Unmarshal([]byte(pRaw), &p) == nil && p.Revision >= g.Revision {
+				g.ApplyPromotion(p)
+			}
 		}
 		out = append(out, g)
 	}
@@ -49,15 +160,19 @@ func (s *Store) List(ctx context.Context) ([]Group, error) {
 }
 
 // Save performs compare-and-swap and overlap validation in one Redis transaction.
-// Callers must not mutate an existing group's scope or topology outside the reconciler.
+// When PostgreSQL control plane is enabled, desired configuration changes (create, spec update, or primary commit)
+// are persisted to PostgreSQL as the source of truth before updating the Redis promotion/fence projection.
 func (s *Store) Save(ctx context.Context, g *Group) error {
 	expected := g.Revision
+	var nextDoc []byte
+	var syncPG bool
 	err := s.Redis.Watch(ctx, func(tx *redis.Tx) error {
 		docs, err := tx.HGetAll(ctx, GroupsKey).Result()
 		if err != nil {
 			return err
 		}
 		var current Group
+		_, existed := docs[g.ID]
 		if raw, ok := docs[g.ID]; ok {
 			if err = json.Unmarshal([]byte(raw), &current); err != nil {
 				return err
@@ -84,6 +199,17 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 		if err != nil {
 			return err
 		}
+		promRaw, err := json.Marshal(next.Promotion())
+		if err != nil {
+			return err
+		}
+		nextDoc = raw
+		syncPG = !existed || !current.Spec().Equal(next.Spec()) || current.Primary != next.Primary || current.Generation != next.Generation
+		if s.CP != nil && syncPG {
+			if err := s.saveControlPlane(ctx, next, raw, !existed); err != nil {
+				return err
+			}
+		}
 		index, err := scopeIndex(docs, &next, "")
 		if err != nil {
 			return err
@@ -94,6 +220,7 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 		}
 		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
 			p.HSet(ctx, GroupsKey, g.ID, raw)
+			p.HSet(ctx, PromotionKey, g.ID, promRaw)
 			writeIndex(ctx, p, currentIndex, index)
 			return nil
 		})
@@ -102,7 +229,45 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 	if err == nil {
 		g.Revision++
 	}
+	_ = nextDoc
 	return err
+}
+
+func (s *Store) saveControlPlane(ctx context.Context, next Group, raw []byte, isCreate bool) error {
+	pgDocs, err := s.CP.Repos().ProtectionGroups.List(ctx)
+	if err != nil {
+		return wrapCPError(err)
+	}
+	for _, d := range pgDocs {
+		if d.Value.ID == next.ID {
+			continue
+		}
+		var other Group
+		if json.Unmarshal(d.Value.JSON, &other) == nil && next.Overlaps(other) {
+			return fmt.Errorf("%w: scope overlaps group %s", dom.ErrAlreadyExists, d.Value.ID)
+		}
+	}
+	doc := controlplane.RawDoc{ID: next.ID, User: next.User, JSON: raw}
+	if isCreate {
+		_, err = s.CP.Repos().ProtectionGroups.Create(ctx, doc)
+	} else {
+		_, err = s.CP.Repos().ProtectionGroups.Put(ctx, doc)
+	}
+	return wrapCPError(err)
+}
+
+func wrapCPError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, controlplane.ErrReadOnly) ||
+		errors.Is(err, dom.ErrNotFound) ||
+		errors.Is(err, dom.ErrAlreadyExists) ||
+		errors.Is(err, dom.ErrInvalidArg) ||
+		errors.Is(err, dom.ErrFailedPrecondition) {
+		return err
+	}
+	return fmt.Errorf("%w: control plane unavailable: %v", dom.ErrUnavailable, err)
 }
 
 func (s *Store) Delete(ctx context.Context, g Group) error {
@@ -118,6 +283,11 @@ func (s *Store) Delete(ctx context.Context, g Group) error {
 		if current.Revision != g.Revision || current.State != "ready" {
 			return fmt.Errorf("%w: only an unchanged ready group can be detached", dom.ErrFailedPrecondition)
 		}
+		if s.CP != nil {
+			if err := s.CP.Repos().ProtectionGroups.Delete(ctx, g.ID); err != nil && !errors.Is(err, dom.ErrNotFound) {
+				return wrapCPError(err)
+			}
+		}
 		docs, err := tx.HGetAll(ctx, GroupsKey).Result()
 		if err != nil {
 			return err
@@ -132,6 +302,7 @@ func (s *Store) Delete(ctx context.Context, g Group) error {
 		}
 		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
 			p.HDel(ctx, GroupsKey, g.ID)
+			p.HDel(ctx, PromotionKey, g.ID)
 			writeIndex(ctx, p, currentIndex, index)
 			return nil
 		})
@@ -201,8 +372,11 @@ func LookupScope(index map[string]string, user, bucket string) (group string, ok
 	return index["b:"+user+"/"+bucket], true
 }
 
-// EnsureIndex rebuilds the scope index when it is missing (groups written by an older version).
+// EnsureIndex rebuilds the scope index when it is missing (groups written by an older version or after Redis loss).
 func (s *Store) EnsureIndex(ctx context.Context) error {
+	if s.CP != nil {
+		_, _ = s.List(ctx)
+	}
 	return s.Redis.Watch(ctx, func(tx *redis.Tx) error {
 		ok, err := tx.HExists(ctx, ScopeIndexKey, indexVersionField).Result()
 		if err != nil || ok {

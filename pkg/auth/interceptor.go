@@ -10,6 +10,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/hieunyit/tutti/pkg/controlplane"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 )
 
 type ctxKey struct{}
@@ -68,6 +71,8 @@ var viewerMethods = map[string]struct{}{
 	"/chorus.Resilience/ListFailoverEvents":       {},
 	"/chorus.Resilience/ListAccessPolicies":       {},
 	"/chorus.Resilience/ListProxyAccounts":        {},
+	"/chorus.Resilience/GetProxyFleetConfig":      {},
+	"/chorus.Resilience/ListAuditLog":             {},
 	// ListS3Users returns metadata only (no secrets). Console user RPCs and all mutations are admin-only.
 	"/chorus.Resilience/ListS3Users": {},
 }
@@ -132,6 +137,9 @@ func bearerFromMD(ctx context.Context) string {
 
 func (s *Service) check(ctx context.Context, method string) (context.Context, error) {
 	if !s.Enabled() || isPublic(method) {
+		if cur := controlplane.ActorFrom(ctx); cur.Name == "system" {
+			ctx = controlplane.WithActor(ctx, controlplane.Actor{Name: "api", RequestID: xctx.GetTraceID(ctx)})
+		}
 		return ctx, nil
 	}
 	sess, err := s.Authenticate(ctx, bearerFromMD(ctx))
@@ -148,7 +156,9 @@ func (s *Service) check(ctx context.Context, method string) (context.Context, er
 	if !Allowed(sess.Role, method) {
 		return ctx, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s", sess.Role, method)
 	}
-	return ContextWithSession(ctx, sess), nil
+	ctx = ContextWithSession(ctx, sess)
+	ctx = controlplane.WithActor(ctx, controlplane.Actor{Name: sess.Username, RequestID: xctx.GetTraceID(ctx)})
+	return ctx, nil
 }
 
 // UnaryInterceptor enforces authentication and roles on unary RPCs.

@@ -27,21 +27,73 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 // Key is the Redis hash (config DB) holding policies: field = user, value = JSON Policy.
 const Key = "tutti:access-policies"
 
-// Store persists policies in Redis.
+// Repository is the persistence contract for access policies, implemented by Redis and PostgreSQL backends.
+type Repository interface {
+	List(ctx context.Context) ([]Policy, error)
+	Get(ctx context.Context, user string) (Policy, error)
+	Set(ctx context.Context, p Policy) error
+	Delete(ctx context.Context, user string) error
+}
+
+// Store persists policies in Redis or PostgreSQL (with Redis fallback on PostgreSQL read failure).
 type Store struct {
 	rdb redis.Cmdable
+	cp  controlplane.Store
 }
+
+var _ Repository = (*Store)(nil)
 
 func NewStore(rdb redis.Cmdable) *Store { return &Store{rdb: rdb} }
 
+// WithControlPlane switches the store to use PostgreSQL as the primary source of truth, falling back to Redis on read
+// failures and returning 503 Unavailable on write failures when PostgreSQL is unreachable.
+func (s *Store) WithControlPlane(cp controlplane.Store) *Store {
+	s.cp = cp
+	return s
+}
+
+func toCP(p Policy) controlplane.AccessPolicy {
+	return controlplane.AccessPolicy{
+		User:        p.User,
+		Permission:  string(p.Permission),
+		Buckets:     p.Buckets,
+		Description: p.Description,
+	}
+}
+
+func fromCP(p controlplane.AccessPolicy) Policy {
+	return Policy{
+		User:        p.User,
+		Permission:  p.Permission,
+		Buckets:     p.Buckets,
+		Description: p.Description,
+	}
+}
+
 // List returns all policies sorted by user. Unparsable entries are skipped.
 func (s *Store) List(ctx context.Context) ([]Policy, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().AccessPolicies.List(ctx)
+		if err == nil {
+			res := make([]Policy, len(vs))
+			for i, v := range vs {
+				res[i] = fromCP(v.Value)
+			}
+			SortPolicies(res)
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.rdb == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("access policies: PostgreSQL list failed, falling back to Redis")
+	}
 	m, err := s.rdb.HGetAll(ctx, Key).Result()
 	if err != nil {
 		return nil, fmt.Errorf("access policies: list: %w", err)
@@ -64,6 +116,16 @@ func (s *Store) List(ctx context.Context) ([]Policy, error) {
 
 // Get returns the policy of the user or dom.ErrNotFound.
 func (s *Store) Get(ctx context.Context, user string) (Policy, error) {
+	if s.cp != nil {
+		v, err := s.cp.Repos().AccessPolicies.Get(ctx, user)
+		if err == nil {
+			return fromCP(v.Value), nil
+		}
+		if !controlplane.IsUnavailable(err) || s.rdb == nil {
+			return Policy{}, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Str("user", user).Msg("access policies: PostgreSQL get failed, falling back to Redis")
+	}
 	raw, err := s.rdb.HGet(ctx, Key, user).Result()
 	if errors.Is(err, redis.Nil) {
 		return Policy{}, fmt.Errorf("%w: access policy of user %q", dom.ErrNotFound, user)
@@ -84,6 +146,10 @@ func (s *Store) Set(ctx context.Context, p Policy) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
+	if s.cp != nil {
+		_, err := s.cp.Repos().AccessPolicies.Put(ctx, toCP(p))
+		return controlplane.WrapWriteError(err)
+	}
 	raw, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -98,6 +164,9 @@ func (s *Store) Set(ctx context.Context, p Policy) error {
 func (s *Store) Delete(ctx context.Context, user string) error {
 	if user == "" {
 		return fmt.Errorf("%w: access policy: user is required", dom.ErrInvalidArg)
+	}
+	if s.cp != nil {
+		return controlplane.WrapWriteError(s.cp.Repos().AccessPolicies.Delete(ctx, user))
 	}
 	n, err := s.rdb.HDel(ctx, Key, user).Result()
 	if err != nil {

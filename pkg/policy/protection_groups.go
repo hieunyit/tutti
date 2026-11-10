@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/protectiongroups"
@@ -181,6 +182,52 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 		if err != nil {
 			return err
 		}
+		promRaw, err := json.Marshal(next.Promotion())
+		if err != nil {
+			return err
+		}
+		if p.cp != nil {
+			if err := p.cp.Tx(ctx, func(repos controlplane.Repos) error {
+				if before.Primary != after.Primary {
+					for _, id := range before.Replications(before.Primary) {
+						cpID := toCPReplicationID(id)
+						if err := repos.Replications.Remove(ctx, cpID); err != nil {
+							return err
+						}
+						if err := repos.Replications.DeleteStatus(ctx, cpID); err != nil {
+							return err
+						}
+						if _, err := repos.Replications.IncrementGeneration(ctx, cpID); err != nil {
+							return err
+						}
+					}
+				}
+				if len(after.Buckets) == 0 {
+					if err := repos.Routing.Set(ctx, after.User, "", after.Primary); err != nil {
+						return err
+					}
+					bRoutes, err := repos.Routing.ListBucketRoutes(ctx, after.User)
+					if err != nil {
+						return err
+					}
+					for b := range bRoutes {
+						if err := repos.Routing.DeleteRoute(ctx, after.User, b); err != nil {
+							return err
+						}
+					}
+				} else {
+					for _, bucket := range after.Buckets {
+						if err := repos.Routing.Set(ctx, after.User, bucket, after.Primary); err != nil {
+							return err
+						}
+					}
+				}
+				_, err := repos.ProtectionGroups.Put(ctx, controlplane.RawDoc{ID: after.ID, User: after.User, JSON: rawNext})
+				return err
+			}); err != nil {
+				return controlplane.WrapWriteError(err)
+			}
+		}
 		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 			if before.Primary != after.Primary {
 				for _, id := range before.Replications(before.Primary) {
@@ -205,6 +252,7 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 				}
 			}
 			pipe.HSet(ctx, protectiongroups.GroupsKey, after.ID, rawNext)
+			pipe.HSet(ctx, protectiongroups.PromotionKey, after.ID, promRaw)
 			// Redis Tx clients do not necessarily inherit hooks from their parent. Include the
 			// snapshot version explicitly in this authoritative topology transaction.
 			pipe.Incr(ctx, SnapshotVersionKey)

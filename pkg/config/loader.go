@@ -86,6 +86,30 @@ func applyEnvOverrides(m map[string]any, prefix string) error {
 	return nil
 }
 
+func applySubtreeEnvOverrides(m map[string]any, prefix string, rootPath []string) error {
+	pfx := strings.ToUpper(prefix)
+	for _, env := range os.Environ() {
+		eqIdx := strings.IndexByte(env, '=')
+		if eqIdx < 0 {
+			continue
+		}
+		key := env[:eqIdx]
+		val := env[eqIdx+1:]
+		if !strings.HasPrefix(key, pfx) {
+			continue
+		}
+		rest := key[len(pfx):]
+		if rest == "" {
+			continue
+		}
+		parts := append(append([]string(nil), rootPath...), strings.Split(rest, "_")...)
+		if !setMapValue(m, parts, val) {
+			return fmt.Errorf("env var %s: no matching config field found; ensure the field exists in YAML config", key)
+		}
+	}
+	return nil
+}
+
 func setMapValue(m map[string]any, path []string, value string) bool {
 	if len(path) == 0 || m == nil {
 		return false

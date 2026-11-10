@@ -54,6 +54,9 @@ const (
 	Resilience_UpdateConsoleUser_FullMethodName              = "/chorus.Resilience/UpdateConsoleUser"
 	Resilience_ResetConsoleUserPassword_FullMethodName       = "/chorus.Resilience/ResetConsoleUserPassword"
 	Resilience_DeleteConsoleUser_FullMethodName              = "/chorus.Resilience/DeleteConsoleUser"
+	Resilience_GetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/GetProxyFleetConfig"
+	Resilience_SetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/SetProxyFleetConfig"
+	Resilience_ListAuditLog_FullMethodName                   = "/chorus.Resilience/ListAuditLog"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -151,6 +154,12 @@ type ResilienceClient interface {
 	ResetConsoleUserPassword(ctx context.Context, in *ResetConsoleUserPasswordRequest, opts ...grpc.CallOption) (*ResetConsoleUserPasswordResponse, error)
 	// DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
 	DeleteConsoleUser(ctx context.Context, in *ConsoleUserName, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetProxyFleetConfig returns the centralized proxy fleet configuration (cluster defaults + per-group overrides).
+	GetProxyFleetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyFleetConfig, error)
+	// SetProxyFleetConfig updates the centralized proxy fleet configuration and bumps its version.
+	SetProxyFleetConfig(ctx context.Context, in *SetProxyFleetConfigRequest, opts ...grpc.CallOption) (*ProxyFleetConfig, error)
+	// ListAuditLog returns control-plane audit log entries matching the filter (newest first).
+	ListAuditLog(ctx context.Context, in *ListAuditLogRequest, opts ...grpc.CallOption) (*AuditLogList, error)
 }
 
 type resilienceClient struct {
@@ -501,6 +510,36 @@ func (c *resilienceClient) DeleteConsoleUser(ctx context.Context, in *ConsoleUse
 	return out, nil
 }
 
+func (c *resilienceClient) GetProxyFleetConfig(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyFleetConfig, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProxyFleetConfig)
+	err := c.cc.Invoke(ctx, Resilience_GetProxyFleetConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) SetProxyFleetConfig(ctx context.Context, in *SetProxyFleetConfigRequest, opts ...grpc.CallOption) (*ProxyFleetConfig, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProxyFleetConfig)
+	err := c.cc.Invoke(ctx, Resilience_SetProxyFleetConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) ListAuditLog(ctx context.Context, in *ListAuditLogRequest, opts ...grpc.CallOption) (*AuditLogList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuditLogList)
+	err := c.cc.Invoke(ctx, Resilience_ListAuditLog_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResilienceServer is the server API for Resilience service.
 // All implementations should embed UnimplementedResilienceServer
 // for forward compatibility.
@@ -596,6 +635,12 @@ type ResilienceServer interface {
 	ResetConsoleUserPassword(context.Context, *ResetConsoleUserPasswordRequest) (*ResetConsoleUserPasswordResponse, error)
 	// DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
 	DeleteConsoleUser(context.Context, *ConsoleUserName) (*emptypb.Empty, error)
+	// GetProxyFleetConfig returns the centralized proxy fleet configuration (cluster defaults + per-group overrides).
+	GetProxyFleetConfig(context.Context, *emptypb.Empty) (*ProxyFleetConfig, error)
+	// SetProxyFleetConfig updates the centralized proxy fleet configuration and bumps its version.
+	SetProxyFleetConfig(context.Context, *SetProxyFleetConfigRequest) (*ProxyFleetConfig, error)
+	// ListAuditLog returns control-plane audit log entries matching the filter (newest first).
+	ListAuditLog(context.Context, *ListAuditLogRequest) (*AuditLogList, error)
 }
 
 // UnimplementedResilienceServer should be embedded to have
@@ -706,6 +751,15 @@ func (UnimplementedResilienceServer) ResetConsoleUserPassword(context.Context, *
 }
 func (UnimplementedResilienceServer) DeleteConsoleUser(context.Context, *ConsoleUserName) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteConsoleUser not implemented")
+}
+func (UnimplementedResilienceServer) GetProxyFleetConfig(context.Context, *emptypb.Empty) (*ProxyFleetConfig, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetProxyFleetConfig not implemented")
+}
+func (UnimplementedResilienceServer) SetProxyFleetConfig(context.Context, *SetProxyFleetConfigRequest) (*ProxyFleetConfig, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetProxyFleetConfig not implemented")
+}
+func (UnimplementedResilienceServer) ListAuditLog(context.Context, *ListAuditLogRequest) (*AuditLogList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAuditLog not implemented")
 }
 func (UnimplementedResilienceServer) testEmbeddedByValue() {}
 
@@ -1339,6 +1393,60 @@ func _Resilience_DeleteConsoleUser_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_GetProxyFleetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).GetProxyFleetConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_GetProxyFleetConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).GetProxyFleetConfig(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_SetProxyFleetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetProxyFleetConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).SetProxyFleetConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_SetProxyFleetConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).SetProxyFleetConfig(ctx, req.(*SetProxyFleetConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_ListAuditLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAuditLogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).ListAuditLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_ListAuditLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).ListAuditLog(ctx, req.(*ListAuditLogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Resilience_ServiceDesc is the grpc.ServiceDesc for Resilience service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1481,6 +1589,18 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteConsoleUser",
 			Handler:    _Resilience_DeleteConsoleUser_Handler,
+		},
+		{
+			MethodName: "GetProxyFleetConfig",
+			Handler:    _Resilience_GetProxyFleetConfig_Handler,
+		},
+		{
+			MethodName: "SetProxyFleetConfig",
+			Handler:    _Resilience_SetProxyFleetConfig_Handler,
+		},
+		{
+			MethodName: "ListAuditLog",
+			Handler:    _Resilience_ListAuditLog_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

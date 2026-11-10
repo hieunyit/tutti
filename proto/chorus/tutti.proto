@@ -125,6 +125,15 @@ service Resilience {
 
   // DeleteConsoleUser removes a managed user. Its sessions stop working immediately.
   rpc DeleteConsoleUser(ConsoleUserName) returns (google.protobuf.Empty);
+
+  // GetProxyFleetConfig returns the centralized proxy fleet configuration (cluster defaults + per-group overrides).
+  rpc GetProxyFleetConfig(google.protobuf.Empty) returns (ProxyFleetConfig);
+
+  // SetProxyFleetConfig updates the centralized proxy fleet configuration and bumps its version.
+  rpc SetProxyFleetConfig(SetProxyFleetConfigRequest) returns (ProxyFleetConfig);
+
+  // ListAuditLog returns control-plane audit log entries matching the filter (newest first).
+  rpc ListAuditLog(ListAuditLogRequest) returns (AuditLogList);
 }
 
 message CreateProxyAccountRequest {
@@ -286,6 +295,14 @@ message ProxySettings {
   FailoverSettings failover = 3;
   // True if SigV4 requests without a signed Content-Type header are rejected.
   bool require_signed_content_type = 4;
+  // Max time to read HTTP request headers (non-hot-reloadable; changing requires proxy restart).
+  google.protobuf.Duration read_header_timeout = 5;
+  // Protection group writer lease TTL (non-hot-reloadable; changing requires proxy restart).
+  google.protobuf.Duration writer_lease = 6;
+  // Graceful drain wait on SIGTERM.
+  google.protobuf.Duration drain_delay = 7;
+  // Max Redis staleness before /ready returns 503.
+  google.protobuf.Duration ready_max_staleness = 8;
 }
 
 // ProxyStatus is the status of one live proxy instance.
@@ -309,6 +326,14 @@ message ProxyStatus {
   // Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).
   // Absent for proxies that do not publish them. Settings.failover tells whether the failover controller runs.
   TrafficRates rates = 8;
+  // Proxy group name (default "default").
+  string group = 9;
+  // Central fleet configuration version applied by this proxy.
+  int64 applied_config_version = 10;
+  // True when central fleet configuration changed a setting that requires a proxy restart.
+  bool pending_restart = 11;
+  // Names of settings that require a proxy restart to take effect.
+  repeated string pending_restart_reasons = 12;
 }
 
 // TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds.
@@ -426,6 +451,8 @@ message ProxyStatusList {
   repeated ProxyStatus proxies = 1;
   // Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum).
   TrafficRates total_rates = 2;
+  // Latest central proxy fleet configuration version (0 when no central config was saved yet).
+  int64 config_version = 3;
 }
 
 // FailoverPolicy defines which storages may be promoted when the source storage is down.
@@ -776,4 +803,81 @@ message RotateStorageConnectionAccountRequest {
   StorageTestOptions options = 3;
   // Switch although the test has failing steps.
   bool force = 4;
+}
+
+message ProxySyncSettingsOverride {
+  optional bool enabled = 1;
+  optional int32 write_quorum = 2;
+  google.protobuf.Duration timeout = 3;
+  optional string on_quorum_failure = 4;
+}
+
+message ProxyReplicationSettingsOverride {
+  optional string on_event_error = 1;
+  google.protobuf.Duration event_retry_budget = 2;
+  ProxySyncSettingsOverride sync = 3;
+}
+
+message ProxyHealthSettingsOverride {
+  optional int32 failure_threshold = 1;
+  google.protobuf.Duration open_duration = 2;
+}
+
+message ProxyFailoverSettingsOverride {
+  optional bool enabled = 1;
+  google.protobuf.Duration check_interval = 2;
+  google.protobuf.Duration after = 3;
+  optional int32 max_event_lag = 4;
+}
+
+message ProxySettingsOverride {
+  ProxyReplicationSettingsOverride replication = 1;
+  ProxyHealthSettingsOverride health = 2;
+  ProxyFailoverSettingsOverride failover = 3;
+  optional bool require_signed_content_type = 4;
+  google.protobuf.Duration read_header_timeout = 5;
+  google.protobuf.Duration writer_lease = 6;
+  google.protobuf.Duration drain_delay = 7;
+  google.protobuf.Duration ready_max_staleness = 8;
+}
+
+message ProxyFleetConfig {
+  int64 version = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  ProxySettingsOverride defaults = 3;
+  map<string, ProxySettingsOverride> groups = 4;
+}
+
+message SetProxyFleetConfigRequest {
+  ProxySettingsOverride defaults = 1;
+  map<string, ProxySettingsOverride> groups = 2;
+}
+
+message ListAuditLogRequest {
+  string family = 1;
+  string entity_key = 2;
+  string actor = 3;
+  string action = 4;
+  google.protobuf.Timestamp since = 5;
+  google.protobuf.Timestamp until = 6;
+  int64 before_id = 7;
+  int32 limit = 8;
+}
+
+message AuditLogEntry {
+  int64 id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  string actor = 3;
+  string action = 4;
+  string family = 5;
+  string entity_key = 6;
+  string before_json = 7;
+  string after_json = 8;
+  string request_id = 9;
+}
+
+message AuditLogList {
+  repeated AuditLogEntry entries = 1;
+  bool enabled = 2;
+  string backend = 3;
 }

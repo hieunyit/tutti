@@ -46,15 +46,53 @@ export interface TuttiProxySettings {
     maxEventLag?: number;
   };
   requireSignedContentType?: boolean;
+  readHeaderTimeout?: string;
+  writerLease?: string;
+  drainDelay?: string;
+  readyMaxStaleness?: string;
+}
+
+export interface TuttiProxySettingsOverride {
+  replication?: {
+    onEventError?: string;
+    eventRetryBudget?: string;
+    sync?: TuttiSyncSettings;
+  };
+  health?: {
+    failureThreshold?: number;
+    openDuration?: string;
+  };
+  failover?: {
+    enabled?: boolean;
+    checkInterval?: string;
+    after?: string;
+    maxEventLag?: number;
+  };
+  requireSignedContentType?: boolean;
+  readHeaderTimeout?: string;
+  writerLease?: string;
+  drainDelay?: string;
+  readyMaxStaleness?: string;
+}
+
+export interface TuttiProxyFleetConfig {
+  version?: TuttiInt64;
+  updatedAt?: string;
+  defaults?: TuttiProxySettingsOverride;
+  groups?: Record<string, TuttiProxySettingsOverride>;
 }
 
 export interface TuttiProxyStatus {
   appId: string;
   address?: string;
+  group?: string;
   startedAt?: string;
   updatedAt?: string;
   storages?: TuttiStorageHealth[];
   settings?: TuttiProxySettings;
+  appliedConfigVersion?: TuttiInt64;
+  pendingRestart?: boolean;
+  pendingRestartReasons?: string[];
   /** absent for proxies that do not publish traffic stats */
   stats?: TuttiTrafficStats;
   /** live rates computed by the proxy (window of about 10 s) */
@@ -65,6 +103,7 @@ export interface TuttiProxyStatusListResponse {
   proxies?: TuttiProxyStatus[];
   /** rates summed over the listed proxies */
   totalRates?: TuttiTrafficRates;
+  configVersion?: TuttiInt64;
 }
 
 /** Per-second rates; latencies in milliseconds. */

@@ -13,7 +13,42 @@ import (
 )
 
 const GroupsKey = "tutti:protection:groups"
+const PromotionKey = "tutti:protection:promotion"
 const FreezeKey = "tutti:protection:automatic-frozen"
+
+// GroupSpec holds the desired configuration of a protection group.
+// When controlPlane.backend is "postgres", PostgreSQL is the source of truth for GroupSpec.
+type GroupSpec struct {
+	ID   string `json:"id"`
+	User string `json:"user"`
+	// Empty means all buckets of this user. Bucket lists contain exact names, not globs.
+	Buckets     []string      `json:"buckets,omitempty"`
+	Members     []string      `json:"members"`
+	Copies      int           `json:"copies"`
+	MaxEventLag int           `json:"maxEventLag"`
+	Mode        string        `json:"mode"`
+	After       time.Duration `json:"after"`
+	// Electorate is explicit and never shrinks when a proxy stops reporting.
+	Electorate         []string `json:"electorate,omitempty"`
+	MaxSwitchesPerHour int      `json:"maxSwitchesPerHour"`
+}
+
+// PromotionState holds the runtime promotion and write-fence state of a protection group.
+// It lives in Redis so the proxy admission Lua script can inspect primary/frozen/state/generation at line rate.
+type PromotionState struct {
+	Primary     string           `json:"primary"`
+	Generation  int64            `json:"generation"`
+	Revision    int64            `json:"revision"`
+	State       string           `json:"state"`
+	Target      string           `json:"target,omitempty"`
+	Automatic   bool             `json:"automatic,omitempty"`
+	Frozen      bool             `json:"frozen"`
+	Seeded      map[string]int64 `json:"seeded,omitempty"`
+	Verified    map[string]int64 `json:"verified,omitempty"`
+	Quarantined []string         `json:"quarantined,omitempty"`
+	History     []Event          `json:"history,omitempty"`
+	LastError   string           `json:"lastError,omitempty"`
+}
 
 type Group struct {
 	ID   string `json:"id"`
@@ -42,6 +77,114 @@ type Group struct {
 	Quarantined []string `json:"quarantined,omitempty"`
 	History     []Event  `json:"history,omitempty"`
 	LastError   string   `json:"lastError,omitempty"`
+}
+
+// Spec extracts the desired configuration state of the group.
+func (g Group) Spec() GroupSpec {
+	return GroupSpec{
+		ID:                 g.ID,
+		User:               g.User,
+		Buckets:            slices.Clone(g.Buckets),
+		Members:            slices.Clone(g.Members),
+		Copies:             g.Copies,
+		MaxEventLag:        g.MaxEventLag,
+		Mode:               g.Mode,
+		After:              g.After,
+		Electorate:         slices.Clone(g.Electorate),
+		MaxSwitchesPerHour: g.MaxSwitchesPerHour,
+	}
+}
+
+// Promotion extracts the runtime promotion state of the group.
+func (g Group) Promotion() PromotionState {
+	var seeded, verified map[string]int64
+	if g.Seeded != nil {
+		seeded = make(map[string]int64, len(g.Seeded))
+		for k, v := range g.Seeded {
+			seeded[k] = v
+		}
+	}
+	if g.Verified != nil {
+		verified = make(map[string]int64, len(g.Verified))
+		for k, v := range g.Verified {
+			verified[k] = v
+		}
+	}
+	return PromotionState{
+		Primary:     g.Primary,
+		Generation:  g.Generation,
+		Revision:    g.Revision,
+		State:       g.State,
+		Target:      g.Target,
+		Automatic:   g.Automatic,
+		Frozen:      g.Frozen,
+		Seeded:      seeded,
+		Verified:    verified,
+		Quarantined: slices.Clone(g.Quarantined),
+		History:     slices.Clone(g.History),
+		LastError:   g.LastError,
+	}
+}
+
+// ApplySpec overwrites the desired configuration fields of g from spec.
+func (g *Group) ApplySpec(spec GroupSpec) {
+	g.ID = spec.ID
+	g.User = spec.User
+	g.Buckets = slices.Clone(spec.Buckets)
+	g.Members = slices.Clone(spec.Members)
+	g.Copies = spec.Copies
+	g.MaxEventLag = spec.MaxEventLag
+	g.Mode = spec.Mode
+	g.After = spec.After
+	g.Electorate = slices.Clone(spec.Electorate)
+	g.MaxSwitchesPerHour = spec.MaxSwitchesPerHour
+}
+
+// ApplyPromotion overwrites the runtime promotion fields of g from p.
+func (g *Group) ApplyPromotion(p PromotionState) {
+	g.Primary = p.Primary
+	g.Generation = p.Generation
+	g.Revision = p.Revision
+	g.State = p.State
+	g.Target = p.Target
+	g.Automatic = p.Automatic
+	g.Frozen = p.Frozen
+	g.Seeded = p.Seeded
+	g.Verified = p.Verified
+	g.Quarantined = slices.Clone(p.Quarantined)
+	g.History = slices.Clone(p.History)
+	g.LastError = p.LastError
+}
+
+// MergeGroup combines a desired GroupSpec and runtime PromotionState into a Group.
+func MergeGroup(spec GroupSpec, p PromotionState) Group {
+	var g Group
+	g.ApplySpec(spec)
+	g.ApplyPromotion(p)
+	if g.Primary == "" && len(g.Members) > 0 {
+		g.Primary = g.Members[0]
+	}
+	if g.Generation == 0 {
+		g.Generation = 1
+	}
+	if g.State == "" {
+		g.State = "initializing"
+		g.Frozen = true
+	}
+	return g
+}
+
+func (s GroupSpec) Equal(other GroupSpec) bool {
+	return s.ID == other.ID &&
+		s.User == other.User &&
+		slices.Equal(s.Buckets, other.Buckets) &&
+		slices.Equal(s.Members, other.Members) &&
+		s.Copies == other.Copies &&
+		s.MaxEventLag == other.MaxEventLag &&
+		s.Mode == other.Mode &&
+		s.After == other.After &&
+		slices.Equal(s.Electorate, other.Electorate) &&
+		s.MaxSwitchesPerHour == other.MaxSwitchesPerHour
 }
 
 type Event struct {

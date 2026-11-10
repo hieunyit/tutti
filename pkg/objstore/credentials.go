@@ -35,6 +35,7 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/argon2"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/s3"
@@ -142,7 +143,7 @@ func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient, op
 	}
 	if !conf.DynamicCredentials.DisableEncryption {
 		// derive encryption key
-		salt, parallelism, err := getOrCreateSalt(ctx, rc)
+		salt, parallelism, err := getOrCreateSaltWithCP(ctx, instance.cp, rc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get or create salt: %w", err)
 		}
@@ -215,6 +216,7 @@ Local cache:
 */
 type credsSvc struct {
 	client redis.UniversalClient
+	cp     controlplane.Store
 	// view is the snapshot of all storages (config + managed), replaced atomically on change.
 	view atomic.Pointer[storagesView]
 	// managedClient is the config DB Redis with the managed storages (nil: managed storages disabled).
@@ -417,6 +419,20 @@ func (s *credsSvc) sync(ctx context.Context) error {
 	}
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
+	if s.cp != nil {
+		list, err := s.cp.Repos().DynamicCredentials.List(ctx)
+		if err == nil {
+			allCreds := make(map[string]string, len(list))
+			for _, c := range list {
+				allCreds[c.RedisField()] = c.Sealed
+			}
+			return s.applyCredsMap(allCreds, s.version+1, false)
+		}
+		if s.client == nil {
+			return fmt.Errorf("failed to get all credentials from postgres: %w", err)
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("dynamic credentials: PostgreSQL list failed, falling back to Redis")
+	}
 	// read redis version of creds and update local cache
 	remoteVer, err := s.client.HGet(ctx, redisHashKey, redisHFieldVersion).Int64()
 	if err != nil && !errors.Is(err, redis.Nil) {
@@ -433,15 +449,21 @@ func (s *credsSvc) sync(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get all credentials from redis: %w", err)
 	}
+	return s.applyCredsMap(allCreds, remoteVer, true)
+}
+
+func (s *credsSvc) applyCredsMap(allCreds map[string]string, remoteVer int64, parseVersionField bool) error {
+	var err error
 	s3Creds := make(map[string]s3.CredentialsV4)
 	swiftCreds := make(map[string]swift.Credentials)
 	s3AccessKeyIdx := buildS3AccessKeyIdxFromConf(s.config)
 	for key, value := range allCreds {
 		if key == redisHFieldVersion {
-			// set remote version:
-			remoteVer, err = strconv.ParseInt(value, 10, 64)
-			if err != nil {
-				return fmt.Errorf("failed to parse remote version from redis: %w", err)
+			if parseVersionField {
+				remoteVer, err = strconv.ParseInt(value, 10, 64)
+				if err != nil {
+					return fmt.Errorf("failed to parse remote version from redis: %w", err)
+				}
 			}
 			continue
 		}
@@ -491,7 +513,6 @@ func (s *credsSvc) sync(ctx context.Context) error {
 	s.version = remoteVer
 
 	return nil
-
 }
 
 func (s *credsSvc) GetS3Credentials(storage string, user string) (s3.CredentialsV4, error) {
@@ -593,14 +614,28 @@ func (s *credsSvc) storeCred(ctx context.Context, storType dom.StorageType, stor
 	}
 
 	// encrypt credentials
-	value, err := s.encrypt(value)
+	sealed, err := s.encrypt(value)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt S3 credentials: %w", err)
+	}
+	if s.cp != nil {
+		if err := s.cp.Repos().DynamicCredentials.Set(ctx, controlplane.DynamicCredential{
+			StorageType: string(storType),
+			Storage:     storage,
+			User:        user,
+			Sealed:      sealed,
+		}); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
+		if err := s.sync(ctx); err != nil {
+			return fmt.Errorf("failed to sync credentials cache after update: %w", err)
+		}
+		return nil
 	}
 	key := credsToRedisField(storType, storage, user)
 	// store in redis and increment version in a transaction
 	tx := s.client.TxPipeline()
-	tx.HSet(ctx, redisHashKey, key, value)
+	tx.HSet(ctx, redisHashKey, key, sealed)
 	tx.HIncrBy(ctx, redisHashKey, redisHFieldVersion, 1)
 	if _, err := tx.Exec(ctx); err != nil {
 		return fmt.Errorf("failed to set S3 credentials in redis: %w", err)
@@ -645,6 +680,20 @@ func (s *credsSvc) DeleteUserCredentials(ctx context.Context, storage, user stri
 	if _, ok := s.view.Load().types[storage]; !ok {
 		return fmt.Errorf("%w: storage %q not found", dom.ErrInvalidArg, storage)
 	}
+	if s.cp != nil {
+		_, errS3 := s.cp.Repos().DynamicCredentials.Get(ctx, string(dom.S3), storage, user)
+		_, errSw := s.cp.Repos().DynamicCredentials.Get(ctx, string(dom.Swift), storage, user)
+		if errors.Is(errS3, dom.ErrNotFound) && errors.Is(errSw, dom.ErrNotFound) {
+			return fmt.Errorf("%w: dynamic credentials of user %q on storage %q", dom.ErrNotFound, user, storage)
+		}
+		if err := s.cp.Repos().DynamicCredentials.Delete(ctx, storage, user); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
+		if err := s.sync(ctx); err != nil {
+			return fmt.Errorf("failed to sync credentials cache after delete: %w", err)
+		}
+		return nil
+	}
 	tx := s.client.TxPipeline()
 	del := tx.HDel(ctx, redisHashKey, credsToRedisField(dom.S3, storage, user), credsToRedisField(dom.Swift, storage, user))
 	tx.HIncrBy(ctx, redisHashKey, redisHFieldVersion, 1)
@@ -665,6 +714,65 @@ func (s *credsSvc) SetSwiftCredentials(ctx context.Context, storage string, user
 		return fmt.Errorf("%w: invalid Swift credentials: %w", dom.ErrInvalidArg, err)
 	}
 	return s.storeCred(ctx, dom.Swift, storage, user, cred)
+}
+
+func getOrCreateSaltWithCP(ctx context.Context, cp controlplane.Store, rc redis.UniversalClient) ([]byte, uint8, error) {
+	if cp == nil {
+		return getOrCreateSalt(ctx, rc)
+	}
+	saltStr, ok, err := cp.Repos().DynamicCredentials.Salt(ctx)
+	if err != nil {
+		if rc != nil && controlplane.IsUnavailable(err) {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("dynamic credentials: PostgreSQL salt read failed, falling back to Redis")
+			return getOrCreateSalt(ctx, rc)
+		}
+		return nil, 0, err
+	}
+	if !ok {
+		// Check if Redis already has a salt (e.g., before migration) so we never generate a conflicting salt.
+		if rc != nil {
+			if existing, rerr := rc.HGet(ctx, redisHashKey, redisHFieldSalt).Result(); rerr == nil && existing != "" {
+				saltStr = existing
+			}
+		}
+		if saltStr == "" {
+			salt := make([]byte, 16)
+			if _, err := rand.Read(salt); err != nil {
+				return nil, 0, fmt.Errorf("failed to generate salt: %w", err)
+			}
+			saltStr = strconv.Itoa(kdfParallelism) + ":" + base64.StdEncoding.EncodeToString(salt)
+		}
+		if _, err := cp.Repos().DynamicCredentials.SetSaltIfAbsent(ctx, saltStr); err != nil {
+			return nil, 0, err
+		}
+		saltStr, ok, err = cp.Repos().DynamicCredentials.Salt(ctx)
+		if err != nil || !ok {
+			return nil, 0, fmt.Errorf("failed to read salt from postgres: %w", err)
+		}
+	}
+	return parseSaltString(ctx, saltStr)
+}
+
+func parseSaltString(ctx context.Context, saltStr string) ([]byte, uint8, error) {
+	parallelismStr, saltB64, found := strings.Cut(saltStr, ":")
+	var parallelism uint8
+	if found {
+		p, err := strconv.ParseUint(parallelismStr, 10, 8)
+		if err != nil || p == 0 {
+			return nil, 0, fmt.Errorf("%w: invalid kdf parallelism %q in salt", dom.ErrInternal, parallelismStr)
+		}
+		parallelism = uint8(p)
+	} else {
+		saltB64 = saltStr
+		parallelism = legacyKDFParallelism(runtime.NumCPU())
+		zerolog.Ctx(ctx).Warn().Uint8("kdf_parallelism", parallelism).
+			Msg("dynamic credentials encryption key is derived with host CPU count: hosts with different CPU count cannot decrypt each other's credentials")
+	}
+	salt, err := base64.StdEncoding.DecodeString(saltB64)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to decode salt from base64: %w", err)
+	}
+	return salt, parallelism, nil
 }
 
 // getOrCreateSalt returns salt and Argon2 parallelism for encryption key derivation.

@@ -220,3 +220,10 @@ http:
     - selector: chorus.ProtectionGroups.ClearWriter
       post: /tutti/protection-groups/clear-writer
       body: "*"
+    - selector: chorus.Resilience.GetProxyFleetConfig
+      get: /tutti/proxy-config
+    - selector: chorus.Resilience.SetProxyFleetConfig
+      put: /tutti/proxy-config
+      body: "*"
+    - selector: chorus.Resilience.ListAuditLog
+      get: /tutti/audit-log

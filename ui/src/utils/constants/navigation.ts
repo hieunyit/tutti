@@ -17,7 +17,7 @@
 import { RouteName, type NavGroupId } from '@/utils/types/router';
 
 /** Which live counter a sidebar item shows as a badge. */
-export type NavBadgeKey = 'attention' | 'failover';
+export type NavBadgeKey = 'attention' | 'failover' | 'protection';
 
 export interface NavItem {
   routeName: RouteName;
@@ -49,6 +49,8 @@ const ICONS = {
   routing:
     'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9',
   failover: 'M12 2l9 4v6c0 5-3.8 9.4-9 10-5.2-.6-9-5-9-10V6zM9 12l2 2 4-4',
+  protection:
+    'M12 2l9 4v6c0 5-3.8 9.4-9 10-5.2-.6-9-5-9-10V6zM8 12h8M12 8v8',
   diff: 'M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 3v18',
   key: 'M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z',
   docs: 'M4 4h11l5 5v11H4zM15 4v5h5M8 13h8M8 17h6',
@@ -87,6 +89,11 @@ export const NAV_GROUPS: NavGroup[] = [
         routeName: RouteName.TUTTI_FAILOVER,
         iconPath: ICONS.failover,
         badgeKey: 'failover',
+      },
+      {
+        routeName: RouteName.TUTTI_PROTECTION_GROUPS,
+        iconPath: ICONS.protection,
+        badgeKey: 'protection',
       },
       { routeName: RouteName.CHORUS_DIFF_REPORTS, iconPath: ICONS.diff },
     ],

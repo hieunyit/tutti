@@ -20,6 +20,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/store"
@@ -36,6 +37,13 @@ type FailoverSvc interface {
 var _ FailoverSvc = (*policySvc)(nil)
 
 func (r *policySvc) FailoverReplication(ctx context.Context, id entity.UniversalReplicationID) error {
+	return r.FailoverReplicationWithEvent(ctx, id, nil)
+}
+
+// FailoverReplicationWithEvent switches the routing of a replication scope to the replication destination
+// and, when ev is non-nil and a PostgreSQL control plane is attached, records the failover event in the
+// same database transaction.
+func (r *policySvc) FailoverReplicationWithEvent(ctx context.Context, id entity.UniversalReplicationID, ev *controlplane.FailoverEvent) error {
 	if err := id.Validate(); err != nil {
 		return fmt.Errorf("failover: unable to validate replication id: %w", err)
 	}
@@ -60,6 +68,42 @@ func (r *policySvc) FailoverReplication(ctx context.Context, id entity.Universal
 	}
 	if err := r.pauseReplicationQueues(ctx, id); err != nil {
 		return fmt.Errorf("failover: %w", err)
+	}
+	if r.cp != nil {
+		user, bucket := policyScope(id)
+		if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			curRoute, err := r.getRoutingForReplicationRepo(ctx, repos.Routing, id)
+			if err != nil {
+				return fmt.Errorf("failover: unable to get current routing: %w", err)
+			}
+			if curRoute != id.FromStorage() {
+				return fmt.Errorf("%w: failover: %s is routed to %s, not to replication source %s", dom.ErrInvalidArg, id.AsString(), curRoute, id.FromStorage())
+			}
+			if err := repos.Routing.Set(ctx, user, bucket, id.ToStorage()); err != nil {
+				return err
+			}
+			if _, isUser := id.AsUserID(); isUser {
+				buckets, err := repos.Routing.ListBucketRoutes(ctx, id.User())
+				if err != nil {
+					return fmt.Errorf("failover: unable to list bucket routings: %w", err)
+				}
+				for b, to := range buckets {
+					if to == id.FromStorage() {
+						if err := repos.Routing.Set(ctx, id.User(), b, id.ToStorage()); err != nil {
+							return err
+						}
+					}
+				}
+			}
+			if ev != nil {
+				if _, err := repos.FailoverEvents.Put(ctx, *ev); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
 	}
 	tx := r.userRoutingStore.TxExecutor()
 	r.routeToNewInTx(ctx, tx, id)

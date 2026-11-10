@@ -878,8 +878,11 @@ func startKeystoneInstance(ctx context.Context, env *TestEnvironment, componentN
 	adminNATPort := adminNATPortString
 	externalNATPort := externalNATPortString
 	req := testcontainers.ContainerRequest{
-		Image:      CKeystoneImage,
-		WaitingFor: wait.ForHTTP("/v3").WithPort(externalNATPort),
+		Image: CKeystoneImage,
+		// Keystone runs several MariaDB migrations on first boot. Give that
+		// one-time schema initialization more room without changing the wait
+		// timeout for any other test container.
+		WaitingFor: wait.ForHTTP("/v3").WithPort(externalNATPort).WithStartupTimeout(3 * time.Minute),
 		Env: map[string]string{
 			"ADMIN_TENANT_NAME": CKeystoneAdminTenantName,
 			"ADMIN_USERNAME":    CKeystoneAdminUsername,

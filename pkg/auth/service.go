@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
@@ -134,6 +135,17 @@ type Option func(*Service)
 // and win on name conflicts.
 func WithManagedUsers(rdb redis.Cmdable) Option {
 	return func(s *Service) { s.managed = NewUserStore(rdb) }
+}
+
+// WithControlPlane attaches a PostgreSQL control-plane store to the managed console user store.
+func WithControlPlane(cp controlplane.Store) Option {
+	return func(s *Service) {
+		if s.managed != nil {
+			s.managed.WithControlPlane(cp)
+		} else {
+			s.managed = NewUserStore(nil).WithControlPlane(cp)
+		}
+	}
 }
 
 // WithWarnings sets static warnings reported by GET /auth/me (e.g. WarningWebhookUnauthenticated).

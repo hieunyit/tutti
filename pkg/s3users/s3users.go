@@ -14,6 +14,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
@@ -56,8 +57,19 @@ type Manager struct {
 	Accounts *proxyaccount.Store
 	Policies *accesspolicy.Store
 	Redis    redis.Cmdable // proxy status documents (static key counts)
+	CP       controlplane.Store
 	Verify   Verifier
 	Refs     References
+}
+
+func (m *Manager) controlPlane() controlplane.Store {
+	if m.CP != nil {
+		return m.CP
+	}
+	if cpHolder, ok := m.Creds.(interface{ ControlPlane() controlplane.Store }); ok {
+		return cpHolder.ControlPlane()
+	}
+	return nil
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
@@ -676,6 +688,63 @@ func (m *Manager) deleteLocked(ctx context.Context, name string, force bool) (*D
 	}
 
 	res := &DeleteResult{}
+	if cp := m.controlPlane(); cp != nil {
+		if err := cp.Tx(ctx, func(repos controlplane.Repos) error {
+			txRefs, err := UserReferencesFromRepos(ctx, repos, name)
+			if err != nil {
+				return err
+			}
+			txAccounts, err := repos.ProxyAccounts.List(ctx)
+			if err != nil {
+				return err
+			}
+			var txKeys []controlplane.ProxyAccountRecord
+			txActive := 0
+			for _, a := range txAccounts {
+				if a.Value.User == name {
+					txKeys = append(txKeys, a.Value)
+					if a.Value.Status == proxyaccount.StatusActive {
+						txActive++
+					}
+				}
+			}
+			if txActive > 0 && !force {
+				txRefs = append(txRefs, fmt.Sprintf("%d active proxy access key(s) exist: disable them or set force=true to delete them", txActive))
+			}
+			if len(txRefs) > 0 {
+				return fmt.Errorf("%w: s3 user %q cannot be deleted: %s", dom.ErrFailedPrecondition, name, strings.Join(txRefs, "; "))
+			}
+			for _, k := range txKeys {
+				if err := repos.ProxyAccounts.Delete(ctx, k.AccessKeyID); err != nil && !errors.Is(err, dom.ErrNotFound) {
+					return err
+				}
+				res.DeletedAccessKeys++
+			}
+			if err := repos.AccessPolicies.Delete(ctx, name); err == nil {
+				res.DeletedPolicy = true
+			} else if !errors.Is(err, dom.ErrNotFound) {
+				return err
+			}
+			for _, st := range dynamicStorages {
+				if err := repos.DynamicCredentials.Delete(ctx, st, name); err != nil && !errors.Is(err, dom.ErrNotFound) {
+					return err
+				}
+				res.DeletedStorages = append(res.DeletedStorages, st)
+			}
+			if err := repos.S3Identities.Delete(ctx, name); err != nil && !errors.Is(err, dom.ErrNotFound) {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return nil, controlplane.WrapWriteError(err)
+		}
+		if syncer, ok := m.Creds.(interface{ SyncAfterTx(context.Context) error }); ok {
+			if err := syncer.SyncAfterTx(ctx); err != nil {
+				return res, err
+			}
+		}
+		return res, nil
+	}
 	// cut access first (keys), then the policy, then the credentials: a retry after a failure finishes the job
 	for _, k := range keys {
 		if err := m.Accounts.Delete(ctx, k.AccessKeyID); err != nil && !errors.Is(err, dom.ErrNotFound) {

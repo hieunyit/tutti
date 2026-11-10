@@ -30,6 +30,7 @@ import (
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/s3"
@@ -272,12 +273,21 @@ func WithManagedStorages(rc redis.UniversalClient) CredsSvcOption {
 	return func(s *credsSvc) { s.managedClient = rc }
 }
 
+// WithControlPlane attaches a PostgreSQL control-plane store for storages, identities, dynamic credentials and tests,
+// with Redis fallback on PostgreSQL read failure.
+func WithControlPlane(cp controlplane.Store) CredsSvcOption {
+	return func(s *credsSvc) { s.cp = cp }
+}
+
+// ControlPlane returns the attached PostgreSQL control-plane store, or nil when running in Redis mode.
+func (s *credsSvc) ControlPlane() controlplane.Store { return s.cp }
+
 // CredsSvcOption customizes the credentials service.
 type CredsSvcOption func(*credsSvc)
 
-// ManagedStoragesEnabled reports whether managed storages are active (Redis given and dynamic credentials enabled).
+// ManagedStoragesEnabled reports whether managed storages are active (Redis or PG given and dynamic credentials enabled).
 func (s *credsSvc) ManagedStoragesEnabled() bool {
-	return s.managedClient != nil && s.sealingAvailable() == nil
+	return (s.managedClient != nil || s.cp != nil) && s.sealingAvailable() == nil
 }
 
 // Subscribe registers a callback invoked (outside any lock) after the storages changed locally, either by a poll or by
@@ -346,13 +356,77 @@ func (s *credsSvc) GetManaged(name string) (ManagedStorage, bool) {
 }
 
 func (s *credsSvc) managedPrecondition() error {
-	if s.managedClient == nil {
+	if s.managedClient == nil && s.cp == nil {
 		return fmt.Errorf("%w: managed storages are not available on this server", dom.ErrFailedPrecondition)
 	}
 	if err := s.sealingAvailable(); err != nil {
 		return fmt.Errorf("%w: managed storages require storage.dynamicCredentials enabled with a masterPassword (encryption on): the credentials of their users are stored sealed", dom.ErrFailedPrecondition)
 	}
 	return nil
+}
+
+func docToStorageRecord(d managedDoc) controlplane.StorageRecord {
+	return controlplane.StorageRecord{
+		Name:                d.Name,
+		Address:             d.Address,
+		Provider:            d.Provider,
+		DefaultRegion:       d.DefaultRegion,
+		IsSecure:            d.IsSecure,
+		HealthCheckInterval: d.HealthCheckInterval,
+		HttpTimeout:         d.HttpTimeout,
+		RateEnabled:         d.RateEnabled,
+		RateRPM:             d.RateRPM,
+		RateMetadata:        d.RateMetadata,
+		CreatedAt:           d.CreatedAt,
+		UpdatedAt:           d.UpdatedAt,
+		ConnectionAccount:   d.ConnectionAccount,
+		PreviousAccount:     d.PreviousAccount,
+		RotatedAt:           d.RotatedAt,
+		LastForcedSaveBy:    d.LastForcedSaveBy,
+		LastForcedSaveAt:    d.LastForcedSaveAt,
+	}
+}
+
+func docFromStorageRecord(r controlplane.StorageRecord) managedDoc {
+	return managedDoc{
+		Name:                r.Name,
+		Address:             r.Address,
+		Provider:            r.Provider,
+		DefaultRegion:       r.DefaultRegion,
+		IsSecure:            r.IsSecure,
+		HealthCheckInterval: r.HealthCheckInterval,
+		HttpTimeout:         r.HttpTimeout,
+		RateEnabled:         r.RateEnabled,
+		RateRPM:             r.RateRPM,
+		RateMetadata:        r.RateMetadata,
+		CreatedAt:           r.CreatedAt,
+		UpdatedAt:           r.UpdatedAt,
+		ConnectionAccount:   r.ConnectionAccount,
+		PreviousAccount:     r.PreviousAccount,
+		RotatedAt:           r.RotatedAt,
+		LastForcedSaveBy:    r.LastForcedSaveBy,
+		LastForcedSaveAt:    r.LastForcedSaveAt,
+	}
+}
+
+func (m ManagedStorage) toRecord(sl sealer) (controlplane.StorageRecord, error) {
+	raw, err := m.marshal(sl)
+	if err != nil {
+		return controlplane.StorageRecord{}, err
+	}
+	var d managedDoc
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return controlplane.StorageRecord{}, err
+	}
+	return docToStorageRecord(d), nil
+}
+
+func unmarshalRecord(sl sealer, r controlplane.StorageRecord) (ManagedStorage, error) {
+	raw, err := json.Marshal(docFromStorageRecord(r))
+	if err != nil {
+		return ManagedStorage{}, err
+	}
+	return unmarshalManaged(sl, r.Name, string(raw))
 }
 
 // CreateManaged validates and stores a new managed storage. It fails with dom.ErrAlreadyExists if the name is taken
@@ -370,6 +444,19 @@ func (s *credsSvc) CreateManaged(ctx context.Context, m ManagedStorage) (Managed
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	m.CreatedAt, m.UpdatedAt = now, now
+	if s.cp != nil {
+		rec, err := m.toRecord(s)
+		if err != nil {
+			return m, err
+		}
+		if _, err := s.cp.Repos().Storages.Create(ctx, rec); err != nil {
+			return m, controlplane.WrapWriteError(err)
+		}
+		if err := s.syncManaged(ctx); err != nil {
+			return m, fmt.Errorf("failed to sync storages after create: %w", err)
+		}
+		return m, nil
+	}
 	raw, err := m.marshal(s)
 	if err != nil {
 		return m, err
@@ -398,6 +485,45 @@ func (s *credsSvc) UpdateManaged(ctx context.Context, m ManagedStorage) (Managed
 	m, err := m.Normalize()
 	if err != nil {
 		return m, err
+	}
+	if s.cp != nil {
+		var updated ManagedStorage
+		_, err := s.cp.Repos().Storages.Mutate(ctx, m.Name, func(rec *controlplane.StorageRecord) error {
+			old, err := unmarshalRecord(s, *rec)
+			if err != nil {
+				return fmt.Errorf("%w: stored storage %q is corrupted: %w", dom.ErrInternal, m.Name, err)
+			}
+			next := m
+			next.CreatedAt, next.UpdatedAt = old.CreatedAt, time.Now().UTC().Truncate(time.Second)
+			switch {
+			case next.ClearConnectionAccount:
+				next.ConnectionAccount, next.PreviousAccount, next.RotatedAt = s3.CredentialsV4{}, s3.CredentialsV4{}, time.Time{}
+			case next.ConnectionAccount == (s3.CredentialsV4{}):
+				next.ConnectionAccount, next.PreviousAccount, next.RotatedAt = old.ConnectionAccount, old.PreviousAccount, old.RotatedAt
+			case next.ConnectionAccount != old.ConnectionAccount:
+				next.PreviousAccount, next.RotatedAt = old.ConnectionAccount, next.UpdatedAt
+			default:
+				next.PreviousAccount, next.RotatedAt = old.PreviousAccount, old.RotatedAt
+			}
+			if next.LastForcedSaveBy == "" {
+				next.LastForcedSaveBy, next.LastForcedSaveAt = old.LastForcedSaveBy, old.LastForcedSaveAt
+			}
+			next.ClearConnectionAccount = false
+			newRec, err := next.toRecord(s)
+			if err != nil {
+				return err
+			}
+			*rec = newRec
+			updated = next
+			return nil
+		})
+		if err != nil {
+			return m, controlplane.WrapWriteError(err)
+		}
+		if err := s.syncManaged(ctx); err != nil {
+			return updated, fmt.Errorf("failed to sync storages after update: %w", err)
+		}
+		return updated, nil
 	}
 	rawOld, err := s.managedClient.HGet(ctx, managedStoragesKey, m.Name).Result()
 	if errors.Is(err, redis.Nil) {
@@ -480,6 +606,38 @@ func (s *credsSvc) RotateConnectionAccount(ctx context.Context, name string, nex
 	if err := next.Validate(); err != nil {
 		return ManagedStorage{}, fmt.Errorf("%w: %w", dom.ErrInvalidArg, err)
 	}
+	if s.cp != nil {
+		var rotated ManagedStorage
+		_, err := s.cp.Repos().Storages.Mutate(ctx, name, func(rec *controlplane.StorageRecord) error {
+			m, err := unmarshalRecord(s, *rec)
+			if err != nil {
+				return fmt.Errorf("%w: stored storage %q is corrupted: %w", dom.ErrInternal, name, err)
+			}
+			if m.ConnectionAccount == next {
+				return fmt.Errorf("%w: the new connection account equals the current one", dom.ErrInvalidArg)
+			}
+			m.PreviousAccount, m.ConnectionAccount = m.ConnectionAccount, next
+			m.RotatedAt = time.Now().UTC().Truncate(time.Second)
+			m.UpdatedAt = m.RotatedAt
+			if forcedBy != "" {
+				m.LastForcedSaveBy, m.LastForcedSaveAt = forcedBy, m.RotatedAt
+			}
+			newRec, err := m.toRecord(s)
+			if err != nil {
+				return err
+			}
+			*rec = newRec
+			rotated = m
+			return nil
+		})
+		if err != nil {
+			return ManagedStorage{}, controlplane.WrapWriteError(err)
+		}
+		if err := s.syncManaged(ctx); err != nil {
+			return rotated, fmt.Errorf("failed to sync storages after rotation: %w", err)
+		}
+		return rotated, nil
+	}
 	rawOld, err := s.managedClient.HGet(ctx, managedStoragesKey, name).Result()
 	if errors.Is(err, redis.Nil) {
 		return ManagedStorage{}, fmt.Errorf("%w: storage %q", dom.ErrNotFound, name)
@@ -516,11 +674,26 @@ func (s *credsSvc) RotateConnectionAccount(ctx context.Context, name string, nex
 // DeleteManaged removes a managed storage together with the dynamic credentials of its users. Callers must check
 // references (replications, routings, ...) before.
 func (s *credsSvc) DeleteManaged(ctx context.Context, name string) error {
-	if s.managedClient == nil {
+	if s.managedClient == nil && s.cp == nil {
 		return fmt.Errorf("%w: managed storages are not available on this server", dom.ErrFailedPrecondition)
 	}
 	if _, ok := s.config.Storages[name]; ok {
 		return fmt.Errorf("%w: storage %q is defined in config and cannot be deleted through the API", dom.ErrFailedPrecondition, name)
+	}
+	if s.cp != nil {
+		err := s.cp.Tx(ctx, func(r controlplane.Repos) error {
+			return DeleteManagedTx(ctx, r, name)
+		})
+		if err != nil {
+			return controlplane.WrapWriteError(err)
+		}
+		if err := s.sync(ctx); err != nil {
+			return fmt.Errorf("failed to sync credentials after storage delete: %w", err)
+		}
+		if err := s.syncManaged(ctx); err != nil {
+			return fmt.Errorf("failed to sync storages after delete: %w", err)
+		}
+		return nil
 	}
 	exists, err := s.managedClient.HExists(ctx, managedStoragesKey, name).Result()
 	if err != nil {
@@ -544,6 +717,42 @@ func (s *credsSvc) DeleteManaged(ctx context.Context, name string) error {
 		return fmt.Errorf("failed to sync storages after delete: %w", err)
 	}
 	return nil
+}
+
+// DeleteManagedTx deletes a managed storage, its user dynamic credentials and its connection test result inside
+// an existing control-plane transaction (r).
+func DeleteManagedTx(ctx context.Context, r controlplane.Repos, name string) error {
+	if _, err := r.Storages.Get(ctx, name); err != nil {
+		return err
+	}
+	allCreds, err := r.DynamicCredentials.List(ctx)
+	if err != nil {
+		return err
+	}
+	seenUsers := map[string]bool{}
+	for _, c := range allCreds {
+		if c.Storage == name && !seenUsers[c.User] {
+			seenUsers[c.User] = true
+			if err := r.DynamicCredentials.Delete(ctx, name, c.User); err != nil {
+				return err
+			}
+		}
+	}
+	if err := r.StorageTests.Delete(ctx, name); err != nil && !errors.Is(err, dom.ErrNotFound) {
+		return err
+	}
+	return r.Storages.Delete(ctx, name)
+}
+
+// SyncAfterTx refreshes the in-memory credentials and managed-storage caches after a caller commits a controlplane.Tx.
+func (s *credsSvc) SyncAfterTx(ctx context.Context) error {
+	if err := s.sync(ctx); err != nil {
+		return err
+	}
+	if err := s.syncManaged(ctx); err != nil {
+		return err
+	}
+	return s.syncIdentities(ctx)
 }
 
 func (s *credsSvc) deleteAllUserCredentials(ctx context.Context, storage string) error {
@@ -588,12 +797,44 @@ func (s *credsSvc) deleteAllUserCredentials(ctx context.Context, storage string)
 	return s.sync(ctx)
 }
 
-// syncManaged reloads the managed storages from Redis if their version changed.
+// syncManaged reloads the managed storages from PostgreSQL (when configured) or Redis if their version changed.
 func (s *credsSvc) syncManaged(ctx context.Context) error {
 	if !s.ManagedStoragesEnabled() {
 		return nil
 	}
 	s.managedMu.Lock()
+	logger := zerolog.Ctx(ctx)
+	if logger.GetLevel() == zerolog.Disabled {
+		logger = &zlog.Logger
+	}
+	if s.cp != nil {
+		recs, err := s.cp.Repos().Storages.List(ctx)
+		if err == nil {
+			managed := make(map[string]ManagedStorage, len(recs))
+			var verSum int64
+			for _, v := range recs {
+				verSum += v.Version
+				m, err := unmarshalRecord(s, v.Value)
+				if err == nil {
+					m, err = m.Normalize()
+				}
+				if err != nil {
+					logger.Error().Err(err).Str("storage", v.Value.Name).Msg("ignoring invalid managed storage document")
+					continue
+				}
+				managed[v.Value.Name] = m
+			}
+			changes := s.applyManagedSnapshot(logger, managed, verSum)
+			s.managedMu.Unlock()
+			s.notify(changes)
+			return nil
+		}
+		if s.managedClient == nil {
+			s.managedMu.Unlock()
+			return fmt.Errorf("failed to get storages from postgres: %w", err)
+		}
+		logger.Warn().Err(err).Msg("managed storages: PostgreSQL list failed, falling back to Redis")
+	}
 	remoteVer, err := s.managedClient.Get(ctx, managedStoragesVersionKey).Int64()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		s.managedMu.Unlock()
@@ -608,10 +849,6 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 		s.managedMu.Unlock()
 		return fmt.Errorf("failed to get storages from redis: %w", err)
 	}
-	logger := zerolog.Ctx(ctx)
-	if logger.GetLevel() == zerolog.Disabled {
-		logger = &zlog.Logger
-	}
 	managed := make(map[string]ManagedStorage, len(docs))
 	for name, raw := range docs {
 		m, err := unmarshalManaged(s, name, raw)
@@ -625,6 +862,13 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 		}
 		managed[name] = m
 	}
+	changes := s.applyManagedSnapshot(logger, managed, remoteVer)
+	s.managedMu.Unlock()
+	s.notify(changes)
+	return nil
+}
+
+func (s *credsSvc) applyManagedSnapshot(logger *zerolog.Logger, managed map[string]ManagedStorage, ver int64) []StorageChange {
 	old := s.view.Load()
 	nv := buildView(s.config, managed)
 	var changes []StorageChange
@@ -651,10 +895,8 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 	}
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Name < changes[j].Name })
 	s.view.Store(nv)
-	s.managedVer, s.managedLoaded = remoteVer, true
-	s.managedMu.Unlock()
-	s.notify(changes)
-	return nil
+	s.managedVer, s.managedLoaded = ver, true
+	return changes
 }
 
 // globEscape escapes Redis glob metacharacters in s.

@@ -23,7 +23,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/s3"
 )
@@ -93,6 +95,9 @@ func (e *NoCredentialsError) Error() string {
 	return fmt.Sprintf("storage %s has no credentials for user %s", e.Storage, e.User)
 }
 
+// StorageName returns the storage the user has no credentials on (used as a metric label).
+func (e *NoCredentialsError) StorageName() string { return e.Storage }
+
 func (e *NoCredentialsError) Unwrap() error { return dom.ErrNoCredentials }
 
 // ConnectionAccount returns the connection account of the S3 storage.
@@ -136,7 +141,7 @@ type identityDoc struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-func (s *credsSvc) identitiesEnabled() bool { return s.managedClient != nil }
+func (s *credsSvc) identitiesEnabled() bool { return s.managedClient != nil || s.cp != nil }
 
 // Identities returns the sorted names of the users recorded as Tutti identities.
 func (s *credsSvc) Identities() []string {
@@ -168,7 +173,17 @@ func (s *credsSvc) AddIdentity(ctx context.Context, user string) error {
 	if !s.identitiesEnabled() {
 		return fmt.Errorf("%w: user records are not available on this server (config DB Redis is not configured)", dom.ErrFailedPrecondition)
 	}
-	raw, err := json.Marshal(identityDoc{CreatedAt: time.Now().UTC().Truncate(time.Second)})
+	now := time.Now().UTC().Truncate(time.Second)
+	if s.cp != nil {
+		if _, err := s.cp.Repos().S3Identities.Create(ctx, controlplane.S3Identity{Name: user, CreatedAt: now}); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
+		if err := s.syncIdentities(ctx); err != nil {
+			return fmt.Errorf("failed to sync user records: %w", err)
+		}
+		return nil
+	}
+	raw, err := json.Marshal(identityDoc{CreatedAt: now})
 	if err != nil {
 		return err
 	}
@@ -191,6 +206,13 @@ func (s *credsSvc) RemoveIdentity(ctx context.Context, user string) error {
 	if !s.identitiesEnabled() {
 		return nil
 	}
+	if s.cp != nil {
+		err := s.cp.Repos().S3Identities.Delete(ctx, user)
+		if err != nil && !errors.Is(err, dom.ErrNotFound) {
+			return controlplane.WrapWriteError(err)
+		}
+		return s.syncIdentities(ctx)
+	}
 	tx := s.managedClient.TxPipeline()
 	tx.HDel(ctx, identitiesKey, user)
 	tx.Incr(ctx, identitiesVersionKey)
@@ -206,6 +228,24 @@ func (s *credsSvc) syncIdentities(ctx context.Context) error {
 	}
 	s.identMu.Lock()
 	defer s.identMu.Unlock()
+	if s.cp != nil {
+		vs, err := s.cp.Repos().S3Identities.List(ctx)
+		if err == nil {
+			m := make(map[string]struct{}, len(vs))
+			var verSum int64
+			for _, v := range vs {
+				m[v.Value.Name] = struct{}{}
+				verSum += v.Version
+			}
+			s.identities.Store(&m)
+			s.identVer, s.identLoaded = verSum, true
+			return nil
+		}
+		if s.managedClient == nil {
+			return fmt.Errorf("failed to get user records from postgres: %w", err)
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("identities: PostgreSQL list failed, falling back to Redis")
+	}
 	remote, err := s.managedClient.Get(ctx, identitiesVersionKey).Int64()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return fmt.Errorf("failed to get user records version from redis: %w", err)
@@ -230,6 +270,10 @@ func (s *credsSvc) syncIdentities(ctx context.Context) error {
 
 // SaveStorageTest stores the last connection test result (JSON) of a storage. Without a config DB it is a no-op.
 func (s *credsSvc) SaveStorageTest(ctx context.Context, storage string, resultJSON []byte) error {
+	if s.cp != nil {
+		_, err := s.cp.Repos().StorageTests.Put(ctx, controlplane.RawDoc{ID: storage, JSON: resultJSON})
+		return controlplane.WrapWriteError(err)
+	}
 	if s.managedClient == nil {
 		return nil
 	}
@@ -238,6 +282,20 @@ func (s *credsSvc) SaveStorageTest(ctx context.Context, storage string, resultJS
 
 // StorageTests returns the stored connection test results (JSON) by storage name.
 func (s *credsSvc) StorageTests(ctx context.Context) (map[string]string, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().StorageTests.List(ctx)
+		if err == nil {
+			res := make(map[string]string, len(vs))
+			for _, v := range vs {
+				res[v.Value.ID] = string(v.Value.JSON)
+			}
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.managedClient == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("storage tests: PostgreSQL list failed, falling back to Redis")
+	}
 	if s.managedClient == nil {
 		return nil, nil
 	}

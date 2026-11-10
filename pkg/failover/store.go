@@ -20,7 +20,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
@@ -100,16 +102,78 @@ func eventKey(user, bucket string) string {
 	return EventPrefix + "bucket:" + user + ":" + bucket
 }
 
-// Store keeps failover policies and events in Redis.
+// Repository is the persistence contract for failover policies and events.
+type Repository interface {
+	SetFailoverPolicy(ctx context.Context, p Policy) error
+	GetFailoverPolicy(ctx context.Context, source string) (Policy, error)
+	ListFailoverPolicies(ctx context.Context) ([]Policy, error)
+	DeleteFailoverPolicy(ctx context.Context, source string) error
+	SaveFailoverEvent(ctx context.Context, e Event) error
+	ListFailoverEvents(ctx context.Context) ([]Event, error)
+	DeleteFailoverEvent(ctx context.Context, user, bucket string) error
+}
+
+// Store keeps failover policies and events in Redis or PostgreSQL (with Redis fallback on PG read failure).
 type Store struct {
 	client redis.Cmdable
+	cp     controlplane.Store
 	// known reports whether a storage is configured (used to validate policies). nil disables the check.
 	known func(storage string) bool
 }
 
+var _ Repository = (*Store)(nil)
+
 // NewStore creates the store. known is used by SetFailoverPolicy to validate source and targets.
 func NewStore(client redis.Cmdable, known func(storage string) bool) *Store {
 	return &Store{client: client, known: known}
+}
+
+// WithControlPlane attaches a PostgreSQL control-plane store.
+func (s *Store) WithControlPlane(cp controlplane.Store) *Store {
+	s.cp = cp
+	return s
+}
+
+func toCPPolicy(p Policy) controlplane.FailoverPolicy {
+	return controlplane.FailoverPolicy{
+		Source:      p.Source,
+		Enabled:     p.Enabled,
+		Targets:     p.Targets,
+		After:       p.After,
+		MaxEventLag: p.MaxEventLag,
+	}
+}
+
+func fromCPPolicy(p controlplane.FailoverPolicy) Policy {
+	return Policy{
+		Source:      p.Source,
+		Enabled:     p.Enabled,
+		Targets:     p.Targets,
+		After:       p.After,
+		MaxEventLag: p.MaxEventLag,
+	}
+}
+
+func toCPEvent(e Event) controlplane.FailoverEvent {
+	return controlplane.FailoverEvent{
+		User:     e.User,
+		Bucket:   e.Bucket,
+		From:     e.From,
+		To:       e.To,
+		Time:     e.Time,
+		EventLag: e.EventLag,
+	}
+}
+
+func fromCPEvent(e controlplane.FailoverEvent) Event {
+	return Event{
+		User:     e.User,
+		Bucket:   e.Bucket,
+		From:     e.From,
+		To:       e.To,
+		Time:     e.Time,
+		EventLag: e.EventLag,
+	}
 }
 
 // SetFailoverPolicy validates and creates or replaces the policy of p.Source.
@@ -120,6 +184,10 @@ func (s *Store) SetFailoverPolicy(ctx context.Context, p Policy) error {
 	if p.Targets == nil {
 		p.Targets = []string{}
 	}
+	if s.cp != nil {
+		_, err := s.cp.Repos().FailoverPolicies.Put(ctx, toCPPolicy(p))
+		return controlplane.WrapWriteError(err)
+	}
 	b, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -129,6 +197,16 @@ func (s *Store) SetFailoverPolicy(ctx context.Context, p Policy) error {
 
 // GetFailoverPolicy returns the policy of the source storage or dom.ErrNotFound.
 func (s *Store) GetFailoverPolicy(ctx context.Context, source string) (Policy, error) {
+	if s.cp != nil {
+		v, err := s.cp.Repos().FailoverPolicies.Get(ctx, source)
+		if err == nil {
+			return fromCPPolicy(v.Value), nil
+		}
+		if !controlplane.IsUnavailable(err) || s.client == nil {
+			return Policy{}, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Str("source", source).Msg("failover: PostgreSQL get policy failed, falling back to Redis")
+	}
 	val, err := s.client.HGet(ctx, policiesKey, source).Result()
 	if errors.Is(err, redis.Nil) {
 		return Policy{}, fmt.Errorf("%w: no failover policy for storage %q", dom.ErrNotFound, source)
@@ -145,6 +223,20 @@ func (s *Store) GetFailoverPolicy(ctx context.Context, source string) (Policy, e
 
 // ListFailoverPolicies returns all policies sorted by source.
 func (s *Store) ListFailoverPolicies(ctx context.Context) ([]Policy, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().FailoverPolicies.List(ctx)
+		if err == nil {
+			res := make([]Policy, len(vs))
+			for i, v := range vs {
+				res[i] = fromCPPolicy(v.Value)
+			}
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.client == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("failover: PostgreSQL list policies failed, falling back to Redis")
+	}
 	m, err := s.client.HGetAll(ctx, policiesKey).Result()
 	if err != nil {
 		return nil, err
@@ -163,11 +255,22 @@ func (s *Store) ListFailoverPolicies(ctx context.Context) ([]Policy, error) {
 
 // DeleteFailoverPolicy removes the policy; deleting a missing policy is not an error.
 func (s *Store) DeleteFailoverPolicy(ctx context.Context, source string) error {
+	if s.cp != nil {
+		err := s.cp.Repos().FailoverPolicies.Delete(ctx, source)
+		if errors.Is(err, dom.ErrNotFound) {
+			return nil
+		}
+		return controlplane.WrapWriteError(err)
+	}
 	return s.client.HDel(ctx, policiesKey, source).Err()
 }
 
 // SaveFailoverEvent stores an event.
 func (s *Store) SaveFailoverEvent(ctx context.Context, e Event) error {
+	if s.cp != nil {
+		_, err := s.cp.Repos().FailoverEvents.Put(ctx, toCPEvent(e))
+		return controlplane.WrapWriteError(err)
+	}
 	b, err := json.Marshal(e)
 	if err != nil {
 		return err
@@ -177,6 +280,21 @@ func (s *Store) SaveFailoverEvent(ctx context.Context, e Event) error {
 
 // ListFailoverEvents returns all failover events sorted by key.
 func (s *Store) ListFailoverEvents(ctx context.Context) ([]Event, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().FailoverEvents.List(ctx)
+		if err == nil {
+			res := make([]Event, len(vs))
+			for i, v := range vs {
+				res[i] = fromCPEvent(v.Value)
+			}
+			sort.Slice(res, func(i, j int) bool { return res[i].Key() < res[j].Key() })
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.client == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("failover: PostgreSQL list events failed, falling back to Redis")
+	}
 	var res []Event
 	iter := s.client.Scan(ctx, 0, EventPrefix+"*", 100).Iterator()
 	for iter.Next(ctx) {
@@ -202,5 +320,12 @@ func (s *Store) ListFailoverEvents(ctx context.Context) ([]Event, error) {
 
 // DeleteFailoverEvent removes the event of a scope (bucket empty for user-level), e.g. after manual failback.
 func (s *Store) DeleteFailoverEvent(ctx context.Context, user, bucket string) error {
+	if s.cp != nil {
+		err := s.cp.Repos().FailoverEvents.Delete(ctx, controlplane.FailoverEventKey(user, bucket))
+		if errors.Is(err, dom.ErrNotFound) {
+			return nil
+		}
+		return controlplane.WrapWriteError(err)
+	}
 	return s.client.Del(ctx, eventKey(user, bucket)).Err()
 }

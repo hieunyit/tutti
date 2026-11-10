@@ -38,6 +38,7 @@ import (
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/log"
@@ -80,7 +81,7 @@ func NewGrpcServer(port int, register RegisterServicesFunc, tracer otel_trace.Tr
 		trace.UnaryInterceptor(),
 	}
 	unary = append(unary, so.unary...)
-	unary = append(unary, ErrorInterceptor(), unaryServerAccessLog, unaryServerRecover)
+	unary = append(unary, defaultActorUnaryInterceptor, ErrorInterceptor(), unaryServerAccessLog, unaryServerRecover)
 	stream := []grpc.StreamServerInterceptor{
 		prometheus.StreamServerInterceptor,
 		grpc_ctxtags.StreamServerInterceptor(),
@@ -182,6 +183,17 @@ func ErrorInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
+func defaultActorUnaryInterceptor(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	act := controlplane.ActorFrom(ctx)
+	if act.Name == "system" {
+		act.Name = "api"
+	}
+	if act.RequestID == "" {
+		act.RequestID = xctx.GetTraceID(ctx)
+	}
+	return handler(controlplane.WithActor(ctx, act), req)
+}
+
 func ErrorStreamInterceptor() grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		return convertApiError(ss.Context(), handler(srv, ss))
@@ -206,6 +218,15 @@ func convertApiError(ctx context.Context, err error) error {
 	case errors.Is(err, dom.ErrInvalidArg):
 		code = codes.InvalidArgument
 		mappedErr = dom.ErrInvalidArg
+		details = append(details, &errdetails.ErrorInfo{
+			Reason: err.Error(),
+		})
+	case errors.Is(err, dom.ErrUnavailable) || errors.Is(err, controlplane.ErrReadOnly):
+		code = codes.Unavailable
+		mappedErr = dom.ErrUnavailable
+		if errors.Is(err, controlplane.ErrReadOnly) {
+			mappedErr = controlplane.ErrReadOnly
+		}
 		details = append(details, &errdetails.ErrorInfo{
 			Reason: err.Error(),
 		})

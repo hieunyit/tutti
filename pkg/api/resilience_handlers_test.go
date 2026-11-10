@@ -284,3 +284,72 @@ func TestGetStatsHistory(t *testing.T) {
 	_, err = c.GetStatsHistory(ctx, &pb.StatsHistoryRequest{Range: "2d"})
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
+
+func TestResilience_ProxyFleetConfig(t *testing.T) {
+	ctx := context.Background()
+	c, rc, _ := resilienceClient(t)
+
+	// Initial fleet config is version 0.
+	fc0, err := c.GetProxyFleetConfig(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.EqualValues(t, 0, fc0.Version)
+	require.Empty(t, fc0.Groups)
+
+	// Set fleet config with defaults and a group override.
+	enabled := true
+	quorum := int32(2)
+	thresh := int32(5)
+	reqSigned := true
+	fc1, err := c.SetProxyFleetConfig(ctx, &pb.SetProxyFleetConfigRequest{
+		Defaults: &pb.ProxySettingsOverride{
+			Replication: &pb.ProxyReplicationSettingsOverride{
+				Sync: &pb.ProxySyncSettingsOverride{
+					Enabled:     &enabled,
+					WriteQuorum: &quorum,
+					Timeout:     durationpb.New(10 * time.Second),
+				},
+			},
+			RequireSignedContentType: &reqSigned,
+		},
+		Groups: map[string]*pb.ProxySettingsOverride{
+			"canary": {
+				Health: &pb.ProxyHealthSettingsOverride{
+					FailureThreshold: &thresh,
+				},
+				ReadHeaderTimeout: durationpb.New(20 * time.Second),
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, fc1.Version)
+	require.True(t, fc1.GetDefaults().GetReplication().GetSync().GetEnabled())
+	require.EqualValues(t, 2, fc1.GetDefaults().GetReplication().GetSync().GetWriteQuorum())
+	require.EqualValues(t, 5, fc1.GetGroups()["canary"].GetHealth().GetFailureThreshold())
+	require.Equal(t, 20*time.Second, fc1.GetGroups()["canary"].GetReadHeaderTimeout().AsDuration())
+
+	// Publish proxy status with group, appliedConfigVersion, and pendingRestart.
+	pub := proxystatus.NewPublisher(rc, "p-canary", 10*time.Second, func() proxystatus.Status {
+		return proxystatus.Status{
+			Address:               "http://p-canary",
+			Group:                 "canary",
+			StartedAt:             time.Now(),
+			AppliedConfigVersion:  1,
+			PendingRestart:        true,
+			PendingRestartReasons: []string{"readHeaderTimeout"},
+			Settings: proxystatus.Settings{
+				ReadHeaderTimeout: 20 * time.Second,
+			},
+		}
+	}, zerolog.Nop())
+	require.NoError(t, pub.PublishOnce(ctx))
+
+	stList, err := c.GetProxyStatus(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, stList.ConfigVersion)
+	require.Len(t, stList.Proxies, 1)
+	require.Equal(t, "canary", stList.Proxies[0].Group)
+	require.EqualValues(t, 1, stList.Proxies[0].AppliedConfigVersion)
+	require.True(t, stList.Proxies[0].PendingRestart)
+	require.Equal(t, []string{"readHeaderTimeout"}, stList.Proxies[0].PendingRestartReasons)
+	require.Equal(t, 20*time.Second, stList.Proxies[0].Settings.ReadHeaderTimeout.AsDuration())
+}

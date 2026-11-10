@@ -25,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -219,13 +220,14 @@ func SetupEmbedded(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Con
 	e.F1Client, e.MpF1Client = CreateClient(t, storages["f1"].StorageAddress, storages["f1"].Credentials[user])
 	e.F2Client, e.MpF2Client = CreateClient(t, storages["f2"].StorageAddress, storages["f2"].Credentials[user])
 
-	addr := ""
-	proxyConf.Port, addr = getRandomPort()
+	ports, releasePorts := reservePorts(t, 3)
+	addr := ports[0].addr
+	proxyConf.Port = ports[0].port
 	workerConf.Api.Enabled = true
 	proxyConf.Address = addr
-	grpcAddr := ""
-	workerConf.Api.GrpcPort, grpcAddr = getRandomPort()
-	workerConf.Api.HttpPort, e.UrlHttpApi = getRandomPort()
+	grpcAddr := ports[1].addr
+	workerConf.Api.GrpcPort = ports[1].port
+	workerConf.Api.HttpPort, e.UrlHttpApi = ports[2].port, ports[2].addr
 	e.UrlHttpApi = "http://" + e.UrlHttpApi
 	ctx := t.Context()
 
@@ -238,6 +240,10 @@ func SetupEmbedded(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Con
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Keep all reservations until every port has been chosen, then release them
+	// together immediately before the services bind. Sequential getRandomPort
+	// calls can receive the same ephemeral port before either service starts.
+	releasePorts()
 
 	wg, ctx := errgroup.WithContext(ctx)
 	wg.Go(func() error {
@@ -288,6 +294,35 @@ func SetupEmbedded(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Con
 	e.ChorusClient = pb.NewChorusClient(grpcConn)
 	e.DiffClient = pb.NewDiffClient(grpcConn)
 	return e
+}
+
+type reservedPort struct {
+	listener net.Listener
+	port     int
+	addr     string
+}
+
+func reservePorts(t testing.TB, n int) ([]reservedPort, func()) {
+	t.Helper()
+	ports := make([]reservedPort, 0, n)
+	var once sync.Once
+	release := func() {
+		once.Do(func() {
+			for _, p := range ports {
+				_ = p.listener.Close()
+			}
+		})
+	}
+	t.Cleanup(release)
+	for range n {
+		listener, err := net.Listen("tcp", ":0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		addr := listener.Addr().(*net.TCPAddr)
+		ports = append(ports, reservedPort{listener: listener, port: addr.Port, addr: fmt.Sprintf("127.0.0.1:%d", addr.Port)})
+	}
+	return ports, release
 }
 
 func getRandomPort() (int, string) {

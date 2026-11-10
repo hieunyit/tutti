@@ -1,11 +1,11 @@
-# Control-plane database (PostgreSQL), phase 6, part 1
+# Control-plane database (PostgreSQL), phase 6
 
-Status: package, schema, outbox publisher and migration tool are implemented and tested; **not wired** into
-`service/worker` or `service/proxy` yet (section 6 lists the exact steps). Plan reference: [scale-plan.md](./scale-plan.md), Phase 6.
+Status: **Implemented and wired** (`pkg/controlplane`, `pkg/controlplane/pg`, `pkg/controlplane/migrate`, `tools/tutti-migrate-pg`,
+`service/worker`, `pkg/api`, and UI Audit Log page). Plan reference: [scale-plan.md](./scale-plan.md), Phase 6.
 
 Code: `pkg/controlplane` (models, repository interfaces, `controlPlane` config), `pkg/controlplane/pg` (PostgreSQL
-implementation, migrations, audit log, outbox, publisher), `pkg/controlplane/migrate` (Redis to PostgreSQL copy and
-verification), `pkg/controlplane/pgtest` (test PostgreSQL), `tools/tutti-migrate-pg` (command).
+implementation, migrations, audit log, outbox, publisher, `EnqueueSnapshot`), `pkg/controlplane/migrate` (Redis to PostgreSQL copy,
+verification, and `Republish`), `pkg/controlplane/pgtest` (test PostgreSQL), `tools/tutti-migrate-pg` (command: `schema | migrate | verify | republish`).
 
 ## 1. Inventory: what is stored in Redis today
 
@@ -129,7 +129,7 @@ republished into an empty Redis gives identical keys, and the real stores read t
 
 ```
 tutti-migrate-pg --redis-url redis://:pw@redis:6379/1 [--redis-meta-url redis://:pw@redis:6379/3] \
-                 --pg-dsn postgres://tutti:pw@db:5432/tutti?sslmode=verify-full  schema | migrate | verify
+                 --pg-dsn postgres://tutti:pw@db:5432/tutti?sslmode=verify-full  schema | migrate | verify | republish
 ```
 
 `--redis-url` is the **config** Redis (`redis.configDB`); `--redis-meta-url` the Redis with `chorus:dynamic_creds`
@@ -145,6 +145,8 @@ Flags: `--dry-run`, `--format text|json`, `--out report.json`, `--timeout`.
   but are never printed. Malformed Redis entries are skipped with a warning.
 - `verify`: compares Redis and PostgreSQL both ways; exit code 0 = identical, **2 = mismatch** (the report lists family,
   key and `different` / `missing_in_target` / `missing_in_source`, no values), 1 = error.
+- `republish`: rebuilds a lost or empty Redis projection from PostgreSQL (`pg.Store.EnqueueSnapshot` + `Publisher.RunOnce`
+  loop until `Pending == 0`), restoring all configuration keys, `chorus:dynamic_creds` (meta Redis), and version counters.
 - Not migrated by design: `tutti:cfg:version`, version counters, `failover_pending`, switch state, protection runtime,
   console login of deleted users.
 - PostgreSQL timestamps have microsecond precision; Redis keeps nanoseconds (comparisons truncate).
@@ -175,29 +177,25 @@ controlPlane:
 Type: `controlplane.Config` (`pkg/controlplane/config.go`), `WithDefaults()` + `Validate()`. Env override should follow
 the existing `TUTTI_` mapping (`controlPlane.postgres.dsn` -> `TUTTI_CONTROLPLANE_POSTGRES_DSN`).
 
-### Wiring steps (next work item)
+### Wiring architecture (implemented in Phase 6 Part 2)
 
-1. **Config**: add `ControlPlane controlplane.Config` to `config.Common` (worker and proxy); validate at start.
-2. **Factory**: `controlplane.Open(cfg)` returns `nil` for `redis`; for `postgres` it returns the `pg.Store` and, in the
-   **worker only**, starts `Publisher.Run` (any number of workers; the advisory lock makes one of them active). Expose
-   `outbox_pending`, `outbox_oldest_seconds`, `outbox_failures_total` metrics and add them to the Phase 7 alerts.
-3. **Adapters, one family at a time**, in `service/worker/server.go`: each Redis store gets a small interface in its
-   own package (`accesspolicy.Repository` List/Get/Set/Delete, `proxyaccount` records, `failover.Store` methods,
-   `auth.UserStore`, `objstore` managed storages / identities / dynamic creds, `store` routing and replication stores)
-   with the current Redis code as one implementation and a thin PostgreSQL adapter (type conversion only) as the other.
-   Order of risk: access policies, failover policies/events, proxy accounts, console users, storages + identities +
-   dynamic creds, routing, replication.
-4. **Transactions**: replace the check-then-act sequences by `Store.Tx` - storage delete with the reference check
-   (LOGIC-06; keep the Redis lock until the check is inside the transaction), replication create (policy + status +
-   generation + destination routing block), failover switch (event + routing + policy pause), user delete (identity,
-   credentials, policy, accounts).
-5. **Actor and request id**: the gRPC/HTTP interceptor (after the auth principal and trace id are known) calls
-   `controlplane.WithActor`; add an `AuditLog` RPC + UI page on `Audit.List`.
-6. **Proxy**: no change is needed for the first rollout, it keeps reading the projected Redis keys; the proxy needs no
-   PostgreSQL connection. A later step can let proxies build their snapshot from PostgreSQL directly.
-7. **Fallback reader** for `backend: postgres`: reads try PostgreSQL and fall back to the Redis cache when PostgreSQL is
-   unavailable (stale-but-served, flagged in `/ready` and the UI), mutations return 503 (`ErrReadOnly` /
-   `ErrUnavailable`). `controlPlane.readOnly: true` forces this mode for maintenance.
+1. **Config**: `ControlPlane controlplane.Config` in `config.Common` (`pkg/config/config.go`); validated at start.
+2. **Factory & Publisher**: when `controlPlane.backend: postgres`, `service/worker/server.go` opens `pg.Store` and starts
+   `Publisher.Run` (with `MetaRedis: appRedis`, advisory lock so one worker is active at a time), exporting
+   `controlplane_outbox_pending`, `controlplane_outbox_oldest_seconds`, and `controlplane_outbox_failures_total`.
+3. **Dual-backend adapters**: all 7 configuration families (`accesspolicy.Store`, `failover.Store`, `proxyaccount.Store`,
+   `auth.UserStore`, `objstore.credsSvc` for storages/identities/dynamic credentials/storage tests, `policy.Service` for
+   routing & replication, and `protectiongroups.Store`) support `.WithControlPlane(cpStore)`.
+4. **Transactions (`Store.Tx`)**: check-then-act sequences run atomically inside a PostgreSQL transaction when
+   `backend: postgres` — runtime storage delete with reference check (`DeleteRuntimeStorage` + `CheckStorageReferencesInTx`),
+   replication creation (`AddUserReplicationPolicy`, `AddBucketReplicationPolicy`), failover switch (`FailoverReplicationWithEvent`),
+   and S3 user delete (`s3users.Manager.Delete`).
+5. **Actor, request id & Audit Log**: `auth.Interceptor` and `api.UnaryServerInterceptor` populate `controlplane.WithActor(ctx, Actor{Name, RequestID})`.
+   `Resilience.ListAuditLog` (`GET /resilience/audit-log`) and the Console UI **Audit log** page (`TuttiAuditLogPage.vue`)
+   provide filtering by object type, object ID, actor, action, and cursor pagination (`beforeId`).
+6. **Proxy**: reads the projected Redis keys unchanged; no PostgreSQL connection required on proxies.
+7. **Fallback reader & 503 writes**: for `backend: postgres`, reads query PostgreSQL first and fall back to the warm Redis
+   projection if PostgreSQL is unreachable; mutations return 503 (`codes.Unavailable` via `dom.ErrUnavailable` or `controlplane.ErrReadOnly`).
 
 ### Rollout
 
@@ -211,26 +209,26 @@ the existing `TUTTI_` mapping (`controlPlane.postgres.dsn` -> `TUTTI_CONTROLPLAN
    publisher projects every change).
 5. Keep the backend `redis` code path for at least one release.
 
-### Rollback
+### Rollback & Redis Rebuild
 
 While `backend: postgres` is on, Redis is a warm projection, so rollback is: stop writes, wait for `Pending == 0`
-(or run `tutti-migrate-pg verify`, exit 0), set `backend: redis`, restart the workers. Not covered: protection groups
-(always authoritative in Redis), switch state and `failover_pending` (never left Redis). To rebuild a lost Redis from PostgreSQL a `republish` command (enqueue an outbox snapshot of all rows) is a follow-up;
-`migrate.ImportOptions.EmitOutbox` already does it for freshly imported records (used by the projection test).
+(or run `tutti-migrate-pg verify`, exit 0), set `backend: redis`, restart the workers. To rebuild a lost Redis from
+PostgreSQL, run `tutti-migrate-pg republish`.
 
 ### Read-only fallback
 
-`Store.SetReadOnly(true)` / `controlPlane.readOnly` rejects all mutations with `ErrReadOnly` and keeps reads working;
-the publisher keeps draining. Operationally: when PostgreSQL is lost, the proxies are unaffected (they read the Redis
+`Store.SetReadOnly(true)` / `controlPlane.readOnly` rejects all mutations with `ErrReadOnly` (mapped to HTTP/gRPC 503 Unavailable)
+and keeps reads working; the publisher keeps draining. Operationally: when PostgreSQL is lost, the proxies are unaffected (they read the Redis
 projection, and the Phase 1 snapshot keeps the last known data), the console shows the config read-only, S3 traffic and
 replication continue; failover decisions that must write routing wait for PostgreSQL (or an operator uses `readOnly:
-false` after restoring a backup). Backup/restore drills belong to Phase 7.
+false` after restoring a backup).
 
-## 7. Open points
+## 7. Notes & Design Decisions
 
-- `pkg/protectiongroups` keeps promotion state in the group document and reads it from Lua; splitting desired state
-  (PostgreSQL) from promotion state (Redis) is needed before groups can be authoritative in PostgreSQL.
+- `pkg/protectiongroups` splits desired configuration (`GroupSpec`, authoritative in PostgreSQL `protection_groups` when
+  `backend: postgres`) from runtime promotion/fence state (`PromotionState` in Redis `tutti:protection:promotion` and
+  projected into `tutti:protection:groups` so proxy admission Lua scripts run at line rate without PostgreSQL).
 - The replication switch state machine stays in Redis (workers drive it with locks and queues).
 - The importer does not delete PostgreSQL-only records (`extra` in the report) and does not copy Redis version
   counters (the publisher recreates them).
-- Console `last-login` is mirrored to Redis best effort.
+- Console `last-login` is mirrored to Redis best effort via outbox without writing an audit log entry.

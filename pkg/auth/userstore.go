@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
@@ -37,15 +39,72 @@ type ManagedUser struct {
 	MustChangePassword bool      `json:"mustChangePassword"`
 }
 
-// UserStore persists managed console users.
+// UserRepository is the persistence contract for managed console users.
+type UserRepository interface {
+	Get(ctx context.Context, username string) (ManagedUser, error)
+	List(ctx context.Context) ([]ManagedUser, error)
+	Create(ctx context.Context, u ManagedUser) error
+	Put(ctx context.Context, u ManagedUser) error
+	Delete(ctx context.Context, username string) error
+	TouchLogin(ctx context.Context, username string, at time.Time) error
+}
+
+// UserStore persists managed console users in Redis or PostgreSQL (with Redis fallback on PG read failure).
 type UserStore struct {
 	rdb redis.Cmdable
+	cp  controlplane.Store
 }
+
+var _ UserRepository = (*UserStore)(nil)
 
 func NewUserStore(rdb redis.Cmdable) *UserStore { return &UserStore{rdb: rdb} }
 
+// WithControlPlane attaches a PostgreSQL control-plane store.
+func (s *UserStore) WithControlPlane(cp controlplane.Store) *UserStore {
+	s.cp = cp
+	return s
+}
+
+func toCPUser(u ManagedUser) controlplane.ConsoleUser {
+	return controlplane.ConsoleUser{
+		Username:           u.Username,
+		Role:               u.Role,
+		PasswordHash:       u.PasswordHash,
+		Disabled:           u.Disabled,
+		CreatedAt:          u.CreatedAt,
+		UpdatedAt:          u.UpdatedAt,
+		LastLoginAt:        u.LastLoginAt,
+		PasswordChangedAt:  u.PasswordChangedAt,
+		MustChangePassword: u.MustChangePassword,
+	}
+}
+
+func fromCPUser(u controlplane.ConsoleUser) ManagedUser {
+	return ManagedUser{
+		Username:           u.Username,
+		Role:               u.Role,
+		PasswordHash:       u.PasswordHash,
+		Disabled:           u.Disabled,
+		CreatedAt:          u.CreatedAt,
+		UpdatedAt:          u.UpdatedAt,
+		LastLoginAt:        u.LastLoginAt,
+		PasswordChangedAt:  u.PasswordChangedAt,
+		MustChangePassword: u.MustChangePassword,
+	}
+}
+
 // Get returns the user or dom.ErrNotFound.
 func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, error) {
+	if s.cp != nil {
+		v, err := s.cp.Repos().ConsoleUsers.Get(ctx, username)
+		if err == nil {
+			return fromCPUser(v.Value), nil
+		}
+		if !controlplane.IsUnavailable(err) || s.rdb == nil {
+			return ManagedUser{}, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Str("username", username).Msg("console users: PostgreSQL get failed, falling back to Redis")
+	}
 	raw, err := s.rdb.HGet(ctx, ConsoleUsersKey, username).Result()
 	if errors.Is(err, redis.Nil) {
 		return ManagedUser{}, fmt.Errorf("%w: console user %q", dom.ErrNotFound, username)
@@ -63,6 +122,20 @@ func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, erro
 
 // List returns all users sorted by name, with the last login time merged in. Malformed records are skipped.
 func (s *UserStore) List(ctx context.Context) ([]ManagedUser, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().ConsoleUsers.List(ctx)
+		if err == nil {
+			res := make([]ManagedUser, len(vs))
+			for i, v := range vs {
+				res[i] = fromCPUser(v.Value)
+			}
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.rdb == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("console users: PostgreSQL list failed, falling back to Redis")
+	}
 	m, err := s.rdb.HGetAll(ctx, ConsoleUsersKey).Result()
 	if err != nil {
 		return nil, fmt.Errorf("console users: list: %w", err)
@@ -91,6 +164,10 @@ func (s *UserStore) List(ctx context.Context) ([]ManagedUser, error) {
 
 // Create stores a new user; fails with dom.ErrAlreadyExists if the name is taken.
 func (s *UserStore) Create(ctx context.Context, u ManagedUser) error {
+	if s.cp != nil {
+		_, err := s.cp.Repos().ConsoleUsers.Create(ctx, toCPUser(u))
+		return controlplane.WrapWriteError(err)
+	}
 	raw, err := json.Marshal(u)
 	if err != nil {
 		return err
@@ -107,6 +184,10 @@ func (s *UserStore) Create(ctx context.Context, u ManagedUser) error {
 
 // Put replaces an existing user record.
 func (s *UserStore) Put(ctx context.Context, u ManagedUser) error {
+	if s.cp != nil {
+		_, err := s.cp.Repos().ConsoleUsers.Put(ctx, toCPUser(u))
+		return controlplane.WrapWriteError(err)
+	}
 	raw, err := json.Marshal(u)
 	if err != nil {
 		return err
@@ -148,6 +229,21 @@ return 1
 // concurrent change, so unrelated updates to the same user are preserved.
 func (s *UserStore) mutate(ctx context.Context, username string, configAdmins int, configNames []string,
 	fn func(*ManagedUser) (remove, checkOtherAdmin bool, err error)) error {
+	if s.cp != nil {
+		err := s.cp.Repos().ConsoleUsers.MutateGuarded(ctx, username, controlplane.ConsoleUserGuard{
+			ConfigAdmins: configAdmins,
+			ConfigNames:  configNames,
+		}, func(cu *controlplane.ConsoleUser) (bool, bool, error) {
+			u := fromCPUser(*cu)
+			remove, checkAdmin, err := fn(&u)
+			if err != nil {
+				return false, false, err
+			}
+			*cu = toCPUser(u)
+			return remove, checkAdmin, nil
+		})
+		return controlplane.WrapWriteError(err)
+	}
 	for range 20 {
 		old, err := s.rdb.HGet(ctx, ConsoleUsersKey, username).Result()
 		if errors.Is(err, redis.Nil) {
@@ -197,6 +293,9 @@ func (s *UserStore) mutate(ctx context.Context, username string, configAdmins in
 
 // Delete removes the user. Returns dom.ErrNotFound if missing.
 func (s *UserStore) Delete(ctx context.Context, username string) error {
+	if s.cp != nil {
+		return controlplane.WrapWriteError(s.cp.Repos().ConsoleUsers.Delete(ctx, username))
+	}
 	n, err := s.rdb.HDel(ctx, ConsoleUsersKey, username).Result()
 	if err != nil {
 		return fmt.Errorf("console users: delete: %w", err)
@@ -210,5 +309,8 @@ func (s *UserStore) Delete(ctx context.Context, username string) error {
 
 // TouchLogin records the login time (best effort, never creates records).
 func (s *UserStore) TouchLogin(ctx context.Context, username string, at time.Time) error {
+	if s.cp != nil {
+		return s.cp.Repos().ConsoleUsers.TouchLogin(ctx, username, at)
+	}
 	return s.rdb.HSet(ctx, consoleLoginKey, username, at.UTC().Format(time.RFC3339Nano)).Err()
 }

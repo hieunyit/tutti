@@ -20,11 +20,21 @@ import (
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/store"
 )
+
+func policyScope(id entity.UniversalReplicationID) (user, bucket string) {
+	if b, ok := id.AsBucketID(); ok {
+		return b.User, b.FromBucket
+	}
+	u, _ := id.AsUserID()
+	return u.User, ""
+}
 
 type ReplicationSwitchSvc interface {
 	// Upsert downtime replication switch. If switch already exists and not in progress, it will be updated.
@@ -107,6 +117,30 @@ func (r *policySvc) switchAndStoredReplicationPolicyMatch(ctx context.Context, r
 	// switch policy must match stored replication policy
 	// replication policy must exist and have a single destination
 	// bucket replication must not have custom destination bucket name
+	if r.cp != nil {
+		user, bucket := policyScope(request)
+		policies, err := r.cp.Repos().Replications.Policies(ctx, user, bucket)
+		switch {
+		case err == nil:
+			if len(policies) != 1 {
+				if bucket != "" {
+					return fmt.Errorf("%w: cannot create switch: existing bucket replication should have a single destination", dom.ErrInvalidArg)
+				}
+				return fmt.Errorf("%w: cannot create switch: existing user replication should have a single destination", dom.ErrInvalidArg)
+			}
+			if bucket != "" && policies[0].ToBucket != policies[0].FromBucket {
+				return fmt.Errorf("%w: cannot create replication switch: bucket replication has custom destination bucket name", dom.ErrInvalidArg)
+			}
+			if request.AsString() != policies[0].String() {
+				return fmt.Errorf("%w: cannot create replication switch: request policy not matching stored policy: req %s, stored %s", dom.ErrInvalidArg, request.AsString(), policies[0].String())
+			}
+			return nil
+		case !controlplane.IsUnavailable(err):
+			return fmt.Errorf("unable to get replication policies: %w", err)
+		default:
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("replication_switch: PostgreSQL Policies failed, falling back to Redis")
+		}
+	}
 	var storedPolicy entity.UniversalReplicationID
 	if bucketPolicy, ok := request.AsBucketID(); ok {
 		policies, err := r.bucketReplicationPolicyStore.Get(ctx, bucketPolicy.LookupID())
@@ -183,6 +217,22 @@ func (r *policySvc) AddZeroDowntimeReplicationSwitch(ctx context.Context, policy
 		return err
 	}
 
+	if r.cp != nil {
+		user, bucket := policyScope(policy)
+		cpID := toCPReplicationID(policy)
+		if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			if err := repos.Routing.Set(ctx, user, bucket, policy.ToStorage()); err != nil {
+				return err
+			}
+			if err := repos.Replications.Remove(ctx, cpID); err != nil {
+				return err
+			}
+			return repos.Replications.Archive(ctx, cpID)
+		}); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
+	}
+
 	// start transaction:
 	tx := r.bucketReplicationSwitchStore.TxExecutor()
 
@@ -237,6 +287,24 @@ func (r *policySvc) DeleteReplicationSwitch(ctx context.Context, replID entity.U
 	existing, err := r.GetReplicationSwitchInfo(ctx, replID)
 	if err != nil {
 		return err
+	}
+	if r.cp != nil {
+		user, bucket := policyScope(replID)
+		if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			if !existing.IsZeroDowntime() {
+				if err := repos.Routing.Unblock(ctx, user, bucket); err != nil {
+					return err
+				}
+			}
+			if existing.IsZeroDowntime() && existing.LastStatus != entity.StatusDone {
+				if err := repos.Routing.Set(ctx, user, bucket, replID.FromStorage()); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return controlplane.WrapWriteError(err)
+		}
 	}
 	// start transaction:
 	tx := r.bucketReplicationSwitchStore.TxExecutor()
@@ -311,6 +379,41 @@ func (r *policySvc) UpdateDowntimeSwitchStatus(ctx context.Context, replID entit
 	case entity.StatusDone:
 		if newStatus != entity.StatusDone {
 			return fmt.Errorf("invalid status transition %s->%s: %w", existing.LastStatus, newStatus, dom.ErrInvalidArg)
+		}
+	}
+
+	if r.cp != nil {
+		user, bucket := policyScope(replID)
+		cpID := toCPReplicationID(replID)
+		if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			switch newStatus {
+			case entity.StatusInProgress, entity.StatusCheckInProgress:
+				return repos.Routing.Block(ctx, user, bucket)
+			case entity.StatusError:
+				return repos.Routing.Unblock(ctx, user, bucket)
+			case entity.StatusDone:
+				if err := repos.Routing.Unblock(ctx, user, bucket); err != nil {
+					return err
+				}
+				if err := repos.Routing.Set(ctx, user, bucket, replID.ToStorage()); err != nil {
+					return err
+				}
+				if err := repos.Replications.Archive(ctx, cpID); err != nil {
+					return err
+				}
+				if err := repos.Replications.Remove(ctx, cpID); err != nil {
+					return err
+				}
+				if existing.ContinueReplication {
+					backwards := replID.Swap()
+					if err := repos.Replications.Add(ctx, toCPReplicationID(backwards), controlplane.ReplicationStatus{}); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			return controlplane.WrapWriteError(err)
 		}
 	}
 

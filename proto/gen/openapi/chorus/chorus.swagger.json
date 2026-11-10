@@ -1041,6 +1041,83 @@
         ]
       }
     },
+    "/tutti/audit-log": {
+      "get": {
+        "summary": "ListAuditLog returns control-plane audit log entries matching the filter (newest first).",
+        "operationId": "Resilience_ListAuditLog",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusAuditLogList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "entityKey",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "beforeId",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/console-users": {
       "get": {
         "summary": "ListConsoleUsers returns the users able to sign in to the management API: config users (read-only) and\nmanaged users stored in Redis. Never returns password hashes. Admin only.",
@@ -1851,6 +1928,60 @@
         ]
       }
     },
+    "/tutti/proxy-config": {
+      "get": {
+        "summary": "GetProxyFleetConfig returns the centralized proxy fleet configuration (cluster defaults + per-group overrides).",
+        "operationId": "Resilience_GetProxyFleetConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyFleetConfig"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "put": {
+        "summary": "SetProxyFleetConfig updates the centralized proxy fleet configuration and bumps its version.",
+        "operationId": "Resilience_SetProxyFleetConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusProxyFleetConfig"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusSetProxyFleetConfigRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/stats/history": {
       "get": {
         "summary": "GetStatsHistory returns the traffic rates of all proxies over the last `range` (5m, 15m, 1h or 6h), summed\nacross proxies per time bucket (10s; 30s for 1h; 2m for 6h), plus the latest rates of every proxy.\nProxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.",
@@ -2528,6 +2659,58 @@
         "toStorage": {
           "type": "string",
           "title": "destination storage name"
+        }
+      }
+    },
+    "chorusAuditLogEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "entityKey": {
+          "type": "string"
+        },
+        "beforeJson": {
+          "type": "string"
+        },
+        "afterJson": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusAuditLogList": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusAuditLogEntry"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "backend": {
+          "type": "string"
         }
       }
     },
@@ -3702,6 +3885,58 @@
       },
       "description": "ProxyAccountSecret is returned once, when a secret is generated."
     },
+    "chorusProxyFailoverSettingsOverride": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "checkInterval": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        },
+        "maxEventLag": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "chorusProxyFleetConfig": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "defaults": {
+          "$ref": "#/definitions/chorusProxySettingsOverride"
+        },
+        "groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/chorusProxySettingsOverride"
+          }
+        }
+      }
+    },
+    "chorusProxyHealthSettingsOverride": {
+      "type": "object",
+      "properties": {
+        "failureThreshold": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "openDuration": {
+          "type": "string"
+        }
+      }
+    },
     "chorusProxyLatestRates": {
       "type": "object",
       "properties": {
@@ -3717,6 +3952,20 @@
         }
       },
       "description": "ProxyLatestRates is the most recent history sample of one proxy."
+    },
+    "chorusProxyReplicationSettingsOverride": {
+      "type": "object",
+      "properties": {
+        "onEventError": {
+          "type": "string"
+        },
+        "eventRetryBudget": {
+          "type": "string"
+        },
+        "sync": {
+          "$ref": "#/definitions/chorusProxySyncSettingsOverride"
+        }
+      }
     },
     "chorusProxySettings": {
       "type": "object",
@@ -3736,9 +3985,54 @@
         "requireSignedContentType": {
           "type": "boolean",
           "description": "True if SigV4 requests without a signed Content-Type header are rejected."
+        },
+        "readHeaderTimeout": {
+          "type": "string",
+          "description": "Max time to read HTTP request headers (non-hot-reloadable; changing requires proxy restart)."
+        },
+        "writerLease": {
+          "type": "string",
+          "description": "Protection group writer lease TTL (non-hot-reloadable; changing requires proxy restart)."
+        },
+        "drainDelay": {
+          "type": "string",
+          "description": "Graceful drain wait on SIGTERM."
+        },
+        "readyMaxStaleness": {
+          "type": "string",
+          "description": "Max Redis staleness before /ready returns 503."
         }
       },
       "description": "ProxySettings are the effective settings of a proxy."
+    },
+    "chorusProxySettingsOverride": {
+      "type": "object",
+      "properties": {
+        "replication": {
+          "$ref": "#/definitions/chorusProxyReplicationSettingsOverride"
+        },
+        "health": {
+          "$ref": "#/definitions/chorusProxyHealthSettingsOverride"
+        },
+        "failover": {
+          "$ref": "#/definitions/chorusProxyFailoverSettingsOverride"
+        },
+        "requireSignedContentType": {
+          "type": "boolean"
+        },
+        "readHeaderTimeout": {
+          "type": "string"
+        },
+        "writerLease": {
+          "type": "string"
+        },
+        "drainDelay": {
+          "type": "string"
+        },
+        "readyMaxStaleness": {
+          "type": "string"
+        }
+      }
     },
     "chorusProxyStatus": {
       "type": "object",
@@ -3780,6 +4074,26 @@
         "rates": {
           "$ref": "#/definitions/chorusTrafficRates",
           "description": "Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).\nAbsent for proxies that do not publish them. Settings.failover tells whether the failover controller runs."
+        },
+        "group": {
+          "type": "string",
+          "description": "Proxy group name (default \"default\")."
+        },
+        "appliedConfigVersion": {
+          "type": "string",
+          "format": "int64",
+          "description": "Central fleet configuration version applied by this proxy."
+        },
+        "pendingRestart": {
+          "type": "boolean",
+          "description": "True when central fleet configuration changed a setting that requires a proxy restart."
+        },
+        "pendingRestartReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names of settings that require a proxy restart to take effect."
         }
       },
       "description": "ProxyStatus is the status of one live proxy instance."
@@ -3798,9 +4112,32 @@
         "totalRates": {
           "$ref": "#/definitions/chorusTrafficRates",
           "description": "Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum)."
+        },
+        "configVersion": {
+          "type": "string",
+          "format": "int64",
+          "description": "Latest central proxy fleet configuration version (0 when no central config was saved yet)."
         }
       },
       "description": "ProxyStatusList lists live proxies."
+    },
+    "chorusProxySyncSettingsOverride": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "writeQuorum": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "onQuorumFailure": {
+          "type": "string"
+        }
+      }
     },
     "chorusReplication": {
       "type": "object",
@@ -4471,6 +4808,20 @@
         "status": {
           "type": "string",
           "description": "\"active\" or \"disabled\"."
+        }
+      }
+    },
+    "chorusSetProxyFleetConfigRequest": {
+      "type": "object",
+      "properties": {
+        "defaults": {
+          "$ref": "#/definitions/chorusProxySettingsOverride"
+        },
+        "groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/chorusProxySettingsOverride"
+          }
         }
       }
     },

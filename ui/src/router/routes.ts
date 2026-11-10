@@ -15,6 +15,7 @@
  */
 
 import type { RouteRecordRaw } from 'vue-router';
+import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 import { RouteName } from '@/utils/types/router';
 const ChorusHomePage = () =>
   import('@/pages/ChorusHomePage/ChorusHomePage.vue');
@@ -54,8 +55,16 @@ const TuttiChangePasswordPage = () =>
   import('@/pages/TuttiChangePasswordPage/TuttiChangePasswordPage.vue');
 const TuttiFailoverPage = () =>
   import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
+const TuttiProtectionGroupsPage = () =>
+  import('@/pages/TuttiProtectionGroupsPage/TuttiProtectionGroupsPage.vue');
+const TuttiProtectionGroupDetailPage = () =>
+  import(
+    '@/pages/TuttiProtectionGroupDetailPage/TuttiProtectionGroupDetailPage.vue'
+  );
 const TuttiProxyAccountsPage = () =>
   import('@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue');
+const TuttiAuditLogPage = () =>
+  import('@/pages/TuttiAuditLogPage/TuttiAuditLogPage.vue');
 const DocsPage = () => import('@/pages/DocsPage.vue');
 const LoginPage = () => import('@/pages/LoginPage/LoginPage.vue');
 
@@ -210,6 +219,15 @@ export const routes: RouteRecordRaw[] = [
         component: TuttiConsoleUsersPage,
       },
       {
+        path: 'audit-log',
+        meta: {
+          navGroup: 'administration',
+          navSection: AUDIT_LOG_ROUTE_NAME as unknown as RouteName,
+        },
+        name: AUDIT_LOG_ROUTE_NAME,
+        component: TuttiAuditLogPage,
+      },
+      {
         path: 'access-keys',
         redirect: { name: RouteName.TUTTI_PROXY_ACCOUNTS },
       },
@@ -230,6 +248,25 @@ export const routes: RouteRecordRaw[] = [
         },
         name: RouteName.TUTTI_FAILOVER,
         component: TuttiFailoverPage,
+      },
+      {
+        path: 'protection-groups',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.TUTTI_PROTECTION_GROUPS,
+        },
+        name: RouteName.TUTTI_PROTECTION_GROUPS,
+        component: TuttiProtectionGroupsPage,
+      },
+      {
+        path: 'protection-groups/:name',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.TUTTI_PROTECTION_GROUPS,
+        },
+        name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
+        component: TuttiProtectionGroupDetailPage,
+        props: true,
       },
       {
         // /docs/api (API reference) is matched first: static segments win

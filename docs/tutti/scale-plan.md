@@ -178,16 +178,16 @@ A **protection group** = scope (user, bucket list or all buckets) + ordered set 
 3. Rate limits on automatic failover (max N switches per group per hour) and a global "freeze automatic failover" switch for incidents.
 4. Chaos tests: partition one proxy, kill primary during load, double failure, Redis failover during a switch.
 
-### Phase 5: Fleet configuration for proxies
-1. Move proxy behaviour settings (failover enabled, sync replication + quorum, health thresholds, status interval, auth options) from YAML to central config with **proxy groups** and per-group overrides; YAML keeps only bootstrap (listen address, Redis, identity).
-2. Proxies apply changes live; the UI shows the effective settings per proxy (drift becomes impossible instead of only detected).
-3. Proxy version reporting and a compatibility check (mixed versions during rolling upgrades).
+### Phase 5: Fleet configuration for proxies (Done)
+1. Move proxy behaviour settings (failover enabled, sync replication + quorum, health thresholds, status interval, auth options) from YAML to central config (`tutti:proxy-config`) with **proxy groups** (`group` in proxy YAML) and per-group overrides; YAML keeps bootstrap settings and acts as the baseline when no central override is set.
+2. Proxies apply changes live without restart (`service/proxy/server.go`, `pkg/health/breaker.go`, `service/proxy/failover/failover.go`, `service/proxy/router/server.go`, `service/proxy/auth/middleware.go`, `service/proxy/ready.go`); non-hot-reloadable settings (`readHeaderTimeout`, `protectionGroups.writerLease`) report `pendingRestart: true` with `pendingRestartReasons`.
+3. The UI `Proxies` page shows each proxy's group, applied config version vs cluster version, pending restart status, and a Fleet Configuration editor; covered by E2E test with two proxies in two groups (`test/resilience/proxy_fleet_config_test.go`).
 
-### Phase 6: Control-plane database
-1. PostgreSQL for control-plane config (storages, users, keys metadata, policies, routing, groups, failover events, console users) with migrations and transactions; secrets stay sealed with the master key.
-2. **Audit log** table (who, what, before/after) for every mutation; shown in the UI.
-3. Change propagation: transactional outbox → publish a versioned config snapshot (Redis pub/sub or polling as today) → proxies/workers apply it; Redis keeps only a cache of the snapshot.
-4. One-time migration tool Redis → PostgreSQL, and a read-only fallback mode.
+### Phase 6: Control-plane database (Done)
+1. PostgreSQL for control-plane config (storages, users, keys metadata, policies, routing, replications, protection group specs, failover policies/events, console users, storage tests) with embedded migrations (`pkg/controlplane/pg`) and `Store.Tx` multi-object transactions; secrets stay sealed with the master key.
+2. **Audit log** table (who, request id, what, before/after with secrets redacted as `***`) written atomically in the same transaction; exposed via `Resilience.ListAuditLog` and the Console **Audit log** page.
+3. Change propagation: transactional outbox (`pg.Publisher`) projects every change into Redis keys and `tutti:cfg:version` / `tutti:cfg:changed` pub/sub so proxies keep reading Redis unchanged; exports `controlplane_outbox_*` metrics.
+4. Migration & recovery CLI `tutti-migrate-pg` (`schema | migrate | verify | republish`), plus read-only fallback to the Redis projection when PostgreSQL is unreachable (with 503 on mutations). See [control-plane-db.md](./control-plane-db.md).
 
 ### Phase 7: Operations
 Alerts (storage down, copies below wanted, lag over RPO, Redis memory, proxy drift/version skew), runbooks for failover/failback, backup/restore drill for both PostgreSQL and Redis, capacity guide.

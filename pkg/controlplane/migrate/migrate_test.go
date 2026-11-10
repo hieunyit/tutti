@@ -518,3 +518,62 @@ func TestKeyConstantsMatchTheStores(t *testing.T) {
 	require.Equal(t, failover.EventPrefix, pg.KeyFailoverEventPrefix)
 	require.Equal(t, protectiongroups.GroupsKey, pg.KeyProtectionGroups)
 }
+
+func TestRepublishRebuildsLostRedisWithoutAuditOrVersionDrift(t *testing.T) {
+	ctx := context.Background()
+	origMR, origRdb := newMiniRedis(t)
+	populate(t, origRdb)
+	src, err := migrate.ReadRedis(ctx, migrate.Sources{Config: origRdb})
+	require.NoError(t, err)
+
+	s := newPG(t)
+	// Normal migrate (EmitOutbox=false) into PG.
+	rep := migrate.Import(ctx, s, src, migrate.ImportOptions{})
+	require.True(t, rep.OK, rep.Text())
+
+	auditBefore := auditCount(t, s)
+	stBefore, err := s.Repos().Storages.Get(ctx, "archive")
+	require.NoError(t, err)
+
+	// Simulate losing Redis completely: start a brand-new empty miniredis.
+	lostMR, lostRdb := newMiniRedis(t)
+	lostSrc := migrate.Sources{Config: lostRdb}
+
+	dryRep, err := migrate.Republish(ctx, s, lostSrc, migrate.RepublishOptions{DryRun: true})
+	require.NoError(t, err)
+	require.True(t, dryRep.OK, dryRep.Text())
+	require.True(t, dryRep.DryRun)
+	require.Equal(t, 2, dryRep.Families[migrate.FamStorages].Created)
+	require.Empty(t, lostMR.Keys(), "dry-run must not write to Redis")
+
+	repubRep, err := migrate.Republish(ctx, s, lostSrc, migrate.RepublishOptions{})
+	require.NoError(t, err)
+	require.True(t, repubRep.OK, repubRep.Text())
+
+	// No new audit rows and no PG version bump.
+	require.Equal(t, auditBefore, auditCount(t, s))
+	stAfter, err := s.Repos().Storages.Get(ctx, "archive")
+	require.NoError(t, err)
+	require.Equal(t, stBefore.Version, stAfter.Version)
+
+	// Verify that the rebuilt Redis and PostgreSQL agree across all families.
+	rebuiltData, err := migrate.ReadRedis(ctx, lostSrc)
+	require.NoError(t, err)
+	pgData, err := migrate.ReadPG(ctx, s.Repos())
+	require.NoError(t, err)
+	verRep := migrate.Verify(rebuiltData, pgData)
+	require.True(t, verRep.OK, verRep.Text())
+
+	// Also verify protection group scope index was rebuilt in Redis.
+	groupID, ok := protectiongroups.LookupScope(mustHGetAll(t, lostRdb, protectiongroups.ScopeIndexKey), "alice", "photos")
+	require.True(t, ok)
+	require.Equal(t, "g1", groupID)
+	_ = origMR
+}
+
+func mustHGetAll(t *testing.T, rdb *redis.Client, key string) map[string]string {
+	t.Helper()
+	m, err := rdb.HGetAll(context.Background(), key).Result()
+	require.NoError(t, err)
+	return m
+}

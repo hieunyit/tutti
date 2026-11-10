@@ -19,6 +19,7 @@ package policy
 import (
 	"github.com/redis/go-redis/v9"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 )
@@ -50,6 +51,17 @@ func NewService(client redis.UniversalClient, queueSVC tasks.QueueService, mainS
 	}
 }
 
+// WithControlPlane attaches a PostgreSQL control-plane store as the source of truth for routing and replication
+// configuration, falling back to Redis on read errors and rejecting mutations when PostgreSQL is unavailable.
+func (r *policySvc) WithControlPlane(cp controlplane.Store) *policySvc {
+	r.cp = cp
+	return r
+}
+
+func (r *policySvc) ControlPlane() controlplane.Store {
+	return r.cp
+}
+
 type policySvc struct {
 	queueSvc           tasks.QueueService
 	userRoutingStore   *store.UserRoutingStore
@@ -66,6 +78,7 @@ type policySvc struct {
 
 	mainStorage string
 	client      redis.UniversalClient
+	cp          controlplane.Store
 	// snap is the optional in-memory snapshot of proxy request data, see EnableSnapshot.
 	snap *snapshot
 }

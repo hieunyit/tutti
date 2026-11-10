@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
@@ -389,6 +390,27 @@ func (h *resilienceHandlers) DeleteRuntimeStorage(ctx context.Context, req *pb.R
 		}
 		if len(refs) > 0 {
 			return fmt.Errorf("%w: storage is referenced: %s", dom.ErrFailedPrecondition, strings.Join(refs, "; "))
+		}
+		if txDeleter, ok := c.(interface {
+			ControlPlane() controlplane.Store
+			SyncAfterTx(context.Context) error
+		}); ok && txDeleter.ControlPlane() != nil {
+			if c.StorageSource(req.Name) == objstore.StorageSourceConfig {
+				return fmt.Errorf("%w: config-defined storage %q cannot be deleted at runtime", dom.ErrFailedPrecondition, req.Name)
+			}
+			if err := txDeleter.ControlPlane().Tx(ctx, func(repos controlplane.Repos) error {
+				txRefs, err := StorageReferencesFromRepos(ctx, repos, nil, req.Name)
+				if err != nil {
+					return err
+				}
+				if len(txRefs) > 0 {
+					return fmt.Errorf("%w: storage is referenced: %s", dom.ErrFailedPrecondition, strings.Join(txRefs, "; "))
+				}
+				return objstore.DeleteManagedTx(ctx, repos, req.Name)
+			}); err != nil {
+				return controlplane.WrapWriteError(err)
+			}
+			return txDeleter.SyncAfterTx(ctx)
 		}
 		return c.DeleteManaged(ctx, req.Name)
 	})

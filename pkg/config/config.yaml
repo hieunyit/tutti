@@ -79,3 +79,21 @@ features:
   lifecycle: false # sync bucket Lifecycle
   policy: false # sync bucket Policies
   preserveACLGrants: false # preserve object/bucket ACL Grants from source
+controlPlane:
+  backend: redis # redis | postgres
+  readOnly: false
+  postgres:
+    dsn: ""
+    maxConns: 10
+    minConns: 0
+    connMaxLifetime: 30m
+    connMaxIdleTime: 5m
+    connectTimeout: 5s
+    statementTimeout: 10s
+    autoMigrate: false
+  outbox:
+    pollInterval: 500ms
+    batchSize: 200
+    retryBackoff: 1s
+    maxBackoff: 1m
+    retention: 24h

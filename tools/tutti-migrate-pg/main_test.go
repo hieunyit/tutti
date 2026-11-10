@@ -105,6 +105,14 @@ func TestCLIEndToEnd(t *testing.T) {
 	require.False(t, rep.OK)
 	require.Len(t, rep.Mismatches, 2)
 
+	// republish rebuilds Redis from PostgreSQL and makes verify exit 0 again
+	mr.FlushAll()
+	code, stdout, stderr = runCLI(t, with("republish")...)
+	require.Equal(t, exitOK, code, stderr+stdout)
+	require.Contains(t, stdout, "result: OK")
+	code, stdout, _ = runCLI(t, with("verify")...)
+	require.Equal(t, exitOK, code, stdout)
+
 	// usage errors
 	code, _, _ = runCLI(t)
 	require.Equal(t, exitFailure, code)

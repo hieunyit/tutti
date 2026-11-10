@@ -34,7 +34,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
@@ -110,17 +112,64 @@ func (r record) account(id string) Account {
 	return a
 }
 
-// Store persists accounts in Redis.
+// Repository is the persistence contract for proxy access keys.
+type Repository interface {
+	SealingAvailable() error
+	Create(ctx context.Context, user, description string) (Account, string, error)
+	Rotate(ctx context.Context, id string, grace time.Duration) (Account, string, error)
+	SetStatus(ctx context.Context, id, status string) error
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context) ([]Account, error)
+	LoadCredentials(ctx context.Context) (creds map[string]Credential, skipped []string, err error)
+}
+
+// Store persists accounts in Redis or PostgreSQL (with Redis fallback on PG read failure).
 type Store struct {
 	rdb    redis.Cmdable
+	cp     controlplane.Store
 	sealer func() (Sealer, error)
 	now    func() time.Time
 }
+
+var _ Repository = (*Store)(nil)
 
 // NewStore creates a store. sealer is evaluated on every use; it must fail with dom.ErrFailedPrecondition
 // if no master password is configured.
 func NewStore(rdb redis.Cmdable, sealer func() (Sealer, error)) *Store {
 	return &Store{rdb: rdb, sealer: sealer, now: time.Now}
+}
+
+// WithControlPlane attaches a PostgreSQL control-plane store.
+func (s *Store) WithControlPlane(cp controlplane.Store) *Store {
+	s.cp = cp
+	return s
+}
+
+func toCPRecord(id string, r record) controlplane.ProxyAccountRecord {
+	return controlplane.ProxyAccountRecord{
+		AccessKeyID:       id,
+		User:              r.User,
+		Description:       r.Description,
+		Status:            r.Status,
+		CreatedAt:         r.CreatedAt,
+		RotatedAt:         r.RotatedAt,
+		Secret:            r.Secret,
+		PreviousSecret:    r.PreviousSecret,
+		PreviousExpiresAt: r.PreviousExpiresAt,
+	}
+}
+
+func fromCPRecord(r controlplane.ProxyAccountRecord) record {
+	return record{
+		User:              r.User,
+		Description:       r.Description,
+		Status:            r.Status,
+		CreatedAt:         r.CreatedAt,
+		RotatedAt:         r.RotatedAt,
+		Secret:            r.Secret,
+		PreviousSecret:    r.PreviousSecret,
+		PreviousExpiresAt: r.PreviousExpiresAt,
+	}
 }
 
 func (s *Store) getSealer() (Sealer, error) {
@@ -168,6 +217,16 @@ func (s *Store) Create(ctx context.Context, user, description string) (Account, 
 			return Account{}, "", err
 		}
 		id := accessKeyPrefix + suffix
+		if s.cp != nil {
+			_, err := s.cp.Repos().ProxyAccounts.Create(ctx, toCPRecord(id, rec))
+			if errors.Is(err, dom.ErrAlreadyExists) {
+				continue
+			}
+			if err != nil {
+				return Account{}, "", controlplane.WrapWriteError(err)
+			}
+			return rec.account(id), secret, nil
+		}
 		ok, err := s.rdb.HSetNX(ctx, Key, id, raw).Result()
 		if err != nil {
 			return Account{}, "", fmt.Errorf("proxy accounts: create: %w", err)
@@ -231,6 +290,9 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return fmt.Errorf("%w: proxy account: access key id is required", dom.ErrInvalidArg)
 	}
+	if s.cp != nil {
+		return controlplane.WrapWriteError(s.cp.Repos().ProxyAccounts.Delete(ctx, id))
+	}
 	n, err := s.rdb.HDel(ctx, Key, id).Result()
 	if err != nil {
 		return fmt.Errorf("proxy accounts: delete: %w", err)
@@ -243,6 +305,26 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 
 // List returns the metadata of all accounts sorted by user and access key id. Secrets are not read.
 func (s *Store) List(ctx context.Context) ([]Account, error) {
+	if s.cp != nil {
+		vs, err := s.cp.Repos().ProxyAccounts.List(ctx)
+		if err == nil {
+			res := make([]Account, len(vs))
+			for i, v := range vs {
+				res[i] = fromCPRecord(v.Value).account(v.Value.AccessKeyID)
+			}
+			sort.Slice(res, func(i, j int) bool {
+				if res[i].User != res[j].User {
+					return res[i].User < res[j].User
+				}
+				return res[i].AccessKeyID < res[j].AccessKeyID
+			})
+			return res, nil
+		}
+		if !controlplane.IsUnavailable(err) || s.rdb == nil {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("proxy accounts: PostgreSQL list failed, falling back to Redis")
+	}
 	m, err := s.rdb.HGetAll(ctx, Key).Result()
 	if err != nil {
 		return nil, fmt.Errorf("proxy accounts: list: %w", err)
@@ -267,6 +349,43 @@ func (s *Store) List(ctx context.Context) ([]Account, error) {
 // LoadCredentials returns all accounts with decrypted secrets keyed by access key id. Accounts whose secrets
 // cannot be opened are skipped (they cannot authenticate) and reported in skipped.
 func (s *Store) LoadCredentials(ctx context.Context) (creds map[string]Credential, skipped []string, err error) {
+	if s.cp != nil {
+		vs, pgErr := s.cp.Repos().ProxyAccounts.List(ctx)
+		if pgErr == nil {
+			creds = make(map[string]Credential, len(vs))
+			if len(vs) == 0 {
+				return creds, nil, nil
+			}
+			sealer, err := s.getSealer()
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, v := range vs {
+				id := v.Value.AccessKeyID
+				r := fromCPRecord(v.Value)
+				secret, err := sealer.Open(r.Secret)
+				if err != nil {
+					skipped = append(skipped, id)
+					continue
+				}
+				c := Credential{Account: r.account(id), Secret: string(secret), previousExpiresAt: r.PreviousExpiresAt}
+				if r.PreviousSecret != "" {
+					prev, err := sealer.Open(r.PreviousSecret)
+					if err != nil {
+						skipped = append(skipped, id)
+						continue
+					}
+					c.PreviousSecret = string(prev)
+				}
+				creds[id] = c
+			}
+			return creds, skipped, nil
+		}
+		if !controlplane.IsUnavailable(pgErr) || s.rdb == nil {
+			return nil, nil, pgErr
+		}
+		zerolog.Ctx(ctx).Warn().Err(pgErr).Msg("proxy accounts: PostgreSQL load failed, falling back to Redis")
+	}
 	m, err := s.rdb.HGetAll(ctx, Key).Result()
 	if err != nil {
 		return nil, nil, fmt.Errorf("proxy accounts: load: %w", err)
@@ -311,6 +430,17 @@ var luaCAS = redis.NewScript(`if redis.call('hget',KEYS[1],ARGV[1]) == ARGV[2] t
 func (s *Store) update(ctx context.Context, id string, fn func(*record) error) error {
 	if id == "" {
 		return fmt.Errorf("%w: proxy account: access key id is required", dom.ErrInvalidArg)
+	}
+	if s.cp != nil {
+		_, err := s.cp.Repos().ProxyAccounts.Mutate(ctx, id, func(pr *controlplane.ProxyAccountRecord) error {
+			r := fromCPRecord(*pr)
+			if err := fn(&r); err != nil {
+				return err
+			}
+			*pr = toCPRecord(id, r)
+			return nil
+		})
+		return controlplane.WrapWriteError(err)
 	}
 	for range 10 {
 		old, err := s.rdb.HGet(ctx, Key, id).Result()
