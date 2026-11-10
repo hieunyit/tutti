@@ -11,6 +11,7 @@ Defaults below are the effective values: the embedded `config.yaml` is always lo
 | Key | Type | Default | Section |
 |---|---|---|---|
 | `auth.requireSignedContentType` | bool | `false` | [Auth](#auth) |
+| `auth.defaultPolicy` | `allow-legacy` \| `deny` | `allow-legacy` | [Auth](#auth) |
 | `replication.onEventError` | `fail` \| `log` | `fail` | [Event recording](#replication-event-recording) |
 | `replication.eventRetryBudget` | duration | `2s` | [Event recording](#replication-event-recording) |
 | `replication.sync.enabled` | bool | `false` | [Synchronous replication](#synchronous-replication) |
@@ -40,7 +41,10 @@ Durations use Go syntax (`500ms`, `30s`, `2m`). Every key is validated at proxy 
 ```yaml
 auth:
   requireSignedContentType: false
+  defaultPolicy: allow-legacy
 ```
+
+- `defaultPolicy` (`allow-legacy` | `deny`, default `allow-legacy`): what a user **without an access policy** may do. `allow-legacy`: a user whose storage credentials are its own (override or config `credentials.<user>`) has full access as before, while a user that resolves through a shared connection account on the storage it is routed to is denied (`403 AccessDenied`, empty `ListBuckets`): see [isolation on a shared account](./storage-accounts.md#isolation-on-a-shared-account-default-deny). `deny`: every user without a policy is denied. A user with a policy is never affected by this setting. Any other value stops the proxy at startup.
 
 - `requireSignedContentType` (bool, default `false`): when `true`, a SigV4 request carrying a `Content-Type` header is rejected unless `content-type` is listed in `SignedHeaders`. When `false`, `Content-Type` need not be signed (AWS only requires `host` and `x-amz-*` headers to be signed; `mc` and `minio-go` do not sign it).
 - `host` and every `x-amz-*` header present in the request must be signed regardless of this setting.

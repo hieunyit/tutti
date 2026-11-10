@@ -106,6 +106,10 @@ func TestResolutionOrderOverrideConnectionMissing(t *testing.T) {
 	require.Equal(t, ModeMissing, mode)
 	require.EqualError(t, err, "storage legacy has no credentials for user bob")
 	require.ErrorIs(t, err, dom.ErrNoCredentials)
+	require.Equal(t, ModeConnection, svc.CredentialMode("main", "bob"))
+	require.Equal(t, ModeOverride, svc.CredentialMode("main", "alice"))
+	require.Equal(t, ModeMissing, svc.CredentialMode("legacy", "bob"))
+	require.Equal(t, ModeMissing, svc.CredentialMode("nope", "bob"))
 	// unknown storage
 	_, _, err = svc.ResolveS3Credentials("nope", "bob")
 	require.ErrorIs(t, err, dom.ErrNotFound)

@@ -247,7 +247,16 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		routeSvc := router.NewS3Router(clientRegistry, verSvc, uploadSvc, limiter)
 		replSvc := replication.NewS3(queueSvc, verSvc, policySvc)
 		accessCache := accesspolicy.NewCache(accesspolicy.NewStore(confRedis), accesspolicy.DefaultTTL)
-		proxyConfig.AccessMiddleware = access.Middleware(accessCache.Lookup)
+		defaultPolicy := ""
+		if conf.Auth != nil {
+			defaultPolicy = conf.Auth.DefaultPolicy
+		}
+		proxyConfig.AccessMiddleware = access.Middleware(accessCache.Lookup,
+			access.WithDefaultPolicy(defaultPolicy),
+			access.WithSharedAccount(func(ctx context.Context, user string) bool {
+				// the policy middleware has set the routing policy: the storage the request goes to
+				return credsSvc.CredentialMode(xctx.GetRoutingPolicy(ctx), user) == objstore.ModeConnection
+			}))
 		// runtime-managed accounts: secrets are sealed with the dynamic credentials master password.
 		// Without it no dynamic account can be created or authenticate.
 		accountCache := proxyaccount.NewCache(proxyaccount.NewStore(confRedis, func() (proxyaccount.Sealer, error) {

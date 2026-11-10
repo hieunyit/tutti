@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/xml"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -41,14 +42,53 @@ import (
 // LookupFunc returns the policy of a user, if any.
 type LookupFunc func(ctx context.Context, user string) (accesspolicy.Policy, bool)
 
+// Default policy modes (auth.defaultPolicy).
+const (
+	// DefaultLegacy (also the empty value): a user without a policy has full access only if its storage credentials
+	// are its own; users that resolve through a shared connection account are denied.
+	DefaultLegacy = "allow-legacy"
+	// DefaultDeny: every user without a policy is denied.
+	DefaultDeny = "deny"
+)
+
+// SharedFunc reports whether the user's requests are signed with a connection account shared by all users on the
+// storage the request is routed to. It is called only for users without a policy.
+type SharedFunc func(ctx context.Context, user string) bool
+
+type options struct {
+	mode   string
+	shared SharedFunc
+}
+
+// Option configures Middleware.
+type Option func(*options)
+
+// WithDefaultPolicy sets the mode for users without a policy (DefaultLegacy or DefaultDeny).
+func WithDefaultPolicy(mode string) Option { return func(o *options) { o.mode = mode } }
+
+// WithSharedAccount sets the function telling if a user is on a shared connection account.
+func WithSharedAccount(f SharedFunc) Option { return func(o *options) { o.shared = f } }
+
+// NoPolicyMessage is the error message for a user that needs a policy.
+const NoPolicyMessage = "no access policy: users on a shared storage account need an explicit policy"
+
 // Middleware must run after authentication and request parsing (user, method and bucket are read from the context).
-func Middleware(lookup LookupFunc) func(next http.Handler) http.Handler {
+// Without options a user without a policy has full access (legacy behaviour).
+func Middleware(lookup LookupFunc, opts ...Option) func(next http.Handler) http.Handler {
+	var o options
+	for _, f := range opts {
+		f(&o)
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			user := xctx.GetUser(ctx)
 			pol, ok := lookup(ctx, user)
 			if !ok {
+				if o.mode == DefaultDeny || (o.shared != nil && o.shared(ctx, user)) {
+					denyNoPolicy(ctx, w, user)
+					return
+				}
 				zerolog.Ctx(ctx).Debug().Str("user", user).Msg("access policy: none, full access")
 				next.ServeHTTP(w, r)
 				return
@@ -81,6 +121,25 @@ func Middleware(lookup LookupFunc) func(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// denyNoPolicy answers a user that has no policy: an empty bucket list for ListBuckets, 403 otherwise.
+func denyNoPolicy(ctx context.Context, w http.ResponseWriter, user string) {
+	zerolog.Ctx(ctx).Info().Str("user", user).Msg("access policy: denied, " + NoPolicyMessage)
+	if xctx.GetMethod(ctx) == s3.ListBuckets {
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write([]byte(xml.Header + `<ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>` +
+			html.EscapeString(user) + `</ID><DisplayName>` + html.EscapeString(user) + `</DisplayName></Owner><Buckets></Buckets></ListAllMyBucketsResult>`))
+		return
+	}
+	trafficstats.Default.AccessDenied()
+	util.WriteError(ctx, w, mclient.ErrorResponse{
+		Code:       "AccessDenied",
+		Message:    NoPolicyMessage,
+		BucketName: xctx.GetBucket(ctx),
+		Key:        xctx.GetObject(ctx),
+		StatusCode: http.StatusForbidden,
+	})
 }
 
 // copySourceBucket extracts the bucket from x-amz-copy-source ("/bucket/key?versionId=x", url-encoded, leading slash optional).

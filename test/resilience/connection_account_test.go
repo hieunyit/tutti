@@ -145,7 +145,8 @@ func TestConnectionAccountsEndToEnd(t *testing.T) {
 	require.NotContains(t, fmt.Sprint(created), archiveAcc.SecretAccessKey)
 
 	// --- a Tutti user without any storage key
-	keyless := e.restJSON(t, http.MethodPost, "/tutti/users", map[string]any{"name": "keyless", "createAccessKey": true})
+	keyless := e.restJSON(t, http.MethodPost, "/tutti/users", map[string]any{"name": "keyless", "createAccessKey": true,
+		"policy": map[string]any{"permission": "read-write", "buckets": []string{"conn-acc-*"}}})
 	key := keyless["accessKey"].(map[string]any)
 	require.True(t, strings.HasPrefix(key["accessKeyId"].(string), "TUT"))
 	u := keyless["user"].(map[string]any)

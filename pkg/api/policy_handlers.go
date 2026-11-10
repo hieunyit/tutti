@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"sort"
 	"time"
 
@@ -82,6 +83,12 @@ func PolicyHandlers(
 // PolicyOption customizes PolicyHandlers.
 type PolicyOption func(*policyHandlers)
 
+// WithPolicyScope restricts user-level replications and bucket listings of users on a shared connection account to
+// the buckets of their access policy.
+func WithPolicyScope(scope *accesspolicy.Scope) PolicyOption {
+	return func(h *policyHandlers) { h.scope = scope }
+}
+
 // WithPolicyStorageLocker makes replication and routing creation take the per-storage lock shared with runtime
 // storage update/delete (WithStorageLocker), so a reference cannot appear while a storage is being deleted.
 func WithPolicyStorageLocker(l *StorageLocker) PolicyOption {
@@ -103,6 +110,7 @@ type policyHandlers struct {
 	userLocker              *store.UserLocker
 	webhookConf             *WebhookConfig
 	storageLocker           *StorageLocker
+	scope                   *accesspolicy.Scope
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
@@ -156,6 +164,9 @@ func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID e
 		EventSource: pbToEventSource(eventSource),
 	}
 	if err := h.policySvc.ValidateUserReplicationCreation(ctx, replicationID); err != nil {
+		return err
+	}
+	if err := h.scope.CheckUserReplication(ctx, replicationID.FromStorage, replicationID.User); err != nil {
 		return err
 	}
 	if err := h.removeLeftoversOfDeletedReplication(ctx, entity.UniversalFromUserReplication(replicationID)); err != nil {
@@ -311,6 +322,10 @@ func (h *policyHandlers) AvailableBuckets(ctx context.Context, req *pb.Available
 		return nil, err
 	}
 	buckets, err := client.ListBuckets(ctx)
+	if err != nil {
+		return nil, err
+	}
+	buckets, err = h.scope.Filter(ctx, req.FromStorage, req.User, buckets)
 	if err != nil {
 		return nil, err
 	}

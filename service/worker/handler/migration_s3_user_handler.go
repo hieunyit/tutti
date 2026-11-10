@@ -52,10 +52,19 @@ func (s *svc) HandleMigrationS3User(ctx context.Context, t *asynq.Task) error {
 	if err != nil {
 		return fmt.Errorf("error listing buckets: %w", err)
 	}
-	for _, bucket := range buckets {
+	names := make([]string, 0, len(buckets))
+	for _, b := range buckets {
+		names = append(names, b.Name)
+	}
+	// a user on a shared connection account only replicates the buckets its access policy allows
+	names, err = s.scope.Filter(ctx, p.ID.FromStorage(), p.ID.User(), names)
+	if err != nil {
+		return fmt.Errorf("unable to apply access policy to bucket list: %w", err)
+	}
+	for _, bucket := range names {
 		// start migration for each bucket:
 		task := tasks.BucketCreatePayload{
-			Bucket: bucket.Name,
+			Bucket: bucket,
 		}
 		task.SetReplicationID(p.ID, p.Generation)
 		err = s.queueSvc.EnqueueTask(ctx, task)

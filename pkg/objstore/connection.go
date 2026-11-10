@@ -117,6 +117,14 @@ func (s *credsSvc) ResolveS3Credentials(storage, user string) (s3.CredentialsV4,
 	return s3.CredentialsV4{}, ModeMissing, &NoCredentialsError{Storage: storage, User: user}
 }
 
+// CredentialMode tells how requests of user are signed on the storage without exposing the credentials: ModeOverride,
+// ModeConnection or ModeMissing (also for an unknown storage). It reads in-memory state only, so it is cheap enough
+// for the request path.
+func (s *credsSvc) CredentialMode(storage, user string) CredMode {
+	_, mode, _ := s.ResolveS3Credentials(storage, user)
+	return mode
+}
+
 // ListOverrideUsers lists the users with their own credentials on the storage (config and dynamic).
 func (s *credsSvc) ListOverrideUsers(storage string) []string {
 	return s.listOverrideUsers(storage)

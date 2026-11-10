@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -137,7 +138,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	checkSvc := handler.NewDiffSvc(confRedis, clientRegistry, queueSvc)
 	checkCtrl := handler.NewDiffCtrl(checkSvc, queueSvc)
 
+	bucketScope := accesspolicy.NewScope(func(storage, user string) bool {
+		return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
+	}, accesspolicy.NewStore(confRedis))
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
+
+	workerSvc.SetBucketScope(bucketScope)
 
 	stdLogger := log.NewStdLogger()
 	redis.SetLogger(stdLogger)
@@ -191,6 +197,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	mux.Use(tasks.DropStaleReplicationTasks(policySvc.GetReplicationGeneration))
 	// common workers
 	switchWorker := handler.NewSwitchSvc(conf.Worker, policySvc, clientRegistry, replicationStatusLocker)
+	switchWorker.SetBucketScope(bucketScope)
 	mux.HandleFunc(tasks.TypeApiZeroDowntimeSwitch, switchWorker.HandleZeroDowntimeReplicationSwitch)
 	mux.HandleFunc(tasks.TypeApiSwitchWithDowntime, switchWorker.HandleSwitchWithDowntime)
 	logger.Info().Msg("registered common workers")
@@ -277,7 +284,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Api.Webhook.Enabled {
 			webhookConf = &conf.Api.Webhook
 		}
-		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, api.WithPolicyStorageLocker(storageLocker))
+		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, api.WithPolicyStorageLocker(storageLocker), api.WithPolicyScope(bucketScope))
 
 		webhookSharesMainPort := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort <= 0
 		var authOpts []auth.Option

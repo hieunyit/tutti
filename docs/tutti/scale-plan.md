@@ -52,6 +52,9 @@ Redis is still the right tool for locks, queues and fast shared state, as long a
    `storage S has no credentials for user U` (503, logged, counted in stats).
 5. Migration: config-defined per-user credentials become overrides and keep working; a storage without a connection account
    keeps the current per-user behaviour; the UI marks it "legacy credentials".
+6. Isolation: default deny for shared-account users (done). A user on a connection account without an access policy gets
+   403 / empty bucket list; users and user-level replications of such users require and are scoped by the policy globs
+   (`auth.defaultPolicy`, see storage-accounts.md).
 
 #### 2.2 Request flow (client never sees storage credentials) (backend done)
 ```

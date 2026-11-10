@@ -67,6 +67,9 @@ type CredsService interface {
 	// ResolveS3Credentials returns the credentials to sign requests of the user to the storage with: the override, else
 	// the connection account of the storage, else *NoCredentialsError (errors.Is dom.ErrNoCredentials).
 	ResolveS3Credentials(storage, user string) (s3.CredentialsV4, CredMode, error)
+	// CredentialMode tells how requests of the user are signed on the storage (override, connection account or
+	// missing) without returning the credentials. In-memory, safe for the request path.
+	CredentialMode(storage, user string) CredMode
 	// ConnectionAccount returns the connection account of an S3 storage.
 	ConnectionAccount(storage string) (ConnectionInfo, bool)
 	// ListOverrideUsers lists the users that have their own credentials on the storage. ListUsers additionally lists

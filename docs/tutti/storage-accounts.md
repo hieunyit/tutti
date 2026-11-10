@@ -305,6 +305,18 @@ curl -s -X POST $API/tutti/users -H 'Content-Type: application/json' -d '{
 
 `credentials` may be empty when **every S3 storage has a connection account**; otherwise every storage without one needs an override in `credentials` (the main storage must always resolve). `GET /tutti/users` reports per storage `mode`: `connection-account`, `override` or `missing`, and `complete: true` when every storage resolves. A user created without any credentials exists as a lightweight record in the config DB (Redis hash `tutti:s3users`), so it is listed and can be used in replications and routings. An override can be added later with `PUT /tutti/users/credentials` (tenant isolation, per-user quota or billing on the storage side).
 
+### Isolation on a shared account: default deny
+
+With a connection account all users without an override are signed with the **same** storage account, so the storage itself no longer separates them. The only isolation is the Tutti **access policy** (permission + bucket globs), enforced by the proxy on every request (bucket operations, object operations, `CopyObject` sources, `ListBuckets` filtering).
+
+- A user that resolves through a connection account on the storage its request is routed to and has **no access policy** is denied: every request answers `403 AccessDenied` with `no access policy: users on a shared storage account need an explicit policy`, and `ListBuckets` returns an empty list. It never gets "full access".
+- A user whose storage credentials are its own (override or config `credentials.<user>`, the legacy model) and has no policy keeps full access, as before. `auth.defaultPolicy: deny` ([configuration](./configuration.md#auth)) denies those users as well.
+- `CreateBucket` is classified as bucket management: it needs `read-write` and a bucket name matching the policy globs, so a user cannot create (or touch, list, delete) buckets outside its globs. A policy with `buckets: ["*"]` (or no buckets) is an explicit grant of the whole storage: use it only for administrators.
+- Creating a user (`POST /tutti/users`) that resolves through a connection account on any storage requires a `policy` (`InvalidArgument` otherwise). Deleting the last policy of such a user (`PUT /tutti/access-policies/delete`) is refused with `FailedPrecondition`: set another policy or delete the user.
+- **User-level replication** of such a user replicates only the buckets its policy globs allow (initial migration, zero-downtime switch checks, and the list of available buckets in the console). `AddReplication` for a user-level replication of a user without a policy is refused with `FailedPrecondition`. Bucket-level replications are not affected.
+- Policies are cached by each proxy for about 5 seconds, so a policy change or removal takes up to that long to apply.
+- Requests routed to a storage on which the user has an override are judged by the legacy rule even if the user is on the connection account of another storage.
+
 ### Rotate the connection account
 
 1. Create the new account on the storage (same policy). Keep the old one enabled.

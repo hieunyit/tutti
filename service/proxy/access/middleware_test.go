@@ -166,3 +166,82 @@ func TestListBucketsFilteredWithGzipUpstream(t *testing.T) {
 	require.Equal(t, 500, rec.Code)
 	require.NotContains(t, rec.Body.String(), "secret")
 }
+
+func runOpts(t *testing.T, pols map[string]accesspolicy.Policy, user string, m s3.Method, bucket string, opts ...Option) *httptest.ResponseRecorder {
+	t.Helper()
+	lookup := func(_ context.Context, u string) (accesspolicy.Policy, bool) { p, ok := pols[u]; return p, ok }
+	reached := false
+	h := Middleware(lookup, opts...)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		if m == s3.ListBuckets {
+			_, _ = w.Write([]byte(listXML))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := log.WithUser(req.Context(), user)
+	ctx = log.WithMethod(ctx, m)
+	ctx = log.WithBucket(ctx, bucket)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req.WithContext(ctx))
+	if rec.Code == 403 || (m == s3.ListBuckets && !strings.Contains(rec.Body.String(), "<Name>")) {
+		// denied requests never reach the storage unless filtered
+		if rec.Code == 403 {
+			require.False(t, reached)
+		}
+	}
+	return rec
+}
+
+func TestDefaultDenyForSharedAccount(t *testing.T) {
+	pols := map[string]accesspolicy.Policy{
+		"scoped": {User: "scoped", Permission: accesspolicy.ReadWrite, Buckets: []string{"app-*"}},
+	}
+	shared := WithSharedAccount(func(_ context.Context, u string) bool { return u != "own" })
+
+	// shared user without policy: 403 with a clear message, empty bucket list
+	rec := runOpts(t, pols, "nopol", s3.GetObject, "b", shared)
+	require.Equal(t, 403, rec.Code)
+	require.Contains(t, rec.Body.String(), "<Code>AccessDenied</Code>")
+	require.Contains(t, rec.Body.String(), "users on a shared storage account need an explicit policy")
+	require.Equal(t, 403, runOpts(t, pols, "nopol", s3.CreateBucket, "b", shared).Code)
+	rec = runOpts(t, pols, "nopol", s3.ListBuckets, "", shared)
+	require.Equal(t, 200, rec.Code)
+	require.Contains(t, rec.Body.String(), "<ListAllMyBucketsResult")
+	require.NotContains(t, rec.Body.String(), "<Name>")
+
+	// a user with its own credentials keeps full access (legacy)
+	require.Equal(t, 200, runOpts(t, pols, "own", s3.PutObject, "any", shared).Code)
+	require.Contains(t, runOpts(t, pols, "own", s3.ListBuckets, "", shared).Body.String(), "secret")
+	// without options everything is legacy
+	require.Equal(t, 200, runOpts(t, pols, "nopol", s3.PutObject, "any").Code)
+	// allow-legacy mode is the default behaviour
+	require.Equal(t, 403, runOpts(t, pols, "nopol", s3.GetObject, "b", shared, WithDefaultPolicy(DefaultLegacy)).Code)
+	require.Equal(t, 200, runOpts(t, pols, "own", s3.GetObject, "b", shared, WithDefaultPolicy(DefaultLegacy)).Code)
+	// deny mode: also users with their own credentials
+	require.Equal(t, 403, runOpts(t, pols, "own", s3.GetObject, "b", shared, WithDefaultPolicy(DefaultDeny)).Code)
+	require.Equal(t, 403, runOpts(t, pols, "own", s3.GetObject, "b", WithDefaultPolicy(DefaultDeny)).Code)
+	require.NotContains(t, runOpts(t, pols, "own", s3.ListBuckets, "", WithDefaultPolicy(DefaultDeny)).Body.String(), "<Name>")
+	// a policy always wins, in every mode
+	require.Equal(t, 200, runOpts(t, pols, "scoped", s3.GetObject, "app-1", shared, WithDefaultPolicy(DefaultDeny)).Code)
+}
+
+// On a shared account the policy globs are the only isolation: bucket creation outside them, access to foreign
+// buckets and listing foreign buckets are all refused.
+func TestSharedAccountPolicyIsolation(t *testing.T) {
+	pols := map[string]accesspolicy.Policy{
+		"alice": {User: "alice", Permission: accesspolicy.ReadWrite, Buckets: []string{"alice-*"}},
+		"bob":   {User: "bob", Permission: accesspolicy.ReadWrite, Buckets: []string{"bob-*"}},
+	}
+	shared := WithSharedAccount(func(context.Context, string) bool { return true })
+	require.Equal(t, 200, runOpts(t, pols, "alice", s3.CreateBucket, "alice-data", shared).Code)
+	require.Equal(t, 403, runOpts(t, pols, "alice", s3.CreateBucket, "bob-data", shared).Code)
+	require.Equal(t, 403, runOpts(t, pols, "alice", s3.CreateBucket, "other", shared).Code)
+	require.Equal(t, 403, runOpts(t, pols, "alice", s3.GetObject, "bob-data", shared).Code)
+	require.Equal(t, 403, runOpts(t, pols, "alice", s3.DeleteBucket, "bob-data", shared).Code)
+	rec := runOpts(t, pols, "alice", s3.ListBuckets, "", shared)
+	require.Equal(t, 200, rec.Code)
+	require.NotContains(t, rec.Body.String(), "secret")
+	require.NotContains(t, rec.Body.String(), "bob")
+}

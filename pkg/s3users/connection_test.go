@@ -32,7 +32,7 @@ func TestCreateWithoutCredentialsNeedsConnectionAccountEverywhere(t *testing.T) 
 	require.Contains(t, err.Error(), "backup")
 	require.False(t, f.HasIdentity("keyless"))
 	// an override for the storage without connection account makes the user complete
-	res, err := m.Create(ctx, CreateRequest{Name: "keyless", Credentials: []Credential{{Storage: "backup", AccessKeyID: "bk", SecretAccessKey: "bs"}}})
+	res, err := m.Create(ctx, CreateRequest{Name: "keyless", Credentials: []Credential{{Storage: "backup", AccessKeyID: "bk", SecretAccessKey: "bs"}}, Policy: &accesspolicy.Policy{Permission: accesspolicy.ReadWrite, Buckets: []string{"app-*"}}})
 	require.NoError(t, err)
 	require.True(t, res.User.Complete)
 
@@ -98,7 +98,7 @@ func TestDeleteIdentityOnlyUserAndTestUsesConnectionAccount(t *testing.T) {
 	ctx := context.Background()
 	f := withConnection(newFake(true), "main", "backup")
 	m := newManager(t, f)
-	_, err := m.Create(ctx, CreateRequest{Name: "keyless", CreateAccessKey: true})
+	_, err := m.Create(ctx, CreateRequest{Name: "keyless", CreateAccessKey: true, Policy: &accesspolicy.Policy{Permission: accesspolicy.ReadWrite, Buckets: []string{"app-*"}}})
 	require.NoError(t, err)
 	// the stored credentials test runs with the connection account
 	var used string
@@ -129,7 +129,7 @@ func TestUpdateCredentialsOfIdentityOnlyUser(t *testing.T) {
 	ctx := context.Background()
 	f := withConnection(newFake(true), "main", "backup")
 	m := newManager(t, f)
-	_, err := m.Create(ctx, CreateRequest{Name: "keyless"})
+	_, err := m.Create(ctx, CreateRequest{Name: "keyless", Policy: &accesspolicy.Policy{Permission: accesspolicy.ReadWrite, Buckets: []string{"app-*"}}})
 	require.NoError(t, err)
 	// an override can be added later for tenant isolation on one storage
 	require.NoError(t, m.UpdateCredentials(ctx, "keyless", Credential{Storage: "backup", AccessKeyID: "tenant", SecretAccessKey: "ts"}, false))
@@ -143,4 +143,38 @@ func TestUpdateCredentialsOfIdentityOnlyUser(t *testing.T) {
 			require.Equal(t, objstore.ModeConnection, st.Mode)
 		}
 	}
+}
+
+func TestSharedAccountUserNeedsPolicy(t *testing.T) {
+	ctx := context.Background()
+	f := withConnection(newFake(true), "main", "backup")
+	m := newManager(t, f)
+	// no policy: refused, nothing is created
+	_, err := m.Create(ctx, CreateRequest{Name: "keyless"})
+	require.ErrorIs(t, err, dom.ErrInvalidArg)
+	require.Contains(t, err.Error(), "policy is required")
+	require.False(t, f.HasIdentity("keyless"))
+	// with a policy: created
+	_, err = m.Create(ctx, CreateRequest{Name: "keyless", Policy: &accesspolicy.Policy{Permission: accesspolicy.ReadWrite, Buckets: []string{"app-*"}}})
+	require.NoError(t, err)
+	require.Equal(t, []string{"backup", "main"}, m.SharedStorages("keyless"))
+	// the last policy cannot be deleted
+	err = m.CheckPolicyDeletable("keyless")
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.Contains(t, err.Error(), "lose all access")
+
+	// a user with its own credentials on every storage needs no policy
+	_, err = m.Create(ctx, CreateRequest{Name: "own", Credentials: []Credential{
+		{Storage: "main", AccessKeyID: "k1", SecretAccessKey: "s1"}, {Storage: "backup", AccessKeyID: "k2", SecretAccessKey: "s2"}}})
+	require.NoError(t, err)
+	require.Empty(t, m.SharedStorages("own"))
+	require.NoError(t, m.CheckPolicyDeletable("own"))
+	// an unknown user (orphan policy) can be deleted
+	require.NoError(t, m.CheckPolicyDeletable("ghost"))
+	// only main has a connection account and the user has creds on backup only: still shared on main
+	f2 := withConnection(newFake(true), "main")
+	m2 := newManager(t, f2)
+	_, err = m2.Create(ctx, CreateRequest{Name: "half", Credentials: []Credential{{Storage: "backup", AccessKeyID: "k", SecretAccessKey: "s"}}})
+	require.ErrorIs(t, err, dom.ErrInvalidArg)
+	require.Contains(t, err.Error(), "policy is required")
 }

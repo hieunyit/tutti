@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -46,7 +47,11 @@ type switchSvc struct {
 	clients                 objstore.Clients
 	replicationstatusLocker *store.ReplicationStatusLocker
 	conf                    *Config
+	scope                   *accesspolicy.Scope
 }
+
+// SetBucketScope restricts the buckets enumerated for user-level switches of users on a shared connection account.
+func (s *switchSvc) SetBucketScope(scope *accesspolicy.Scope) { s.scope = scope }
 
 func NewSwitchSvc(conf *Config, policySvc policy.Service, clients objstore.Clients,
 	replicationstatusLocker *store.ReplicationStatusLocker) *switchSvc {
@@ -399,6 +404,10 @@ func (s *switchSvc) findOldStorageUpload(ctx context.Context, id entity.Universa
 		}
 		for _, bucket := range list {
 			buckets = append(buckets, bucket.Name)
+		}
+		buckets, err = s.scope.Filter(ctx, id.FromStorage(), id.User(), buckets)
+		if err != nil {
+			return "", fmt.Errorf("unable to apply access policy to bucket list: %w", err)
 		}
 	}
 	for _, bucket := range buckets {

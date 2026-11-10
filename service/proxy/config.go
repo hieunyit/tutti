@@ -225,6 +225,9 @@ func ValidateAuth(storage Storages, auth *auth.Config) error {
 	if auth == nil {
 		return fmt.Errorf("proxy config: empty Auth config")
 	}
+	if err := auth.ValidateDefaultPolicy(); err != nil {
+		return err
+	}
 	if auth.UseStorage != "" {
 		if _, ok := storage.Storages[auth.UseStorage]; !ok {
 			return fmt.Errorf("proxy config: auth UseStorage points to unknown storage")

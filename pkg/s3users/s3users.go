@@ -136,6 +136,48 @@ func (m *Manager) accessKeyID(storage, user string) string {
 	return c.AccessKeyID
 }
 
+// SharedStorages lists the S3 storages on which requests of the user are signed with the shared connection account
+// (the user has no credentials of its own there). Such a user is denied everything by the proxy unless it has an
+// access policy.
+func (m *Manager) SharedStorages(user string) []string {
+	var res []string
+	for _, st := range m.storageNames() {
+		if m.Creds.Storages()[st] != dom.S3 {
+			continue
+		}
+		if _, mode, _ := m.Creds.ResolveS3Credentials(st, user); mode == objstore.ModeConnection {
+			res = append(res, st)
+		}
+	}
+	return res
+}
+
+// known reports whether the user exists in Tutti (identity or credentials on any storage).
+func (m *Manager) known(user string) bool {
+	if m.Creds.HasIdentity(user) {
+		return true
+	}
+	for _, st := range m.storageNames() {
+		if m.Creds.CredentialSource(st, user) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// CheckPolicyDeletable refuses to delete the policy of a user that would lose all access: a user on a shared
+// connection account without a policy is denied by the proxy.
+func (m *Manager) CheckPolicyDeletable(user string) error {
+	if !m.known(user) {
+		return nil
+	}
+	if shared := m.SharedStorages(user); len(shared) > 0 {
+		return fmt.Errorf("%w: user %q uses the shared connection account of storage(s) %s: without an access policy the user would lose all access; set another policy instead or delete the user",
+			dom.ErrFailedPrecondition, user, strings.Join(shared, ", "))
+	}
+	return nil
+}
+
 // List returns the union of users over all storages.
 func (m *Manager) List(ctx context.Context) (*Listing, error) {
 	storages := m.storageNames()
@@ -401,6 +443,18 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 	}
 	if m.Creds.HasIdentity(req.Name) {
 		return nil, fmt.Errorf("%w: s3 user %q already exists", dom.ErrAlreadyExists, req.Name)
+	}
+	if req.Policy == nil {
+		var shared []string
+		for _, st := range m.storageNames() {
+			if _, has := seen[st]; !has && m.hasConnectionAccount(st) {
+				shared = append(shared, st)
+			}
+		}
+		if len(shared) > 0 {
+			return nil, fmt.Errorf("%w: a policy is required: the user uses the shared connection account of storage(s) %s and would have no access without one (set permission and bucket patterns)",
+				dom.ErrInvalidArg, strings.Join(shared, ", "))
+		}
 	}
 	var pol *accesspolicy.Policy
 	if req.Policy != nil {

@@ -61,6 +61,11 @@ func (h *resilienceHandlers) DeleteAccessPolicy(ctx context.Context, req *pb.Acc
 	if req.GetUser() == "" {
 		return nil, fmt.Errorf("%w: access policy: user is required", dom.ErrInvalidArg)
 	}
+	if h.s3users != nil {
+		if err := h.s3users.CheckPolicyDeletable(req.GetUser()); err != nil {
+			return nil, err
+		}
+	}
 	if err := h.policies.Delete(ctx, req.GetUser()); err != nil {
 		return nil, err
 	}

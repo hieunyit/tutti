@@ -17,6 +17,8 @@
 package auth
 
 import (
+	"fmt"
+
 	"github.com/hieunyit/tutti/pkg/s3"
 )
 
@@ -30,4 +32,17 @@ type Config struct {
 	// MinIO mc/minio-go do not sign content-type. x-amz-* headers are always
 	// required to be signed regardless of this setting (CVE-2026-54330).
 	RequireSignedContentType bool `yaml:"requireSignedContentType"`
+	// DefaultPolicy decides what a user WITHOUT an access policy may do: "" or "allow-legacy" (default): full
+	// access if the user's storage credentials are its own, denied if the user is on a shared connection account;
+	// "deny": every user without a policy is denied.
+	DefaultPolicy string `yaml:"defaultPolicy"`
+}
+
+// ValidateDefaultPolicy checks auth.defaultPolicy.
+func (c *Config) ValidateDefaultPolicy() error {
+	switch c.DefaultPolicy {
+	case "", "allow-legacy", "deny":
+		return nil
+	}
+	return fmt.Errorf("proxy config: auth defaultPolicy must be %q or %q, got %q", "deny", "allow-legacy", c.DefaultPolicy)
 }

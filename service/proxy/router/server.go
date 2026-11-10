@@ -192,12 +192,13 @@ func New(config Config) (http.Handler, error) {
 			// 7. metrics collection
 			handler = config.MetricsMiddleware(handler)
 		}
-		// 6. set routing & replication policies to context
-		handler = config.PolicyMiddleware(handler)
 		if storType == dom.S3 && config.AccessMiddleware != nil {
-			// 5.5. per-account access policy (user from auth, method/bucket from request parse)
+			// 6.5. per-account access policy (user from auth, method/bucket from request parse, routed storage from
+			// the routing policy: a user on a shared connection account is judged on the storage it is routed to)
 			handler = config.AccessMiddleware(handler)
 		}
+		// 6. set routing & replication policies to context
+		handler = config.PolicyMiddleware(handler)
 		// 5. parse storage-specific request method/user/bucket/object and set to context
 		handler = storProxy.ReqParseMiddleware(handler)
 		if storProxy.AuthMiddleware != nil {

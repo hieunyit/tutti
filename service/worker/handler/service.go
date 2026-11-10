@@ -19,6 +19,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -80,7 +81,11 @@ type svc struct {
 	versionedSvc            *VersionedMigrationSvc
 	conf                    *Config
 	syncer                  *syncer.ObjectSyncer
+	scope                   *accesspolicy.Scope
 }
+
+// SetBucketScope restricts the buckets listed for user-level replication of users on a shared connection account.
+func (s *svc) SetBucketScope(scope *accesspolicy.Scope) { s.scope = scope }
 
 func New(conf *Config, credsSvc objstore.CredsService, clients objstore.Clients, versionSvc meta.VersionService,
 	copySvc copy.CopySvc, queueSvc tasks.QueueService,
