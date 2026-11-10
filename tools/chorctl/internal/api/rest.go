@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -75,10 +76,19 @@ var restRoutes = map[string]route{
 	// Policy service - routing:
 	pb.Policy_ListRoutings_FullMethodName:   {http.MethodPost, "/routing"},
 	pb.Policy_AddRouting_FullMethodName:     {http.MethodPost, "/routing/add"},
+	pb.Policy_UpdateRouting_FullMethodName:  {http.MethodPut, "/routing/update"},
 	pb.Policy_DeleteRouting_FullMethodName:  {http.MethodPut, "/routing/delete"},
 	pb.Policy_BlockRouting_FullMethodName:   {http.MethodPut, "/routing/block"},
 	pb.Policy_UnblockRouting_FullMethodName: {http.MethodPut, "/routing/unblock"},
 	pb.Policy_TestProxy_FullMethodName:      {http.MethodPost, "/test-proxy"},
+	// Resilience service:
+	pb.Resilience_GetProxyStatus_FullMethodName:       {http.MethodGet, "/tutti/proxies"},
+	pb.Resilience_ListFailoverPolicies_FullMethodName: {http.MethodGet, "/tutti/failover/policies"},
+	pb.Resilience_ListFailoverEvents_FullMethodName:   {http.MethodGet, "/tutti/failover/events"},
+	// ProtectionGroups service (migration & scopes):
+	pb.ProtectionGroups_PlanFailoverMigration_FullMethodName:  {http.MethodGet, "/tutti/failover/migration/plan"},
+	pb.ProtectionGroups_ApplyFailoverMigration_FullMethodName: {http.MethodPost, "/tutti/failover/migration/apply"},
+	pb.ProtectionGroups_ListUnprotectedScopes_FullMethodName:  {http.MethodGet, "/tutti/unprotected-scopes"},
 }
 
 var bearerToken string
@@ -107,13 +117,11 @@ func (c *Conn) Invoke(ctx context.Context, method string, args, reply any, _ ...
 		return status.Errorf(codes.Internal, "request for %s is not a proto message", method)
 	}
 
+	u := c.baseURL.JoinPath(rt.path)
 	var body io.Reader
 	if rt.method == http.MethodGet {
-		// All GET routes take google.protobuf.Empty. Fail loudly if a future
-		// GET route carries request fields: they would require query
-		// parameter encoding, which is not implemented.
 		if !isEmptyMessage(reqMsg) {
-			return status.Errorf(codes.Internal, "GET route for %s cannot carry request fields", method)
+			u.RawQuery = queryParams(reqMsg).Encode()
 		}
 	} else {
 		data, err := protojson.Marshal(reqMsg)
@@ -123,7 +131,7 @@ func (c *Conn) Invoke(ctx context.Context, method string, args, reply any, _ ...
 		body = bytes.NewReader(data)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, rt.method, c.baseURL.JoinPath(rt.path).String(), body)
+	httpReq, err := http.NewRequestWithContext(ctx, rt.method, u.String(), body)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to build request for %s: %v", method, err)
 	}
@@ -175,6 +183,36 @@ func isEmptyMessage(m proto.Message) bool {
 		return false
 	})
 	return empty
+}
+
+func queryParams(msg proto.Message) url.Values {
+	q := url.Values{}
+	msg.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		name := string(fd.Name())
+		if fd.IsList() {
+			list := v.List()
+			for i := 0; i < list.Len(); i++ {
+				q.Add(name, list.Get(i).String())
+			}
+		} else {
+			switch fd.Kind() {
+			case protoreflect.BoolKind:
+				if v.Bool() {
+					q.Set(name, "true")
+				}
+			case protoreflect.Int32Kind, protoreflect.Int64Kind:
+				if val := v.Int(); val != 0 {
+					q.Set(name, fmt.Sprint(val))
+				}
+			default:
+				if s := v.String(); s != "" {
+					q.Set(name, s)
+				}
+			}
+		}
+		return true
+	})
+	return q
 }
 
 // transportErrCode maps HTTP client errors to gRPC codes preserving

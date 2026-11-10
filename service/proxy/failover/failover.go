@@ -18,7 +18,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	pf "github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/health"
@@ -168,22 +167,11 @@ func (c *Controller) Run(ctx context.Context) {
 	}
 }
 
-// scope is a user-level or bucket-level routing target that has a replication.
-type scope struct {
-	user, bucket string // bucket empty for user scope
-	from         string
-	candidates   []candidate
-}
-
-type candidate struct {
-	id     entity.UniversalReplicationID
-	to     string
-	status entity.ReplicationStatusExtended
-	toBkt  string // destination bucket (bucket scope)
-	srcBkt string
-}
-
-func (s scope) key() string { return s.user + "/" + s.bucket }
+// scope and candidate are the shared scope model of pkg/failover (see pf.DiscoverScopes).
+type (
+	scope     = pf.Scope
+	candidate = pf.Candidate
+)
 
 // RunOnce performs one evaluation. Errors of individual scopes are logged; the first is returned.
 func (c *Controller) RunOnce(ctx context.Context) error {
@@ -280,7 +268,7 @@ func (c *Controller) failoverStorage(ctx context.Context, failed string, targets
 	var first error
 	for _, s := range scopes {
 		if err := c.failoverScope(ctx, failed, s, targets, maxLag, status); err != nil {
-			c.log.Error().Err(err).Str("storage", failed).Str("user", s.user).Str("bucket", s.bucket).Msg("failover: scope failed")
+			c.log.Error().Err(err).Str("storage", failed).Str("user", s.User).Str("bucket", s.Bucket).Msg("failover: scope failed")
 			if first == nil {
 				first = err
 			}
@@ -305,95 +293,14 @@ func (c *Controller) protected(ctx context.Context, user, bucket string) bool {
 
 // scopesOf returns scopes currently routed to the storage which have replications from it.
 func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, error) {
-	userRoutes, err := c.policy.GetUserRoutings(ctx)
-	if err != nil && !errors.Is(err, dom.ErrNotFound) {
-		return nil, fmt.Errorf("get user routings: %w", err)
-	}
-	userRepls, err := c.policy.ListUserReplicationsInfo(ctx)
-	if err != nil && !errors.Is(err, dom.ErrNotFound) {
-		return nil, fmt.Errorf("list user replications: %w", err)
-	}
 	c.mu.Lock()
 	mainStorage := c.cfg.MainStorage
 	c.mu.Unlock()
-	effective := func(user string) string {
-		if to, ok := userRoutes[user]; ok {
-			return to
-		}
-		return mainStorage
-	}
-	users := map[string]struct{}{}
-	byUser := map[string]*scope{}
-	for pol, st := range userRepls {
-		users[pol.User] = struct{}{}
-		if pol.FromStorage != storage || effective(pol.User) != storage {
-			continue
-		}
-		if c.protected(ctx, pol.User, "") {
-			continue
-		}
-		s := byUser[pol.User]
-		if s == nil {
-			s = &scope{user: pol.User, from: storage}
-			byUser[pol.User] = s
-		}
-		s.candidates = append(s.candidates, candidate{id: entity.UniversalFromUserReplication(pol), to: pol.ToStorage, status: st})
-	}
-	for u := range userRoutes {
-		users[u] = struct{}{}
-	}
+	o := pf.DiscoverOptions{MainStorage: mainStorage, Skip: c.protected}
 	if c.users != nil {
-		for _, u := range c.users() {
-			users[u] = struct{}{}
-		}
+		o.Users = c.users()
 	}
-	var res []scope
-	for _, s := range byUser {
-		res = append(res, *s)
-	}
-	for user := range users {
-		if _, isUserScope := byUser[user]; isUserScope {
-			continue // bucket-level and user-level replications are mutually exclusive
-		}
-		bRepls, err := c.policy.ListBucketReplicationsInfo(ctx, user)
-		if err != nil && !errors.Is(err, dom.ErrNotFound) {
-			return nil, fmt.Errorf("list bucket replications of %s: %w", user, err)
-		}
-		if len(bRepls) == 0 {
-			continue
-		}
-		bRoutes, err := c.policy.GetBucketRoutings(ctx, user)
-		if err != nil && !errors.Is(err, dom.ErrNotFound) {
-			return nil, fmt.Errorf("get bucket routings of %s: %w", user, err)
-		}
-		byBucket := map[string]*scope{}
-		for pol, st := range bRepls {
-			routed := effective(user)
-			if to, ok := bRoutes[pol.FromBucket]; ok {
-				routed = to
-			}
-			if pol.FromStorage != storage || routed != storage {
-				continue
-			}
-			if c.protected(ctx, user, pol.FromBucket) {
-				continue
-			}
-			s := byBucket[pol.FromBucket]
-			if s == nil {
-				s = &scope{user: user, bucket: pol.FromBucket, from: storage}
-				byBucket[pol.FromBucket] = s
-			}
-			s.candidates = append(s.candidates, candidate{
-				id: entity.UniversalFromBucketReplication(pol), to: pol.ToStorage, status: st,
-				toBkt: pol.ToBucket, srcBkt: pol.FromBucket,
-			})
-		}
-		for _, s := range byBucket {
-			res = append(res, *s)
-		}
-	}
-	sort.Slice(res, func(i, j int) bool { return res[i].key() < res[j].key() })
-	return res, nil
+	return pf.DiscoverScopes(ctx, c.policy, storage, o)
 }
 
 func lagOf(st entity.ReplicationStatusExtended) int { return st.EventMigration.Unprocessed }
@@ -404,8 +311,8 @@ func (c *Controller) evaluate(s scope, targets []string, maxLag int, status map[
 	var reasons []string
 	for _, target := range targets {
 		var cands []candidate
-		for _, cand := range s.candidates {
-			if cand.to == target {
+		for _, cand := range s.Candidates {
+			if cand.To == target {
 				cands = append(cands, cand)
 			}
 		}
@@ -416,28 +323,28 @@ func (c *Controller) evaluate(s scope, targets []string, maxLag int, status map[
 		for _, cand := range cands {
 			why := ""
 			switch {
-			case cand.to == s.from:
+			case cand.To == s.From:
 				why = "destination equals source"
-			case cand.toBkt != "" && cand.toBkt != cand.srcBkt:
+			case cand.ToBucket != "" && cand.ToBucket != cand.SrcBucket:
 				why = "custom destination bucket"
-			case !isAvailable(status, cand.to):
+			case !isAvailable(status, cand.To):
 				why = "destination unavailable"
-			case cand.status.ReplicationStatus != nil && cand.status.IsArchived:
+			case cand.Status.ReplicationStatus != nil && cand.Status.IsArchived:
 				why = "replication archived"
-			case cand.status.IsPaused && (cand.status.ReplicationStatus == nil || !cand.status.FailoverPending):
+			case cand.Status.IsPaused && (cand.Status.ReplicationStatus == nil || !cand.Status.FailoverPending):
 				why = "replication paused"
-			case cand.status.Switch != nil:
+			case cand.Status.Switch != nil:
 				why = "replication switch in progress"
-			case !cand.status.InitDone():
+			case !cand.Status.InitDone():
 				why = "initial migration not done"
-			case lagOf(cand.status) > maxLag:
-				why = fmt.Sprintf("event lag %d exceeds maxEventLag %d", lagOf(cand.status), maxLag)
+			case lagOf(cand.Status) > maxLag:
+				why = fmt.Sprintf("event lag %d exceeds maxEventLag %d", lagOf(cand.Status), maxLag)
 			}
 			if why == "" {
 				c := cand
 				return &c, ""
 			}
-			reasons = append(reasons, cand.to+": "+why)
+			reasons = append(reasons, cand.To+": "+why)
 		}
 	}
 	return nil, strings.Join(reasons, "; ")
@@ -452,24 +359,24 @@ func (c *Controller) failoverScope(ctx context.Context, failed string, s scope, 
 	cand, why := c.evaluate(s, targets, maxLag, status)
 	if cand == nil {
 		c.mu.Lock()
-		wk := failed + "|" + s.key()
+		wk := failed + "|" + s.Key()
 		_, seen := c.warned[wk]
 		c.warned[wk] = struct{}{}
 		c.mu.Unlock()
 		if !seen {
-			c.log.Warn().Str("from", failed).Str("user", s.user).Str("bucket", s.bucket).
+			c.log.Warn().Str("from", failed).Str("user", s.User).Str("bucket", s.Bucket).
 				Str("reason", why).Msg("failover: storage is down but no replication destination qualifies; routing is not changed")
 		}
 		return nil
 	}
-	rec := pf.Event{User: s.user, Bucket: s.bucket, From: failed, To: cand.to, Time: c.now().UTC(), EventLag: lagOf(cand.status)}
+	rec := pf.Event{User: s.User, Bucket: s.Bucket, From: failed, To: cand.To, Time: c.now().UTC(), EventLag: lagOf(cand.Status)}
 	if c.remote != nil {
 		delegate, err := c.remote.Required(ctx)
 		if err != nil {
 			return fmt.Errorf("failover: unable to determine the control-plane backend: %w", err)
 		}
 		if delegate {
-			id := cand.id
+			id := cand.ID
 			if err := c.remote.Execute(ctx, id.AsString(), rec); err != nil {
 				return err
 			}
@@ -481,7 +388,7 @@ func (c *Controller) failoverScope(ctx context.Context, failed string, s scope, 
 			return nil
 		}
 	}
-	if err := c.policy.FailoverReplication(ctx, cand.id); err != nil {
+	if err := c.policy.FailoverReplication(ctx, cand.ID); err != nil {
 		return err
 	}
 	c.log.Warn().Str("user", rec.User).Str("bucket", rec.Bucket).Str("from", rec.From).Str("to", rec.To).

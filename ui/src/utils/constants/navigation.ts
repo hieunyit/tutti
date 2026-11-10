@@ -85,6 +85,11 @@ export const NAV_GROUPS: NavGroup[] = [
         iconPath: ICONS.routing,
       },
       {
+        routeName: RouteName.TUTTI_FAILOVER,
+        iconPath: ICONS.failover,
+        badgeKey: 'failover',
+      },
+      {
         routeName: RouteName.TUTTI_PROTECTION_GROUPS,
         iconPath: ICONS.protection,
         badgeKey: 'protection',

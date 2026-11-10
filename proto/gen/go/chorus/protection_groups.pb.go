@@ -796,6 +796,437 @@ func (x *ProtectionWriterClearRequest) GetWorker() bool {
 	return false
 }
 
+// Migration of a legacy failover policy (per source storage) to protection groups.
+type FailoverMigrationRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Source string                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// force: apply: disable the legacy policy even if some scopes could not be migrated (they are listed).
+	Force bool `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	// mode of the created groups: auto (default) or manual.
+	Mode string `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	// electorate of automatic groups; empty means the live proxies.
+	Electorate    []string `protobuf:"bytes,4,rep,name=electorate,proto3" json:"electorate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FailoverMigrationRequest) Reset() {
+	*x = FailoverMigrationRequest{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailoverMigrationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailoverMigrationRequest) ProtoMessage() {}
+
+func (x *FailoverMigrationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailoverMigrationRequest.ProtoReflect.Descriptor instead.
+func (*FailoverMigrationRequest) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *FailoverMigrationRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *FailoverMigrationRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
+	}
+	return false
+}
+
+func (x *FailoverMigrationRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *FailoverMigrationRequest) GetElectorate() []string {
+	if x != nil {
+		return x.Electorate
+	}
+	return nil
+}
+
+type FailoverMigrationScope struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	User  string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// empty: whole user
+	Bucket string `protobuf:"bytes,2,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// ok, migrated, conflict or skip
+	Status         string           `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Reason         string           `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	Group          *ProtectionGroup `protobuf:"bytes,5,opt,name=group,proto3" json:"group,omitempty"`
+	SkippedTargets []string         `protobuf:"bytes,6,rep,name=skipped_targets,json=skippedTargets,proto3" json:"skipped_targets,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FailoverMigrationScope) Reset() {
+	*x = FailoverMigrationScope{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailoverMigrationScope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailoverMigrationScope) ProtoMessage() {}
+
+func (x *FailoverMigrationScope) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailoverMigrationScope.ProtoReflect.Descriptor instead.
+func (*FailoverMigrationScope) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *FailoverMigrationScope) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *FailoverMigrationScope) GetBucket() string {
+	if x != nil {
+		return x.Bucket
+	}
+	return ""
+}
+
+func (x *FailoverMigrationScope) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *FailoverMigrationScope) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *FailoverMigrationScope) GetGroup() *ProtectionGroup {
+	if x != nil {
+		return x.Group
+	}
+	return nil
+}
+
+func (x *FailoverMigrationScope) GetSkippedTargets() []string {
+	if x != nil {
+		return x.SkippedTargets
+	}
+	return nil
+}
+
+type FailoverMigrationPlan struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Source        string                    `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	PolicyEnabled bool                      `protobuf:"varint,2,opt,name=policy_enabled,json=policyEnabled,proto3" json:"policy_enabled,omitempty"`
+	Targets       []string                  `protobuf:"bytes,3,rep,name=targets,proto3" json:"targets,omitempty"`
+	Scopes        []*FailoverMigrationScope `protobuf:"bytes,4,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	NotCovered    []string                  `protobuf:"bytes,5,rep,name=not_covered,json=notCovered,proto3" json:"not_covered,omitempty"`
+	// true when every scope is (or can be) migrated.
+	Complete      bool `protobuf:"varint,6,opt,name=complete,proto3" json:"complete,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FailoverMigrationPlan) Reset() {
+	*x = FailoverMigrationPlan{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailoverMigrationPlan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailoverMigrationPlan) ProtoMessage() {}
+
+func (x *FailoverMigrationPlan) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailoverMigrationPlan.ProtoReflect.Descriptor instead.
+func (*FailoverMigrationPlan) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *FailoverMigrationPlan) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *FailoverMigrationPlan) GetPolicyEnabled() bool {
+	if x != nil {
+		return x.PolicyEnabled
+	}
+	return false
+}
+
+func (x *FailoverMigrationPlan) GetTargets() []string {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+func (x *FailoverMigrationPlan) GetScopes() []*FailoverMigrationScope {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *FailoverMigrationPlan) GetNotCovered() []string {
+	if x != nil {
+		return x.NotCovered
+	}
+	return nil
+}
+
+func (x *FailoverMigrationPlan) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
+type FailoverMigrationResult struct {
+	state          protoimpl.MessageState    `protogen:"open.v1"`
+	Plan           *FailoverMigrationPlan    `protobuf:"bytes,1,opt,name=plan,proto3" json:"plan,omitempty"`
+	Created        []string                  `protobuf:"bytes,2,rep,name=created,proto3" json:"created,omitempty"`
+	Migrated       []string                  `protobuf:"bytes,3,rep,name=migrated,proto3" json:"migrated,omitempty"`
+	Uncovered      []*FailoverMigrationScope `protobuf:"bytes,4,rep,name=uncovered,proto3" json:"uncovered,omitempty"`
+	PolicyDisabled bool                      `protobuf:"varint,5,opt,name=policy_disabled,json=policyDisabled,proto3" json:"policy_disabled,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FailoverMigrationResult) Reset() {
+	*x = FailoverMigrationResult{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FailoverMigrationResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FailoverMigrationResult) ProtoMessage() {}
+
+func (x *FailoverMigrationResult) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FailoverMigrationResult.ProtoReflect.Descriptor instead.
+func (*FailoverMigrationResult) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *FailoverMigrationResult) GetPlan() *FailoverMigrationPlan {
+	if x != nil {
+		return x.Plan
+	}
+	return nil
+}
+
+func (x *FailoverMigrationResult) GetCreated() []string {
+	if x != nil {
+		return x.Created
+	}
+	return nil
+}
+
+func (x *FailoverMigrationResult) GetMigrated() []string {
+	if x != nil {
+		return x.Migrated
+	}
+	return nil
+}
+
+func (x *FailoverMigrationResult) GetUncovered() []*FailoverMigrationScope {
+	if x != nil {
+		return x.Uncovered
+	}
+	return nil
+}
+
+func (x *FailoverMigrationResult) GetPolicyDisabled() bool {
+	if x != nil {
+		return x.PolicyDisabled
+	}
+	return false
+}
+
+type UnprotectedScope struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Storage       string                 `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
+	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	Bucket        string                 `protobuf:"bytes,3,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	Targets       []string               `protobuf:"bytes,4,rep,name=targets,proto3" json:"targets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnprotectedScope) Reset() {
+	*x = UnprotectedScope{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnprotectedScope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnprotectedScope) ProtoMessage() {}
+
+func (x *UnprotectedScope) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnprotectedScope.ProtoReflect.Descriptor instead.
+func (*UnprotectedScope) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UnprotectedScope) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
+}
+
+func (x *UnprotectedScope) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *UnprotectedScope) GetBucket() string {
+	if x != nil {
+		return x.Bucket
+	}
+	return ""
+}
+
+func (x *UnprotectedScope) GetTargets() []string {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+type UnprotectedScopeList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scopes        []*UnprotectedScope    `protobuf:"bytes,1,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnprotectedScopeList) Reset() {
+	*x = UnprotectedScopeList{}
+	mi := &file_chorus_protection_groups_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnprotectedScopeList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnprotectedScopeList) ProtoMessage() {}
+
+func (x *UnprotectedScopeList) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_protection_groups_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnprotectedScopeList.ProtoReflect.Descriptor instead.
+func (*UnprotectedScopeList) Descriptor() ([]byte, []int) {
+	return file_chorus_protection_groups_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UnprotectedScopeList) GetScopes() []*UnprotectedScope {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
 var File_chorus_protection_groups_proto protoreflect.FileDescriptor
 
 const file_chorus_protection_groups_proto_rawDesc = "" +
@@ -872,7 +1303,42 @@ const file_chorus_protection_groups_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12+\n" +
 	"\x11externally_fenced\x18\x03 \x01(\bR\x10externallyFenced\x12\x16\n" +
-	"\x06worker\x18\x04 \x01(\bR\x06worker2\x94\x06\n" +
+	"\x06worker\x18\x04 \x01(\bR\x06worker\"|\n" +
+	"\x18FailoverMigrationRequest\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12\x14\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\x12\x12\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\x12\x1e\n" +
+	"\n" +
+	"electorate\x18\x04 \x03(\tR\n" +
+	"electorate\"\xcc\x01\n" +
+	"\x16FailoverMigrationScope\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\x16\n" +
+	"\x06bucket\x18\x02 \x01(\tR\x06bucket\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12-\n" +
+	"\x05group\x18\x05 \x01(\v2\x17.chorus.ProtectionGroupR\x05group\x12'\n" +
+	"\x0fskipped_targets\x18\x06 \x03(\tR\x0eskippedTargets\"\xe5\x01\n" +
+	"\x15FailoverMigrationPlan\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12%\n" +
+	"\x0epolicy_enabled\x18\x02 \x01(\bR\rpolicyEnabled\x12\x18\n" +
+	"\atargets\x18\x03 \x03(\tR\atargets\x126\n" +
+	"\x06scopes\x18\x04 \x03(\v2\x1e.chorus.FailoverMigrationScopeR\x06scopes\x12\x1f\n" +
+	"\vnot_covered\x18\x05 \x03(\tR\n" +
+	"notCovered\x12\x1a\n" +
+	"\bcomplete\x18\x06 \x01(\bR\bcomplete\"\xe9\x01\n" +
+	"\x17FailoverMigrationResult\x121\n" +
+	"\x04plan\x18\x01 \x01(\v2\x1d.chorus.FailoverMigrationPlanR\x04plan\x12\x18\n" +
+	"\acreated\x18\x02 \x03(\tR\acreated\x12\x1a\n" +
+	"\bmigrated\x18\x03 \x03(\tR\bmigrated\x12<\n" +
+	"\tuncovered\x18\x04 \x03(\v2\x1e.chorus.FailoverMigrationScopeR\tuncovered\x12'\n" +
+	"\x0fpolicy_disabled\x18\x05 \x01(\bR\x0epolicyDisabled\"r\n" +
+	"\x10UnprotectedScope\x12\x18\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12\x12\n" +
+	"\x04user\x18\x02 \x01(\tR\x04user\x12\x16\n" +
+	"\x06bucket\x18\x03 \x01(\tR\x06bucket\x12\x18\n" +
+	"\atargets\x18\x04 \x03(\tR\atargets\"H\n" +
+	"\x14UnprotectedScopeList\x120\n" +
+	"\x06scopes\x18\x01 \x03(\v2\x18.chorus.UnprotectedScopeR\x06scopes2\x9a\b\n" +
 	"\x10ProtectionGroups\x12;\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1b.chorus.ProtectionGroupList\x12?\n" +
 	"\x03Get\x12\x19.chorus.ProtectionGroupID\x1a\x1d.chorus.ProtectionGroupStatus\x12G\n" +
@@ -885,7 +1351,10 @@ const file_chorus_protection_groups_proto_rawDesc = "" +
 	"\x12SetAutomaticFreeze\x12!.chorus.ProtectionAutomaticFreeze\x1a\x16.google.protobuf.Empty\x12O\n" +
 	"\x12GetAutomaticFreeze\x12\x16.google.protobuf.Empty\x1a!.chorus.ProtectionAutomaticFreeze\x12C\n" +
 	"\vListWriters\x12\x19.chorus.ProtectionGroupID\x1a\x19.chorus.ProtectionWriters\x12K\n" +
-	"\vClearWriter\x12$.chorus.ProtectionWriterClearRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
+	"\vClearWriter\x12$.chorus.ProtectionWriterClearRequest\x1a\x16.google.protobuf.Empty\x12X\n" +
+	"\x15PlanFailoverMigration\x12 .chorus.FailoverMigrationRequest\x1a\x1d.chorus.FailoverMigrationPlan\x12[\n" +
+	"\x16ApplyFailoverMigration\x12 .chorus.FailoverMigrationRequest\x1a\x1f.chorus.FailoverMigrationResult\x12M\n" +
+	"\x15ListUnprotectedScopes\x12\x16.google.protobuf.Empty\x1a\x1c.chorus.UnprotectedScopeListB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
 
 var (
 	file_chorus_protection_groups_proto_rawDescOnce sync.Once
@@ -899,7 +1368,7 @@ func file_chorus_protection_groups_proto_rawDescGZIP() []byte {
 	return file_chorus_protection_groups_proto_rawDescData
 }
 
-var file_chorus_protection_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_chorus_protection_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_chorus_protection_groups_proto_goTypes = []any{
 	(*ProtectionGroupID)(nil),            // 0: chorus.ProtectionGroupID
 	(*ProtectionGroup)(nil),              // 1: chorus.ProtectionGroup
@@ -912,49 +1381,66 @@ var file_chorus_protection_groups_proto_goTypes = []any{
 	(*ProtectionAutomaticFreeze)(nil),    // 8: chorus.ProtectionAutomaticFreeze
 	(*ProtectionWriters)(nil),            // 9: chorus.ProtectionWriters
 	(*ProtectionWriterClearRequest)(nil), // 10: chorus.ProtectionWriterClearRequest
-	nil,                                  // 11: chorus.ProtectionWriters.WritersEntry
-	nil,                                  // 12: chorus.ProtectionWriters.WorkersEntry
-	(*durationpb.Duration)(nil),          // 13: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),        // 14: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                // 15: google.protobuf.Empty
+	(*FailoverMigrationRequest)(nil),     // 11: chorus.FailoverMigrationRequest
+	(*FailoverMigrationScope)(nil),       // 12: chorus.FailoverMigrationScope
+	(*FailoverMigrationPlan)(nil),        // 13: chorus.FailoverMigrationPlan
+	(*FailoverMigrationResult)(nil),      // 14: chorus.FailoverMigrationResult
+	(*UnprotectedScope)(nil),             // 15: chorus.UnprotectedScope
+	(*UnprotectedScopeList)(nil),         // 16: chorus.UnprotectedScopeList
+	nil,                                  // 17: chorus.ProtectionWriters.WritersEntry
+	nil,                                  // 18: chorus.ProtectionWriters.WorkersEntry
+	(*durationpb.Duration)(nil),          // 19: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil),        // 20: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                // 21: google.protobuf.Empty
 }
 var file_chorus_protection_groups_proto_depIdxs = []int32{
-	13, // 0: chorus.ProtectionGroup.after:type_name -> google.protobuf.Duration
+	19, // 0: chorus.ProtectionGroup.after:type_name -> google.protobuf.Duration
 	2,  // 1: chorus.ProtectionGroup.history:type_name -> chorus.ProtectionGroupEvent
-	14, // 2: chorus.ProtectionGroupEvent.at:type_name -> google.protobuf.Timestamp
+	20, // 2: chorus.ProtectionGroupEvent.at:type_name -> google.protobuf.Timestamp
 	1,  // 3: chorus.ProtectionGroupStatus.group:type_name -> chorus.ProtectionGroup
 	3,  // 4: chorus.ProtectionGroupStatus.members:type_name -> chorus.ProtectionGroupMemberStatus
 	1,  // 5: chorus.ProtectionGroupList.groups:type_name -> chorus.ProtectionGroup
 	1,  // 6: chorus.CreateProtectionGroupRequest.group:type_name -> chorus.ProtectionGroup
-	11, // 7: chorus.ProtectionWriters.writers:type_name -> chorus.ProtectionWriters.WritersEntry
-	12, // 8: chorus.ProtectionWriters.workers:type_name -> chorus.ProtectionWriters.WorkersEntry
-	15, // 9: chorus.ProtectionGroups.List:input_type -> google.protobuf.Empty
-	0,  // 10: chorus.ProtectionGroups.Get:input_type -> chorus.ProtectionGroupID
-	6,  // 11: chorus.ProtectionGroups.Create:input_type -> chorus.CreateProtectionGroupRequest
-	1,  // 12: chorus.ProtectionGroups.Update:input_type -> chorus.ProtectionGroup
-	0,  // 13: chorus.ProtectionGroups.Delete:input_type -> chorus.ProtectionGroupID
-	7,  // 14: chorus.ProtectionGroups.Switchover:input_type -> chorus.ProtectionGroupSwitchRequest
-	0,  // 15: chorus.ProtectionGroups.AbortSwitch:input_type -> chorus.ProtectionGroupID
-	8,  // 16: chorus.ProtectionGroups.SetAutomaticFreeze:input_type -> chorus.ProtectionAutomaticFreeze
-	15, // 17: chorus.ProtectionGroups.GetAutomaticFreeze:input_type -> google.protobuf.Empty
-	0,  // 18: chorus.ProtectionGroups.ListWriters:input_type -> chorus.ProtectionGroupID
-	10, // 19: chorus.ProtectionGroups.ClearWriter:input_type -> chorus.ProtectionWriterClearRequest
-	5,  // 20: chorus.ProtectionGroups.List:output_type -> chorus.ProtectionGroupList
-	4,  // 21: chorus.ProtectionGroups.Get:output_type -> chorus.ProtectionGroupStatus
-	1,  // 22: chorus.ProtectionGroups.Create:output_type -> chorus.ProtectionGroup
-	1,  // 23: chorus.ProtectionGroups.Update:output_type -> chorus.ProtectionGroup
-	15, // 24: chorus.ProtectionGroups.Delete:output_type -> google.protobuf.Empty
-	15, // 25: chorus.ProtectionGroups.Switchover:output_type -> google.protobuf.Empty
-	15, // 26: chorus.ProtectionGroups.AbortSwitch:output_type -> google.protobuf.Empty
-	15, // 27: chorus.ProtectionGroups.SetAutomaticFreeze:output_type -> google.protobuf.Empty
-	8,  // 28: chorus.ProtectionGroups.GetAutomaticFreeze:output_type -> chorus.ProtectionAutomaticFreeze
-	9,  // 29: chorus.ProtectionGroups.ListWriters:output_type -> chorus.ProtectionWriters
-	15, // 30: chorus.ProtectionGroups.ClearWriter:output_type -> google.protobuf.Empty
-	20, // [20:31] is the sub-list for method output_type
-	9,  // [9:20] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	17, // 7: chorus.ProtectionWriters.writers:type_name -> chorus.ProtectionWriters.WritersEntry
+	18, // 8: chorus.ProtectionWriters.workers:type_name -> chorus.ProtectionWriters.WorkersEntry
+	1,  // 9: chorus.FailoverMigrationScope.group:type_name -> chorus.ProtectionGroup
+	12, // 10: chorus.FailoverMigrationPlan.scopes:type_name -> chorus.FailoverMigrationScope
+	13, // 11: chorus.FailoverMigrationResult.plan:type_name -> chorus.FailoverMigrationPlan
+	12, // 12: chorus.FailoverMigrationResult.uncovered:type_name -> chorus.FailoverMigrationScope
+	15, // 13: chorus.UnprotectedScopeList.scopes:type_name -> chorus.UnprotectedScope
+	21, // 14: chorus.ProtectionGroups.List:input_type -> google.protobuf.Empty
+	0,  // 15: chorus.ProtectionGroups.Get:input_type -> chorus.ProtectionGroupID
+	6,  // 16: chorus.ProtectionGroups.Create:input_type -> chorus.CreateProtectionGroupRequest
+	1,  // 17: chorus.ProtectionGroups.Update:input_type -> chorus.ProtectionGroup
+	0,  // 18: chorus.ProtectionGroups.Delete:input_type -> chorus.ProtectionGroupID
+	7,  // 19: chorus.ProtectionGroups.Switchover:input_type -> chorus.ProtectionGroupSwitchRequest
+	0,  // 20: chorus.ProtectionGroups.AbortSwitch:input_type -> chorus.ProtectionGroupID
+	8,  // 21: chorus.ProtectionGroups.SetAutomaticFreeze:input_type -> chorus.ProtectionAutomaticFreeze
+	21, // 22: chorus.ProtectionGroups.GetAutomaticFreeze:input_type -> google.protobuf.Empty
+	0,  // 23: chorus.ProtectionGroups.ListWriters:input_type -> chorus.ProtectionGroupID
+	10, // 24: chorus.ProtectionGroups.ClearWriter:input_type -> chorus.ProtectionWriterClearRequest
+	11, // 25: chorus.ProtectionGroups.PlanFailoverMigration:input_type -> chorus.FailoverMigrationRequest
+	11, // 26: chorus.ProtectionGroups.ApplyFailoverMigration:input_type -> chorus.FailoverMigrationRequest
+	21, // 27: chorus.ProtectionGroups.ListUnprotectedScopes:input_type -> google.protobuf.Empty
+	5,  // 28: chorus.ProtectionGroups.List:output_type -> chorus.ProtectionGroupList
+	4,  // 29: chorus.ProtectionGroups.Get:output_type -> chorus.ProtectionGroupStatus
+	1,  // 30: chorus.ProtectionGroups.Create:output_type -> chorus.ProtectionGroup
+	1,  // 31: chorus.ProtectionGroups.Update:output_type -> chorus.ProtectionGroup
+	21, // 32: chorus.ProtectionGroups.Delete:output_type -> google.protobuf.Empty
+	21, // 33: chorus.ProtectionGroups.Switchover:output_type -> google.protobuf.Empty
+	21, // 34: chorus.ProtectionGroups.AbortSwitch:output_type -> google.protobuf.Empty
+	21, // 35: chorus.ProtectionGroups.SetAutomaticFreeze:output_type -> google.protobuf.Empty
+	8,  // 36: chorus.ProtectionGroups.GetAutomaticFreeze:output_type -> chorus.ProtectionAutomaticFreeze
+	9,  // 37: chorus.ProtectionGroups.ListWriters:output_type -> chorus.ProtectionWriters
+	21, // 38: chorus.ProtectionGroups.ClearWriter:output_type -> google.protobuf.Empty
+	13, // 39: chorus.ProtectionGroups.PlanFailoverMigration:output_type -> chorus.FailoverMigrationPlan
+	14, // 40: chorus.ProtectionGroups.ApplyFailoverMigration:output_type -> chorus.FailoverMigrationResult
+	16, // 41: chorus.ProtectionGroups.ListUnprotectedScopes:output_type -> chorus.UnprotectedScopeList
+	28, // [28:42] is the sub-list for method output_type
+	14, // [14:28] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_chorus_protection_groups_proto_init() }
@@ -968,7 +1454,7 @@ func file_chorus_protection_groups_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_protection_groups_proto_rawDesc), len(file_chorus_protection_groups_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

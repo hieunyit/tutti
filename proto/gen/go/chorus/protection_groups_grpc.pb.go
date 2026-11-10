@@ -20,17 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProtectionGroups_List_FullMethodName               = "/chorus.ProtectionGroups/List"
-	ProtectionGroups_Get_FullMethodName                = "/chorus.ProtectionGroups/Get"
-	ProtectionGroups_Create_FullMethodName             = "/chorus.ProtectionGroups/Create"
-	ProtectionGroups_Update_FullMethodName             = "/chorus.ProtectionGroups/Update"
-	ProtectionGroups_Delete_FullMethodName             = "/chorus.ProtectionGroups/Delete"
-	ProtectionGroups_Switchover_FullMethodName         = "/chorus.ProtectionGroups/Switchover"
-	ProtectionGroups_AbortSwitch_FullMethodName        = "/chorus.ProtectionGroups/AbortSwitch"
-	ProtectionGroups_SetAutomaticFreeze_FullMethodName = "/chorus.ProtectionGroups/SetAutomaticFreeze"
-	ProtectionGroups_GetAutomaticFreeze_FullMethodName = "/chorus.ProtectionGroups/GetAutomaticFreeze"
-	ProtectionGroups_ListWriters_FullMethodName        = "/chorus.ProtectionGroups/ListWriters"
-	ProtectionGroups_ClearWriter_FullMethodName        = "/chorus.ProtectionGroups/ClearWriter"
+	ProtectionGroups_List_FullMethodName                   = "/chorus.ProtectionGroups/List"
+	ProtectionGroups_Get_FullMethodName                    = "/chorus.ProtectionGroups/Get"
+	ProtectionGroups_Create_FullMethodName                 = "/chorus.ProtectionGroups/Create"
+	ProtectionGroups_Update_FullMethodName                 = "/chorus.ProtectionGroups/Update"
+	ProtectionGroups_Delete_FullMethodName                 = "/chorus.ProtectionGroups/Delete"
+	ProtectionGroups_Switchover_FullMethodName             = "/chorus.ProtectionGroups/Switchover"
+	ProtectionGroups_AbortSwitch_FullMethodName            = "/chorus.ProtectionGroups/AbortSwitch"
+	ProtectionGroups_SetAutomaticFreeze_FullMethodName     = "/chorus.ProtectionGroups/SetAutomaticFreeze"
+	ProtectionGroups_GetAutomaticFreeze_FullMethodName     = "/chorus.ProtectionGroups/GetAutomaticFreeze"
+	ProtectionGroups_ListWriters_FullMethodName            = "/chorus.ProtectionGroups/ListWriters"
+	ProtectionGroups_ClearWriter_FullMethodName            = "/chorus.ProtectionGroups/ClearWriter"
+	ProtectionGroups_PlanFailoverMigration_FullMethodName  = "/chorus.ProtectionGroups/PlanFailoverMigration"
+	ProtectionGroups_ApplyFailoverMigration_FullMethodName = "/chorus.ProtectionGroups/ApplyFailoverMigration"
+	ProtectionGroups_ListUnprotectedScopes_FullMethodName  = "/chorus.ProtectionGroups/ListUnprotectedScopes"
 )
 
 // ProtectionGroupsClient is the client API for ProtectionGroups service.
@@ -49,6 +52,13 @@ type ProtectionGroupsClient interface {
 	GetAutomaticFreeze(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProtectionAutomaticFreeze, error)
 	ListWriters(ctx context.Context, in *ProtectionGroupID, opts ...grpc.CallOption) (*ProtectionWriters, error)
 	ClearWriter(ctx context.Context, in *ProtectionWriterClearRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Dry run of the migration of the legacy failover policy of a source storage to protection groups.
+	PlanFailoverMigration(ctx context.Context, in *FailoverMigrationRequest, opts ...grpc.CallOption) (*FailoverMigrationPlan, error)
+	// Creates the missing groups (adopting existing replications, no data copy) and disables the legacy policy when
+	// every scope is migrated, or when force is set. Idempotent.
+	ApplyFailoverMigration(ctx context.Context, in *FailoverMigrationRequest, opts ...grpc.CallOption) (*FailoverMigrationResult, error)
+	// Scopes with a replication from a storage that has neither an enabled legacy failover policy nor a group.
+	ListUnprotectedScopes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UnprotectedScopeList, error)
 }
 
 type protectionGroupsClient struct {
@@ -169,6 +179,36 @@ func (c *protectionGroupsClient) ClearWriter(ctx context.Context, in *Protection
 	return out, nil
 }
 
+func (c *protectionGroupsClient) PlanFailoverMigration(ctx context.Context, in *FailoverMigrationRequest, opts ...grpc.CallOption) (*FailoverMigrationPlan, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FailoverMigrationPlan)
+	err := c.cc.Invoke(ctx, ProtectionGroups_PlanFailoverMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *protectionGroupsClient) ApplyFailoverMigration(ctx context.Context, in *FailoverMigrationRequest, opts ...grpc.CallOption) (*FailoverMigrationResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FailoverMigrationResult)
+	err := c.cc.Invoke(ctx, ProtectionGroups_ApplyFailoverMigration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *protectionGroupsClient) ListUnprotectedScopes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UnprotectedScopeList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnprotectedScopeList)
+	err := c.cc.Invoke(ctx, ProtectionGroups_ListUnprotectedScopes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProtectionGroupsServer is the server API for ProtectionGroups service.
 // All implementations should embed UnimplementedProtectionGroupsServer
 // for forward compatibility.
@@ -185,6 +225,13 @@ type ProtectionGroupsServer interface {
 	GetAutomaticFreeze(context.Context, *emptypb.Empty) (*ProtectionAutomaticFreeze, error)
 	ListWriters(context.Context, *ProtectionGroupID) (*ProtectionWriters, error)
 	ClearWriter(context.Context, *ProtectionWriterClearRequest) (*emptypb.Empty, error)
+	// Dry run of the migration of the legacy failover policy of a source storage to protection groups.
+	PlanFailoverMigration(context.Context, *FailoverMigrationRequest) (*FailoverMigrationPlan, error)
+	// Creates the missing groups (adopting existing replications, no data copy) and disables the legacy policy when
+	// every scope is migrated, or when force is set. Idempotent.
+	ApplyFailoverMigration(context.Context, *FailoverMigrationRequest) (*FailoverMigrationResult, error)
+	// Scopes with a replication from a storage that has neither an enabled legacy failover policy nor a group.
+	ListUnprotectedScopes(context.Context, *emptypb.Empty) (*UnprotectedScopeList, error)
 }
 
 // UnimplementedProtectionGroupsServer should be embedded to have
@@ -226,6 +273,15 @@ func (UnimplementedProtectionGroupsServer) ListWriters(context.Context, *Protect
 }
 func (UnimplementedProtectionGroupsServer) ClearWriter(context.Context, *ProtectionWriterClearRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClearWriter not implemented")
+}
+func (UnimplementedProtectionGroupsServer) PlanFailoverMigration(context.Context, *FailoverMigrationRequest) (*FailoverMigrationPlan, error) {
+	return nil, status.Error(codes.Unimplemented, "method PlanFailoverMigration not implemented")
+}
+func (UnimplementedProtectionGroupsServer) ApplyFailoverMigration(context.Context, *FailoverMigrationRequest) (*FailoverMigrationResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApplyFailoverMigration not implemented")
+}
+func (UnimplementedProtectionGroupsServer) ListUnprotectedScopes(context.Context, *emptypb.Empty) (*UnprotectedScopeList, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUnprotectedScopes not implemented")
 }
 func (UnimplementedProtectionGroupsServer) testEmbeddedByValue() {}
 
@@ -445,6 +501,60 @@ func _ProtectionGroups_ClearWriter_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProtectionGroups_PlanFailoverMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FailoverMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProtectionGroupsServer).PlanFailoverMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProtectionGroups_PlanFailoverMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProtectionGroupsServer).PlanFailoverMigration(ctx, req.(*FailoverMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProtectionGroups_ApplyFailoverMigration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FailoverMigrationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProtectionGroupsServer).ApplyFailoverMigration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProtectionGroups_ApplyFailoverMigration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProtectionGroupsServer).ApplyFailoverMigration(ctx, req.(*FailoverMigrationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProtectionGroups_ListUnprotectedScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProtectionGroupsServer).ListUnprotectedScopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProtectionGroups_ListUnprotectedScopes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProtectionGroupsServer).ListUnprotectedScopes(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProtectionGroups_ServiceDesc is the grpc.ServiceDesc for ProtectionGroups service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -495,6 +605,18 @@ var ProtectionGroups_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClearWriter",
 			Handler:    _ProtectionGroups_ClearWriter_Handler,
+		},
+		{
+			MethodName: "PlanFailoverMigration",
+			Handler:    _ProtectionGroups_PlanFailoverMigration_Handler,
+		},
+		{
+			MethodName: "ApplyFailoverMigration",
+			Handler:    _ProtectionGroups_ApplyFailoverMigration_Handler,
+		},
+		{
+			MethodName: "ListUnprotectedScopes",
+			Handler:    _ProtectionGroups_ListUnprotectedScopes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

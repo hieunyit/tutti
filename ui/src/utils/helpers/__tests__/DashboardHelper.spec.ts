@@ -190,7 +190,7 @@ describe('DashboardHelper', () => {
         'warning',
         'warning',
       ]);
-      expect(items[1]?.route).toBe(RouteName.TUTTI_PROTECTION_GROUPS);
+      expect(items[1]?.route).toBe(RouteName.TUTTI_FAILOVER);
       expect(items[3]?.params.lag).toBe(7);
     });
 
@@ -227,7 +227,7 @@ describe('DashboardHelper', () => {
       expect(items[0]?.kind).toBe('failoverOff');
       expect(items[0]?.severity).toBe('warning');
       expect(items[0]?.params).toEqual({ off: 1, total: 2 });
-      expect(items[0]?.route).toBe(RouteName.TUTTI_PROTECTION_GROUPS);
+      expect(items[0]?.route).toBe(RouteName.TUTTI_FAILOVER);
     });
 
     it('is critical when a storage is down and ignores disabled or missing policies', () => {

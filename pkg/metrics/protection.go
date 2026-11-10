@@ -161,3 +161,28 @@ func SetControlPlaneOutbox(pending int64, oldest time.Duration) {
 func CountControlPlaneOutboxFailure() {
 	cpOutboxFailures.Inc()
 }
+
+var (
+	unprotectedScopes = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "replication_scopes_unprotected",
+		Help: "Scopes (users or buckets) with a replication from the storage that are covered neither by an enabled legacy failover policy of the storage nor by a protection group."}, []string{"source_storage"})
+	unprotectedMu    sync.Mutex
+	unprotectedKnown = map[string]bool{}
+)
+
+// SetUnprotectedScopes replaces the replication_scopes_unprotected series: counts holds one entry (possibly 0)
+// for every configured storage; series of storages no longer listed are removed.
+func SetUnprotectedScopes(counts map[string]int) {
+	unprotectedMu.Lock()
+	defer unprotectedMu.Unlock()
+	for s, n := range counts {
+		unprotectedScopes.WithLabelValues(s).Set(float64(n))
+		unprotectedKnown[s] = true
+	}
+	for s := range unprotectedKnown {
+		if _, ok := counts[s]; !ok {
+			unprotectedScopes.DeleteLabelValues(s)
+			delete(unprotectedKnown, s)
+		}
+	}
+}

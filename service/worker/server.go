@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"sort"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -346,26 +347,59 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
+	// Every user that may own bucket replications: users with credentials on a storage, all identities,
+	// users with routing and protection group users (which need not be identities). Duplicates are skipped.
+	users := func() []string {
+		var out []string
+		for name := range credsSvc.Storages() {
+			out = append(out, credsSvc.ListUsers(name)...)
+		}
+		out = append(out, credsSvc.Identities()...)
+		if routes, err := policySvc.GetUserRoutings(ctx); err == nil {
+			for u := range routes {
+				out = append(out, u)
+			}
+		}
+		if groups, err := groupStore.List(ctx); err == nil {
+			for _, g := range groups {
+				out = append(out, g.User)
+			}
+		}
+		return out
+	}
+	failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok }).WithControlPlane(cpStore)
+	unprotectedOpts := func() protectiongroups.UnprotectedOptions {
+		var storages []string
+		for name := range credsSvc.Storages() {
+			storages = append(storages, name)
+		}
+		sort.Strings(storages)
+		return protectiongroups.UnprotectedOptions{Storages: storages, MainStorage: conf.Storage.Main, Users: users,
+			Groups: groupStore.List, Policies: failoverStore.ListFailoverPolicies}
+	}
+	migrator := &protectiongroups.Migrator{Service: groupService, Policies: failoverStore, Source: policySvc,
+		MainStorage: conf.Storage.Main, Users: users, Log: logger,
+		Electorate: func(ctx context.Context) []string {
+			list, err := proxystatus.List(ctx, confRedis)
+			if err != nil {
+				return nil
+			}
+			var ids []string
+			for _, st := range list {
+				ids = append(ids, st.AppID)
+			}
+			sort.Strings(ids)
+			return ids
+		}}
 	if conf.Metrics.Enabled {
-		// Every user that may own bucket replications: users with credentials on a storage, all identities,
-		// users with routing and protection group users (which need not be identities). Duplicates are skipped.
-		users := func() []string {
-			var out []string
-			for name := range credsSvc.Storages() {
-				out = append(out, credsSvc.ListUsers(name)...)
-			}
-			out = append(out, credsSvc.Identities()...)
-			if routes, err := policySvc.GetUserRoutings(ctx); err == nil {
-				for u := range routes {
-					out = append(out, u)
-				}
-			}
-			if groups, err := groupStore.List(ctx); err == nil {
-				for _, g := range groups {
-					out = append(out, g.User)
-				}
-			}
-			return out
+		err = server.Add("unprotected_scopes_metrics", func(ctx context.Context) error {
+			protectiongroups.RunUnprotectedMetrics(ctx, policySvc, unprotectedOpts, 30*time.Second, func(err error) {
+				logger.Warn().Err(err).Msg("unable to collect unprotected scope metrics")
+			})
+			return nil
+		}, func(context.Context) error { return nil })
+		if err != nil {
+			return err
 		}
 		err = server.Add("replication_metrics", func(ctx context.Context) error {
 			policy.RunReplicationMetrics(ctx, policySvc, users, 15*time.Second, func(err error) {
@@ -457,7 +491,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 
 		registerServices := func(srv *grpc.Server) {
-			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker))
+			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker, api.WithFailoverMigration(migrator, unprotectedOpts)))
 			pb.RegisterChorusServer(srv, chorusHandler)
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)

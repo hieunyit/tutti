@@ -18,6 +18,13 @@ service ProtectionGroups {
  rpc GetAutomaticFreeze(google.protobuf.Empty) returns (ProtectionAutomaticFreeze);
  rpc ListWriters(ProtectionGroupID) returns (ProtectionWriters);
  rpc ClearWriter(ProtectionWriterClearRequest) returns (google.protobuf.Empty);
+ // Dry run of the migration of the legacy failover policy of a source storage to protection groups.
+ rpc PlanFailoverMigration(FailoverMigrationRequest) returns (FailoverMigrationPlan);
+ // Creates the missing groups (adopting existing replications, no data copy) and disables the legacy policy when
+ // every scope is migrated, or when force is set. Idempotent.
+ rpc ApplyFailoverMigration(FailoverMigrationRequest) returns (FailoverMigrationResult);
+ // Scopes with a replication from a storage that has neither an enabled legacy failover policy nor a group.
+ rpc ListUnprotectedScopes(google.protobuf.Empty) returns (UnprotectedScopeList);
 }
 message ProtectionGroupID { string id=1; }
 message ProtectionGroup {
@@ -56,3 +63,47 @@ message ProtectionGroupSwitchRequest { string id=1;string target=2; }
 message ProtectionAutomaticFreeze { bool frozen=1; }
 message ProtectionWriters { map<string,string> writers=1;map<string,string> workers=2; }
 message ProtectionWriterClearRequest { string id=1;string token=2;bool externally_fenced=3;bool worker=4; }
+
+// Migration of a legacy failover policy (per source storage) to protection groups.
+message FailoverMigrationRequest {
+ string source=1;
+ // force: apply: disable the legacy policy even if some scopes could not be migrated (they are listed).
+ bool force=2;
+ // mode of the created groups: auto (default) or manual.
+ string mode=3;
+ // electorate of automatic groups; empty means the live proxies.
+ repeated string electorate=4;
+}
+message FailoverMigrationScope {
+ string user=1;
+ // empty: whole user
+ string bucket=2;
+ // ok, migrated, conflict or skip
+ string status=3;
+ string reason=4;
+ ProtectionGroup group=5;
+ repeated string skipped_targets=6;
+}
+message FailoverMigrationPlan {
+ string source=1;
+ bool policy_enabled=2;
+ repeated string targets=3;
+ repeated FailoverMigrationScope scopes=4;
+ repeated string not_covered=5;
+ // true when every scope is (or can be) migrated.
+ bool complete=6;
+}
+message FailoverMigrationResult {
+ FailoverMigrationPlan plan=1;
+ repeated string created=2;
+ repeated string migrated=3;
+ repeated FailoverMigrationScope uncovered=4;
+ bool policy_disabled=5;
+}
+message UnprotectedScope {
+ string storage=1;
+ string user=2;
+ string bucket=3;
+ repeated string targets=4;
+}
+message UnprotectedScopeList { repeated UnprotectedScope scopes=1; }

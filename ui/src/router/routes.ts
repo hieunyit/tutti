@@ -53,6 +53,8 @@ const TuttiConsoleUsersPage = () =>
   import('@/pages/TuttiConsoleUsersPage/TuttiConsoleUsersPage.vue');
 const TuttiChangePasswordPage = () =>
   import('@/pages/TuttiChangePasswordPage/TuttiChangePasswordPage.vue');
+const TuttiFailoverPage = () =>
+  import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
 const TuttiProtectionGroupsPage = () =>
   import('@/pages/TuttiProtectionGroupsPage/TuttiProtectionGroupsPage.vue');
 const TuttiProtectionGroupDetailPage = () =>
@@ -238,8 +240,12 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'failover',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.TUTTI_FAILOVER,
+        },
         name: RouteName.TUTTI_FAILOVER,
-        redirect: { name: RouteName.TUTTI_PROTECTION_GROUPS },
+        component: TuttiFailoverPage,
       },
       {
         path: 'protection-groups',

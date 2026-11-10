@@ -63,6 +63,11 @@ func (s *Service) WithGroup(ctx context.Context, id string, fn func(context.Cont
 	return lock.DoCtx(ctx, 10*time.Second, fn)
 }
 func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error) {
+	return s.create(ctx, g, adopt, false)
+}
+
+// create implements Create; skipLegacy omits the enabled-legacy-policy check (see CreateForMigration).
+func (s *Service) create(ctx context.Context, g Group, adopt, skipLegacy bool) (Group, error) {
 	// The group's user is the identity whose routing and replications the group manages: it must be explicit,
 	// never picked silently.
 	if g.User == "" {
@@ -92,7 +97,7 @@ func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error
 				return err
 			}
 		}
-		if s.ValidateLegacyFailover != nil {
+		if s.ValidateLegacyFailover != nil && !skipLegacy {
 			if err := s.ValidateLegacyFailover(ctx, g); err != nil {
 				return err
 			}

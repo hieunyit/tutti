@@ -1329,6 +1329,96 @@
         ]
       }
     },
+    "/tutti/failover/migration/apply": {
+      "post": {
+        "summary": "Creates the missing groups (adopting existing replications, no data copy) and disables the legacy policy when\nevery scope is migrated, or when force is set. Idempotent.",
+        "operationId": "ProtectionGroups_ApplyFailoverMigration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverMigrationResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Migration of a legacy failover policy (per source storage) to protection groups.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverMigrationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
+    "/tutti/failover/migration/plan": {
+      "get": {
+        "summary": "Dry run of the migration of the legacy failover policy of a source storage to protection groups.",
+        "operationId": "ProtectionGroups_PlanFailoverMigration",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusFailoverMigrationPlan"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "force",
+            "description": "force: apply: disable the legacy policy even if some scopes could not be migrated (they are listed).",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "mode",
+            "description": "mode of the created groups: auto (default) or manual.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "electorate",
+            "description": "electorate of automatic groups; empty means the live proxies.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "ProtectionGroups"
+        ]
+      }
+    },
     "/tutti/failover/policies": {
       "get": {
         "summary": "ListFailoverPolicies returns all failover policies sorted by source storage.",
@@ -2255,6 +2345,29 @@
         ],
         "tags": [
           "Resilience"
+        ]
+      }
+    },
+    "/tutti/unprotected-scopes": {
+      "get": {
+        "summary": "Scopes with a replication from a storage that has neither an enabled legacy failover policy nor a group.",
+        "operationId": "ProtectionGroups_ListUnprotectedScopes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusUnprotectedScopeList"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "ProtectionGroups"
         ]
       }
     },
@@ -3234,6 +3347,122 @@
         }
       },
       "description": "FailoverEventList lists performed failovers."
+    },
+    "chorusFailoverMigrationPlan": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "policyEnabled": {
+          "type": "boolean"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusFailoverMigrationScope"
+          }
+        },
+        "notCovered": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "true when every scope is (or can be) migrated."
+        }
+      }
+    },
+    "chorusFailoverMigrationRequest": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "force: apply: disable the legacy policy even if some scopes could not be migrated (they are listed)."
+        },
+        "mode": {
+          "type": "string",
+          "description": "mode of the created groups: auto (default) or manual."
+        },
+        "electorate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "electorate of automatic groups; empty means the live proxies."
+        }
+      },
+      "description": "Migration of a legacy failover policy (per source storage) to protection groups."
+    },
+    "chorusFailoverMigrationResult": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "#/definitions/chorusFailoverMigrationPlan"
+        },
+        "created": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "migrated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uncovered": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusFailoverMigrationScope"
+          }
+        },
+        "policyDisabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusFailoverMigrationScope": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string",
+          "title": "empty: whole user"
+        },
+        "status": {
+          "type": "string",
+          "title": "ok, migrated, conflict or skip"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "group": {
+          "$ref": "#/definitions/chorusProtectionGroup"
+        },
+        "skippedTargets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "chorusFailoverPolicy": {
       "type": "object",
@@ -5539,6 +5768,38 @@
         }
       },
       "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
+    },
+    "chorusUnprotectedScope": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "chorusUnprotectedScopeList": {
+      "type": "object",
+      "properties": {
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusUnprotectedScope"
+          }
+        }
+      }
     },
     "chorusUpdateConsoleUserRequest": {
       "type": "object",

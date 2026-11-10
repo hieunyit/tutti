@@ -345,6 +345,89 @@ func local_request_ProtectionGroups_ClearWriter_0(ctx context.Context, marshaler
 	return msg, metadata, err
 }
 
+var filter_ProtectionGroups_PlanFailoverMigration_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+
+func request_ProtectionGroups_PlanFailoverMigration_0(ctx context.Context, marshaler runtime.Marshaler, client ProtectionGroupsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq FailoverMigrationRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProtectionGroups_PlanFailoverMigration_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.PlanFailoverMigration(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_ProtectionGroups_PlanFailoverMigration_0(ctx context.Context, marshaler runtime.Marshaler, server ProtectionGroupsServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq FailoverMigrationRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProtectionGroups_PlanFailoverMigration_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.PlanFailoverMigration(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_ProtectionGroups_ApplyFailoverMigration_0(ctx context.Context, marshaler runtime.Marshaler, client ProtectionGroupsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq FailoverMigrationRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.ApplyFailoverMigration(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_ProtectionGroups_ApplyFailoverMigration_0(ctx context.Context, marshaler runtime.Marshaler, server ProtectionGroupsServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq FailoverMigrationRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.ApplyFailoverMigration(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_ProtectionGroups_ListUnprotectedScopes_0(ctx context.Context, marshaler runtime.Marshaler, client ProtectionGroupsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq emptypb.Empty
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.ListUnprotectedScopes(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_ProtectionGroups_ListUnprotectedScopes_0(ctx context.Context, marshaler runtime.Marshaler, server ProtectionGroupsServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq emptypb.Empty
+		metadata runtime.ServerMetadata
+	)
+	msg, err := server.ListUnprotectedScopes(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 // RegisterProtectionGroupsHandlerServer registers the http handlers for service ProtectionGroups to "mux".
 // UnaryRPC     :call ProtectionGroupsServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -570,6 +653,66 @@ func RegisterProtectionGroupsHandlerServer(ctx context.Context, mux *runtime.Ser
 			return
 		}
 		forward_ProtectionGroups_ClearWriter_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_ProtectionGroups_PlanFailoverMigration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.ProtectionGroups/PlanFailoverMigration", runtime.WithHTTPPathPattern("/tutti/failover/migration/plan"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_ProtectionGroups_PlanFailoverMigration_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_PlanFailoverMigration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_ProtectionGroups_ApplyFailoverMigration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.ProtectionGroups/ApplyFailoverMigration", runtime.WithHTTPPathPattern("/tutti/failover/migration/apply"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_ProtectionGroups_ApplyFailoverMigration_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_ApplyFailoverMigration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_ProtectionGroups_ListUnprotectedScopes_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.ProtectionGroups/ListUnprotectedScopes", runtime.WithHTTPPathPattern("/tutti/unprotected-scopes"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_ProtectionGroups_ListUnprotectedScopes_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_ListUnprotectedScopes_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -798,33 +941,90 @@ func RegisterProtectionGroupsHandlerClient(ctx context.Context, mux *runtime.Ser
 		}
 		forward_ProtectionGroups_ClearWriter_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_ProtectionGroups_PlanFailoverMigration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.ProtectionGroups/PlanFailoverMigration", runtime.WithHTTPPathPattern("/tutti/failover/migration/plan"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ProtectionGroups_PlanFailoverMigration_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_PlanFailoverMigration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_ProtectionGroups_ApplyFailoverMigration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.ProtectionGroups/ApplyFailoverMigration", runtime.WithHTTPPathPattern("/tutti/failover/migration/apply"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ProtectionGroups_ApplyFailoverMigration_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_ApplyFailoverMigration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_ProtectionGroups_ListUnprotectedScopes_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.ProtectionGroups/ListUnprotectedScopes", runtime.WithHTTPPathPattern("/tutti/unprotected-scopes"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ProtectionGroups_ListUnprotectedScopes_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_ProtectionGroups_ListUnprotectedScopes_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
 var (
-	pattern_ProtectionGroups_List_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
-	pattern_ProtectionGroups_Get_0                = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"tutti", "protection-groups", "id"}, ""))
-	pattern_ProtectionGroups_Create_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
-	pattern_ProtectionGroups_Update_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
-	pattern_ProtectionGroups_Delete_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "delete"}, ""))
-	pattern_ProtectionGroups_Switchover_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "switchover"}, ""))
-	pattern_ProtectionGroups_AbortSwitch_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "abort-switch"}, ""))
-	pattern_ProtectionGroups_SetAutomaticFreeze_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "automatic-freeze"}, ""))
-	pattern_ProtectionGroups_GetAutomaticFreeze_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "protection-groups", "automatic-freeze", "status"}, ""))
-	pattern_ProtectionGroups_ListWriters_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"tutti", "protection-groups", "id", "writers"}, ""))
-	pattern_ProtectionGroups_ClearWriter_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "clear-writer"}, ""))
+	pattern_ProtectionGroups_List_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
+	pattern_ProtectionGroups_Get_0                    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"tutti", "protection-groups", "id"}, ""))
+	pattern_ProtectionGroups_Create_0                 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
+	pattern_ProtectionGroups_Update_0                 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "protection-groups"}, ""))
+	pattern_ProtectionGroups_Delete_0                 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "delete"}, ""))
+	pattern_ProtectionGroups_Switchover_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "switchover"}, ""))
+	pattern_ProtectionGroups_AbortSwitch_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "abort-switch"}, ""))
+	pattern_ProtectionGroups_SetAutomaticFreeze_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "automatic-freeze"}, ""))
+	pattern_ProtectionGroups_GetAutomaticFreeze_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "protection-groups", "automatic-freeze", "status"}, ""))
+	pattern_ProtectionGroups_ListWriters_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"tutti", "protection-groups", "id", "writers"}, ""))
+	pattern_ProtectionGroups_ClearWriter_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "protection-groups", "clear-writer"}, ""))
+	pattern_ProtectionGroups_PlanFailoverMigration_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "migration", "plan"}, ""))
+	pattern_ProtectionGroups_ApplyFailoverMigration_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "migration", "apply"}, ""))
+	pattern_ProtectionGroups_ListUnprotectedScopes_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "unprotected-scopes"}, ""))
 )
 
 var (
-	forward_ProtectionGroups_List_0               = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_Get_0                = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_Create_0             = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_Update_0             = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_Delete_0             = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_Switchover_0         = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_AbortSwitch_0        = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_SetAutomaticFreeze_0 = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_GetAutomaticFreeze_0 = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_ListWriters_0        = runtime.ForwardResponseMessage
-	forward_ProtectionGroups_ClearWriter_0        = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_List_0                   = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_Get_0                    = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_Create_0                 = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_Update_0                 = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_Delete_0                 = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_Switchover_0             = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_AbortSwitch_0            = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_SetAutomaticFreeze_0     = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_GetAutomaticFreeze_0     = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_ListWriters_0            = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_ClearWriter_0            = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_PlanFailoverMigration_0  = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_ApplyFailoverMigration_0 = runtime.ForwardResponseMessage
+	forward_ProtectionGroups_ListUnprotectedScopes_0  = runtime.ForwardResponseMessage
 )

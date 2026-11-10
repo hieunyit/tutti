@@ -240,7 +240,7 @@
               <td :data-label="t('failover')">
                 <RouterLink
                   v-if="row.failover"
-                  :to="{ name: RouteName.TUTTI_PROTECTION_GROUPS }"
+                  :to="{ name: RouteName.TUTTI_FAILOVER }"
                   >→ {{ row.failover.target }}</RouterLink
                 ><span v-else>–</span>
               </td>

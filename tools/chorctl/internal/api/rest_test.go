@@ -59,6 +59,8 @@ func newTestGateway(t *testing.T, chorusSrv pb.ChorusServer) *Conn {
 	r.NoError(pb.RegisterChorusHandlerServer(ctx, mux, chorusSrv))
 	r.NoError(pb.RegisterPolicyHandlerServer(ctx, mux, pb.UnimplementedPolicyServer{}))
 	r.NoError(pb.RegisterDiffHandlerServer(ctx, mux, pb.UnimplementedDiffServer{}))
+	r.NoError(pb.RegisterResilienceHandlerServer(ctx, mux, pb.UnimplementedResilienceServer{}))
+	r.NoError(pb.RegisterProtectionGroupsHandlerServer(ctx, mux, pb.UnimplementedProtectionGroupsServer{}))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	conn, err := Connect(ctx, srv.URL, false)
@@ -137,8 +139,7 @@ func TestRestRoutes_CoverAllAPIMethods(t *testing.T) {
 }
 
 // TestRestRoutes_GetRequestsAreEmpty verifies that GET routes take
-// google.protobuf.Empty: Conn.Invoke does not implement query parameter
-// encoding and drops the request message for GET (see Invoke).
+// google.protobuf.Empty or encode request fields as query parameters.
 func TestRestRoutes_GetRequestsAreEmpty(t *testing.T) {
 	r := require.New(t)
 	for fullMethod, rt := range restRoutes {
@@ -146,8 +147,9 @@ func TestRestRoutes_GetRequestsAreEmpty(t *testing.T) {
 			continue
 		}
 		md := methodDescriptor(t, fullMethod)
-		r.Equal(protoreflect.FullName("google.protobuf.Empty"), md.Input().FullName(),
-			"GET route %s has request fields which would be silently dropped; use a body method in proto/http.yaml or implement query params", fullMethod)
+		if md.Input().FullName() != protoreflect.FullName("google.protobuf.Empty") {
+			r.NotZero(md.Input().Fields().Len(), "GET route %s has non-empty message type but no fields", fullMethod)
+		}
 	}
 }
 

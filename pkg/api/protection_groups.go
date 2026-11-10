@@ -18,11 +18,51 @@ type protectionHandlers struct {
 	service      *pg.Service
 	storageLocks *StorageLocker
 	userLocks    *store.UserLocker
+	migrator     *pg.Migrator
+	unprotected  func() pg.UnprotectedOptions
 }
 
-func ProtectionGroupHandlers(s *pg.Service, storageLocks *StorageLocker, userLocks *store.UserLocker) pb.ProtectionGroupsServer {
-	return &protectionHandlers{s, storageLocks, userLocks}
+// ProtectionOption customizes ProtectionGroupHandlers.
+type ProtectionOption func(*protectionHandlers)
+
+// WithFailoverMigration enables the legacy failover migration and unprotected scope RPCs. The migrator's group
+// creation is replaced by one that holds the same user and storage locks as the Create RPC.
+func WithFailoverMigration(m *pg.Migrator, u func() pg.UnprotectedOptions) ProtectionOption {
+	return func(h *protectionHandlers) { h.migrator, h.unprotected = m, u }
 }
+
+func ProtectionGroupHandlers(s *pg.Service, storageLocks *StorageLocker, userLocks *store.UserLocker, opts ...ProtectionOption) pb.ProtectionGroupsServer {
+	h := &protectionHandlers{service: s, storageLocks: storageLocks, userLocks: userLocks}
+	for _, o := range opts {
+		o(h)
+	}
+	if h.migrator != nil {
+		m := *h.migrator
+		m.Create = func(ctx context.Context, g pg.Group) (pg.Group, error) {
+			var result pg.Group
+			work := func(ctx context.Context) error {
+				return h.storageLocks.With(ctx, g.Members, func(ctx context.Context) error {
+					var e error
+					result, e = s.CreateForMigration(ctx, g)
+					return e
+				})
+			}
+			if h.userLocks != nil {
+				lock, e := h.userLocks.Lock(ctx, g.User, store.WithDuration(30*time.Second))
+				if e != nil {
+					return pg.Group{}, e
+				}
+				defer lock.Release(ctx)
+				err := lock.DoCtx(ctx, 20*time.Second, work)
+				return result, err
+			}
+			return result, work(ctx)
+		}
+		h.migrator = &m
+	}
+	return h
+}
+
 func groupToPB(g pg.Group) *pb.ProtectionGroup {
 	p := &pb.ProtectionGroup{Id: g.ID, User: g.User, Buckets: g.Buckets, Members: g.Members, Copies: int32(g.Copies), MaxEventLag: int32(g.MaxEventLag), Mode: g.Mode, After: durationpb.New(g.After), Electorate: g.Electorate, MaxSwitchesPerHour: int32(g.MaxSwitchesPerHour), Primary: g.Primary, Generation: g.Generation, Revision: g.Revision, State: g.State, Target: g.Target, Frozen: g.Frozen, LastError: g.LastError, Quarantined: g.Quarantined}
 	for _, e := range g.History {
@@ -132,4 +172,68 @@ func (h *protectionHandlers) ListWriters(ctx context.Context, r *pb.ProtectionGr
 }
 func (h *protectionHandlers) ClearWriter(ctx context.Context, r *pb.ProtectionWriterClearRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, h.service.Store.ClearWriterKind(ctx, r.GetId(), r.GetToken(), r.GetExternallyFenced(), r.GetWorker())
+}
+
+func migrationScopeToPB(s pg.MigrationScope) *pb.FailoverMigrationScope {
+	return &pb.FailoverMigrationScope{User: s.User, Bucket: s.Bucket, Status: s.Status, Reason: s.Reason,
+		Group: groupToPB(s.Group), SkippedTargets: s.SkippedTargets}
+}
+
+func migrationPlanToPB(p pg.MigrationPlan) *pb.FailoverMigrationPlan {
+	out := &pb.FailoverMigrationPlan{Source: p.Source, PolicyEnabled: p.Policy.Enabled, Targets: p.Policy.Targets,
+		NotCovered: p.NotCovered, Complete: p.Complete()}
+	for _, s := range p.Scopes {
+		out.Scopes = append(out.Scopes, migrationScopeToPB(s))
+	}
+	return out
+}
+
+func (h *protectionHandlers) migration() (*pg.Migrator, error) {
+	if h.migrator == nil {
+		return nil, fmt.Errorf("%w: failover migration is not available on this instance", dom.ErrFailedPrecondition)
+	}
+	return h.migrator, nil
+}
+
+func (h *protectionHandlers) PlanFailoverMigration(ctx context.Context, r *pb.FailoverMigrationRequest) (*pb.FailoverMigrationPlan, error) {
+	m, err := h.migration()
+	if err != nil {
+		return nil, err
+	}
+	plan, err := m.Plan(ctx, r.GetSource(), pg.MigrationOptions{Mode: r.GetMode(), Electorate: r.GetElectorate()})
+	if err != nil {
+		return nil, err
+	}
+	return migrationPlanToPB(plan), nil
+}
+
+func (h *protectionHandlers) ApplyFailoverMigration(ctx context.Context, r *pb.FailoverMigrationRequest) (*pb.FailoverMigrationResult, error) {
+	m, err := h.migration()
+	if err != nil {
+		return nil, err
+	}
+	res, err := m.Apply(ctx, r.GetSource(), r.GetForce(), pg.MigrationOptions{Mode: r.GetMode(), Electorate: r.GetElectorate()})
+	if err != nil {
+		return nil, err
+	}
+	out := &pb.FailoverMigrationResult{Plan: migrationPlanToPB(res.Plan), Created: res.Created, Migrated: res.Migrated, PolicyDisabled: res.PolicyDisabled}
+	for _, s := range res.Uncovered {
+		out.Uncovered = append(out.Uncovered, migrationScopeToPB(s))
+	}
+	return out, nil
+}
+
+func (h *protectionHandlers) ListUnprotectedScopes(ctx context.Context, _ *emptypb.Empty) (*pb.UnprotectedScopeList, error) {
+	out := &pb.UnprotectedScopeList{}
+	if h.unprotected == nil || h.migrator == nil {
+		return out, nil
+	}
+	list, err := pg.Unprotected(ctx, h.migrator.Source, h.unprotected())
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range list {
+		out.Scopes = append(out.Scopes, &pb.UnprotectedScope{Storage: u.Storage, User: u.User, Bucket: u.Bucket, Targets: u.Targets})
+	}
+	return out, nil
 }

@@ -220,6 +220,13 @@ http:
     - selector: chorus.ProtectionGroups.ClearWriter
       post: /tutti/protection-groups/clear-writer
       body: "*"
+    - selector: chorus.ProtectionGroups.PlanFailoverMigration
+      get: /tutti/failover/migration/plan
+    - selector: chorus.ProtectionGroups.ApplyFailoverMigration
+      post: /tutti/failover/migration/apply
+      body: "*"
+    - selector: chorus.ProtectionGroups.ListUnprotectedScopes
+      get: /tutti/unprotected-scopes
     - selector: chorus.Resilience.GetProxyFleetConfig
       get: /tutti/proxy-config
     - selector: chorus.Resilience.SetProxyFleetConfig

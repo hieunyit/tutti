@@ -247,3 +247,14 @@ groups:
   #   expr: increase(tutti_worker_redis_errors_total[5m]) > 0
   #   for: 2m
   #   labels: {severity: critical, component: worker}
+
+      - alert: TuttiUnprotectedReplicationScopes
+        expr: replication_scopes_unprotected > 0
+        for: 30m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: '{{ $value }} scope(s) replicated from {{ $labels.source_storage }} are not protected against an outage'
+          description: 'Users or buckets have a replication from {{ $labels.source_storage }} but neither an enabled legacy failover policy of that storage nor a protection group covers them, so an outage of {{ $labels.source_storage }} needs a manual failover. List them on the Protection groups page ("Unprotected scopes") and create a group, or migrate the legacy policy.'
+          runbook_url: 'docs/tutti/runbooks.md#migrate-a-legacy-failover-policy-to-protection-groups'

@@ -116,7 +116,67 @@ var failoverEventsCmd = &cobra.Command{
 	},
 }
 
+var (
+	migrateSource, migrateMode string
+	migrateApply, migrateForce bool
+	migrateElectorate          []string
+)
+
+var failoverMigrateCmd = &cobra.Command{
+	Use:   "migrate",
+	Short: "migrate a legacy failover policy to protection groups",
+	Long: `Shows (dry run) or applies the migration of the legacy failover policy of a source storage to protection groups.
+One group is proposed per scope (user or bucket) the legacy controller fails over, adopting the existing replications
+(no data is copied). With --apply the groups are created and the legacy policy is disabled once every scope is migrated,
+or immediately with --force (uncovered scopes are listed and lose automatic failover). The command is idempotent.`,
+	Run: func(_ *cobra.Command, _ []string) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		conn, err := api.Connect(ctx, address, insecureTLS)
+		if err != nil {
+			logrus.WithError(err).WithField("address", address).Fatal("unable to connect to api")
+		}
+		defer conn.Close()
+		client := pb.NewProtectionGroupsClient(conn)
+		req := &pb.FailoverMigrationRequest{Source: migrateSource, Force: migrateForce, Mode: migrateMode, Electorate: migrateElectorate}
+		var plan *pb.FailoverMigrationPlan
+		var res *pb.FailoverMigrationResult
+		if migrateApply {
+			res, err = client.ApplyFailoverMigration(ctx, req)
+			if err != nil {
+				logrus.WithError(err).Fatal("unable to apply the migration")
+			}
+			plan = res.Plan
+		} else if plan, err = client.PlanFailoverMigration(ctx, req); err != nil {
+			logrus.WithError(err).Fatal("unable to plan the migration")
+		}
+		w := tabwriter.NewWriter(os.Stdout, 10, 1, 5, ' ', 0)
+		fmt.Fprintln(w, "USER\tBUCKET\tGROUP\tMEMBERS\tSTATUS\tREASON")
+		for _, sc := range plan.Scopes {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", sc.User, sc.Bucket, sc.Group.GetId(), strings.Join(sc.Group.GetMembers(), ","), sc.Status, sc.Reason)
+		}
+		w.Flush()
+		for _, n := range plan.NotCovered {
+			fmt.Println("not covered:", n)
+		}
+		if res == nil {
+			fmt.Println("dry run: nothing changed; use --apply to create the groups")
+			return
+		}
+		fmt.Printf("created: %s\nalready migrated: %s\nlegacy policy disabled: %t\n", strings.Join(res.Created, ","), strings.Join(res.Migrated, ","), res.PolicyDisabled)
+		if len(res.Uncovered) != 0 {
+			fmt.Printf("%d scope(s) not migrated\n", len(res.Uncovered))
+		}
+	},
+}
+
 func init() {
-	failoverCmd.AddCommand(failoverPoliciesCmd, failoverEventsCmd)
+	failoverMigrateCmd.Flags().StringVar(&migrateSource, "source", "", "source storage of the legacy failover policy")
+	failoverMigrateCmd.Flags().BoolVar(&migrateApply, "apply", false, "create the groups (default: dry run)")
+	failoverMigrateCmd.Flags().BoolVar(&migrateForce, "force", false, "with --apply: disable the legacy policy even if some scopes could not be migrated")
+	failoverMigrateCmd.Flags().StringVar(&migrateMode, "mode", "auto", "mode of the groups: auto or manual")
+	failoverMigrateCmd.Flags().StringSliceVar(&migrateElectorate, "electorate", nil, "proxy IDs voting in automatic groups (default: the live proxies)")
+	_ = failoverMigrateCmd.MarkFlagRequired("source")
+	failoverCmd.AddCommand(failoverPoliciesCmd, failoverEventsCmd, failoverMigrateCmd)
 	rootCmd.AddCommand(proxiesCmd, failoverCmd)
 }
