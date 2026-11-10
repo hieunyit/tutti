@@ -30,6 +30,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 )
 
 /*
@@ -108,6 +109,10 @@ type snapState struct {
 	created time.Time
 	entries sync.Map // string -> *proxyData
 	size    atomic.Int64
+	// scope is the protection group scope index (protectiongroups.ScopeIndexKey), loaded on first use.
+	// Group create/delete bump the version in the same transaction as the index, so a state never
+	// holds an index older than its version.
+	scope atomic.Pointer[map[string]string]
 }
 
 const maxSnapshotEntries = 200_000
@@ -333,6 +338,45 @@ func (s *snapshot) lookup(ctx context.Context, r *policySvc, user, bucket string
 		return nil, err
 	}
 	return res.(*proxyData), nil
+}
+
+// protectionScope returns the protection group scope index of the current state (one HGETALL per version).
+func (s *snapshot) protectionScope(ctx context.Context) (map[string]string, error) {
+	st := s.cur.Load()
+	if st == nil {
+		return nil, fmt.Errorf("%w: policy snapshot not loaded", dom.ErrUnavailable)
+	}
+	if m := st.scope.Load(); m != nil {
+		return *m, nil
+	}
+	res, err, _ := s.sf.Do(st.version+"\x00\x00protection-scope", func() (any, error) {
+		lctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		m, err := s.rc.HGetAll(lctx, protectiongroups.ScopeIndexKey).Result()
+		if err != nil {
+			return nil, err
+		}
+		st.scope.Store(&m)
+		return m, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.(map[string]string), nil
+}
+
+// ProtectionScope resolves the protection group of a write from the snapshot (see protectiongroups.ScopeCache).
+// Callers must have validated the config version for this request first (BuildProxyContext on the write path
+// does). ok is false when the snapshot is disabled or cannot answer; the caller then asks Redis.
+func (r *policySvc) ProtectionScope(ctx context.Context, user, bucket string) (string, bool) {
+	if r.snap == nil {
+		return "", false
+	}
+	idx, err := r.snap.protectionScope(ctx)
+	if err != nil {
+		return "", false
+	}
+	return protectiongroups.LookupScope(idx, user, bucket)
 }
 
 // isRedisDown tells connectivity failures from semantic ones.

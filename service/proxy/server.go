@@ -269,7 +269,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		leaseCtx, leaseStop := context.WithCancel(context.WithoutCancel(ctx))
 		defer leaseStop()
 		go groupLease.Run(leaseCtx)
-		groupFence := groupStore.Middleware(groupLease)
+		// unprotected scopes are admitted from the policy snapshot's copy of the scope index (0 Redis commands)
+		groupFence := groupStore.Middleware(groupLease, policySvc.ProtectionScope)
 		proxyConfig.AccessMiddleware = func(next http.Handler) http.Handler { return groupFence(accessMiddleware(next)) }
 		// runtime-managed accounts: secrets are sealed with the dynamic credentials master password.
 		// Without it no dynamic account can be created or authenticate.

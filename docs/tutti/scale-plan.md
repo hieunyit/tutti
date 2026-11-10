@@ -255,6 +255,12 @@ Additional findings fixed in the same pass:
 | `proto/http.yaml` had a second block of selectors for RPCs that do not exist (`ListProtectionGroups`, …) | `buf generate` fails (`HTTP rules without a matching selector`) | Removed the dangling block |
 | Resync could delete target objects based on an out-of-order listing | Replica object loss before the error is detected | Deletions are applied only after both listings were consumed in ascending order |
 
+Follow-up (same day): the fence made every write pay 2–3 Redis commands and return 503 when Lua failed, even
+for unprotected scopes (`TestRedisCommandsPerRequest`, `TestEventRecordingFailure_*` failed). **Done** — the
+proxy policy snapshot caches the scope index; group create/delete bump `tutti:cfg:version` in the same
+transaction, and writes validate the version first. Unprotected writes: 0 fence commands (PUT 0.94 commands
+per request in total), no dependency on Lua; protected scopes keep the fail-closed script path.
+
 Verification: unit tests in `pkg/protectiongroups` (fence/index/lease/reaper, controller with fake backend,
 resync metadata-first), `-race`; e2e `test/resilience/protection_groups_test.go`: 3 MinIO storages, group
 primary A blackholed → automatic failover to B by a three-proxy electorate, C keeps receiving copies; a proxy

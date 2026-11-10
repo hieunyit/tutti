@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"time"
 
@@ -87,13 +88,17 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 		if err != nil {
 			return err
 		}
+		currentIndex, err := tx.HGetAll(ctx, ScopeIndexKey).Result()
+		if err != nil {
+			return err
+		}
 		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
 			p.HSet(ctx, GroupsKey, g.ID, raw)
-			writeIndex(ctx, p, index)
+			writeIndex(ctx, p, currentIndex, index)
 			return nil
 		})
 		return err
-	}, GroupsKey)
+	}, GroupsKey, ScopeIndexKey)
 	if err == nil {
 		g.Revision++
 	}
@@ -121,13 +126,17 @@ func (s *Store) Delete(ctx context.Context, g Group) error {
 		if err != nil {
 			return err
 		}
+		currentIndex, err := tx.HGetAll(ctx, ScopeIndexKey).Result()
+		if err != nil {
+			return err
+		}
 		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
 			p.HDel(ctx, GroupsKey, g.ID)
-			writeIndex(ctx, p, index)
+			writeIndex(ctx, p, currentIndex, index)
 			return nil
 		})
 		return err
-	}, GroupsKey)
+	}, GroupsKey, ScopeIndexKey)
 }
 
 // scopeIndex derives the complete admission index from the authoritative documents, replacing
@@ -160,9 +169,36 @@ func scopeIndex(docs map[string]string, next *Group, without string) (map[string
 	return index, nil
 }
 
-func writeIndex(ctx context.Context, p redis.Pipeliner, index map[string]string) {
+// ConfigVersionKey and ConfigChangedChannel are the proxy policy snapshot's version counter and change channel
+// (policy.SnapshotVersionKey / policy.SnapshotChannel; this package cannot import policy).
+const (
+	ConfigVersionKey     = "tutti:cfg:version"
+	ConfigChangedChannel = "tutti:cfg:changed"
+)
+
+// writeIndex replaces the index when it differs from current and, in the same MULTI/EXEC, bumps the config
+// version and notifies the proxies: their snapshots cache the index to admit unprotected writes from memory,
+// and every write validates the version first, so a write after this commit always sees the new index.
+func writeIndex(ctx context.Context, p redis.Pipeliner, current, index map[string]string) {
+	if maps.Equal(current, index) {
+		return
+	}
 	p.Del(ctx, ScopeIndexKey)
 	p.HSet(ctx, ScopeIndexKey, index)
+	p.Incr(ctx, ConfigVersionKey)
+	p.Publish(ctx, ConfigChangedChannel, "changed")
+}
+
+// LookupScope resolves a (user, bucket) against a cached copy of the scope index. ok is false when the copy
+// is not a complete index (marker missing): the caller must then use the Redis admission path.
+func LookupScope(index map[string]string, user, bucket string) (group string, ok bool) {
+	if index[indexVersionField] == "" {
+		return "", false
+	}
+	if id := index["u:"+user]; id != "" {
+		return id, true
+	}
+	return index["b:"+user+"/"+bucket], true
 }
 
 // EnsureIndex rebuilds the scope index when it is missing (groups written by an older version).
@@ -180,7 +216,11 @@ func (s *Store) EnsureIndex(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error { writeIndex(ctx, p, index); return nil })
+		current, err := tx.HGetAll(ctx, ScopeIndexKey).Result()
+		if err != nil {
+			return err
+		}
+		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error { writeIndex(ctx, p, current, index); return nil })
 		return err
 	}, GroupsKey, ScopeIndexKey)
 }

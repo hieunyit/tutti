@@ -53,19 +53,26 @@ ready --(recovered member caught up but not verified)--> initializing (frozen) -
 ## Write fence
 
 Every proxy write (any method but GET/HEAD) and every worker replication task of a protected scope passes the
-fence (`Store.Middleware`, `Store.WorkerMiddleware`), one Lua script per write:
+fence (`Store.Middleware`, `Store.WorkerMiddleware`).
 
-1. `tutti:protection:scope` (hash: `u:<user>` / `b:<user>/<bucket>` → group ID, plus a `_v` marker) finds the
-   group with one HMGET.
-   The index is rebuilt from the group documents in the same transaction as every group create/delete; if it is
-   missing (groups written by an older version) admission rebuilds it before deciding, never admits unfenced.
-2. The group document is read and decoded (only this one); the write is refused (503) when the group is frozen
-   or the request was routed to a storage that is not the current primary (stale routing view).
-3. A writer record `<owner>:<generation>:<instance>:<admittedUnixMs>` is added to
-   `tutti:protection:writers:<group>` (`:workers` for workers) and the process lease is refreshed.
+The scope index `tutti:protection:scope` (hash: `u:<user>` / `b:<user>/<bucket>` → group ID, plus a `_v`
+marker) is rebuilt from the group documents in the same transaction as every group create/delete. When its
+content changes, that transaction also bumps `tutti:cfg:version` and publishes `tutti:cfg:changed`.
+
+* **Unprotected scope (proxy, policy snapshot enabled):** the proxy snapshot caches the index per config version
+  (one HGETALL after each change). Every write reads the version before using the snapshot, so a write after a
+  group create/delete always sees the new index. Such writes are admitted from memory: no Redis command, and no
+  503 when Lua/Redis scripting fails (so `replication.onEventError: log` behaves as without groups).
+* **Protected scope, snapshot disabled, or a cached index without `_v`:** one Lua script, fail-closed:
+  1. one HMGET on the index; a missing index is rebuilt before deciding (never admits unfenced);
+  2. the group document is read (only this one); the write is refused (503) when the group is frozen or the
+     request was routed to a storage that is not the current primary (stale routing view);
+  3. a writer record `<owner>:<generation>:<instance>:<admittedUnixMs>` is added to
+     `tutti:protection:writers:<group>` (`:workers` for workers) and the process lease is refreshed.
 
 Redis commands per write, independent of the number of groups (`TestAdmitRedisCommandsDoNotGrowWithGroups`):
-protected scope EVALSHA + 4 (HMGET, HGET, HSET, SET); unprotected scope EVALSHA + 1 (HMGET). A Redis outage fails writes closed, including unprotected scopes.
+protected scope EVALSHA + 4 (HMGET, HGET, HSET, SET); unprotected scope 0 with the snapshot
+(`TestSnapshot_ProtectionGroupEnforcedOnNextWrite`), EVALSHA + 1 without it. Workers always use the script.
 
 ### Writer leases and crashed proxies
 
@@ -108,6 +115,8 @@ Replications, routings and failover policies inside a group's scope can only be 
 * While a group is `initializing` (after creation or a promotion, until every available member caught up)
   automatic failover is not evaluated.
 * A frozen group waits for writes in flight to a blackholed primary until the storage HTTP timeout ends them.
+* A write admitted as unprotected just before a group is created carries no writer record. It is only a
+  concern if it is still in flight when the group first freezes, i.e. after the whole catch-up phase.
 * Redis Cluster is unsupported (the fence script touches keys derived from the group ID).
 * Equal MD5-form ETags are trusted as equal content: a tenant able to craft MD5 collisions could keep a
   divergent object on a replica of its own data.

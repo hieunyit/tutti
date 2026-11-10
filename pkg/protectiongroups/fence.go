@@ -298,9 +298,16 @@ func (s *Store) WorkerMiddleware(l *Lease) asynq.MiddlewareFunc {
 	}
 }
 
+// ScopeCache resolves a scope from an in-memory copy of the scope index that is at least as new as the
+// config version the current request validated (the proxy policy snapshot). ok=false means "unknown":
+// the caller must use the Redis admission path.
+type ScopeCache func(ctx context.Context, user, bucket string) (group string, ok bool)
+
 // Middleware must execute after routing resolution and surround both forwarding and event
-// recording. A Redis outage fails writes closed, including unprotected scopes.
-func (s *Store) Middleware(l *Lease) func(http.Handler) http.Handler {
+// recording. With a ScopeCache, writes of unprotected scopes are admitted from memory (no Redis
+// command, no dependency on Lua); protected scopes, and every write when the cache cannot answer,
+// take the fail-closed Redis path.
+func (s *Store) Middleware(l *Lease, cached ScopeCache) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet || r.Method == http.MethodHead {
@@ -308,7 +315,14 @@ func (s *Store) Middleware(l *Lease) func(http.Handler) http.Handler {
 				return
 			}
 			ctx := r.Context()
-			a, err := l.Admit(ctx, xctx.GetUser(ctx), xctx.GetBucket(ctx), xctx.GetRoutingPolicy(ctx))
+			user, bucket := xctx.GetUser(ctx), xctx.GetBucket(ctx)
+			if cached != nil {
+				if group, ok := cached(ctx, user, bucket); ok && group == "" {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			a, err := l.Admit(ctx, user, bucket, xctx.GetRoutingPolicy(ctx))
 			if err != nil {
 				util.WriteError(ctx, w, err)
 				return
