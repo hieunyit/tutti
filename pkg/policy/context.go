@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
@@ -204,12 +205,13 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	if err != nil {
 		return nil, err
 	}
-	if bucket != "" {
-		if _, bErr := bucketRoutingResult.Get(); errors.Is(bErr, dom.ErrNotFound) {
-			if p := r.resolveGroupPrimary(ctx, user, bucket); p != "" {
-				routeTo = p
-			}
-		}
+
+	// Protection group routing takes precedence over individual routing!
+	// When bucket or base storage is protected by a group, use group primary for all users.
+	var groupID string
+	if p, gid, ok := r.resolveGroupRoute(ctx, user, bucket, routeTo); ok && p != "" {
+		routeTo = p
+		groupID = gid
 	}
 	data := &proxyData{routeTo: routeTo}
 
@@ -226,9 +228,26 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	}
 	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
+	// If request scope is in a protection group and has no user replications,
+	// attach the group's infrastructure replications running under ServiceUser.
+	if groupID != "" && len(data.replications) == 0 {
+		if grepls := r.groupReplications(ctx, groupID, routeTo, bucket); len(grepls) > 0 {
+			data.replications = grepls
+		}
+	}
+
 	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
 	if err != nil {
 		return nil, err
+	}
+	for _, repl := range data.replications {
+		if repl.User() == protectiongroups.ServiceUser {
+			if _, ok := data.generations[repl]; !ok || data.generations[repl] == 0 {
+				if gen, gErr := r.replicationGenerationStore.Get(ctx, repl); gErr == nil {
+					data.generations[repl] = gen
+				}
+			}
+		}
 	}
 	return data, nil
 }
@@ -429,26 +448,81 @@ func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) 
 	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, nil)
 }
 
-func (r *policySvc) resolveGroupPrimary(ctx context.Context, user, bucket string) string {
-	if bucket == "" {
-		return ""
+func (r *policySvc) resolveGroupRoute(ctx context.Context, user, bucket, baseStorage string) (primary, groupID string, ok bool) {
+	readIndex := func() (map[string]string, error) {
+		if r.snap != nil {
+			return r.snap.protectionScope(ctx)
+		}
+		if r.client != nil {
+			return r.client.HGetAll(ctx, protectiongroups.ScopeIndexKey).Result()
+		}
+		return nil, dom.ErrUnavailable
 	}
+
+	idx, err := readIndex()
+	if err != nil || len(idx) == 0 {
+		return "", "", false
+	}
+
+	// 1. Check bucket-level protection group first
+	if bucket != "" {
+		if gid, found := protectiongroups.LookupScope(idx, user, bucket); found && gid != "" {
+			if p := protectiongroups.PrimaryOfGroup(idx, gid); p != "" {
+				return p, gid, true
+			}
+		}
+	}
+
+	// 2. Check storage-level protection group for baseStorage
+	if baseStorage != "" {
+		if gid, found := protectiongroups.LookupStorageGroup(idx, baseStorage); found && gid != "" {
+			if p := protectiongroups.PrimaryOfGroup(idx, gid); p != "" {
+				return p, gid, true
+			}
+		}
+	}
+
+	return "", "", false
+}
+
+func (r *policySvc) groupReplications(ctx context.Context, groupID, primary, bucket string) []entity.UniversalReplicationID {
+	if groupID == "" || primary == "" {
+		return nil
+	}
+	var membersStr string
 	if r.snap != nil {
 		if idx, err := r.snap.protectionScope(ctx); err == nil {
-			if groupID, ok := protectiongroups.LookupScope(idx, user, bucket); ok && groupID != "" {
-				return protectiongroups.PrimaryOfGroup(idx, groupID)
-			}
-		}
-		return ""
-	}
-	if r.client != nil {
-		idx, err := protectiongroups.ScopeFields(ctx, r.client, user, bucket)
-		if err == nil {
-			if groupID, ok := protectiongroups.LookupScope(idx, user, bucket); ok && groupID != "" {
-				p, _ := r.client.HGet(ctx, protectiongroups.ScopeIndexKey, "p:"+groupID).Result()
-				return p
-			}
+			membersStr = idx["m:"+groupID]
 		}
 	}
-	return ""
+	if membersStr == "" && r.client != nil {
+		membersStr, _ = r.client.HGet(ctx, protectiongroups.ScopeIndexKey, "m:"+groupID).Result()
+	}
+	if membersStr == "" {
+		return nil
+	}
+	members := strings.Split(membersStr, ",")
+	var out []entity.UniversalReplicationID
+	for _, m := range members {
+		m = strings.TrimSpace(m)
+		if m == "" || m == primary {
+			continue
+		}
+		if bucket != "" {
+			out = append(out, entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{
+				User:        protectiongroups.ServiceUser,
+				FromStorage: primary,
+				ToStorage:   m,
+				FromBucket:  bucket,
+				ToBucket:    bucket,
+			}))
+		} else {
+			out = append(out, entity.UniversalFromUserReplication(entity.UserReplicationPolicy{
+				User:        protectiongroups.ServiceUser,
+				FromStorage: primary,
+				ToStorage:   m,
+			}))
+		}
+	}
+	return out
 }

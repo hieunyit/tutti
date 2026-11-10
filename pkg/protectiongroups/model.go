@@ -16,6 +16,10 @@ const GroupsKey = "tutti:protection:groups"
 const PromotionKey = "tutti:protection:promotion"
 const FreezeKey = "tutti:protection:automatic-frozen"
 
+// ServiceUser is the synthetic identity used by infrastructure protection groups
+// (g.User == "") whose replications and resync run with storage connection accounts.
+const ServiceUser = "$service"
+
 // GroupSpec holds the desired configuration of a protection group.
 // When controlPlane.backend is "postgres", PostgreSQL is the source of truth for GroupSpec.
 type GroupSpec struct {
@@ -283,7 +287,16 @@ func (g *Group) Validate() error {
 	return nil
 }
 
+// IsStorageScope reports whether g is a storage-level protection group protecting
+// all buckets and users on its member storages without being tied to a specific user.
+func (g Group) IsStorageScope() bool {
+	return g.User == "" && len(g.Buckets) == 0
+}
+
 func (g Group) Covers(user, bucket string) bool {
+	if g.IsStorageScope() {
+		return true
+	}
 	if g.User != "" && user != "" && g.User != user {
 		return false
 	}
@@ -293,28 +306,18 @@ func (g Group) Overlaps(other Group) bool {
 	// S3 bucket names identify physical data independent of the Tutti identity. Conservatively
 	// reject overlapping scopes on a common member even for different users; account-specific
 	// namespaces cannot safely be inferred from access keys or bucket-glob expressions.
-	if g.User != "" && other.User != "" && g.User != other.User {
-		shared := false
-		for _, m := range g.Members {
-			if slices.Contains(other.Members, m) {
-				shared = true
-				break
-			}
+	shared := false
+	for _, m := range g.Members {
+		if slices.Contains(other.Members, m) {
+			shared = true
+			break
 		}
-		if !shared {
-			return false
-		}
-	} else {
-		shared := false
-		for _, m := range g.Members {
-			if slices.Contains(other.Members, m) {
-				shared = true
-				break
-			}
-		}
-		if !shared {
-			return false
-		}
+	}
+	if !shared {
+		return false
+	}
+	if g.IsStorageScope() || other.IsStorageScope() {
+		return true
 	}
 	if len(g.Buckets) == 0 || len(other.Buckets) == 0 {
 		return true
@@ -330,7 +333,7 @@ func (g Group) Replications(primary string) []entity.UniversalReplicationID {
 	var out []entity.UniversalReplicationID
 	user := g.User
 	if user == "" {
-		user = primary
+		user = ServiceUser
 	}
 	for _, member := range g.Members {
 		if member == primary {

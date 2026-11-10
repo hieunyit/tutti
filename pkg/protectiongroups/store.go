@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
@@ -581,9 +582,21 @@ func scopeIndex(docs map[string]string, next *Group, without string) (map[string
 	add := func(g Group) {
 		index["o:"+g.ID] = g.User
 		index["p:"+g.ID] = g.Primary
+		if len(g.Members) > 0 {
+			index["m:"+g.ID] = strings.Join(g.Members, ",")
+		}
 		if len(g.Buckets) == 0 {
 			if g.User != "" {
 				index["u:"+g.User] = g.ID
+			} else {
+				for _, m := range g.Members {
+					k := "st:" + m
+					if cur, ok := index[k]; ok && cur != g.ID {
+						index[k] = conflictMarker
+						continue
+					}
+					index[k] = g.ID
+				}
 			}
 			return
 		}
@@ -670,6 +683,21 @@ func LookupScope(index map[string]string, user, bucket string) (group string, ok
 		}
 	}
 	return "", true
+}
+
+// LookupStorageGroup resolves a storage name to its storage-level protection group ID.
+func LookupStorageGroup(index map[string]string, storage string) (group string, ok bool) {
+	if index[indexVersionField] == "" {
+		return "", false
+	}
+	if storage == "" {
+		return "", true
+	}
+	id := index["st:"+storage]
+	if id == conflictMarker {
+		return "", false
+	}
+	return id, true
 }
 
 // LookupSharedGroup resolves the protection group of ANOTHER identity that manages bucket on storage, for a user

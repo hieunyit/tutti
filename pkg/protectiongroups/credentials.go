@@ -11,6 +11,18 @@ import (
 
 func CredentialValidator(creds objstore.CredsService, policies *accesspolicy.Store) func(context.Context, Group) error {
 	return func(ctx context.Context, g Group) error {
+		if g.User == "" {
+			for _, m := range g.Members {
+				if creds.Storages()[m] != dom.S3 {
+					return fmt.Errorf("%w: group members must be configured S3 storages", dom.ErrInvalidArg)
+				}
+				_, mode, err := creds.ResolveS3Credentials(m, ServiceUser)
+				if err != nil || mode != objstore.ModeConnection {
+					return fmt.Errorf("%w: storage %q must have a connection account configured to be part of an infrastructure protection group", dom.ErrFailedPrecondition, m)
+				}
+			}
+			return nil
+		}
 		known := creds.HasIdentity(g.User)
 		for _, m := range g.Members {
 			for _, u := range creds.ListOverrideUsers(m) {

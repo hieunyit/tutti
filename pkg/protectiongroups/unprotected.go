@@ -47,22 +47,27 @@ func Unprotected(ctx context.Context, src failover.ScopeSource, o UnprotectedOpt
 			legacy[p.Source] = true
 		}
 	}
-	covered := func(_ context.Context, user, bucket string) bool {
-		for _, g := range groups {
-			if g.User == user && (len(g.Buckets) == 0 || (bucket != "" && slices.Contains(g.Buckets, bucket))) {
-				return true
+	covered := func(st string) func(context.Context, string, string) bool {
+		return func(_ context.Context, user, bucket string) bool {
+			for _, g := range groups {
+				if g.Primary != st && !slices.Contains(g.Members, st) {
+					continue
+				}
+				if g.Covers(user, bucket) {
+					return true
+				}
 			}
+			return false
 		}
-		return false
 	}
 	var out []UnprotectedScope
-	do := failover.DiscoverOptions{MainStorage: o.MainStorage, Skip: covered}
-	if o.Users != nil {
-		do.Users = o.Users()
-	}
 	for _, st := range o.Storages {
 		if legacy[st] {
 			continue
+		}
+		do := failover.DiscoverOptions{MainStorage: o.MainStorage, Skip: covered(st)}
+		if o.Users != nil {
+			do.Users = o.Users()
 		}
 		scopes, err := failover.DiscoverScopes(ctx, src, st, do)
 		if err != nil {

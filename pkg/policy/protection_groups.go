@@ -23,8 +23,57 @@ func (r *policySvc) ProtectionBackend() protectiongroups.Backend { return &prote
 
 func (b *protectionBackend) Validate(ctx context.Context, g protectiongroups.Group, adopt bool) error {
 	p := b.p
-	// A group adopts only a single coherent star rooted at the current routing, never
-	// silently moves data/routing or steals arbitrary legacy replications.
+	if g.User == "" {
+		// Infrastructure group: runs under ServiceUser using storage connection accounts.
+		if p.sharedAccount != nil {
+			for _, m := range g.Members {
+				if !p.sharedAccount(m, protectiongroups.ServiceUser) {
+					return fmt.Errorf("%w: storage %s has no connection account; protection group requires connection accounts on all members", dom.ErrFailedPrecondition, m)
+				}
+			}
+		}
+		allowed := map[string]bool{}
+		for _, id := range g.Replications(g.Primary) {
+			allowed[id.AsString()] = true
+		}
+		ur, err := p.ListUserReplicationsInfo(ctx)
+		if err != nil && !errors.Is(err, dom.ErrNotFound) {
+			return err
+		}
+		br, err := p.ListBucketReplicationsInfo(ctx, protectiongroups.ServiceUser)
+		if err != nil && !errors.Is(err, dom.ErrNotFound) {
+			return err
+		}
+		check := func(id entity.UniversalReplicationID, st entity.ReplicationStatusExtended) error {
+			if st.IsArchived {
+				return nil
+			}
+			if st.Switch != nil || st.IsPaused {
+				return fmt.Errorf("%w: replication is paused or switching", dom.ErrFailedPrecondition)
+			}
+			if !adopt || !allowed[id.AsString()] {
+				return fmt.Errorf("%w: unmanaged replication %s conflicts; use explicit adoption for a matching topology", dom.ErrFailedPrecondition, id.AsString())
+			}
+			return nil
+		}
+		for id, st := range ur {
+			if id.User == protectiongroups.ServiceUser {
+				if err := check(entity.UniversalFromUserReplication(id), st); err != nil {
+					return err
+				}
+			}
+		}
+		for id, st := range br {
+			if len(g.Buckets) == 0 || g.Covers(protectiongroups.ServiceUser, id.FromBucket) {
+				if err := check(entity.UniversalFromBucketReplication(id), st); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// Legacy user group: adopts only a single coherent star rooted at the current routing
 	routes, err := p.GetBucketRoutings(ctx, g.User)
 	if err != nil && !errors.Is(err, dom.ErrNotFound) {
 		return err
@@ -232,13 +281,15 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 					store.NewReplicationGenerationStore(pipe).IncrementOp(ctx, id)
 				}
 			}
-			if len(after.Buckets) == 0 {
-				store.NewUserRoutingStore(pipe).SetOp(ctx, after.User, after.Primary)
-				// Creation validation established that every explicit bucket route pointed at the same primary.
-				pipe.Del(ctx, "p:route_bucket:"+after.User)
-			} else {
-				for _, bucket := range after.Buckets {
-					store.NewBucketRoutingStore(pipe).SetOp(ctx, entity.NewBucketRoutingPolicyID(after.User, bucket), after.Primary)
+			if after.User != "" {
+				if len(after.Buckets) == 0 {
+					store.NewUserRoutingStore(pipe).SetOp(ctx, after.User, after.Primary)
+					// Creation validation established that every explicit bucket route pointed at the same primary.
+					pipe.Del(ctx, "p:route_bucket:"+after.User)
+				} else {
+					for _, bucket := range after.Buckets {
+						store.NewBucketRoutingStore(pipe).SetOp(ctx, entity.NewBucketRoutingPolicyID(after.User, bucket), after.Primary)
+					}
 				}
 			}
 			pipe.HSet(ctx, protectiongroups.GroupsKey, after.ID, rawNext)
@@ -342,23 +393,25 @@ func (b *protectionBackend) SyncControlPlane(ctx context.Context, g protectiongr
 				}
 			}
 		}
-		if len(g.Buckets) == 0 {
-			if err := repos.Routing.Set(ctx, g.User, "", g.Primary); err != nil {
-				return err
-			}
-			bRoutes, err := repos.Routing.ListBucketRoutes(ctx, g.User)
-			if err != nil {
-				return err
-			}
-			for bucket := range bRoutes {
-				if err := repos.Routing.DeleteRoute(ctx, g.User, bucket); err != nil {
+		if g.User != "" {
+			if len(g.Buckets) == 0 {
+				if err := repos.Routing.Set(ctx, g.User, "", g.Primary); err != nil {
 					return err
 				}
-			}
-		} else {
-			for _, bucket := range g.Buckets {
-				if err := repos.Routing.Set(ctx, g.User, bucket, g.Primary); err != nil {
+				bRoutes, err := repos.Routing.ListBucketRoutes(ctx, g.User)
+				if err != nil {
 					return err
+				}
+				for bucket := range bRoutes {
+					if err := repos.Routing.DeleteRoute(ctx, g.User, bucket); err != nil {
+						return err
+					}
+				}
+			} else {
+				for _, bucket := range g.Buckets {
+					if err := repos.Routing.Set(ctx, g.User, bucket, g.Primary); err != nil {
+						return err
+					}
 				}
 			}
 		}

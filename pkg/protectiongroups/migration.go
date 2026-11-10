@@ -100,6 +100,9 @@ type Migrator struct {
 
 // GroupID is the deterministic ID of the group migrated from the scope of a policy, so that a re-run recognizes it.
 func GroupID(source, user, bucket string) string {
+	if user == "" && bucket == "" {
+		return "storage-" + source
+	}
 	id := "legacy-" + source + "-" + user
 	if bucket != "" {
 		id += "-" + bucket
@@ -126,14 +129,6 @@ func (m *Migrator) Plan(ctx context.Context, source string, o MigrationOptions) 
 		return MigrationPlan{}, err
 	}
 	plan := MigrationPlan{Source: source, Policy: pol}
-	opts := failover.DiscoverOptions{MainStorage: m.MainStorage}
-	if m.Users != nil {
-		opts.Users = m.Users()
-	}
-	scopes, err := failover.DiscoverScopes(ctx, m.Source, source, opts)
-	if err != nil {
-		return plan, err
-	}
 	existing, err := m.Service.Store.List(ctx)
 	if err != nil {
 		return plan, err
@@ -153,64 +148,38 @@ func (m *Migrator) Plan(ctx context.Context, source string, o MigrationOptions) 
 	if pol.MaxEventLag != nil {
 		maxLag = *pol.MaxEventLag
 	}
-	var proposed []Group
-	for _, sc := range scopes {
-		ms := MigrationScope{User: sc.User, Bucket: sc.Bucket}
-		g := Group{ID: GroupID(source, sc.User, sc.Bucket), User: sc.User, Primary: source, Mode: mode,
-			After: pol.After, MaxEventLag: maxLag, Electorate: slices.Clone(electorate)}
-		if sc.Bucket != "" {
-			g.Buckets = []string{sc.Bucket}
-		}
-		g.Members = []string{source}
-		var archived []string
-		for _, target := range pol.Targets {
-			found := false
-			for _, c := range sc.Candidates {
-				if c.To != target {
-					continue
-				}
-				found = true
-				if c.Status.ReplicationStatus != nil && c.Status.IsArchived {
-					archived = append(archived, target)
-				}
-			}
-			if found {
-				g.Members = append(g.Members, target)
-			} else {
-				ms.SkippedTargets = append(ms.SkippedTargets, target)
-			}
-		}
-		g.Copies = len(g.Members)
-		ms.Group = g
-		switch {
-		case len(g.Members) < 2:
-			ms.Status, ms.Reason = MigrationSkip, "no replication from "+source+" to any policy target"
-		case len(archived) != 0:
-			ms.Status, ms.Reason = MigrationConflict, "replication to "+strings.Join(archived, ", ")+" is archived; recover it first"
-		default:
-			ms.Status, ms.Reason = m.check(ctx, &ms, existing, proposed)
-			if ms.Status == MigrationOK {
-				proposed = append(proposed, ms.Group)
-			}
-		}
-		if ms.Status == MigrationOK && len(ms.SkippedTargets) != 0 {
-			ms.Reason = "no replication to " + strings.Join(ms.SkippedTargets, ", ") + ": left out of the group (nothing is copied)"
-		}
-		plan.Scopes = append(plan.Scopes, ms)
+
+	members := append([]string{source}, pol.Targets...)
+	g := Group{
+		ID:          GroupID(source, "", ""),
+		User:        "",
+		Buckets:     nil,
+		Members:     members,
+		Primary:     source,
+		Copies:      len(members),
+		Mode:        mode,
+		After:       pol.After,
+		MaxEventLag: maxLag,
+		Electorate:  slices.Clone(electorate),
 	}
-	for _, s := range plan.Scopes {
-		switch s.Status {
-		case MigrationConflict, MigrationSkip:
-			plan.NotCovered = append(plan.NotCovered, fmt.Sprintf("%s: %s (%s)", scopeLabel(s), s.Status, s.Reason))
-		}
+	ms := MigrationScope{User: "", Bucket: "", Group: g}
+	switch {
+	case len(members) < 2:
+		ms.Status, ms.Reason = MigrationSkip, "no targets configured for source " + source
+	default:
+		ms.Status, ms.Reason = m.check(ctx, &ms, existing, nil)
 	}
-	plan.NotCovered = append(plan.NotCovered,
-		"buckets or users that get a replication from "+source+" after the migration (the legacy policy covered them automatically); create a group for them from the Protection groups page",
-		"scopes currently routed away from "+source+" (already failed over): the legacy controller does not act on them either")
+	plan.Scopes = []MigrationScope{ms}
+	if ms.Status == MigrationConflict || ms.Status == MigrationSkip {
+		plan.NotCovered = append(plan.NotCovered, fmt.Sprintf("%s: %s (%s)", scopeLabel(ms), ms.Status, ms.Reason))
+	}
 	return plan, nil
 }
 
 func scopeLabel(s MigrationScope) string {
+	if s.User == "" && s.Bucket == "" {
+		return "storage"
+	}
 	if s.Bucket == "" {
 		return s.User
 	}

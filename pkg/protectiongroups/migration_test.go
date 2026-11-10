@@ -103,102 +103,61 @@ func scopeOf(t *testing.T, p MigrationPlan, user, bucket string) MigrationScope 
 	return MigrationScope{}
 }
 
-func TestMigrationPlanUserAndBucketScopes(t *testing.T) {
+func TestMigrationPlanStorageScope(t *testing.T) {
 	e := newMigEnv(t, failover.Policy{Source: "a", Enabled: true, Targets: []string{"b", "c"}, After: 5e9, MaxEventLag: ptr(7)})
-	e.src.addBucket("u2", "a", "b", "bk1")
-	e.src.addBucket("u2", "a", "c", "bk1")
-	e.src.addBucket("u2", "a", "b", "bk2") // no replication to c: member skipped
-	e.src.addBucket("u3", "a", "x", "bk3") // replication to a non-target only: skipped scope
-	e.src.addUser("u4", "z", "b")          // other source: not part of the policy
-	e.src.userRoutes["u5"] = "b"           // routed away: the legacy controller ignores it
-	e.src.addUser("u5", "a", "b")
 
 	p, err := e.m.Plan(t.Context(), "a", MigrationOptions{})
 	require.NoError(t, err)
-	require.Len(t, p.Scopes, 3, "exactly the scopes the legacy controller acts on")
+	require.Len(t, p.Scopes, 1, "exactly one storage-level group per failover policy")
 
-	s := scopeOf(t, p, "u2", "bk1")
+	s := p.Scopes[0]
 	require.Equal(t, MigrationOK, s.Status)
-	require.Equal(t, []string{"bk1"}, s.Group.Buckets)
+	require.Empty(t, s.Group.Buckets)
+	require.Empty(t, s.Group.User)
 	require.Equal(t, []string{"a", "b", "c"}, s.Group.Members)
 	require.Equal(t, 3, s.Group.Copies)
 	require.Equal(t, "auto", s.Group.Mode)
 	require.Equal(t, 7, s.Group.MaxEventLag)
 	require.EqualValues(t, 5e9, s.Group.After)
 	require.Equal(t, electorate3, s.Group.Electorate)
-	require.Equal(t, "legacy-a-u2-bk1", s.Group.ID)
+	require.Equal(t, "storage-a", s.Group.ID)
+	require.True(t, p.Complete())
+}
 
-	s = scopeOf(t, p, "u2", "bk2")
-	require.Equal(t, MigrationOK, s.Status)
-	require.Equal(t, []string{"a", "b"}, s.Group.Members)
-	require.Equal(t, 2, s.Group.Copies)
-	require.Equal(t, []string{"c"}, s.SkippedTargets)
-	require.Contains(t, s.Reason, "no replication to c")
-
-	s = scopeOf(t, p, "u3", "bk3")
+func TestMigrationPlanNoTargets(t *testing.T) {
+	e := newMigEnv(t, failover.Policy{Source: "a", Enabled: false, Targets: nil})
+	p, err := e.m.Plan(t.Context(), "a", MigrationOptions{})
+	require.NoError(t, err)
+	require.Len(t, p.Scopes, 1)
+	s := p.Scopes[0]
 	require.Equal(t, MigrationSkip, s.Status)
 	require.False(t, p.Complete())
 	require.NotEmpty(t, p.NotCovered)
 }
 
-func TestMigrationPlanWholeUserScope(t *testing.T) {
-	e := newMigEnv(t, policyAB())
-	e.src.addUser("u1", "a", "b")
-	e.src.addUser("u1", "a", "c")
-	p, err := e.m.Plan(t.Context(), "a", MigrationOptions{})
-	require.NoError(t, err)
-	require.Len(t, p.Scopes, 1)
-	s := scopeOf(t, p, "u1", "")
-	require.Equal(t, MigrationOK, s.Status)
-	require.Equal(t, []string{"a", "b", "c"}, s.Group.Members)
-	require.Empty(t, s.Group.Buckets)
-	require.Equal(t, "legacy-a-u1", s.Group.ID)
-
-	// groups of different users must not share a member when one of them covers the whole user
-	e.src.addUser("u4", "a", "b")
-	p, err = e.m.Plan(t.Context(), "a", MigrationOptions{})
-	require.NoError(t, err)
-	require.Equal(t, MigrationOK, scopeOf(t, p, "u1", "").Status)
-	require.Equal(t, MigrationConflict, scopeOf(t, p, "u4", "").Status)
-}
-
 func TestMigrationPlanConflicts(t *testing.T) {
 	e := newMigEnv(t, policyAB())
-	e.src.addBucket("u1", "a", "b", "bk1")
-	e.src.addBucket("u2", "a", "b", "bk")
-	e.src.addBucket("u3", "a", "b", "bk")  // same bucket name on a shared member as u2
-	e.src.addBucket("u5", "a", "b", "bk5") // credentials failure
 	e.m.Service.ValidateCredentials = func(_ context.Context, g Group) error {
-		if g.User == "u5" {
-			return errors.New("no credentials for u5 on b")
-		}
-		return nil
+		return errors.New("storage b must have a connection account")
 	}
-	// an existing group over u1's bucket with other members
-	_, err := e.svc.Create(t.Context(), Group{ID: "mine", User: "u1", Buckets: []string{"bk1"}, Members: []string{"a", "c"}, Copies: 2}, false)
-	require.NoError(t, err)
 
 	p, err := e.m.Plan(t.Context(), "a", MigrationOptions{})
 	require.NoError(t, err)
-	s := scopeOf(t, p, "u1", "bk1")
+	s := p.Scopes[0]
 	require.Equal(t, MigrationConflict, s.Status)
-	require.Contains(t, s.Reason, "overlaps existing protection group mine")
-	s = scopeOf(t, p, "u5", "bk5")
-	require.Equal(t, MigrationConflict, s.Status)
-	require.Contains(t, s.Reason, "no credentials")
-	// u2 is proposed first, u3 (same bucket name, shared member) conflicts with that proposal
-	require.Equal(t, MigrationOK, scopeOf(t, p, "u2", "bk").Status)
-	s = scopeOf(t, p, "u3", "bk")
-	require.Equal(t, MigrationConflict, s.Status)
-	require.Contains(t, s.Reason, "another scope")
+	require.Contains(t, s.Reason, "storage b must have a connection account")
 	require.False(t, p.Complete())
-	require.Contains(t, joined(p.NotCovered), "u1/bk1: conflict")
 
-	// the backend (routing, unmanaged or paused replications) has the last word
-	e.backend.validateErr = dom.ErrFailedPrecondition
+	// overlapping group
+	e.m.Service.ValidateCredentials = nil
+	_, err = e.svc.Create(t.Context(), Group{ID: "mine", User: "u1", Buckets: []string{"bk1"}, Members: []string{"a", "c"}, Copies: 2}, false)
+	require.NoError(t, err)
+
 	p, err = e.m.Plan(t.Context(), "a", MigrationOptions{})
 	require.NoError(t, err)
-	require.Equal(t, MigrationConflict, scopeOf(t, p, "u2", "bk").Status)
+	s = p.Scopes[0]
+	require.Equal(t, MigrationConflict, s.Status)
+	require.Contains(t, s.Reason, "overlaps existing protection group mine")
 }
 
 func joined(s []string) string {
@@ -211,19 +170,18 @@ func joined(s []string) string {
 
 func TestMigrationPlanAutoNeedsVoters(t *testing.T) {
 	e := newMigEnv(t, policyAB())
-	e.src.addUser("u1", "a", "b")
 	e.m.Electorate = func(context.Context) []string { return []string{"p1"} }
 	p, err := e.m.Plan(t.Context(), "a", MigrationOptions{})
 	require.NoError(t, err)
-	s := scopeOf(t, p, "u1", "")
+	s := p.Scopes[0]
 	require.Equal(t, MigrationConflict, s.Status)
 	require.Contains(t, s.Reason, "three explicit proxy voters")
 	p, err = e.m.Plan(t.Context(), "a", MigrationOptions{Mode: "manual"})
 	require.NoError(t, err)
-	require.Equal(t, MigrationOK, scopeOf(t, p, "u1", "").Status)
+	require.Equal(t, MigrationOK, p.Scopes[0].Status)
 	p, err = e.m.Plan(t.Context(), "a", MigrationOptions{Electorate: electorate3})
 	require.NoError(t, err)
-	require.Equal(t, MigrationOK, scopeOf(t, p, "u1", "").Status)
+	require.Equal(t, MigrationOK, p.Scopes[0].Status)
 }
 
 func TestMigrationPlanUnknownPolicy(t *testing.T) {
@@ -234,20 +192,16 @@ func TestMigrationPlanUnknownPolicy(t *testing.T) {
 	require.ErrorIs(t, err, dom.ErrInvalidArg)
 }
 
-// Applying adopts the existing replications (nothing is seeded, so no initial migration is enqueued), disables
-// the legacy policy once everything is migrated and is idempotent.
+// Applying creates the storage-level group, disables the legacy policy and is idempotent.
 func TestMigrationApplyAdoptsWithoutCopyAndIsIdempotent(t *testing.T) {
 	e := newMigEnv(t, policyAB())
 	ctx := t.Context()
-	e.src.addBucket("u1", "a", "b", "bk1")
-	e.src.addBucket("u1", "a", "c", "bk1")
-	e.src.addBucket("u2", "a", "b", "bk2")
 	// the policy is enabled: the legacy check must not stop the migration
 	e.svc.ValidateLegacyFailover = LegacyFailoverValidator(e.policy.ListFailoverPolicies)
 
 	res, err := e.m.Apply(ctx, "a", false, MigrationOptions{})
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"legacy-a-u1-bk1", "legacy-a-u2-bk2"}, res.Created)
+	require.Equal(t, []string{"storage-a"}, res.Created)
 	require.Empty(t, res.Uncovered)
 	require.True(t, res.PolicyDisabled)
 	pol, err := e.policy.GetFailoverPolicy(ctx, "a")
@@ -255,29 +209,20 @@ func TestMigrationApplyAdoptsWithoutCopyAndIsIdempotent(t *testing.T) {
 	require.False(t, pol.Enabled)
 	require.Equal(t, []string{"b", "c"}, pol.Targets, "the policy is disabled, not deleted")
 
-	g, err := e.svc.Store.Get(ctx, "legacy-a-u1-bk1")
+	g, err := e.svc.Store.Get(ctx, "storage-a")
 	require.NoError(t, err)
 	require.Equal(t, "a", g.Primary)
-	require.Len(t, g.Seeded, 2, "existing replications are recorded as seeded")
-	for id, gen := range g.Seeded {
-		require.NotZero(t, gen, id)
-	}
-	for i := 0; i < 3; i++ {
-		require.NoError(t, e.svc.Reconcile(ctx, "legacy-a-u1-bk1"))
-		require.NoError(t, e.svc.Reconcile(ctx, "legacy-a-u2-bk2"))
-	}
-	require.Zero(t, e.backend.seeds, "adopted replications must not be re-seeded (no data copy)")
+	require.True(t, g.IsStorageScope())
 
 	// re-run: nothing created, still migrated
 	res, err = e.m.Apply(ctx, "a", false, MigrationOptions{})
 	require.NoError(t, err)
 	require.Empty(t, res.Created)
-	require.ElementsMatch(t, []string{"legacy-a-u1-bk1", "legacy-a-u2-bk2"}, res.Migrated)
+	require.Equal(t, []string{"storage-a"}, res.Migrated)
 	require.True(t, res.PolicyDisabled)
 	groups, err := e.svc.Store.List(ctx)
 	require.NoError(t, err)
-	require.Len(t, groups, 2)
-	require.Zero(t, e.backend.seeds)
+	require.Len(t, groups, 1)
 }
 
 // A partial failure keeps the legacy policy enabled; a re-run creates only the missing groups; force disables it
@@ -285,49 +230,40 @@ func TestMigrationApplyAdoptsWithoutCopyAndIsIdempotent(t *testing.T) {
 func TestMigrationApplyPartialAndForce(t *testing.T) {
 	e := newMigEnv(t, policyAB())
 	ctx := t.Context()
-	e.src.addBucket("u1", "a", "b", "ok")
-	e.src.addBucket("u2", "a", "b", "bad")
 	broken := true
 	e.m.Service.ValidateCredentials = func(_ context.Context, g Group) error {
-		if broken && g.User == "u2" {
-			return errors.New("no credentials for u2")
+		if broken {
+			return errors.New("no credentials for connection account")
 		}
 		return nil
 	}
 	res, err := e.m.Apply(ctx, "a", false, MigrationOptions{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"legacy-a-u1-ok"}, res.Created)
+	require.Empty(t, res.Created)
 	require.Len(t, res.Uncovered, 1)
-	require.Equal(t, "u2", res.Uncovered[0].User)
 	require.False(t, res.PolicyDisabled)
 	pol, _ := e.policy.GetFailoverPolicy(ctx, "a")
 	require.True(t, pol.Enabled, "legacy policy stays on while a scope is not migrated")
 
-	// fix the cause: the re-run creates only the missing group
+	// fix the cause: the re-run creates the group
 	broken = false
 	res, err = e.m.Apply(ctx, "a", false, MigrationOptions{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"legacy-a-u2-bad"}, res.Created)
-	require.Equal(t, []string{"legacy-a-u1-ok"}, res.Migrated)
+	require.Equal(t, []string{"storage-a"}, res.Created)
 	require.True(t, res.PolicyDisabled)
 
-	// force with a remaining conflict
-	e2 := newMigEnv(t, policyAB())
-	e2.src.addBucket("u1", "a", "b", "ok")
-	e2.src.addBucket("u2", "a", "x", "orphan") // replication to a non-target: skipped scope
+	// force with a remaining skip (no targets)
+	e2 := newMigEnv(t, failover.Policy{Source: "a", Enabled: false, Targets: nil})
 	res, err = e2.m.Apply(ctx, "a", true, MigrationOptions{})
 	require.NoError(t, err)
 	require.Len(t, res.Uncovered, 1)
 	require.Equal(t, MigrationSkip, res.Uncovered[0].Status)
 	require.True(t, res.PolicyDisabled)
-	pol, _ = e2.policy.GetFailoverPolicy(ctx, "a")
-	require.False(t, pol.Enabled)
 }
 
 func TestMigrationApplyConflictingGroupKeepsPolicy(t *testing.T) {
 	e := newMigEnv(t, policyAB())
 	ctx := t.Context()
-	e.src.addUser("u1", "a", "b")
 	_, err := e.svc.Create(ctx, Group{ID: "other", User: "u1", Members: []string{"b", "c"}, Copies: 2}, false)
 	require.NoError(t, err)
 	res, err := e.m.Apply(ctx, "a", false, MigrationOptions{})

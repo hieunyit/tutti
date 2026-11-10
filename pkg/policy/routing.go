@@ -25,6 +25,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/store"
 )
 
@@ -405,6 +406,9 @@ func (r *policySvc) routeToOldInTx(ctx context.Context, tx store.Executor[redis.
 }
 
 func (r *policySvc) getRoutingForReplicationRepo(ctx context.Context, routingRepo controlplane.Routing, repliction entity.UniversalReplicationID) (string, error) {
+	if repliction.User() == protectiongroups.ServiceUser {
+		return repliction.FromStorage(), nil
+	}
 	if bucketPolicy, ok := repliction.AsBucketID(); ok {
 		routeTo, err := routingRepo.Get(ctx, bucketPolicy.User, bucketPolicy.FromBucket)
 		switch {
@@ -424,6 +428,9 @@ func (r *policySvc) getRoutingForReplicationRepo(ctx context.Context, routingRep
 }
 
 func (r *policySvc) getRoutingForReplication(ctx context.Context, repliction entity.UniversalReplicationID) (string, error) {
+	if repliction.User() == protectiongroups.ServiceUser {
+		return repliction.FromStorage(), nil
+	}
 	if r.cp != nil {
 		routeTo, err := r.getRoutingForReplicationRepo(ctx, r.cp.Repos().Routing, repliction)
 		if err == nil || !controlplane.IsUnavailable(err) {

@@ -174,7 +174,7 @@ func TestProtectionGroup_LegacyFailoverSkipsProtectedScopeWithoutSnapshot(t *tes
 
 	e.fwd[mainKey].setMode(modeBlackhole)
 	waitBreakerOpen(t, e, plain, "obj")
-	require.Eventually(t, func() bool { return e.routeOf(t, plain) == f1Key }, e.WaitLong, 200*time.Millisecond,
+	require.Eventually(t, func() bool { return e.routeOf(t, plain) == f1Key }, 30*time.Second, 200*time.Millisecond,
 		"the unprotected scope fails over")
 	require.Never(t, func() bool { return e.routeOf(t, protected) != mainKey }, 4*time.Second, 250*time.Millisecond,
 		"the group-owned scope must never be failed over by the legacy controller")
