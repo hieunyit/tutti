@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
@@ -370,6 +371,55 @@ func LookupScope(index map[string]string, user, bucket string) (group string, ok
 		return id, true
 	}
 	return index["b:"+user+"/"+bucket], true
+}
+
+// LookupSharedScope resolves a (user, bucket) against a cached copy of the scope index, falling back
+// to any group covering the bucket or whole storage when the storage uses a shared connection account.
+// ok is false when the copy is not a complete index (marker missing).
+func LookupSharedScope(index map[string]string, user, bucket string) (group, owner string, ok bool) {
+	if index[indexVersionField] == "" {
+		return "", "", false
+	}
+	if id := index["u:"+user]; id != "" {
+		return id, user, true
+	}
+	if bucket != "" {
+		if id := index["b:"+user+"/"+bucket]; id != "" {
+			return id, user, true
+		}
+	}
+	if bucket != "" {
+		suffix := "/" + bucket
+		var matchedOwner, matchedGroup string
+		for k, id := range index {
+			if id == "" || !strings.HasPrefix(k, "b:") || !strings.HasSuffix(k, suffix) {
+				continue
+			}
+			u := strings.TrimSuffix(strings.TrimPrefix(k, "b:"), suffix)
+			if u != "" && (matchedOwner == "" || u < matchedOwner) {
+				matchedOwner = u
+				matchedGroup = id
+			}
+		}
+		if matchedOwner != "" {
+			return matchedGroup, matchedOwner, true
+		}
+	}
+	var matchedOwner, matchedGroup string
+	for k, id := range index {
+		if id == "" || !strings.HasPrefix(k, "u:") {
+			continue
+		}
+		u := strings.TrimPrefix(k, "u:")
+		if u != "" && (matchedOwner == "" || u < matchedOwner) {
+			matchedOwner = u
+			matchedGroup = id
+		}
+	}
+	if matchedOwner != "" {
+		return matchedGroup, matchedOwner, true
+	}
+	return "", "", true
 }
 
 // EnsureIndex rebuilds the scope index when it is missing (groups written by an older version or after Redis loss).

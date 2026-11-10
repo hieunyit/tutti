@@ -2,12 +2,13 @@
 <script setup lang="ts">
   import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { NButton } from 'naive-ui';
+  import { NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
   import SectionCard from '@/components/ui/SectionCard.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
   import Callout from '@/components/ui/Callout.vue';
   import EmptyState from '@/components/ui/EmptyState.vue';
+  import TabBar, { type TabItem } from '@/components/tutti/common/TabBar.vue';
   import messages from '@/components/tutti/users/i18nManagement';
   import { TuttiService } from '@/services/TuttiService';
   import { ProxiesHelper } from '@/utils/helpers/ProxiesHelper';
@@ -133,12 +134,35 @@
     }
   }
 
+  const scopeTabs = computed<TabItem[]>(() => [
+    { label: t('clusterDefaults'), value: '__defaults__' },
+    ...groupNames.value.map((grp) => ({ label: grp, value: grp })),
+  ]);
+
+  const boolOptions = computed(() => [
+    { label: t('inherit'), value: '' },
+    { label: t('on'), value: 'true' },
+    { label: t('off'), value: 'false' },
+  ]);
+
+  const quorumFailureOptions = computed(() => [
+    { label: t('inherit'), value: '' },
+    { label: 'fail', value: 'fail' },
+    { label: 'accept', value: 'accept' },
+  ]);
+
+  const eventErrorOptions = computed(() => [
+    { label: t('inherit'), value: '' },
+    { label: 'fail', value: 'fail' },
+    { label: 'log', value: 'log' },
+  ]);
+
   function setBoolField(
     target: Record<string, unknown>,
     key: string,
-    val: string,
+    val: string | null,
   ) {
-    if (val === '') {
+    if (!val) {
       delete target[key];
     } else {
       target[key] = val === 'true';
@@ -148,9 +172,9 @@
   function setStrField(
     target: Record<string, unknown>,
     key: string,
-    val: string,
+    val: string | null,
   ) {
-    const trimmed = val.trim();
+    const trimmed = (val ?? '').trim();
 
     if (!trimmed) {
       delete target[key];
@@ -159,21 +183,15 @@
     }
   }
 
-  function setNumField(
+  function setNumVal(
     target: Record<string, unknown>,
     key: string,
-    val: string,
+    val: number | null,
   ) {
-    const trimmed = val.trim();
-
-    if (!trimmed) {
+    if (val === null || val === undefined || !Number.isFinite(val)) {
       delete target[key];
     } else {
-      const parsed = Number(trimmed);
-
-      if (Number.isFinite(parsed)) {
-        target[key] = parsed;
-      }
+      target[key] = val;
     }
   }
 
@@ -438,256 +456,252 @@
       :title="t('fleetConfig')"
       :subtitle="`${t('version')}: v${fleetConfig?.version ?? configVersion ?? 0} · ${t('fleetConfigHint')}`"
     >
-      <div class="phase-d__toolbar">
-        <NButton
-          :type="editingScope === '__defaults__' ? 'primary' : 'default'"
-          size="small"
-          @click="editingScope = '__defaults__'"
-          >{{ t('clusterDefaults') }}</NButton
-        >
-        <NButton
-          v-for="grp in groupNames"
-          :key="grp"
-          :type="editingScope === grp ? 'primary' : 'default'"
-          size="small"
-          @click="editingScope = grp"
-          >{{ grp }}</NButton
-        >
-        <input
-          v-model="newGroupName"
-          class="phase-d__input"
-          :placeholder="t('groupName')"
-          @keyup.enter="addGroupOverride"
+      <div class="phase-d__tab-row">
+        <TabBar
+          v-model="editingScope"
+          :tabs="scopeTabs"
+          :label="t('fleetConfig')"
         />
-        <NButton
-          size="small"
-          @click="addGroupOverride"
-          >{{ t('addGroup') }}</NButton
-        >
-        <NButton
-          v-if="editingScope !== '__defaults__'"
-          size="small"
-          @click="removeGroupOverride(editingScope)"
-          >{{ t('remove') }} ({{ editingScope }})</NButton
-        >
+        <div class="phase-d__group-actions">
+          <NInput
+            v-model:value="newGroupName"
+            size="small"
+            :placeholder="t('groupName')"
+            style="width: 180px"
+            @keyup.enter="addGroupOverride"
+          />
+          <NButton
+            size="small"
+            secondary
+            @click="addGroupOverride"
+            >{{ t('addGroup') }}</NButton
+          >
+          <NButton
+            v-if="editingScope !== '__defaults__'"
+            size="small"
+            type="error"
+            secondary
+            @click="removeGroupOverride(editingScope)"
+            >{{ t('remove') }} ({{ editingScope }})</NButton
+          >
+        </div>
       </div>
 
       <div class="phase-d__grid">
-        <label class="phase-d__field">
-          <span>{{ t('sync') }}</span>
-          <select
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('sync') }}</span>
+          <NSelect
             :value="
               activeDraft.replication?.sync?.enabled === undefined
                 ? ''
                 : String(activeDraft.replication.sync.enabled)
             "
-            @change="
-              setBoolField(
-                ensureSync(activeDraft) as Record<string, unknown>,
-                'enabled',
-                ($event.target as HTMLSelectElement).value,
-              )
-            "
-          >
-            <option value="">{{ t('inherit') }}</option>
-            <option value="true">{{ t('on') }}</option>
-            <option value="false">{{ t('off') }}</option>
-          </select>
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('writeQuorum') }}</span>
-          <input
-            type="number"
-            min="0"
-            :placeholder="t('inherit')"
-            :value="activeDraft.replication?.sync?.writeQuorum ?? ''"
-            @input="
-              setNumField(
-                ensureSync(activeDraft) as Record<string, unknown>,
-                'writeQuorum',
-                ($event.target as HTMLInputElement).value,
-              )
+            :options="boolOptions"
+            @update:value="
+              (val) =>
+                setBoolField(
+                  ensureSync(activeDraft) as Record<string, unknown>,
+                  'enabled',
+                  val,
+                )
             "
           />
-        </label>
+        </div>
 
-        <label class="phase-d__field">
-          <span>{{ t('syncTimeout') }}</span>
-          <input
-            type="text"
-            placeholder="30s"
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('writeQuorum') }}</span>
+          <NInputNumber
+            :value="activeDraft.replication?.sync?.writeQuorum ?? null"
+            :min="0"
+            :placeholder="t('inherit')"
+            clearable
+            style="width: 100%"
+            @update:value="
+              (val) =>
+                setNumVal(
+                  ensureSync(activeDraft) as Record<string, unknown>,
+                  'writeQuorum',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('syncTimeout') }}</span>
+          <NInput
             :value="activeDraft.replication?.sync?.timeout ?? ''"
-            @input="
-              setStrField(
-                ensureSync(activeDraft) as Record<string, unknown>,
-                'timeout',
-                ($event.target as HTMLInputElement).value,
-              )
-            "
-          />
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('onQuorumFailure') }}</span>
-          <select
-            :value="activeDraft.replication?.sync?.onQuorumFailure ?? ''"
-            @change="
-              setStrField(
-                ensureSync(activeDraft) as Record<string, unknown>,
-                'onQuorumFailure',
-                ($event.target as HTMLSelectElement).value,
-              )
-            "
-          >
-            <option value="">{{ t('inherit') }}</option>
-            <option value="fail">fail</option>
-            <option value="accept">accept</option>
-          </select>
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('onEventError') }}</span>
-          <select
-            :value="activeDraft.replication?.onEventError ?? ''"
-            @change="
-              setStrField(
-                ensureReplication(activeDraft) as Record<string, unknown>,
-                'onEventError',
-                ($event.target as HTMLSelectElement).value,
-              )
-            "
-          >
-            <option value="">{{ t('inherit') }}</option>
-            <option value="fail">fail</option>
-            <option value="log">log</option>
-          </select>
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('failureThreshold') }}</span>
-          <input
-            type="number"
-            min="1"
-            :placeholder="t('inherit')"
-            :value="activeDraft.health?.failureThreshold ?? ''"
-            @input="
-              setNumField(
-                ensureHealth(activeDraft) as Record<string, unknown>,
-                'failureThreshold',
-                ($event.target as HTMLInputElement).value,
-              )
-            "
-          />
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('openDuration') }}</span>
-          <input
-            type="text"
             placeholder="30s"
-            :value="activeDraft.health?.openDuration ?? ''"
-            @input="
-              setStrField(
-                ensureHealth(activeDraft) as Record<string, unknown>,
-                'openDuration',
-                ($event.target as HTMLInputElement).value,
-              )
+            clearable
+            @update:value="
+              (val) =>
+                setStrField(
+                  ensureSync(activeDraft) as Record<string, unknown>,
+                  'timeout',
+                  val,
+                )
             "
           />
-        </label>
+        </div>
 
-        <label class="phase-d__field">
-          <span>{{ t('failover') }}</span>
-          <select
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('onQuorumFailure') }}</span>
+          <NSelect
+            :value="activeDraft.replication?.sync?.onQuorumFailure ?? ''"
+            :options="quorumFailureOptions"
+            @update:value="
+              (val) =>
+                setStrField(
+                  ensureSync(activeDraft) as Record<string, unknown>,
+                  'onQuorumFailure',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('onEventError') }}</span>
+          <NSelect
+            :value="activeDraft.replication?.onEventError ?? ''"
+            :options="eventErrorOptions"
+            @update:value="
+              (val) =>
+                setStrField(
+                  ensureReplication(activeDraft) as Record<string, unknown>,
+                  'onEventError',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('failureThreshold') }}</span>
+          <NInputNumber
+            :value="activeDraft.health?.failureThreshold ?? null"
+            :min="1"
+            :placeholder="t('inherit')"
+            clearable
+            style="width: 100%"
+            @update:value="
+              (val) =>
+                setNumVal(
+                  ensureHealth(activeDraft) as Record<string, unknown>,
+                  'failureThreshold',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('openDuration') }}</span>
+          <NInput
+            :value="activeDraft.health?.openDuration ?? ''"
+            placeholder="30s"
+            clearable
+            @update:value="
+              (val) =>
+                setStrField(
+                  ensureHealth(activeDraft) as Record<string, unknown>,
+                  'openDuration',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('failover') }}</span>
+          <NSelect
             :value="
               activeDraft.failover?.enabled === undefined
                 ? ''
                 : String(activeDraft.failover.enabled)
             "
-            @change="
-              setBoolField(
-                ensureFailover(activeDraft) as Record<string, unknown>,
-                'enabled',
-                ($event.target as HTMLSelectElement).value,
-              )
-            "
-          >
-            <option value="">{{ t('inherit') }}</option>
-            <option value="true">{{ t('on') }}</option>
-            <option value="false">{{ t('off') }}</option>
-          </select>
-        </label>
-
-        <label class="phase-d__field">
-          <span>{{ t('failoverAfter') }}</span>
-          <input
-            type="text"
-            placeholder="60s"
-            :value="activeDraft.failover?.after ?? ''"
-            @input="
-              setStrField(
-                ensureFailover(activeDraft) as Record<string, unknown>,
-                'after',
-                ($event.target as HTMLInputElement).value,
-              )
+            :options="boolOptions"
+            @update:value="
+              (val) =>
+                setBoolField(
+                  ensureFailover(activeDraft) as Record<string, unknown>,
+                  'enabled',
+                  val,
+                )
             "
           />
-        </label>
+        </div>
 
-        <label class="phase-d__field">
-          <span>{{ t('requireSignedContentType') }}</span>
-          <select
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('failoverAfter') }}</span>
+          <NInput
+            :value="activeDraft.failover?.after ?? ''"
+            placeholder="60s"
+            clearable
+            @update:value="
+              (val) =>
+                setStrField(
+                  ensureFailover(activeDraft) as Record<string, unknown>,
+                  'after',
+                  val,
+                )
+            "
+          />
+        </div>
+
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('requireSignedContentType') }}</span>
+          <NSelect
             :value="
               activeDraft.requireSignedContentType === undefined
                 ? ''
                 : String(activeDraft.requireSignedContentType)
             "
-            @change="
-              setBoolField(
-                activeDraft as Record<string, unknown>,
-                'requireSignedContentType',
-                ($event.target as HTMLSelectElement).value,
-              )
+            :options="boolOptions"
+            @update:value="
+              (val) =>
+                setBoolField(
+                  activeDraft as Record<string, unknown>,
+                  'requireSignedContentType',
+                  val,
+                )
             "
-          >
-            <option value="">{{ t('inherit') }}</option>
-            <option value="true">{{ t('on') }}</option>
-            <option value="false">{{ t('off') }}</option>
-          </select>
-        </label>
+          />
+        </div>
 
-        <label class="phase-d__field">
-          <span>{{ t('readHeaderTimeout') }}</span>
-          <input
-            type="text"
-            placeholder="10s"
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('readHeaderTimeout') }}</span>
+          <NInput
             :value="activeDraft.readHeaderTimeout ?? ''"
-            @input="
-              setStrField(
-                activeDraft as Record<string, unknown>,
-                'readHeaderTimeout',
-                ($event.target as HTMLInputElement).value,
-              )
+            placeholder="10s"
+            clearable
+            @update:value="
+              (val) =>
+                setStrField(
+                  activeDraft as Record<string, unknown>,
+                  'readHeaderTimeout',
+                  val,
+                )
             "
           />
-        </label>
+        </div>
 
-        <label class="phase-d__field">
-          <span>{{ t('writerLease') }}</span>
-          <input
-            type="text"
-            placeholder="30s"
+        <div class="phase-d__field">
+          <span class="phase-d__label">{{ t('writerLease') }}</span>
+          <NInput
             :value="activeDraft.writerLease ?? ''"
-            @input="
-              setStrField(
-                activeDraft as Record<string, unknown>,
-                'writerLease',
-                ($event.target as HTMLInputElement).value,
-              )
+            placeholder="30s"
+            clearable
+            @update:value="
+              (val) =>
+                setStrField(
+                  activeDraft as Record<string, unknown>,
+                  'writerLease',
+                  val,
+                )
             "
           />
-        </label>
+        </div>
       </div>
 
       <div class="phase-d__actions">

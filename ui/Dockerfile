@@ -8,17 +8,17 @@ FROM scratch AS proto
 
 # Build stage
 FROM --platform=$BUILDPLATFORM node:20 as build-stage
-# The UI imports ../docs and ../proto relative to the repository root, so place them at
-# /docs and /proto next to /app.
-COPY --from=docs / /docs/
-COPY --from=proto / /proto/
 WORKDIR /app
 
 # Install dependencies
 COPY package.json yarn.lock ./
 ENV NODE_ENV=development
-RUN yarn install --pure-lockfile
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn yarn install --frozen-lockfile
 COPY . .
+# The UI imports ../docs and ../proto relative to the repository root, so place them at
+# /docs and /proto next to /app.
+COPY --from=docs / /docs/
+COPY --from=proto / /proto/
 # Build
 ENV NODE_ENV=production
 RUN yarn build

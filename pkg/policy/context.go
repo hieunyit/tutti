@@ -22,6 +22,7 @@ import (
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/validate"
 )
@@ -75,11 +76,12 @@ func (r *policySvc) proxyContext(ctx context.Context, user, bucket string) (cont
 // so it can be shared between requests by the snapshot.
 type proxyData struct {
 	// routeErr is dom.ErrRoutingBlock when routing is blocked; no other error is ever stored.
-	routeErr     error
-	routeTo      string
-	activeSwitch *entity.ReplicationSwitchInfo
-	replications []entity.UniversalReplicationID
-	generations  map[entity.UniversalReplicationID]int64
+	routeErr       error
+	routeTo        string
+	activeSwitch   *entity.ReplicationSwitchInfo
+	replications   []entity.UniversalReplicationID
+	generations    map[entity.UniversalReplicationID]int64
+	protectionUser string
 }
 
 func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
@@ -87,6 +89,9 @@ func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
 		return ctx, d.routeErr
 	}
 	ctx = xctx.SetRoutingPolicy(ctx, d.routeTo)
+	if d.protectionUser != "" {
+		ctx = xctx.SetProtectionUser(ctx, d.protectionUser)
+	}
 	if d.activeSwitch != nil {
 		sw := *d.activeSwitch
 		ctx = xctx.SetInProgressZeroDowntime(ctx, sw)
@@ -116,6 +121,43 @@ func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
 //
 // bucket == "" means a request without bucket (e.g. ListBuckets): only the user level data is read.
 func (r *policySvc) loadProxyData(ctx context.Context, user, bucket string) (*proxyData, error) {
+	data, hasOwn, err := r.loadProxyDataForUser(ctx, user, bucket)
+	if err != nil || hasOwn || r.sharedAccount == nil || !r.sharedAccount(data.routeTo, user) {
+		return data, err
+	}
+	owner := r.sharedProtectionOwner(ctx, user, bucket)
+	if owner == "" || owner == user {
+		return data, nil
+	}
+	sharedData, _, err := r.loadProxyDataForUser(ctx, owner, bucket)
+	if err != nil {
+		return nil, err
+	}
+	sharedData.protectionUser = owner
+	return sharedData, nil
+}
+
+func (r *policySvc) sharedProtectionOwner(ctx context.Context, user, bucket string) string {
+	var (
+		idx map[string]string
+		err error
+	)
+	if r.snap != nil {
+		idx, err = r.snap.protectionScope(ctx)
+	} else {
+		idx, err = r.client.HGetAll(ctx, protectiongroups.ScopeIndexKey).Result()
+	}
+	if err != nil {
+		return ""
+	}
+	_, owner, ok := protectiongroups.LookupSharedScope(idx, user, bucket)
+	if !ok {
+		return ""
+	}
+	return owner
+}
+
+func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket string) (*proxyData, bool, error) {
 	tx := r.userRoutingStore.TxExecutor()
 	userRoutingResult := r.userRoutingStore.WithExecutor(tx).GetOp(ctx, user)
 	userActiveSwitchResult := r.userReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, user)
@@ -142,31 +184,35 @@ func (r *policySvc) loadProxyData(ctx context.Context, user, bucket string) (*pr
 	// get active routing policy
 	routeTo, err := determineActiveRouting(r.mainStorage, userRoutingResult, bucketRoutingResult)
 	if errors.Is(err, dom.ErrRoutingBlock) {
-		return &proxyData{routeErr: dom.ErrRoutingBlock}, nil
+		return &proxyData{routeErr: dom.ErrRoutingBlock}, true, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	data := &proxyData{routeTo: routeTo}
 
 	// check in_progress zero downtime switch if present
 	data.activeSwitch, err = r.getActiveZeroDowntimeSwitch(ctx, userActiveSwitchResult, bucketActiveSwitchResult, bucketReplID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// replication policies
 	replications, err := getReplications(bucketReplications, userReplications)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
 	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return data, nil
+
+	_, userRouteErr := userRoutingResult.Get()
+	_, bucketRouteErr := bucketRoutingResult.Get()
+	hasOwn := userRouteErr == nil || bucketRouteErr == nil || data.activeSwitch != nil || len(replications) > 0
+	return data, hasOwn, nil
 }
 
 // keepReplicationsFromRoute keeps only replications whose source is the storage the request is

@@ -315,7 +315,7 @@ func (s *Store) Middleware(l *Lease, cached ScopeCache) func(http.Handler) http.
 				return
 			}
 			ctx := r.Context()
-			user, bucket := xctx.GetUser(ctx), xctx.GetBucket(ctx)
+			user, bucket := xctx.GetProtectionUser(ctx), xctx.GetBucket(ctx)
 			if cached != nil {
 				if group, ok := cached(ctx, user, bucket); ok && group == "" {
 					next.ServeHTTP(w, r)

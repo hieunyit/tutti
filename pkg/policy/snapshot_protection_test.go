@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/protectiongroups"
 )
 
@@ -91,4 +92,70 @@ func TestSnapshot_ProtectionGroupEnforcedOnNextWrite(t *testing.T) {
 	before = e.mr.CommandCount()
 	require.Equal(t, http.StatusOK, put())
 	require.Equal(t, 1, e.mr.CommandCount()-before)
+}
+
+func TestSnapshot_ProtectionGroupSharedAccountUserInheritsGroup(t *testing.T) {
+	e := newSnapEnv(t)
+	ctx := t.Context()
+	e.svc.WithSharedAccount(func(storage, user string) bool {
+		return true // all users on storage share connection account
+	})
+	require.NoError(t, e.svc.SetUserRouting(ctx, "user1", "main"))
+	_, err := e.svc.AddUserReplicationPolicy(ctx, entity.UserReplicationPolicy{User: "user1", FromStorage: "main", ToStorage: "follower"}, entity.ReplicationOptions{})
+	require.NoError(t, err)
+
+	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+	t.Cleanup(func() { _ = other.Close() })
+	groups := protectiongroups.NewStore(other)
+	require.NoError(t, groups.EnsureIndex(ctx))
+	lease := groups.NewLease("p1", false, 0)
+
+	g := protectiongroups.Group{
+		ID:         "group-1",
+		User:       "user1",
+		Members:    []string{"main", "follower"},
+		Copies:     2,
+		Generation: 1,
+		State:      "ready",
+		Frozen:     false,
+	}
+	require.NoError(t, g.Validate())
+	require.NoError(t, groups.Save(ctx, &g))
+
+	// User "test" (no explicit routing or replications of its own)
+	// BuildProxyContext for "test" on bucket "mybucket"
+	reqCtx := xctx.SetBucket(xctx.SetUser(ctx, "test"), "mybucket")
+	pCtx, err := e.svc.BuildProxyContext(reqCtx, "test", "mybucket")
+	require.NoError(t, err)
+
+	require.Equal(t, "main", xctx.GetRoutingPolicy(pCtx))
+	require.Equal(t, "user1", xctx.GetProtectionUser(pCtx))
+	repls := xctx.GetReplications(pCtx)
+	require.Len(t, repls, 1)
+	require.Equal(t, "user1:main:follower", repls[0].AsString())
+
+	// Write fence with lease
+	reached := 0
+	fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reached++
+	}))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/mybucket/file.txt", nil).WithContext(pCtx)
+	fence.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, 1, reached)
+
+	// Now freeze group-1: write from "test" must be refused (503 Service Unavailable)
+	g.Frozen = true
+	g.State = "draining"
+	require.NoError(t, groups.Save(ctx, &g))
+
+	pCtx2, err := e.svc.BuildProxyContext(reqCtx, "test", "mybucket")
+	require.NoError(t, err)
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPut, "/mybucket/file.txt", nil).WithContext(pCtx2)
+	fence.ServeHTTP(rec2, req2)
+	require.Equal(t, http.StatusServiceUnavailable, rec2.Code)
+	require.Equal(t, 1, reached, "write should have been blocked while frozen")
 }

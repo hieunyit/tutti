@@ -28,6 +28,7 @@ import (
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/s3/chunked"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
@@ -95,6 +96,12 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	case errors.Is(err, dom.ErrNoCredentials):
 		logLevel = zerolog.WarnLevel
 		trafficstats.Default.NoCredentials()
+		var named interface{ StorageName() string }
+		storage := xctx.GetStorage(ctx)
+		if errors.As(err, &named) {
+			storage = named.StorageName()
+		}
+		metrics.CountNoCredentials(storage)
 		s3Err = mclient.ErrorResponse{
 			Code:       "ServiceUnavailable",
 			Message:    err.Error(),

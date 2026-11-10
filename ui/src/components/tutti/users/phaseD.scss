@@ -14,6 +14,27 @@
     flex-wrap: wrap;
   }
 
+  .phase-d__tab-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .phase-d__group-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .phase-d__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--tt-text-2);
+  }
+
   .phase-d__table {
     width: 100%;
     border-collapse: collapse;

@@ -62,6 +62,14 @@ func (r *policySvc) ControlPlane() controlplane.Store {
 	return r.cp
 }
 
+// WithSharedAccount configures a predicate reporting whether requests of user on storage share a
+// storage-level connection account. When set, a user without explicit routing/replication policies
+// inherits the active protection group covering the storage/bucket.
+func (r *policySvc) WithSharedAccount(fn func(storage, user string) bool) *policySvc {
+	r.sharedAccount = fn
+	return r
+}
+
 type policySvc struct {
 	queueSvc           tasks.QueueService
 	userRoutingStore   *store.UserRoutingStore
@@ -76,9 +84,10 @@ type policySvc struct {
 	userReplicationSwitchStore   *store.UserReplicationSwitchStore
 	bucketReplicationSwitchStore *store.BucketReplicationSwitchStore
 
-	mainStorage string
-	client      redis.UniversalClient
-	cp          controlplane.Store
+	mainStorage   string
+	client        redis.UniversalClient
+	cp            controlplane.Store
+	sharedAccount func(storage, user string) bool
 	// snap is the optional in-memory snapshot of proxy request data, see EnableSnapshot.
 	snap *snapshot
 }

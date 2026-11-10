@@ -188,6 +188,13 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
+		policySvc.WithSharedAccount(func(storage, user string) bool {
+			if credsSvc.CredentialMode(storage, user) == objstore.ModeConnection {
+				return true
+			}
+			_, ok := credsSvc.ConnectionAccount(storage)
+			return ok
+		})
 		healthReg = health.NewRegistry(health.Config{
 			FailureThreshold: initEff.Health.FailureThreshold,
 			OpenDuration:     initEff.Health.OpenDuration,

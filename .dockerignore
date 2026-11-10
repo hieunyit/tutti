@@ -1,6 +1,11 @@
 # Ignore git folder
 .git/
 
+# Go services do not consume frontend dependencies or generated browser bundles.
+ui/node_modules/
+ui/build/
+ui/build-sm/
+
 # Ignore doc files
 ./docu
 **/*.png

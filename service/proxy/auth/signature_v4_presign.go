@@ -95,7 +95,7 @@ func (m *middleware) doesPresignedSignatureV4Match(r *http.Request) (string, str
 		}
 	}
 
-	extractedSignedHeaders, err := s3.ExtractSignedHeadersOpts(psv.SignedHeaders, r, m.signedHdrs)
+	extractedSignedHeaders, err := s3.ExtractSignedHeadersOpts(psv.SignedHeaders, r, m.signedHeaderOpts())
 	if err != nil {
 		return "", unsignedPayload, err
 	}

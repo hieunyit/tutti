@@ -40,6 +40,7 @@ type routingPolicyKey struct{}
 type replicationsKey struct{}
 type replicationGenerationsKey struct{}
 type inProgressZeroDowntimeKey struct{}
+type protectionUserKey struct{}
 
 type Flow string
 
@@ -231,4 +232,18 @@ func SetInProgressZeroDowntime(ctx context.Context, r entity.ReplicationSwitchIn
 		panic("cannot set empty in progress zero downtime switch info to ctx")
 	}
 	return context.WithValue(ctx, inProgressZeroDowntimeKey{}, &r)
+}
+
+func SetProtectionUser(ctx context.Context, u string) context.Context {
+	if u == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, protectionUserKey{}, u)
+}
+
+func GetProtectionUser(ctx context.Context) string {
+	if u, _ := ctx.Value(protectionUserKey{}).(string); u != "" {
+		return u
+	}
+	return GetUser(ctx)
 }
