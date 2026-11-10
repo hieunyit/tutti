@@ -37,14 +37,22 @@ Runbook links (`runbook_url`) are relative to the repository (`docs/tutti/runboo
 
 Use the alert `for` values to avoid noise. `TuttiAutomaticFailover` fires for every routing failover; it is informational and needs an operator to decide on failback.
 
+## Enabled Phase 3 / Phase 4 / Phase 6 Alerts
+
+In addition to storage breaker, policy snapshot, proxy response status, and worker task failure alerts, `tutti-alerts.yml` enables:
+
+- `TuttiReplicationLagHigh`: `replication_event_lag > 1000` for 10m.
+- `TuttiProtectionGroupCopiesDegraded`: `protection_group_healthy_copies < protection_group_wanted_copies` for 5m.
+- `TuttiProtectionGroupQuarantinedMember`: `protection_group_quarantined_members > 0` for 1m.
+- `TuttiProtectionGroupFrozen`: `protection_group_frozen == 1` for 10m.
+- `TuttiProtectionGroupPromoted`: `increase(protection_group_promotions_total[5m]) > 0`.
+- `TuttiControlPlaneOutboxBacklog`: `controlplane_outbox_oldest_seconds > 30` for 2m, or `increase(controlplane_outbox_failures_total[5m]) > 0`.
+
 ## Not covered (no metric yet)
 
 The file has commented-out TODO rules for these. They need a metric (or log-based alert) before they can be enabled:
 
-- Replication lag above a threshold. Lag is only known as `EventMigration.Unprocessed` through the API and `chorctl repl`. Its `LAG` column is the age of the oldest queued task, not a count.
-- Protection group copies below the wanted count, and protection group primary changes. `pkg/protectiongroups` has no metrics.
 - Worker cannot reach Redis. The worker has no Redis error counter.
 - Missing credentials (`storage ... has no credentials for user ...`, answered with 503). Only a log line exists; use a log-based alert.
-- Queue depth of the asynq replication queues.
 
-Metrics in use: `storage_available`, `storage_breaker_transitions_total`, `failover_total`, `policy_snapshot_age_seconds`, `policy_snapshot_refresh_errors_total`, `policy_snapshot_stale_served_total`, `proxy_response_status`, `worker_failed_tasks_total`, `worker_processed_tasks_total`.
+Metrics in use: `storage_available`, `storage_breaker_transitions_total`, `failover_total`, `policy_snapshot_age_seconds`, `policy_snapshot_refresh_errors_total`, `policy_snapshot_stale_served_total`, `proxy_response_status`, `worker_failed_tasks_total`, `worker_processed_tasks_total`, `replication_event_lag`, `protection_group_wanted_copies`, `protection_group_healthy_copies`, `protection_group_frozen`, `protection_group_generation`, `protection_group_active_writers`, `protection_group_quarantined_members`, `protection_group_promotions_total`, `protection_group_reconcile_errors_total`, `controlplane_outbox_pending`, `controlplane_outbox_oldest_seconds`, `controlplane_outbox_failures_total`.

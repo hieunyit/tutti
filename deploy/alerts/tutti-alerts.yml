@@ -115,6 +115,17 @@ groups:
           description: 'A spike in 403 responses can mean a client with a revoked or rotated access key, a policy change that removed access, or a scan. Check the access key rotation state and the access policy of the affected user. The threshold of 1 req/s is an absolute value; tune it to your traffic.'
           runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
 
+      - alert: TuttiProxyNoCredentials
+        expr: sum by (storage) (increase(proxy_no_credentials_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: proxy
+        annotations:
+          summary: 'Proxy rejected requests to storage {{ $labels.storage }} because no credentials resolved (503)'
+          description: 'At least one user routed to {{ $labels.storage }} has neither a per-user credential override nor a storage connection account. Set a connection account on {{ $labels.storage }} or add credentials for the affected user.'
+          runbook_url: 'docs/tutti/runbooks.md#g-add-a-storage-at-runtime-and-add-credentials'
+
   - name: tutti-worker
     rules:
       - alert: TuttiReplicationTaskFailures
@@ -128,43 +139,89 @@ groups:
           description: 'worker_failed_tasks_total counts failed attempts, including retries, divided by processed tasks. Check worker logs for the error of the failing task_type and queue. Storage breaker and credential problems are the usual causes.'
           runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
 
-  # TODO: the rules below cannot be written with the metrics that exist today. They are kept commented out so they
-  # can be enabled once the metric is added.
-  #
-  # TODO(metrics): replication lag above threshold (unprocessed events per replication). Needed: a gauge per
-  #   replication with the number of unprocessed events (EventMigration.Unprocessed in pkg/policy/replication.go).
-  #   Today this value is only available through the API and chorctl repl, not as a metric.
-  # - alert: TuttiReplicationLagHigh
-  #   expr: max by (from, to) (tutti_replication_unprocessed_events) > 10000
-  #   for: 15m
-  #   labels: {severity: warning, component: worker}
-  #   annotations:
-  #     summary: 'Replication {{ $labels.from }} -> {{ $labels.to }} has {{ $value }} unprocessed events'
-  #     runbook_url: 'docs/tutti/runbooks.md#b-manual-failback-return-routing-to-the-original-storage'
-  #
-  # TODO(metrics): protection group copies below wanted (pkg/protectiongroups status: Copies vs wanted). Needed: a
-  #   gauge per group with the healthy and wanted copy counts.
-  # - alert: TuttiProtectionGroupCopiesBelowWanted
-  #   expr: tutti_protection_group_copies_healthy < tutti_protection_group_copies_wanted
-  #   for: 15m
-  #   labels: {severity: warning, component: worker}
-  #   annotations:
-  #     summary: 'Protection group {{ $labels.group }} has fewer healthy copies than wanted'
-  #
-  # TODO(metrics): protection group primary changed (manual or automatic). failover_total only counts automatic
-  #   routing failovers in the proxy. Needed: a counter incremented on every primary change, or a log-based alert.
-  # - alert: TuttiProtectionGroupPrimaryChanged
-  #   expr: increase(tutti_protection_group_primary_changes_total[10m]) > 0
-  #   for: 1m
-  #   labels: {severity: warning, component: worker}
-  #
-  # TODO(metrics): worker cannot reach Redis. The worker has no Redis error counter. Needed: a counter on the
-  #   worker's Redis client errors or the config-version poll errors.
+      - alert: TuttiReplicationLagHigh
+        expr: max by (user, from, to) (replication_unprocessed_events) > 10000
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Replication for {{ $labels.user }} ({{ $labels.from }} -> {{ $labels.to }}) has {{ $value }} unprocessed events'
+          description: 'replication_unprocessed_events sums unprocessed events over the user and bucket replications of {{ $labels.user }} from {{ $labels.from }} to {{ $labels.to }}. Drill down with chorctl repl.'
+          runbook_url: 'docs/tutti/runbooks.md#b-manual-failback-return-routing-to-the-original-storage'
+
+  - name: tutti-protection-groups
+    rules:
+      - alert: TuttiProtectionGroupCopiesBelowWanted
+        expr: protection_group_copies_healthy < protection_group_copies_wanted
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Protection group {{ $labels.group }} has {{ $value }} healthy copies, fewer than wanted'
+          description: 'At least one secondary member of {{ $labels.group }} is unavailable, still initializing, lagging, unverified or quarantined. Check the group status in the console or via the API.'
+          runbook_url: 'docs/tutti/protection-groups.md'
+
+      - alert: TuttiProtectionGroupPrimaryChanged
+        expr: sum by (group, reason) (increase(protection_group_primary_changes_total[10m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Protection group {{ $labels.group }} changed primary ({{ $labels.reason }})'
+          description: 'Protection group {{ $labels.group }} promoted a new primary ({{ $labels.reason }}). Verify member health and whether any member was quarantined.'
+          runbook_url: 'docs/tutti/protection-groups.md'
+
+      - alert: TuttiProtectionGroupFrozen
+        expr: max by (group) (protection_group_frozen) == 1
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Protection group {{ $labels.group }} has been frozen for more than 5 minutes'
+          description: 'Writes to the scope of {{ $labels.group }} are blocked while waiting for active writers to drain, initial resync to finish, or target catch-up. Check active writers and lastError on the group.'
+          runbook_url: 'docs/tutti/protection-groups.md'
+
+      - alert: TuttiProtectionGroupSwitchBlocked
+        expr: sum by (group, reason) (increase(protection_group_switch_blocked_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Automatic failover of protection group {{ $labels.group }} is blocked ({{ $labels.reason }})'
+          description: 'A proxy quorum reported the primary of {{ $labels.group }} down, but promotion was held back by {{ $labels.reason }} (global_freeze or rate_limit).'
+          runbook_url: 'docs/tutti/protection-groups.md'
+
+  - name: tutti-controlplane-outbox
+    rules:
+      - alert: TuttiControlPlaneOutboxStalled
+        expr: max(controlplane_outbox_oldest_seconds) > 30
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'Control-plane outbox has unpublished changes older than {{ $value | humanize }}s'
+          description: 'Committed PostgreSQL changes are not reaching the Redis projection in time. Check Redis connectivity and worker logs for control plane outbox errors.'
+          runbook_url: 'docs/tutti/control-plane-db.md'
+
+      - alert: TuttiControlPlaneOutboxFailures
+        expr: sum(increase(controlplane_outbox_failures_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Control-plane outbox failed to publish changes to Redis'
+          description: 'controlplane_outbox_failures_total is increasing. The publisher retries with exponential backoff; check Redis health.'
+          runbook_url: 'docs/tutti/control-plane-db.md'
+
+  # TODO(metrics): worker cannot reach Redis. The worker has no general Redis error counter yet.
   # - alert: TuttiWorkerRedisUnreachable
   #   expr: increase(tutti_worker_redis_errors_total[5m]) > 0
   #   for: 2m
   #   labels: {severity: critical, component: worker}
-  #
-  # TODO(logs, no metric): "storage ... has no credentials for user ..." (dom.ErrNoCredentials, proxy answers 503).
-  #   There is no counter for it. A log-based alert (Loki or similar) on that message is the workaround. See
-  #   docs/tutti/runbooks.md#g-add-a-storage-at-runtime-and-add-credentials for the fix.

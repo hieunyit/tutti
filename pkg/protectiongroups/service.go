@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/store"
 	"slices"
@@ -259,6 +260,8 @@ func (s *Service) Reconcile(ctx context.Context, id string) error {
 			return err
 		}
 		err = s.reconcile(ctx, &g)
+		// The state may have changed after the status snapshot (or the step returned early).
+		metrics.SetProtectionFrozen(g.ID, g.Frozen)
 		if err != nil {
 			// Record only the error on the stored document: g may hold uncommitted in-memory
 			// transitions of the failed step that must not be persisted by this side channel.
@@ -278,7 +281,9 @@ func (s *Service) reconcile(ctx context.Context, g *Group) error {
 	}
 	if g.Frozen || g.State == "promoting" {
 		// Only a frozen group waits for writers; drop records of processes proven gone.
-		if _, err = s.Store.ReapWriters(ctx, g.ID, reports, s.now(), reportMaxAge); err != nil {
+		n, err := s.Store.ReapWriters(ctx, g.ID, reports, s.now(), reportMaxAge)
+		metrics.CountReapedWriters(n)
+		if err != nil {
 			return err
 		}
 	}
@@ -312,12 +317,21 @@ func (s *Service) reconcile(ctx context.Context, g *Group) error {
 	if err != nil {
 		return err
 	}
+	exportStatus(status)
 	if g.State == "ready" && g.Mode == "auto" {
 		frozen, err := s.Store.AutomaticFrozen(ctx)
 		if err != nil {
 			return err
 		}
-		if !frozen && Quorum(*g, g.Primary, reports, s.now(), reportMaxAge) && s.underLimit(*g) {
+		metrics.SetAutomaticFailoverFrozen(frozen)
+		hasQuorum := Quorum(*g, g.Primary, reports, s.now(), reportMaxAge)
+		underLimit := s.underLimit(*g)
+		if hasQuorum && frozen {
+			metrics.CountProtectionSwitchBlocked(g.ID, "global_freeze")
+		} else if hasQuorum && !underLimit {
+			metrics.CountProtectionSwitchBlocked(g.ID, "rate_limit")
+		}
+		if !frozen && hasQuorum && underLimit {
 			for _, member := range g.Members {
 				for _, st := range status.Members {
 					if st.Storage == member && member != g.Primary && st.Available && st.Initialized && st.EventLag <= g.MaxEventLag && g.Verified[member] == g.Generation && !slices.Contains(g.Quarantined, member) {
@@ -492,7 +506,24 @@ func (s *Service) finishFrozen(ctx context.Context, g *Group, reports []proxysta
 		return err
 	}
 	*g = next
+	reason := "manual"
+	if next.History[len(next.History)-1].Automatic {
+		reason = "automatic"
+	}
+	metrics.CountProtectionPrimaryChange(g.ID, reason)
 	return nil
+}
+
+// exportStatus publishes the gauges of one group.
+func exportStatus(st Status) {
+	lag := 0
+	for _, m := range st.Members {
+		lag = max(lag, m.EventLag)
+	}
+	metrics.SetProtectionGroup(st.Group.ID, metrics.ProtectionGroupState{
+		Healthy: st.HealthyCopies, Wanted: st.Group.Copies, MaxEventLag: lag,
+		Frozen: st.Group.Frozen, ActiveWriters: st.ActiveWriters,
+	})
 }
 
 // caughtUp reports whether every available, non-quarantined secondary is initialized with zero lag.
@@ -527,8 +558,14 @@ func (s *Service) Run(ctx context.Context, interval time.Duration) {
 	for {
 		groups, err := s.Store.List(ctx)
 		if err == nil {
+			ids := make([]string, 0, len(groups))
 			for _, g := range groups {
+				ids = append(ids, g.ID)
 				_ = s.Reconcile(ctx, g.ID)
+			}
+			metrics.KeepProtectionGroups(ids)
+			if frozen, e := s.Store.AutomaticFrozen(ctx); e == nil {
+				metrics.SetAutomaticFailoverFrozen(frozen)
 			}
 		}
 		select {
