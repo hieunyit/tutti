@@ -189,3 +189,38 @@ func mapGetIgnoreCase(m map[string]any, key string) (any, bool) {
 	}
 	return nil, false
 }
+
+func TestRedisRoleOverrides(t *testing.T) {
+	r := require.New(t)
+	var conf Common
+	r.NoError(Get(&conf, Path("override_roles_test.yaml")))
+	r.NoError(conf.Validate())
+
+	// defaults: no override, same instance and role DBs
+	eff, db := conf.Redis.Endpoint(RedisRoleMeta)
+	r.Equal([]string{"main:6379"}, eff.GetAddresses())
+	r.Equal(0, db)
+	_, db = conf.Redis.Endpoint(RedisRoleConfig)
+	r.Equal(3, db)
+
+	eff, db = conf.Redis.Endpoint(RedisRoleQueue)
+	r.Equal([]string{"queue:6379"}, eff.GetAddresses())
+	r.Equal(0, db)
+	r.Equal("base-pass", eff.Password)
+	r.True(eff.TLS.Enabled)
+
+	eff, db = conf.Redis.Endpoint(RedisRoleLock)
+	r.Equal([]string{"s1:26379", "s2:26379"}, eff.GetAddresses())
+	r.Equal("locks", eff.Sentinel.MasterName)
+	r.Equal("lock-pass", eff.Password)
+	r.False(eff.TLS.Enabled)
+	r.Equal(2, db)
+}
+
+func TestRedisRoleSentinelNeedsAddresses(t *testing.T) {
+	r := require.New(t)
+	conf := &Redis{Address: "x:1", Queue: RedisEndpoint{Sentinel: RedisSentinel{MasterName: "m"}}}
+	r.Error(conf.validate())
+	conf = &Redis{Address: "x:1", Queue: RedisEndpoint{TLS: "maybe"}}
+	r.Error(conf.validate())
+}

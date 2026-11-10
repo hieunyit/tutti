@@ -78,7 +78,7 @@ An unset limit risks host OOM. A limit that is too small causes write failures (
 
 ## High availability with Redis Sentinel
 
-**Status: available now in configuration and client code.** Tutti builds a Sentinel-aware client when `redis.sentinel.masterName` is set (`pkg/util/redis.go`). The Helm chart has an external-Redis example for Sentinel (`deploy/chorus/examples/values-external-redis.yaml`). The repository's tests only cover parsing of these keys; no test starts a Sentinel topology. Verify failover behaviour in your environment before relying on it.
+**Status: supported.** Tutti builds a Sentinel-aware client when `redis.sentinel.masterName` is set (`pkg/util/redis.go`), for the app clients and for the asynq queue client. The Helm chart has an external-Redis example for Sentinel (`deploy/chorus/examples/values-external-redis.yaml`). Unit tests cover the client selection, and `TestLiveSentinel` in `pkg/util` (run with `TUTTI_TEST_SENTINEL_ADDR` and `TUTTI_TEST_SENTINEL_MASTER`) was run against a real Redis 7 with one sentinel: a command and an asynq enqueue/delete through Sentinel worked. A full master failover under load was not tested in this repository; test it in your environment before relying on it.
 
 Tutti keys:
 
@@ -90,6 +90,7 @@ Tutti keys:
 | `redis.user`, `redis.password` | `CFG_REDIS_USER`, `CFG_REDIS_PASSWORD` | credentials for the master and replicas |
 | `redis.tls.enabled`, `redis.tls.insecure` | | TLS for all Redis and sentinel connections |
 | `redis.metaDB`, `queueDB`, `lockDB`, `configDB` | | logical DBs, unchanged with Sentinel |
+| `redis.config`, `redis.queue`, `redis.lock`, `redis.meta` | | optional per-role instance, see [Separate Redis instances per role](#separate-redis-instances-per-role) |
 
 Example worker or proxy config:
 
@@ -113,7 +114,7 @@ redis:
 
 Important:
 
-- **Give at least two sentinel addresses.** The queue client (asynq) uses standalone mode when exactly one address is configured, even if `masterName` is set, so a single sentinel address breaks the queues. Three sentinels are the usual minimum for quorum.
+- Three sentinels are the usual minimum for quorum; list all of them. A single sentinel address also works (earlier versions fell back to a standalone asynq client when only one address was configured; this is fixed).
 - `masterName` must match the name in the sentinel `monitor` line.
 - Sentinel failover uses asynchronous replication. Writes acknowledged by the old master but not yet replicated can be lost on failover. This is the same kind of loss as AOF `everysec`, and it is not covered by Sentinel.
 
@@ -136,7 +137,34 @@ Put the replicas on separate hosts or zones from the primary, and keep `maxmemor
 
 Not an option today:
 
-- **Redis Cluster.** Not supported. Tutti uses four logical DBs. With more than one address and no `masterName`, the client becomes a cluster client, and cluster mode has only DB 0, so the four DBs would share one keyspace. Tutti's multi-key scripts and transactions were not validated against cross-slot behaviour, so cluster mode is treated as unsupported. Planned change: PERF-4 in the [scale plan](./scale-plan.md#4-external-review-2026-11-10-verified-findings) (separate instances for config, queues and locks, and key prefixes instead of DB numbers).
+- **Redis Cluster.** Not supported. Tutti uses four logical DBs. With more than one address and no `masterName`, the client becomes a cluster client, and cluster mode has only DB 0, so the four DBs would share one keyspace. Tutti's multi-key scripts and transactions were not validated against cross-slot behaviour, so cluster mode is treated as unsupported. Planned change: PERF-4 in the [scale plan](./scale-plan.md#4-external-review-2026-11-10-verified-findings) (separate instances for config, queues and locks is available now, see below; key prefixes instead of DB numbers are still planned). Redis Cluster stays out of scope.
+
+## Separate Redis instances per role
+
+By default config, queue, lock and meta data share one Redis in four logical DBs. Each role can instead live on its own Redis (or its own Sentinel group) so that memory, persistence, failure domains and scaling are independent (PERF-4). Set `addresses` under the role; every unset field inherits the top-level value (user, password, `tls.enabled`), and `db` defaults to the role's top-level DB key, so set `db: 0` on a dedicated instance:
+
+```yaml
+redis:
+  addresses: [meta-redis:6379]          # meta data and anything without an override
+  password: "<meta-redis-password>"
+  config:                                # control-plane config: durable, small
+    addresses: [cfg-sentinel-1:26379, cfg-sentinel-2:26379, cfg-sentinel-3:26379]
+    sentinel: {masterName: tutti-config, password: "<sentinel-password>"}
+    password: "<config-redis-password>"
+    db: 0
+  queue:                                 # asynq queues: write heavy
+    addresses: [queue-redis:6379]
+    db: 0
+  lock:
+    addresses: [lock-redis:6379]
+    db: 0
+```
+
+A role with its own `addresses` does not inherit the top-level `sentinel` block. The proxy and the worker must use the same topology. Back up every instance and the master key together (see Backup and restore). `redis.<role>.db` cannot be set through an environment variable. Full key reference: [configuration.md](./configuration.md#redis).
+
+## Proxy policy snapshot and Redis load
+
+The proxy keeps routing, switch and replication policy data in memory and validates it with the version key `tutti:cfg:version` (config Redis) and the pub/sub channel `tutti:cfg:changed`. Steady-state GET/HEAD/LIST need no Redis command for this, writes need one `GET`. Details and measured numbers: [performance-and-redis.md](./performance-and-redis.md#redis-commands-per-request-after-the-policy-snapshot).
 
 ## Backup and restore
 

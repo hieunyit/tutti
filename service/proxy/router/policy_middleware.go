@@ -32,6 +32,11 @@ func PolicyMiddleware(policySvc policy.Service) func(next http.Handler) http.Han
 			user := xctx.GetUser(ctx)
 			bucket := xctx.GetBucket(ctx)
 
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				// GET/HEAD/LIST never record replication events: the policy snapshot may serve them
+				// without a Redis round trip, also while Redis is down.
+				ctx = policy.ReadOnly(ctx)
+			}
 			policyCtx, err := initPolicyContext(ctx, policySvc, user, bucket)
 			if err != nil {
 				util.WriteError(ctx, w, err)

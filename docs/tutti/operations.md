@@ -74,6 +74,14 @@ Latency trade-off: write latency becomes main write + the time to reach quorum (
 
 With the default quorum of all destinations, objects are visible on every follower when the PUT returns successfully. With a smaller quorum, `X-Tutti-Replicas` reports the copies confirmed before the response.
 
+## Load balancer health check and rolling restarts
+
+Point the load balancer health check at the proxy `GET /ready` (HTTP 200 = send traffic). It does not need credentials and is not counted in stats. It turns 503 when the config snapshot is not loaded, when Redis has been unreachable for longer than `ready.maxStaleness` (30 s by default; shorter outages keep the proxy ready, serving reads from its last known routing), when no storage is known, and as soon as shutdown starts. Do not use `/` or an S3 call as health check: those need signatures and say nothing about Redis. Settings: [configuration.md](./configuration.md#readiness-and-graceful-drain).
+
+Rolling restart: send SIGTERM; the proxy reports not ready, waits `drainDelay` (5 s), stops accepting connections and finishes in-flight requests. Make the load balancer's `interval x unhealthy-threshold` fit into `drainDelay` and give the orchestrator a termination grace period larger than `drainDelay` plus your longest request (Kubernetes: `terminationGracePeriodSeconds`).
+
+During a Redis outage a proxy keeps answering GET/HEAD/LIST from its last known routing (`policy_snapshot_stale_served_total` counts these); writes answer `503 ServiceUnavailable` until Redis is back.
+
 ## Circuit breaker and health checks
 
 Source: `pkg/health/`, `pkg/s3client/http_forward.go`, `service/proxy/server.go`.

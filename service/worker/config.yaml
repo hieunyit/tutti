@@ -85,3 +85,12 @@ storage:
   #     region: "" # openstack region name
   #     authURL: http://auth.url/v3 # keystone auth url
   #
+
+# Redis topology: see docs/tutti/configuration.md. Sentinel example (must match the proxy):
+# redis:
+#   addresses: [sentinel-1:26379, sentinel-2:26379, sentinel-3:26379]
+#   sentinel: {masterName: tutti, password: "<sentinel-password>"}
+#   password: "<redis-password>"
+#   # optional: config, queue, lock, meta on separate instances, each may use DB 0
+#   queue: {addresses: ["queue-redis:6379"], db: 0}
+#   config: {addresses: ["cfg-redis:6379"], db: 0}

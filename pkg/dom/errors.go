@@ -34,6 +34,8 @@ var (
 	ErrAuth                 = errors.New("AuthError")
 	ErrPolicy               = errors.New("PolicyError")
 	ErrRoutingBlock         = errors.New("RoutingBlockedError")
+	// ErrUnavailable: a dependency (e.g. Redis) is unreachable; the proxy answers 503 ServiceUnavailable.
+	ErrUnavailable = errors.New("ServiceUnavailable")
 )
 
 func ErrCode(err error) int {

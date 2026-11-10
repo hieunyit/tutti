@@ -31,7 +31,11 @@ type Service interface {
 }
 
 func NewService(client redis.UniversalClient, queueSVC tasks.QueueService, mainStorage string) *policySvc {
+	// every mutation of routing/replication/switch data through this client bumps the snapshot version
+	// and notifies the proxies (see change_notify.go)
+	installChangeNotifier(client)
 	return &policySvc{
+		client:                       client,
 		mainStorage:                  mainStorage,
 		userRoutingStore:             store.NewUserRoutingStore(client),
 		bucketRoutingStore:           store.NewBucketRoutingStore(client),
@@ -61,4 +65,7 @@ type policySvc struct {
 	bucketReplicationSwitchStore *store.BucketReplicationSwitchStore
 
 	mainStorage string
+	client      redis.UniversalClient
+	// snap is the optional in-memory snapshot of proxy request data, see EnableSnapshot.
+	snap *snapshot
 }

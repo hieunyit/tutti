@@ -29,6 +29,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"github.com/hieunyit/tutti/pkg/config"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
@@ -81,7 +82,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		_ = shutdown(context.Background())
 	}()
 
-	appRedis := util.NewRedis(conf.Redis, conf.Redis.MetaDB)
+	appRedis := util.NewRedisRole(conf.Redis, config.RedisRoleMeta)
 	defer appRedis.Close()
 	err = appRedis.Ping(ctx).Err()
 	if err != nil {
@@ -98,13 +99,13 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	uploadSvc := storage.NewUploadSvc(appRedis)
 	limiter := ratelimit.New(appRedis, conf.Storage.RateLimitConf())
 
-	confRedis := util.NewRedis(conf.Redis, conf.Redis.ConfigDB)
+	confRedis := util.NewRedisRole(conf.Redis, config.RedisRoleConfig)
 	defer confRedis.Close()
 	err = redisotel.InstrumentTracing(confRedis, redisotel.WithTracerProvider(tp))
 	if err != nil {
 		return fmt.Errorf("%w: unable to instrument tracing app redis", err)
 	}
-	queueRedis := util.NewRedisAsynq(conf.Redis, conf.Redis.QueueDB)
+	queueRedis := util.NewRedisAsynqRole(conf.Redis, config.RedisRoleQueue)
 	taskClient := asynq.NewClient(queueRedis)
 	defer taskClient.Close()
 	inspector := asynq.NewInspector(queueRedis)
@@ -115,6 +116,20 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return err
 	}
 	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main)
+	// the snapshot keeps running while the listener drains, so it has its own context
+	snapCtx, snapStop := context.WithCancel(context.WithoutCancel(ctx))
+	defer snapStop()
+	if !conf.Snapshot.Disabled {
+		if err := policySvc.EnableSnapshot(snapCtx, policy.SnapshotConfig{
+			PollInterval: conf.Snapshot.PollInterval,
+			FullReload:   conf.Snapshot.FullReload,
+			Logger:       logger,
+		}); err != nil {
+			return fmt.Errorf("unable to load policy snapshot: %w", err)
+		}
+		logger.Info().Msg("policy snapshot enabled")
+	}
+	storagesKnown := func() int { return len(conf.Storage.Storages) }
 
 	// configure object storage proxies:
 	proxyConfig := router.Config{
@@ -162,6 +177,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				metrics.SetStorageAvailable(name, true)
 			}
 		})
+		storagesKnown = func() int { return len(credsSvc.Storages()) }
 		limiter.SetLookup(credsSvc.RateLimit)
 		startedAt := time.Now().UTC()
 		rateWindow := trafficstats.NewWindow(trafficstats.DefaultWindow)
@@ -188,7 +204,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		go statusPub.Run(ctx)
 		go proxystatus.RunHistory(ctx, confRedis, app.AppID, rateWindow.Rates, logger)
 		if conf.Failover.Enabled {
-			failoverLock := util.NewRedis(conf.Redis, conf.Redis.LockDB)
+			failoverLock := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
 			defer failoverLock.Close()
 			failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok })
 			ctrl := failovercontroller.New(failovercontroller.Config{
@@ -213,7 +229,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			logger.Warn().Dur("check_interval", conf.Failover.CheckInterval).Msg("automatic failover controller enabled; only storages with an enabled failover policy can fail over")
 		}
 		if conf.Replication.Sync.Enabled {
-			lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
+			lockRedis := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
 			defer lockRedis.Close()
 			objectLocker := store.NewObjectLocker(lockRedis, syncLockOverlap)
 			// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
@@ -261,12 +277,36 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
-	proxyServer := http.Server{Addr: fmt.Sprintf(":%d", conf.Port), Handler: proxyMux}
+	ready := &readiness{
+		snapshot:     policySvc.SnapshotStatus,
+		storages:     storagesKnown,
+		maxStaleness: conf.Ready.MaxStaleness,
+	}
+	if ready.maxStaleness <= 0 {
+		ready.maxStaleness = DefaultReadyMaxStaleness
+	}
+	if conf.Snapshot.Disabled {
+		// without the snapshot, Redis reachability is checked directly
+		ready.snapshot = func() policy.SnapshotStatus { return directRedisStatus(ctx, confRedis) }
+	}
+	// 0 = no drain wait (programmatic configs such as the standalone binary and tests); the embedded
+	// config.yaml sets drainDelay: 5s for the proxy binary
+	drainDelay := conf.DrainDelay
+	proxyServer := http.Server{Addr: fmt.Sprintf(":%d", conf.Port), Handler: ready.wrap(proxyMux)}
 
 	server := util.NewServer()
 	err = server.Add("proxy_http", func(_ context.Context) error {
 		return proxyServer.ListenAndServe()
-	}, proxyServer.Shutdown)
+	}, func(shutdownCtx context.Context) error {
+		// graceful drain: report not-ready first so the load balancer stops sending new requests,
+		// then stop the listener and wait for in-flight requests
+		ready.draining.Store(true)
+		logger.Info().Dur("drain_delay", drainDelay).Msg("shutdown: reporting not ready, draining")
+		if drainDelay > 0 {
+			time.Sleep(drainDelay)
+		}
+		return proxyServer.Shutdown(shutdownCtx)
+	})
 	if err != nil {
 		return err
 	}
@@ -410,4 +450,18 @@ func proxyAccounts(conf *auth.Config, creds objstore.CredsService) []proxystatus
 		return strings.Compare(a.AccessKeyID, b.AccessKeyID)
 	})
 	return res
+}
+
+// directRedisStatus is the readiness input when the policy snapshot is disabled: a Redis PING.
+func directRedisStatus(ctx context.Context, rc redis.UniversalClient) policy.SnapshotStatus {
+	pctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	ok := rc.Ping(pctx).Err() == nil
+	st := policy.SnapshotStatus{Loaded: true, RedisReachable: ok}
+	if ok {
+		st.LastRefresh = time.Now()
+	} else {
+		st.Age = time.Hour // unknown: no cached state to serve from
+	}
+	return st
 }

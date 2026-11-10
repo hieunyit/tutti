@@ -28,6 +28,49 @@ redis:
   queueDB: 1
   lockDB: 2
   configDB: 3
+  # Optional per-role overrides: put config / queue / lock / meta data on separate Redis instances
+  # (each may then use DB 0). Unset fields inherit from the settings above. Example in docs/tutti/configuration.md.
+  # Redis Cluster is not supported (it only has DB 0 and the Lua/multi-key transactions need one node).
+  config:
+    addresses: []
+    user:
+    password:
+    tls: "" # "" inherit, "true"/"false" override
+    db: # logical DB on that instance; unset = the role's *DB key above (set in YAML, e.g. db: 0)
+    sentinel:
+      masterName:
+      user:
+      password:
+  queue:
+    addresses: []
+    user:
+    password:
+    tls: "" # "" inherit, "true"/"false" override
+    db: # logical DB on that instance; unset = the role's *DB key above (set in YAML, e.g. db: 0)
+    sentinel:
+      masterName:
+      user:
+      password:
+  lock:
+    addresses: []
+    user:
+    password:
+    tls: "" # "" inherit, "true"/"false" override
+    db: # logical DB on that instance; unset = the role's *DB key above (set in YAML, e.g. db: 0)
+    sentinel:
+      masterName:
+      user:
+      password:
+  meta:
+    addresses: []
+    user:
+    password:
+    tls: "" # "" inherit, "true"/"false" override
+    db: # logical DB on that instance; unset = the role's *DB key above (set in YAML, e.g. db: 0)
+    sentinel:
+      masterName:
+      user:
+      password:
 features:
   versioning: false #
   autoMigrate: false # initiate migration from main to other storages on startup

@@ -1,0 +1,14 @@
+redis:
+  addresses: ["main:6379"]
+  password: base-pass
+  tls:
+    enabled: true
+  queue:
+    addresses: ["queue:6379"]
+    db: 0
+  lock:
+    addresses: ["s1:26379", "s2:26379"]
+    sentinel:
+      masterName: locks
+    password: lock-pass
+    tls: false

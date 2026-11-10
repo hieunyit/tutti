@@ -63,6 +63,39 @@ type Config struct {
 	Failover FailoverConfig `yaml:"failover"`
 	// Status configures the live status document published to Redis.
 	Status StatusConfig `yaml:"status"`
+	// Ready configures GET /ready.
+	Ready ReadyConfig `yaml:"ready"`
+	// DrainDelay is how long the proxy reports not-ready before it stops listening on SIGTERM. Default 5s (embedded config.yaml); 0 disables the wait.
+	DrainDelay time.Duration `yaml:"drainDelay"`
+	// Snapshot configures the in-memory routing/replication policy snapshot.
+	Snapshot SnapshotConfig `yaml:"snapshot"`
+}
+
+// ReadyConfig configures the readiness endpoint GET /ready.
+type ReadyConfig struct {
+	// MaxStaleness is how long the proxy stays ready, serving reads from its last known config snapshot,
+	// while Redis is unreachable. Default 30s.
+	MaxStaleness time.Duration `yaml:"maxStaleness"`
+}
+
+// SnapshotConfig configures the in-memory policy snapshot (routing, switches, replication policies, generations).
+type SnapshotConfig struct {
+	// Disabled turns the snapshot off: every request reads its policy data from Redis (old behavior).
+	Disabled bool `yaml:"disabled"`
+	// PollInterval is how often the config version is read when no change notification arrives. Default 1s.
+	PollInterval time.Duration `yaml:"pollInterval"`
+	// FullReload drops all cached entries at least this often. Default 30s.
+	FullReload time.Duration `yaml:"fullReload"`
+}
+
+func (c *Config) validateReady() error {
+	if c.Ready.MaxStaleness < 0 || c.DrainDelay < 0 {
+		return fmt.Errorf("proxy config: ready.maxStaleness and drainDelay must not be negative")
+	}
+	if c.Snapshot.PollInterval < 0 || c.Snapshot.FullReload < 0 {
+		return fmt.Errorf("proxy config: snapshot.pollInterval and fullReload must not be negative")
+	}
+	return nil
 }
 
 // StatusConfig configures publishing of the proxy status document (tutti:proxy-status:<app_id>).
@@ -181,7 +214,7 @@ func (c *Config) Validate() error {
 	if err := c.Status.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return c.validateReady()
 }
 
 func ValidateAuth(storage Storages, auth *auth.Config) error {

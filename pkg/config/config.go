@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	stdlog "github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -55,6 +56,45 @@ type Redis struct {
 	LockDB    int      `yaml:"lockDB"`
 	ConfigDB  int      `yaml:"configDB"`
 	TLS       TLS      `yaml:"tls"`
+
+	// Optional per-role overrides: a role with its own address(es) lives on a separate Redis instance
+	// (or Sentinel group). Unset fields inherit from the top-level settings. See RedisEndpoint.
+	Config RedisEndpoint `yaml:"config"`
+	Queue  RedisEndpoint `yaml:"queue"`
+	Lock   RedisEndpoint `yaml:"lock"`
+	Meta   RedisEndpoint `yaml:"meta"`
+}
+
+// RedisRole identifies a group of Redis data that can be placed on its own Redis instance.
+type RedisRole string
+
+const (
+	// RedisRoleConfig is the control-plane config (policies, routing, storages, keys), logical DB redis.configDB.
+	RedisRoleConfig RedisRole = "config"
+	// RedisRoleQueue holds the asynq replication queues, logical DB redis.queueDB.
+	RedisRoleQueue RedisRole = "queue"
+	// RedisRoleLock holds distributed locks, logical DB redis.lockDB.
+	RedisRoleLock RedisRole = "lock"
+	// RedisRoleMeta holds version vectors, uploads, sessions and migration progress, logical DB redis.metaDB.
+	RedisRoleMeta RedisRole = "meta"
+)
+
+// RedisEndpoint overrides the Redis connection of one role. The zero value (and the defaults in config.yaml)
+// inherit everything from the top-level redis settings, so existing configs behave exactly as before.
+type RedisEndpoint struct {
+	// Addresses of this role's Redis (or its Sentinel nodes when sentinel.masterName is set).
+	// When set, the role uses its own instance and does not inherit the top-level sentinel settings.
+	Addresses []string `yaml:"addresses"`
+	// User and Password of the role's instance. Empty inherits the top-level values.
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	// Sentinel settings, used only together with Addresses.
+	Sentinel RedisSentinel `yaml:"sentinel"`
+	// TLS: "" inherits the top-level tls.enabled, "true" or "false" overrides it (tls.insecure is inherited).
+	TLS string `yaml:"tls"`
+	// DB is the logical DB on this role's instance. Unset (or negative) means: use the role's top-level
+	// *DB key (metaDB, queueDB, lockDB, configDB). Set 0 for a dedicated instance. YAML only (no env override).
+	DB *int `yaml:"db"`
 }
 
 type RedisSentinel struct {
@@ -72,7 +112,57 @@ func (r *Redis) validate() error {
 	if len(r.GetAddresses()) == 0 {
 		return fmt.Errorf("invalid redis config: address is not set")
 	}
+	for role, ep := range map[RedisRole]RedisEndpoint{RedisRoleConfig: r.Config, RedisRoleQueue: r.Queue, RedisRoleLock: r.Lock, RedisRoleMeta: r.Meta} {
+		switch strings.ToLower(strings.TrimSpace(ep.TLS)) {
+		case "", "true", "false":
+		default:
+			return fmt.Errorf("invalid redis config: redis.%s.tls must be empty, true or false", role)
+		}
+		if len(ep.Sentinel.MasterName) != 0 && len(ep.Addresses) == 0 {
+			return fmt.Errorf("invalid redis config: redis.%s.sentinel needs redis.%s.addresses", role, role)
+		}
+	}
 	return nil
+}
+
+// Endpoint returns the effective connection settings for the role and its logical DB.
+// Without overrides it returns the top-level settings and the role's top-level DB number.
+func (r *Redis) Endpoint(role RedisRole) (*Redis, int) {
+	var ep RedisEndpoint
+	var db int
+	switch role {
+	case RedisRoleConfig:
+		ep, db = r.Config, r.ConfigDB
+	case RedisRoleQueue:
+		ep, db = r.Queue, r.QueueDB
+	case RedisRoleLock:
+		ep, db = r.Lock, r.LockDB
+	case RedisRoleMeta:
+		ep, db = r.Meta, r.MetaDB
+	}
+	eff := *r
+	eff.Config, eff.Queue, eff.Lock, eff.Meta = RedisEndpoint{}, RedisEndpoint{}, RedisEndpoint{}, RedisEndpoint{}
+	if len(ep.Addresses) != 0 {
+		eff.Addresses = ep.Addresses
+		eff.Address = ""
+		eff.Sentinel = ep.Sentinel
+	}
+	if ep.User != "" {
+		eff.User = ep.User
+	}
+	if ep.Password != "" {
+		eff.Password = ep.Password
+	}
+	switch strings.ToLower(strings.TrimSpace(ep.TLS)) {
+	case "true":
+		eff.TLS.Enabled = true
+	case "false":
+		eff.TLS.Enabled = false
+	}
+	if ep.DB != nil && *ep.DB >= 0 {
+		db = *ep.DB
+	}
+	return &eff, db
 }
 
 func (r *Redis) GetAddresses() []string {

@@ -21,6 +21,13 @@ Defaults below are the effective values: the embedded `config.yaml` is always lo
 | `health.openDuration` | duration | `30s` | [Circuit breaker](#circuit-breaker-and-health-checks) |
 | `storage.storages.<name>.healthCheckInterval` | duration | `10s` | [Circuit breaker](#circuit-breaker-and-health-checks) |
 | `status.interval` | duration | `2s` | [Status](#status) |
+| `ready.maxStaleness` | duration | `30s` | [Readiness and drain](#readiness-and-graceful-drain) |
+| `drainDelay` | duration | `5s` | [Readiness and drain](#readiness-and-graceful-drain) |
+| `snapshot.disabled` | bool | `false` | [Policy snapshot](#policy-snapshot) |
+| `snapshot.pollInterval` | duration | `1s` | [Policy snapshot](#policy-snapshot) |
+| `snapshot.fullReload` | duration | `30s` | [Policy snapshot](#policy-snapshot) |
+| `redis.addresses`, `redis.sentinel.*` | | none | [Redis](#redis) |
+| `redis.config` / `queue` / `lock` / `meta` | object | inherit | [Redis](#redis) |
 | `failover.enabled` | bool | `false` | [Automatic failover](#automatic-failover) |
 | `failover.checkInterval` | duration | `10s` | [Automatic failover](#automatic-failover) |
 | `failover.after` | duration | `60s` | [Automatic failover](#automatic-failover) |
@@ -169,6 +176,75 @@ Interactions:
 - Metrics (when `metrics.enabled`): `storage_available`, `storage_breaker_transitions_total`.
 
 Source: `pkg/health/`, `pkg/s3/config.go`, `service/proxy/server.go` (`storageProbe`).
+
+## Redis
+
+Shared by proxy and worker (`redis:` block, common config, env prefix `CFG_`). Default: one standalone Redis, four logical DBs.
+
+```yaml
+redis:
+  addresses: [redis:6379]   # standalone: one address. Sentinel: the sentinel addresses. (address: is the deprecated single form)
+  user: ""
+  password: ""
+  tls: {enabled: false, insecure: false}
+  sentinel:                 # set masterName to use Redis Sentinel
+    masterName: ""
+    user: ""
+    password: ""
+  metaDB: 0
+  queueDB: 1
+  lockDB: 2
+  configDB: 3
+  # optional per-role instances (each may use db: 0), unset fields inherit from above
+  config: {addresses: [], user: "", password: "", tls: "", sentinel: {masterName: "", user: "", password: ""}, db: }
+  queue:  {}   # same keys as config
+  lock:   {}
+  meta:   {}
+```
+
+| Key | Meaning |
+|---|---|
+| `redis.sentinel.masterName` | Enables Sentinel (go-redis failover client, and asynq `RedisFailoverClientOpt` for the queue). `addresses` are then the sentinels. Env: `CFG_REDIS_SENTINEL_MASTERNAME`, `..._USER`, `..._PASSWORD`. |
+| `redis.<role>.addresses` | The role (`config`, `queue`, `lock`, `meta`) uses its own Redis, or its own Sentinel group when `redis.<role>.sentinel.masterName` is set. Without it the role uses the top-level instance and its `*DB` number. |
+| `redis.<role>.user`, `.password` | Credentials of the role's instance. Empty inherits the top-level value. |
+| `redis.<role>.tls` | `""` inherits `redis.tls.enabled`, `true`/`false` overrides it (`insecure` is inherited). |
+| `redis.<role>.db` | Logical DB on the role's instance. Unset: the role's top-level DB key. Use `0` on a dedicated instance. YAML only. |
+
+Roles: `config` = routing, replication, failover policies, storages, users, keys (`configDB`); `queue` = asynq replication queues (`queueDB`); `lock` = distributed locks (`lockDB`); `meta` = version vectors, uploads, sessions, migration state (`metaDB`). Existing configs without the role blocks behave exactly as before. A role with its own `addresses` does not inherit the top-level `sentinel` block. Use the same topology on proxy and worker.
+
+Not supported: **Redis Cluster** (it only has DB 0, and Tutti's Lua scripts and transactions touch several keys). More than one address without `sentinel.masterName` selects a cluster client and is not a supported configuration. Operating guidance, an example Sentinel topology and the per-role layout: [redis-operations.md](./redis-operations.md#high-availability-with-redis-sentinel).
+
+## Policy snapshot
+
+```yaml
+snapshot:
+  disabled: false
+  pollInterval: 1s
+  fullReload: 30s
+```
+
+The proxy keeps the routing, routing blocks, zero-downtime switch, replication policy and replication generation data of each (user, bucket) in memory instead of reading it from Redis (about 12 commands in one MULTI/EXEC) on every request. Writers (worker API, failover controller, policy service) bump `tutti:cfg:version` and publish on `tutti:cfg:changed` in the config Redis in the same transaction as the change. A proxy drops its cache when it sees a new version (notification, or the `pollInterval` poll). `fullReload` also drops the cache periodically, as a safety net for edits made outside Tutti. `disabled: true` restores the previous behavior (every request reads Redis). GET/HEAD/LIST are served without any Redis command and keep working from the last known data while Redis is unreachable; every other request first reads the version key (1 command) and returns `503 ServiceUnavailable` if Redis is unreachable. Details: [performance-and-redis.md](./performance-and-redis.md#redis-commands-per-request-after-the-policy-snapshot). Prometheus: `policy_snapshot_reloads_total`, `_hits_total`, `_misses_total`, `_stale_served_total`, `_refresh_errors_total`, `policy_snapshot_age_seconds`.
+
+## Readiness and graceful drain
+
+```yaml
+ready:
+  maxStaleness: 30s
+drainDelay: 5s
+```
+
+`GET /ready` (also `HEAD`) on the proxy port needs no authentication, is not counted in traffic statistics and is not logged. It answers `200` only when all hold, otherwise `503`, with a JSON body listing `reasons`:
+
+- the policy snapshot is loaded,
+- Redis is reachable, or the last successful contact is younger than `ready.maxStaleness` (mode `read-only`: the proxy still serves reads, writes would answer 503),
+- at least one storage is known,
+- the proxy is not draining.
+
+```json
+{"ready":true,"mode":"ok","snapshotLoaded":true,"snapshotVersion":"12","snapshotAgeSeconds":0.4,"redisReachable":true,"storages":2,"draining":false,"maxStalenessSeconds":30}
+```
+
+`/ready` is a reserved path: only an unauthenticated request without query string is answered by it, so authenticated and presigned requests to a bucket that is named `ready` still reach the S3 chain. On SIGTERM/SIGINT the proxy first reports not ready (`draining: true`), waits `drainDelay` (default `5s`; set it to at least the load balancer's check interval times its unhealthy threshold), then stops the listener and waits for in-flight requests. `drainDelay: 0` skips the wait. The all-in-one `chorus` standalone binary builds its proxy config in code and uses no drain wait and the default snapshot settings. The worker has no plain HTTP server on its own port besides optional metrics, so it has no `/ready`.
 
 ## Status
 

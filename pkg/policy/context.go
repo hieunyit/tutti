@@ -46,53 +46,127 @@ func (r *policySvc) BuildProxyContext(ctx context.Context, user, bucket string) 
 	if err := validate.BucketReplicationPolicyID(bucketReplID); err != nil {
 		return ctx, fmt.Errorf("unable to validate bucket replication policy id: %w", err)
 	}
+	return r.proxyContext(ctx, user, bucket)
+}
 
-	// in a single batch get:
-	//  1. user level routing
-	//  2. bucket level routing
-	//  3. user level active zero downtime switch
-	//  4. bucket level active zero downtime switch
-	//  5. user replication policies
-	//  6. bucket replication policies
-	//  7. replication generations
+func (r *policySvc) BuildProxyNoBucketContext(ctx context.Context, user string) (context.Context, error) {
+	return r.proxyContext(ctx, user, "")
+}
+
+// proxyContext resolves the routing/replication data of the request, from the in-memory snapshot when it
+// is enabled (see snapshot.go) and straight from Redis otherwise, and sets it to the context.
+func (r *policySvc) proxyContext(ctx context.Context, user, bucket string) (context.Context, error) {
+	var (
+		data *proxyData
+		err  error
+	)
+	if r.snap != nil {
+		data, err = r.snap.lookup(ctx, r, user, bucket)
+	} else {
+		data, err = r.loadProxyData(ctx, user, bucket)
+	}
+	if err != nil {
+		return ctx, err
+	}
+	return data.apply(ctx)
+}
+
+// proxyData is everything the proxy context needs for one (user, bucket) pair. It is immutable once built,
+// so it can be shared between requests by the snapshot.
+type proxyData struct {
+	// routeErr is dom.ErrRoutingBlock when routing is blocked; no other error is ever stored.
+	routeErr     error
+	routeTo      string
+	activeSwitch *entity.ReplicationSwitchInfo
+	replications []entity.UniversalReplicationID
+	generations  map[entity.UniversalReplicationID]int64
+}
+
+func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
+	if d.routeErr != nil {
+		return ctx, d.routeErr
+	}
+	ctx = xctx.SetRoutingPolicy(ctx, d.routeTo)
+	if d.activeSwitch != nil {
+		sw := *d.activeSwitch
+		ctx = xctx.SetInProgressZeroDowntime(ctx, sw)
+	}
+	if len(d.replications) != 0 {
+		// copy: the data may be shared between requests
+		ctx = xctx.SetReplications(ctx, append([]entity.UniversalReplicationID(nil), d.replications...))
+	}
+	if len(d.generations) != 0 {
+		gens := make(map[entity.UniversalReplicationID]int64, len(d.generations))
+		for k, v := range d.generations {
+			gens[k] = v
+		}
+		ctx = xctx.SetReplicationGenerations(ctx, gens)
+	}
+	return ctx, nil
+}
+
+// loadProxyData reads from Redis (one transaction):
+//  1. user level routing
+//  2. bucket level routing
+//  3. user level active zero downtime switch
+//  4. bucket level active zero downtime switch
+//  5. user replication policies
+//  6. bucket replication policies
+//  7. replication generations
+//
+// bucket == "" means a request without bucket (e.g. ListBuckets): only the user level data is read.
+func (r *policySvc) loadProxyData(ctx context.Context, user, bucket string) (*proxyData, error) {
 	tx := r.userRoutingStore.TxExecutor()
 	userRoutingResult := r.userRoutingStore.WithExecutor(tx).GetOp(ctx, user)
-	bucketRoutingResult := r.bucketRoutingStore.WithExecutor(tx).GetOp(ctx, bucketRouteID)
 	userActiveSwitchResult := r.userReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, user)
-	bucketActiveSwitchResult := r.bucketReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, bucketReplID)
 	userReplications := r.userReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, user)
-	bucketReplications := r.bucketReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, entity.NewBucketReplicationPolicyID(user, bucket))
 	userGenerations := r.replicationGenerationStore.WithExecutor(tx).GetUserOp(ctx, user)
-	bucketGenerations := r.replicationGenerationStore.WithExecutor(tx).GetBucketOp(ctx, bucketReplID)
+
+	bucketReplID := entity.NewBucketReplicationPolicyID(user, bucket)
+	var (
+		// no bucket: no bucket routing, switch, replications and generations
+		bucketRoutingResult      store.OperationResult[string]                                              = store.NewRedisFailedOperationResult[string](dom.ErrNotFound)
+		bucketActiveSwitchResult store.OperationResult[bool]                                                = store.NewRedisFailedOperationResult[bool](dom.ErrNotFound)
+		bucketReplications       store.OperationResult[[]entity.BucketReplicationPolicy]                    = store.NewRedisFailedOperationResult[[]entity.BucketReplicationPolicy](dom.ErrNotFound)
+		bucketGenerations        store.OperationResult[map[entity.BucketReplicationPolicyDestination]int64] = store.NewRedisFailedOperationResult[map[entity.BucketReplicationPolicyDestination]int64](dom.ErrNotFound)
+	)
+	if bucket != "" {
+		bucketRouteID := entity.NewBucketRoutingPolicyID(user, bucket)
+		bucketRoutingResult = r.bucketRoutingStore.WithExecutor(tx).GetOp(ctx, bucketRouteID)
+		bucketActiveSwitchResult = r.bucketReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, bucketReplID)
+		bucketReplications = r.bucketReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, bucketReplID)
+		bucketGenerations = r.replicationGenerationStore.WithExecutor(tx).GetBucketOp(ctx, bucketReplID)
+	}
 	_ = tx.Exec(ctx) // ignore error - we will catch it on individual results
 
 	// get active routing policy
-	rotuteTo, err := determineActiveRouting(r.mainStorage, userRoutingResult, bucketRoutingResult)
-	if err != nil {
-		return ctx, err
+	routeTo, err := determineActiveRouting(r.mainStorage, userRoutingResult, bucketRoutingResult)
+	if errors.Is(err, dom.ErrRoutingBlock) {
+		return &proxyData{routeErr: dom.ErrRoutingBlock}, nil
 	}
-	ctx = xctx.SetRoutingPolicy(ctx, rotuteTo)
+	if err != nil {
+		return nil, err
+	}
+	data := &proxyData{routeTo: routeTo}
 
 	// check in_progress zero downtime switch if present
-	activeSwitch, err := r.getActiveZeroDowntimeSwitch(ctx, userActiveSwitchResult, bucketActiveSwitchResult, bucketReplID)
+	data.activeSwitch, err = r.getActiveZeroDowntimeSwitch(ctx, userActiveSwitchResult, bucketActiveSwitchResult, bucketReplID)
 	if err != nil {
-		return ctx, err
-	}
-	if activeSwitch != nil {
-		ctx = xctx.SetInProgressZeroDowntime(ctx, *activeSwitch)
+		return nil, err
 	}
 
-	// set replication policies
-	relications, err := getReplications(bucketReplications, userReplications)
+	// replication policies
+	replications, err := getReplications(bucketReplications, userReplications)
 	if err != nil {
-		return ctx, err
+		return nil, err
 	}
-	relications = keepReplicationsFromRoute(relications, rotuteTo)
-	if len(relications) != 0 {
-		ctx = xctx.SetReplications(ctx, relications)
-	}
+	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
-	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, activeSwitch)
+	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // keepReplicationsFromRoute keeps only replications whose source is the storage the request is
@@ -113,17 +187,17 @@ func keepReplicationsFromRoute(repls []entity.UniversalReplicationID, routedTo s
 	return repls[:n]
 }
 
-func setReplicationGenerations(ctx context.Context,
+func replicationGenerations(
 	userGenerations store.OperationResult[map[string]int64],
 	bucketGenerations store.OperationResult[map[entity.BucketReplicationPolicyDestination]int64],
-	replications []entity.UniversalReplicationID, activeSwitch *entity.ReplicationSwitchInfo) (context.Context, error) {
+	replications []entity.UniversalReplicationID, activeSwitch *entity.ReplicationSwitchInfo) (map[entity.UniversalReplicationID]int64, error) {
 	userGens, err := userGenerations.Get()
 	if err != nil {
-		return ctx, err
+		return nil, err
 	}
 	bucketGens, err := bucketGenerations.Get()
 	if err != nil && !errors.Is(err, dom.ErrNotFound) {
-		return ctx, err
+		return nil, err
 	}
 	generationOf := func(id entity.UniversalReplicationID) int64 {
 		if bucketID, ok := id.AsBucketID(); ok {
@@ -139,6 +213,17 @@ func setReplicationGenerations(ctx context.Context,
 	if activeSwitch != nil {
 		id := activeSwitch.ReplicationID()
 		result[id] = generationOf(id)
+	}
+	return result, nil
+}
+
+func setReplicationGenerations(ctx context.Context,
+	userGenerations store.OperationResult[map[string]int64],
+	bucketGenerations store.OperationResult[map[entity.BucketReplicationPolicyDestination]int64],
+	replications []entity.UniversalReplicationID, activeSwitch *entity.ReplicationSwitchInfo) (context.Context, error) {
+	result, err := replicationGenerations(userGenerations, bucketGenerations, replications, activeSwitch)
+	if err != nil {
+		return ctx, err
 	}
 	if len(result) == 0 {
 		return ctx, nil
@@ -256,47 +341,6 @@ func getReplications(bucketPolicies store.OperationResult[[]entity.BucketReplica
 		result = append(result, uid)
 	}
 	return result, nil
-}
-
-func (r *policySvc) BuildProxyNoBucketContext(ctx context.Context, user string) (context.Context, error) {
-	tx := r.userRoutingStore.TxExecutor()
-	userRoutingResult := r.userRoutingStore.WithExecutor(tx).GetOp(ctx, user)
-	userActiveSwitchResult := r.userReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, user)
-	userReplications := r.userReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, user)
-	userGenerations := r.replicationGenerationStore.WithExecutor(tx).GetUserOp(ctx, user)
-	_ = tx.Exec(ctx) // ignore error - we will catch it on individual results
-
-	bucketRoutingResult := store.NewRedisFailedOperationResult[string](dom.ErrNotFound)                                            // no bucket, so no bucket routing
-	bucketActiveSwitchResult := store.NewRedisFailedOperationResult[bool](dom.ErrNotFound)                                         // no bucket, so no bucket switch
-	bucketReplications := store.NewRedisFailedOperationResult[[]entity.BucketReplicationPolicy](dom.ErrNotFound)                   // no bucket, so no bucket replications
-	bucketGenerations := store.NewRedisFailedOperationResult[map[entity.BucketReplicationPolicyDestination]int64](dom.ErrNotFound) // no bucket, so no bucket replication generations
-
-	// get active routing policy
-	rotuteTo, err := determineActiveRouting(r.mainStorage, userRoutingResult, bucketRoutingResult)
-	if err != nil {
-		return ctx, err
-	}
-	ctx = xctx.SetRoutingPolicy(ctx, rotuteTo)
-
-	// check in_progress zero downtime switch if present
-	activeSwitch, err := r.getActiveZeroDowntimeSwitch(ctx, userActiveSwitchResult, bucketActiveSwitchResult, entity.BucketReplicationPolicyID{User: user})
-	if err != nil {
-		return ctx, err
-	}
-	if activeSwitch != nil {
-		ctx = xctx.SetInProgressZeroDowntime(ctx, *activeSwitch)
-	}
-
-	// set replication policies
-	relications, err := getReplications(bucketReplications, userReplications)
-	if err != nil {
-		return ctx, err
-	}
-	relications = keepReplicationsFromRoute(relications, rotuteTo)
-	if len(relications) != 0 {
-		ctx = xctx.SetReplications(ctx, relications)
-	}
-	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, activeSwitch)
 }
 
 func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) (context.Context, error) {

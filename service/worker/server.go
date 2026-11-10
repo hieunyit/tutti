@@ -31,6 +31,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/api"
 	"github.com/hieunyit/tutti/pkg/auth"
+	"github.com/hieunyit/tutti/pkg/config"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
@@ -74,7 +75,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		_ = shutdown(context.Background())
 	}()
 
-	appRedis := util.NewRedis(conf.Redis, conf.Redis.MetaDB)
+	appRedis := util.NewRedisRole(conf.Redis, config.RedisRoleMeta)
 	defer appRedis.Close()
 	err = appRedis.Ping(ctx).Err()
 	if err != nil {
@@ -90,7 +91,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	objectListStateStore := store.NewMigrationObjectListStateStore(appRedis)
 	bucketListStateStore := store.NewMigrationBucketListStateStore(appRedis)
 
-	confRedis := util.NewRedis(conf.Redis, conf.Redis.ConfigDB)
+	confRedis := util.NewRedisRole(conf.Redis, config.RedisRoleConfig)
 	defer confRedis.Close()
 	err = redisotel.InstrumentTracing(confRedis, redisotel.WithTracerProvider(tp))
 	if err != nil {
@@ -107,7 +108,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return err
 	}
 
-	queueRedis := util.NewRedisAsynq(conf.Redis, conf.Redis.QueueDB)
+	queueRedis := util.NewRedisAsynqRole(conf.Redis, config.RedisRoleQueue)
 	taskClient := asynq.NewClient(queueRedis)
 	defer taskClient.Close()
 	inspector := asynq.NewInspector(queueRedis)
@@ -121,7 +122,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 	limiter := ratelimit.New(appRedis, nil)
 	limiter.SetLookup(credsSvc.RateLimit)
-	lockRedis := util.NewRedis(conf.Redis, conf.Redis.LockDB)
+	lockRedis := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
 	defer lockRedis.Close()
 	replicationStatusLocker := store.NewReplicationStatusLocker(lockRedis, conf.Lock.Overlap)
 	userLocker := store.NewUserLocker(lockRedis, conf.Lock.Overlap)

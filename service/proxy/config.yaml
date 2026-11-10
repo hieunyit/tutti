@@ -44,6 +44,18 @@ failover:
 # cumulative stats and current rates. One Redis SET per interval per proxy. Must be greater than 0.
 status:
   interval: 2s
+# GET /ready (no auth, not counted in traffic stats) for the load balancer. Returns 200 only when the config snapshot is
+# loaded, Redis is reachable (or the snapshot is younger than maxStaleness, read-only mode) and storages are known.
+ready:
+  maxStaleness: 30s
+# On SIGTERM the proxy reports not-ready, waits drainDelay so the load balancer stops sending traffic, then stops listening.
+drainDelay: 5s
+# In-memory snapshot of routing / switches / replication policies / generations (instead of ~8 Redis commands per request).
+# Changes are announced by writers (Redis key tutti:cfg:version + pub/sub); writes validate the version per request.
+snapshot:
+  disabled: false
+  pollInterval: 1s
+  fullReload: 30s
 cors:
   enabled: false
   allowAll: false
@@ -100,3 +112,12 @@ storage:
 #      rateLimit:
 #        enable: true
 #        rpm: 60
+
+# Redis topology: see docs/tutti/configuration.md. Sentinel example (also for the worker):
+# redis:
+#   addresses: [sentinel-1:26379, sentinel-2:26379, sentinel-3:26379]
+#   sentinel: {masterName: tutti, password: "<sentinel-password>"}
+#   password: "<redis-password>"
+#   # optional: config, queue, lock, meta on separate instances, each may use DB 0
+#   queue: {addresses: ["queue-redis:6379"], db: 0}
+#   config: {addresses: ["cfg-redis:6379"], db: 0}

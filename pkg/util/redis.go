@@ -42,25 +42,27 @@ func NewRedis(conf *config.Redis, db int) redis.UniversalClient {
 	return redis.NewUniversalClient(opt)
 }
 
+// NewRedisRole creates a client for the role (config, queue, lock, meta): its own instance when
+// redis.<role>.addresses is set, otherwise the top-level instance and the role's logical DB.
+func NewRedisRole(conf *config.Redis, role config.RedisRole) redis.UniversalClient {
+	eff, db := conf.Endpoint(role)
+	return NewRedis(eff, db)
+}
+
+// NewRedisAsynqRole is NewRedisRole for the asynq queue client (standalone, Sentinel or cluster).
+func NewRedisAsynqRole(conf *config.Redis, role config.RedisRole) asynq.RedisConnOpt {
+	eff, db := conf.Endpoint(role)
+	return NewRedisAsynq(eff, db)
+}
+
 func NewRedisAsynq(conf *config.Redis, db int) asynq.RedisConnOpt {
 	addresses := conf.GetAddresses()
-	if len(addresses) == 1 {
-		// Standalone
-		opt := asynq.RedisClientOpt{Addr: addresses[0], Username: conf.User, Password: conf.Password, DB: db}
-		if conf.TLS.Enabled {
-			opt.TLSConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: conf.TLS.Insecure,
-			}
-		}
-		return &opt
-	}
-
 	if conf.Sentinel.MasterName != "" {
-		// Sentinel
+		// Sentinel (checked first: a single sentinel address is valid and must not fall back to standalone)
 		opt := asynq.RedisFailoverClientOpt{
 			MasterName:       conf.Sentinel.MasterName,
 			SentinelAddrs:    addresses,
+			SentinelUsername: conf.Sentinel.User,
 			SentinelPassword: conf.Sentinel.Password,
 			Username:         conf.User,
 			Password:         conf.Password,
@@ -74,6 +76,18 @@ func NewRedisAsynq(conf *config.Redis, db int) asynq.RedisConnOpt {
 		}
 		return &opt
 	}
+	if len(addresses) == 1 {
+		// Standalone
+		opt := asynq.RedisClientOpt{Addr: addresses[0], Username: conf.User, Password: conf.Password, DB: db}
+		if conf.TLS.Enabled {
+			opt.TLSConfig = &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				InsecureSkipVerify: conf.TLS.Insecure,
+			}
+		}
+		return &opt
+	}
+
 	// Cluster
 	opt := asynq.RedisClusterClientOpt{
 		Addrs:    addresses,

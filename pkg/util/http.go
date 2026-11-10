@@ -74,6 +74,14 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 			Key:        xctx.GetObject(ctx),
 			StatusCode: http.StatusBadRequest,
 		}
+	case errors.Is(err, dom.ErrUnavailable):
+		s3Err = mclient.ErrorResponse{
+			Code:       "ServiceUnavailable",
+			Message:    "Service temporarily unavailable. Please retry.",
+			BucketName: xctx.GetBucket(ctx),
+			Key:        xctx.GetObject(ctx),
+			StatusCode: http.StatusServiceUnavailable,
+		}
 	case errors.Is(err, dom.ErrRoutingBlock):
 		logLevel = zerolog.WarnLevel
 		s3Err = mclient.ErrorResponse{
