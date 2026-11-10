@@ -54,7 +54,7 @@ func newAWSClient(conf s3.StorageAddress, cred s3.CredentialsV4, storageName, us
 	awsConfig := aws.NewConfig().
 		WithMaxRetries(3).
 		WithCredentials(creds).
-		WithHTTPClient(&http.Client{Timeout: conf.HttpTimeout}).
+		WithHTTPClient(&http.Client{Timeout: conf.HttpTimeout, Transport: storageTransport(conf)}).
 		WithS3ForcePathStyle(true).
 		WithDisableSSL(!conf.IsSecure).
 		WithEndpoint(endpoint).

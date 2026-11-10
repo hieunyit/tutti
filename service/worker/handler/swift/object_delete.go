@@ -55,7 +55,7 @@ func (s *svc) HandleObjectDelete(ctx context.Context, t *asynq.Task) (err error)
 	}
 	defer lock.Release(context.Background())
 
-	return lock.Do(ctx, time.Second*2, func() error {
+	return lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		return s.ObjectDelete(ctx, p)
 	})
 }

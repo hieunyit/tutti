@@ -1,9 +1,12 @@
 package router
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"syscall"
 	"testing"
 	"time"
 
@@ -11,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hieunyit/tutti/pkg/health"
+	"github.com/hieunyit/tutti/pkg/tasks"
 )
 
 func openBreaker(reg *health.Registry, storage string) {
@@ -62,20 +66,34 @@ func TestServeSync_OpenBreaker_QuorumUnreachable_Accept(t *testing.T) {
 	r.Zero(fs.totalCalls())
 }
 
-func TestServeSync_ObservesDestinationOutcomes(t *testing.T) {
+func TestServeSync_BudgetTimeoutDoesNotOpenBreaker(t *testing.T) {
 	r := require.New(t)
 	reg := newHealth()
 	fs := newFakeSyncer()
 	fs.hang["f1"] = true
-	// each request times out on f1 -> deadline errors are availability failures
-	for range 3 {
-		runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 50 * time.Millisecond, Health: reg}, []string{"f1"}, 1)
+	// the destination exceeds our own sync budget every time: no storage outcome is reported
+	for range 12 {
+		runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 20 * time.Millisecond, Health: reg}, []string{"f1"}, 1)
 	}
-	r.Eventually(func() bool { return !reg.Available("f1") }, time.Second, 10*time.Millisecond,
-		"three timed-out destinations must eventually open the breaker")
-	// now fast
-	rec, took := runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: fs, Timeout: 5 * time.Second, Health: reg}, []string{"f1"}, 1)
-	r.Less(took, time.Second)
-	r.Equal(http.StatusServiceUnavailable, rec.Code)
-	r.Equal(3, fs.callsTo("f1"))
+	time.Sleep(50 * time.Millisecond)
+	r.True(reg.Available("f1"), "budget timeouts must not open the breaker")
+	r.Equal(12, fs.callsTo("f1"))
+}
+
+func TestServeSync_RealDestinationErrorsOpenBreaker(t *testing.T) {
+	for name, syncErr := range map[string]error{
+		"connection refused": syscall.ECONNREFUSED,
+		// a storage call timeout that is not our budget (budget is 5s here)
+		"per-call timeout": fmt.Errorf("storage call: %w", context.DeadlineExceeded),
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := require.New(t)
+			reg := newHealth()
+			sy := syncerFunc(func(context.Context, tasks.ObjectSyncPayload) error { return syncErr })
+			for range 12 {
+				runSyncServe(t, &failingReplSvc{}, SyncOptions{Enabled: true, Syncer: sy, Timeout: 5 * time.Second, Health: reg}, []string{"f1"}, 1)
+			}
+			r.Eventually(func() bool { return !reg.Available("f1") }, time.Second, 10*time.Millisecond)
+		})
+	}
 }

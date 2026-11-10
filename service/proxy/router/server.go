@@ -312,22 +312,7 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 			}
 		}
 		// Forward response to original client
-		for k, v := range resp.Header {
-			if proxyCors {
-				// keep CORS headers set by proxy CORS middleware
-				if strings.HasPrefix(k, "Access-Control-") {
-					continue
-				}
-				if k == "Vary" {
-					// keep Vary set by proxy CORS middleware
-					for _, val := range v {
-						w.Header().Add(k, val)
-					}
-					continue
-				}
-			}
-			w.Header().Set(k, v[0])
-		}
+		copyResponseHeaders(w.Header(), resp.Header, proxyCors)
 		if synced {
 			w.Header().Set(ReplicasHeader, syncRes.header())
 		}
@@ -335,10 +320,52 @@ func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts 
 		_, err = io.Copy(w, resp.Body)
 		if err != nil {
 			logger.Err(err).Msg("unable to copy response body")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			// The status line is already sent: abort the response so that the client sees a broken
+			// connection instead of a silently truncated successful response.
+			panic(http.ErrAbortHandler)
 		}
 	})
+}
+
+// hopByHopHeaders are connection-scoped headers that a proxy must not forward.
+var hopByHopHeaders = []string{
+	"Connection", "Keep-Alive", "Proxy-Connection", "Proxy-Authenticate", "Proxy-Authorization",
+	"Transfer-Encoding", "Upgrade", "Te", "Trailer",
+}
+
+// copyResponseHeaders copies all values of the backend response headers to dst, except hop-by-hop
+// headers (including the ones listed in Connection). With proxyCors the CORS headers set by the proxy
+// CORS middleware are kept: backend Access-Control-* are dropped and backend Vary values are added.
+func copyResponseHeaders(dst, src http.Header, proxyCors bool) {
+	skip := make(map[string]struct{}, len(hopByHopHeaders))
+	for _, h := range hopByHopHeaders {
+		skip[http.CanonicalHeaderKey(h)] = struct{}{}
+	}
+	for _, v := range src["Connection"] {
+		for _, tok := range strings.Split(v, ",") {
+			if tok = strings.TrimSpace(tok); tok != "" {
+				skip[http.CanonicalHeaderKey(tok)] = struct{}{}
+			}
+		}
+	}
+	for k, v := range src {
+		k = http.CanonicalHeaderKey(k)
+		if _, ok := skip[k]; ok {
+			continue
+		}
+		if proxyCors {
+			if strings.HasPrefix(k, "Access-Control-") {
+				continue
+			}
+			if k == "Vary" {
+				for _, val := range v {
+					dst.Add(k, val)
+				}
+				continue
+			}
+		}
+		dst[k] = append([]string(nil), v...)
+	}
 }
 
 // withCancelFrom returns a ctx with the values of base that is also canceled when

@@ -83,7 +83,7 @@ func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 		logger.Info().Int("from_ver", fromVer).Int("to_ver", toVer).Msg("diff fix copy: proceeding with copy despite version check")
 	}
 	// 1. sync obj meta and content
-	err = lock.Do(ctx, time.Second*2, func() error {
+	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
 			Storage: p.ID.FromStorage(),
 			Bucket:  fromBucket,

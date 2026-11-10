@@ -62,7 +62,23 @@ func (r *Lock) Release(ctx context.Context) {
 	r.logger.Debug().Err(releaseErr).Msg("lock-service: lock released")
 }
 
+// ErrLockLost is returned by Do/DoCtx when the lock could not be kept during the work: the lock
+// expired or was taken over, or refreshing kept failing until the TTL would have expired.
+// The context passed to the work function is canceled and the caller should retry the task.
+var ErrLockLost = errors.New("lock lost during work")
+
+// lockLostGrace is how long DoCtx waits for the canceled work to return before giving up on it.
+const lockLostGrace = 5 * time.Second
+
+// Do runs work holding the lock. Prefer DoCtx: work of Do is not canceled when the lock is lost.
 func (r *Lock) Do(ctx context.Context, refresh time.Duration, work func() error) error {
+	return r.DoCtx(ctx, refresh, func(context.Context) error { return work() })
+}
+
+// DoCtx runs work holding the lock and refreshes it while work runs. The context passed to work
+// is canceled when the lock is lost (refresh reports it is not held, or refreshes keep failing
+// until the TTL would have expired); DoCtx then returns an error wrapping ErrLockLost.
+func (r *Lock) DoCtx(ctx context.Context, refresh time.Duration, work func(ctx context.Context) error) error {
 	refreshInterval := refresh + r.overlap
 	err := r.Refresh(ctx, refreshInterval)
 	if errors.Is(err, redislock.ErrNotObtained) {
@@ -71,14 +87,18 @@ func (r *Lock) Do(ctx context.Context, refresh time.Duration, work func() error)
 	if err != nil {
 		return err
 	}
+	lastOK := time.Now()
+	workCtx, cancelWork := context.WithCancel(ctx)
+	defer cancelWork()
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- work()
+		errCh <- work(workCtx)
 	}()
 	timer := time.NewTimer(refresh)
 	defer timer.Stop()
 	// keep the lock until work returns, even if ctx is canceled
 	refreshCtx := ctx
+	retryDelay := max(refresh/4, 10*time.Millisecond)
 	i := 0
 	for {
 		select {
@@ -87,14 +107,30 @@ func (r *Lock) Do(ctx context.Context, refresh time.Duration, work func() error)
 		case <-timer.C:
 			i++
 			err = r.Refresh(refreshCtx, refreshInterval)
-			if err != nil {
-				zerolog.Ctx(ctx).Err(err).
-					Str("refresh_period", refresh.String()).
-					Str("refresh_overlap", r.overlap.String()).
-					Int("refresh_iteration", i).
-					Msg("unable to refresh lock")
+			if err == nil {
+				lastOK = time.Now()
+				timer.Reset(refresh)
+				continue
 			}
-			timer.Reset(refresh)
+			zerolog.Ctx(ctx).Err(err).
+				Str("refresh_period", refresh.String()).
+				Str("refresh_overlap", r.overlap.String()).
+				Int("refresh_iteration", i).
+				Msg("unable to refresh lock")
+			lost := errors.Is(err, redislock.ErrNotObtained) || errors.Is(err, redislock.ErrLockNotHeld)
+			if lost || time.Since(lastOK) >= refreshInterval {
+				cancelWork()
+				select {
+				case werr := <-errCh:
+					if werr != nil && !errors.Is(werr, context.Canceled) {
+						return fmt.Errorf("%w: %w (work: %v)", ErrLockLost, err, werr)
+					}
+				case <-time.After(lockLostGrace):
+				}
+				return fmt.Errorf("%w: %w", ErrLockLost, err)
+			}
+			// transient error: retry sooner, within the remaining TTL
+			timer.Reset(min(retryDelay, refresh))
 		case err = <-errCh:
 			return err
 		}

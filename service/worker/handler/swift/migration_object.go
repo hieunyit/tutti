@@ -55,7 +55,7 @@ func (s *svc) HandleSwiftObjectMigration(ctx context.Context, t *asynq.Task) (er
 	defer lock.Release(context.Background())
 
 	// sync object:
-	return lock.Do(ctx, time.Second*2, func() error {
+	return lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		task := tasks.SwiftObjectUpdatePayload{
 			Bucket:       p.Bucket,
 			Object:       p.ObjName,

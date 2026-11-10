@@ -59,7 +59,7 @@ func (s *svc) HandleContainerUpdate(ctx context.Context, t *asynq.Task) (err err
 		return err
 	}
 	defer lock.Release(context.Background())
-	err = lock.Do(ctx, time.Second*2, func() error {
+	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		return s.ContainerUpdate(ctx, p)
 	})
 

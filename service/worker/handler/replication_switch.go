@@ -324,7 +324,7 @@ func (s *switchSvc) HandleZeroDowntimeReplicationSwitch(ctx context.Context, t *
 		return fmt.Errorf("unable to create lock: %w", err)
 	}
 	defer lock.Release(ctx)
-	return lock.Do(ctx, time.Second*2, func() error {
+	return lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		return s.handleZeroDowntimeReplicationSwitch(ctx, p)
 	})
 }

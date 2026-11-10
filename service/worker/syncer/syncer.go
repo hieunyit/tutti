@@ -81,7 +81,7 @@ func (s *ObjectSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) erro
 		return nil
 	}
 
-	err = lock.Do(ctx, time.Second*2, func() error {
+	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
 			Storage: p.ID.FromStorage(),
 			Bucket:  fromBucket,

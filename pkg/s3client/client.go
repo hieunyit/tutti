@@ -71,7 +71,8 @@ type client struct {
 func NewClient(ctx context.Context, metricsSvc metrics.Service, storageConf s3.StorageAddress, cred s3.CredentialsV4, storageName, userName string, opts ...Option) (Client, error) {
 	c := &client{
 		c: &http.Client{
-			Timeout: storageConf.HttpTimeout,
+			Timeout:   storageConf.HttpTimeout,
+			Transport: storageTransport(storageConf),
 		},
 		conf:        storageConf,
 		storageName: storageName,
@@ -88,6 +89,8 @@ func NewClient(ctx context.Context, metricsSvc metrics.Service, storageConf s3.S
 	mc, err := mclient.New(host, &mclient.Options{
 		Creds:  credentials.NewStaticV4(c.cred.AccessKeyID, c.cred.SecretAccessKey, ""),
 		Secure: storageConf.IsSecure,
+		// shared tuned transport of the storage
+		Transport: storageTransport(storageConf),
 		// Without a region minio looks it up with GetBucketLocation signed with us-east-1,
 		// which providers validating the credential scope reject. Empty keeps the lookup.
 		Region: storageConf.DefaultRegion,

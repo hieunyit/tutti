@@ -68,6 +68,12 @@ type StorageAddress struct {
 	// HealthCheckInterval is the period of the storage availability probe. Default 10s.
 	HealthCheckInterval time.Duration `yaml:"healthCheckInterval"`
 	IsSecure            bool          `yaml:"isSecure"`
+
+	// MaxIdleConns is the limit of idle keep-alive connections to the storage shared by all
+	// users of the storage. Optional, default 1024.
+	MaxIdleConns int `yaml:"maxIdleConns"`
+	// MaxIdleConnsPerHost is the limit of idle keep-alive connections kept to the storage address. Optional, default 512.
+	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost"`
 }
 
 func (s *Storage) HasUser(user string) bool {

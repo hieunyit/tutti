@@ -78,3 +78,79 @@ func TestLock_DoWaitsForWorkAfterCancel(t *testing.T) {
 		t.Fatal("Do did not return after work finished")
 	}
 }
+
+func TestLock_DoCtxCancelsWorkWhenLockLost(t *testing.T) {
+	r := require.New(t)
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	locker := NewUserLocker(client, 50*time.Millisecond)
+
+	lock, err := locker.Lock(t.Context(), "user", WithDuration(time.Second))
+	r.NoError(err)
+
+	started := make(chan struct{})
+	doErr := make(chan error, 1)
+	go func() {
+		doErr <- lock.DoCtx(t.Context(), 50*time.Millisecond, func(ctx context.Context) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	}()
+	<-started
+	// lock expires/taken over: refresh reports it is not held
+	for _, k := range mr.Keys() {
+		mr.Del(k)
+	}
+	select {
+	case err = <-doErr:
+		r.ErrorIs(err, ErrLockLost)
+	case <-time.After(5 * time.Second):
+		t.Fatal("work was not canceled after the lock was lost")
+	}
+}
+
+func TestLock_DoCtxCancelsWorkWhenRefreshKeepsFailing(t *testing.T) {
+	r := require.New(t)
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	locker := NewUserLocker(client, 50*time.Millisecond)
+
+	lock, err := locker.Lock(t.Context(), "user", WithDuration(time.Second))
+	r.NoError(err)
+
+	started := make(chan struct{})
+	doErr := make(chan error, 1)
+	go func() {
+		doErr <- lock.DoCtx(t.Context(), 50*time.Millisecond, func(ctx context.Context) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	}()
+	<-started
+	mr.Close() // redis unavailable: refresh fails with a transient error until the TTL passes
+	select {
+	case err = <-doErr:
+		r.ErrorIs(err, ErrLockLost)
+	case <-time.After(10 * time.Second):
+		t.Fatal("work was not canceled after refresh kept failing")
+	}
+}
+
+func TestLock_DoCtxHealthyWork(t *testing.T) {
+	r := require.New(t)
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	locker := NewUserLocker(client, 50*time.Millisecond)
+	lock, err := locker.Lock(t.Context(), "user", WithDuration(time.Second))
+	r.NoError(err)
+	err = lock.DoCtx(t.Context(), 30*time.Millisecond, func(ctx context.Context) error {
+		time.Sleep(150 * time.Millisecond)
+		return ctx.Err()
+	})
+	r.NoError(err)
+}

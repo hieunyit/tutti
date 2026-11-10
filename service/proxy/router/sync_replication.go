@@ -143,16 +143,12 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 				gen := xctx.GetReplicationGeneration(ctx, id)
 				for _, p := range payloads {
 					if err = syncCtx.Err(); err != nil {
-						if o.Health != nil {
-							o.Health.Observe(to, err)
-						}
+						o.observe(ctx, syncCtx, to, err)
 						break
 					}
 					p.SetReplicationID(id, gen)
 					err = o.Syncer.Sync(syncCtx, p)
-					if o.Health != nil {
-						o.Health.Observe(to, err)
-					}
+					o.observe(ctx, syncCtx, to, err)
 					if err != nil {
 						break
 					}
@@ -181,6 +177,21 @@ func (o SyncOptions) syncDestinations(ctx context.Context, taskList []tasks.Repl
 		res.pending = append(res.pending, id)
 	}
 	return res, true
+}
+
+// observe reports the outcome of a destination call to the health registry. A deadline caused by
+// the proxy's own sync budget (syncCtx) says nothing about the storage and is reported as neutral.
+// A per-call storage timeout that is not our budget still counts as a failure.
+func (o SyncOptions) observe(ctx, syncCtx context.Context, to string, err error) {
+	if o.Health == nil {
+		return
+	}
+	if err != nil && errors.Is(err, context.DeadlineExceeded) &&
+		errors.Is(syncCtx.Err(), context.DeadlineExceeded) && !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		// ctx may already be canceled by the finished request (the budget expired first): still our budget
+		err = context.Canceled
+	}
+	o.Health.Observe(to, err)
 }
 
 func (r syncResult) header() string { return fmt.Sprintf("%d/%d", r.copies, r.total) }

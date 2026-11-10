@@ -18,6 +18,8 @@ package router
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
@@ -27,6 +29,24 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3client"
 	"github.com/hieunyit/tutti/pkg/tasks"
 )
+
+// uploadedSize returns the payload size of a PUT request when it is known from the request:
+// x-amz-decoded-content-length for aws-chunked uploads, otherwise Content-Length.
+func uploadedSize(req *http.Request) (int64, bool) {
+	if v := req.Header.Get("X-Amz-Decoded-Content-Length"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 {
+			return n, true
+		}
+		return 0, false
+	}
+	if strings.Contains(strings.ToLower(req.Header.Get("Content-Encoding")), "aws-chunked") {
+		return 0, false
+	}
+	if req.ContentLength >= 0 {
+		return req.ContentLength, true
+	}
+	return 0, false
+}
 
 func (r *s3Router) putObject(req *http.Request) (resp *http.Response, taskList []tasks.ReplicationTask, storage string, isApiErr bool, err error) {
 	ctx := req.Context()
@@ -50,13 +70,14 @@ func (r *s3Router) putObject(req *http.Request) (resp *http.Response, taskList [
 		Name:    object,
 		Version: "", // versionID not supported for obj PUT
 	}
-	var objSize int64
-	objInfo, err := client.S3().StatObject(ctx, bucket, object, mclient.StatObjectOptions{})
-	if err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("unable to get uploaded object size")
-		err = nil
-	} else {
-		objSize = objInfo.Size
+	objSize, known := uploadedSize(req)
+	if !known {
+		objInfo, statErr := client.S3().StatObject(ctx, bucket, object, mclient.StatObjectOptions{})
+		if statErr != nil {
+			zerolog.Ctx(ctx).Err(statErr).Msg("unable to get uploaded object size")
+		} else {
+			objSize = objInfo.Size
+		}
 	}
 
 	taskList = append(taskList, &tasks.ObjectSyncPayload{

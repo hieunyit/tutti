@@ -200,7 +200,7 @@ func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replication
 			fromFile := copy.NewVersionedFile(replicationID.FromStorage, replicationID.FromBucket, prefix, info.Version)
 			toFile := copy.NewVersionedFile(replicationID.ToStorage, replicationID.ToBucket, prefix, info.Version)
 
-			if err = lock.Do(ctx, time.Second*2, func() error {
+			if err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 				return r.copySvc.CopyObject(ctx, replicationID.User, fromFile, toFile)
 			}); err != nil {
 				if errors.Is(err, dom.ErrNotFound) {

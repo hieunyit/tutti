@@ -125,6 +125,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	defer lockRedis.Close()
 	replicationStatusLocker := store.NewReplicationStatusLocker(lockRedis, conf.Lock.Overlap)
 	userLocker := store.NewUserLocker(lockRedis, conf.Lock.Overlap)
+	storageLocker := api.NewStorageLocker(lockRedis)
 	objectLocker := store.NewObjectLocker(lockRedis, conf.Lock.Overlap)
 	bucketLocker := store.NewBucketLocker(lockRedis, conf.Lock.Overlap)
 
@@ -275,12 +276,20 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Api.Webhook.Enabled {
 			webhookConf = &conf.Api.Webhook
 		}
-		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf)
+		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, api.WithPolicyStorageLocker(storageLocker))
 
-		authSvc, err := auth.NewService(conf.Api.Auth, appRedis, auth.WithManagedUsers(confRedis))
+		webhookSharesMainPort := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort <= 0
+		var authOpts []auth.Option
+		authOpts = append(authOpts, auth.WithManagedUsers(confRedis))
+		if webhookSharesMainPort && conf.Api.Webhook.Token == "" {
+			logger.Warn().Msg("webhook api is served on the main api port WITHOUT api.webhook.token: anyone who can reach the api can inject fake bucket events. Set api.webhook.token or use separate webhook ports")
+			authOpts = append(authOpts, auth.WithWarnings(auth.WarningWebhookUnauthenticated))
+		}
+		authSvc, err := auth.NewService(conf.Api.Auth, appRedis, authOpts...)
 		if err != nil {
 			return err
 		}
+		webhookTokenUnary, webhookTokenStream := auth.WebhookTokenInterceptors(conf.Api.Webhook.Token)
 		if !authSvc.Enabled() {
 			logger.Warn().Msg("management api is enabled WITHOUT authentication (api.auth.enabled=false): anyone who can reach the api ports has full admin access")
 		}
@@ -298,7 +307,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return credsSvc.HasUser(credsSvc.MainStorage(), user) == nil
 		}), api.WithS3Users(credsSvc, s3users.MinioVerifier(credsSvc.GetS3Address),
 			func(events *failover.Store) s3users.References { return s3users.PolicyReferences(policySvc, events) }),
-			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)))
+			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)),
+			api.WithStorageLocker(storageLocker))
 
 		webhookEnabled := conf.Api.Webhook.Enabled
 		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0
@@ -320,6 +330,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}
 		}
 		start, stop, err := api.NewGrpcServer(conf.Api.GrpcPort, registerServices, tp, conf.Log, app,
+			api.WithAuthInterceptors(webhookTokenUnary, webhookTokenStream),
 			api.WithAuthInterceptors(authSvc.UnaryInterceptor(), authSvc.StreamInterceptor()))
 		if err != nil {
 			return err
@@ -363,7 +374,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if webhookOnSeparatePorts {
 			start, stop, err = api.NewGrpcServer(conf.Api.Webhook.GrpcPort, func(srv *grpc.Server) {
 				pb.RegisterWebhookServer(srv, webhookHandler)
-			}, tp, conf.Log, app)
+			}, tp, conf.Log, app, api.WithAuthInterceptors(webhookTokenUnary, webhookTokenStream))
 			if err != nil {
 				return err
 			}
