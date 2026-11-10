@@ -117,6 +117,84 @@ func (s *UserStore) Put(ctx context.Context, u ManagedUser) error {
 	return nil
 }
 
+// consoleMutation atomically checks the old record, optionally checks that another
+// enabled admin remains, and replaces or deletes the target. A hash-wide check
+// prevents two concurrent demotions from both removing the last administrator.
+var consoleMutation = redis.NewScript(`
+if redis.call('hget', KEYS[1], ARGV[1]) ~= ARGV[2] then return 0 end
+if ARGV[4] == '1' then
+  local admins = tonumber(ARGV[5])
+  local shadowed = {}
+  for i = 6, #ARGV do shadowed[ARGV[i]] = true end
+  local users = redis.call('hgetall', KEYS[1])
+  for i = 1, #users, 2 do
+    if users[i] ~= ARGV[1] and not shadowed[users[i]] then
+      local ok, u = pcall(cjson.decode, users[i+1])
+      if ok and u.role == 'admin' and not u.disabled then admins = admins + 1 end
+    end
+  end
+  if admins == 0 then return -1 end
+end
+if ARGV[3] == '' then
+  redis.call('hdel', KEYS[1], ARGV[1])
+  redis.call('hdel', KEYS[2], ARGV[1])
+else
+  redis.call('hset', KEYS[1], ARGV[1], ARGV[3])
+end
+return 1
+`)
+
+// mutate retries an update against the latest record. fn is re-evaluated after a
+// concurrent change, so unrelated updates to the same user are preserved.
+func (s *UserStore) mutate(ctx context.Context, username string, configAdmins int, configNames []string,
+	fn func(*ManagedUser) (remove, checkOtherAdmin bool, err error)) error {
+	for range 20 {
+		old, err := s.rdb.HGet(ctx, ConsoleUsersKey, username).Result()
+		if errors.Is(err, redis.Nil) {
+			return fmt.Errorf("%w: console user %q", dom.ErrNotFound, username)
+		}
+		if err != nil {
+			return fmt.Errorf("console users: get: %w", err)
+		}
+		var u ManagedUser
+		if err := json.Unmarshal([]byte(old), &u); err != nil {
+			return fmt.Errorf("console users: decode %q: %w", username, err)
+		}
+		u.Username = username
+		remove, checkAdmin, err := fn(&u)
+		if err != nil {
+			return err
+		}
+		var next string
+		if !remove {
+			raw, err := json.Marshal(u)
+			if err != nil {
+				return err
+			}
+			next = string(raw)
+		}
+		guard := 0
+		if checkAdmin {
+			guard = 1
+		}
+		args := []any{username, old, next, guard, configAdmins}
+		for _, name := range configNames {
+			args = append(args, name)
+		}
+		result, err := consoleMutation.Run(ctx, s.rdb, []string{ConsoleUsersKey, consoleLoginKey}, args...).Int()
+		if err != nil {
+			return fmt.Errorf("console users: update: %w", err)
+		}
+		switch result {
+		case 1:
+			return nil
+		case -1:
+			return fmt.Errorf("%w: cannot remove the last enabled admin", dom.ErrFailedPrecondition)
+		}
+	}
+	return fmt.Errorf("%w: console user %q: too many concurrent changes", dom.ErrFailedPrecondition, username)
+}
+
 // Delete removes the user. Returns dom.ErrNotFound if missing.
 func (s *UserStore) Delete(ctx context.Context, username string) error {
 	n, err := s.rdb.HDel(ctx, ConsoleUsersKey, username).Result()

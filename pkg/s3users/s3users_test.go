@@ -9,7 +9,9 @@ import (
 	"errors"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
@@ -41,6 +43,21 @@ type fakeCreds struct {
 	failSet  string // storage whose SetS3Credentials fails
 	deleted  []string
 	storages map[string]dom.StorageType
+}
+
+type blockingCreds struct {
+	*fakeCreds
+	first   atomic.Bool
+	started chan struct{}
+	release chan struct{}
+}
+
+func (b *blockingCreds) SetS3Credentials(ctx context.Context, st, u string, c s3.CredentialsV4) error {
+	if !b.first.Swap(true) {
+		close(b.started)
+		<-b.release
+	}
+	return b.fakeCreds.SetS3Credentials(ctx, st, u, c)
 }
 
 func newFake(dynamic bool) *fakeCreds {
@@ -212,6 +229,40 @@ func TestCreate_FullFlow(t *testing.T) {
 	require.Equal(t, KeyCounts{DynamicActive: 1}, res.User.KeyCounts)
 	require.True(t, res.User.Policy.HasPolicy)
 	require.Equal(t, "user3", must(m.Policies.Get(ctx, "user3")).User)
+}
+
+func TestCreate_ConcurrentSameUserDoesNotOverwrite(t *testing.T) {
+	ctx := context.Background()
+	creds := &blockingCreds{fakeCreds: newFake(true), started: make(chan struct{}), release: make(chan struct{})}
+	m := newManager(t, creds.fakeCreds)
+	m.Creds = creds
+	other := *m // separate manager instance, same Redis and credential backend
+	req := CreateRequest{Name: "parallel", Credentials: both, Policy: &accesspolicy.Policy{Permission: accesspolicy.ReadOnly}}
+	first := make(chan error, 1)
+	second := make(chan error, 1)
+	go func() { _, err := m.Create(ctx, req); first <- err }()
+	<-creds.started // first request has entered the credential write while holding the user lock
+	secondStarted := make(chan struct{})
+	go func() { close(secondStarted); _, err := other.Create(ctx, req); second <- err }()
+	<-secondStarted
+	var early bool
+	var earlyErr error
+	select {
+	case earlyErr = <-second:
+		early = true
+	case <-time.After(30 * time.Millisecond):
+	}
+	close(creds.release)
+	require.False(t, early, "concurrent create returned while the first mutation was unfinished: %v", earlyErr)
+	require.NoError(t, <-first)
+	require.ErrorIs(t, <-second, dom.ErrAlreadyExists)
+	for _, c := range both {
+		got, err := creds.GetS3Credentials(c.Storage, "parallel")
+		require.NoError(t, err)
+		require.Equal(t, c.AccessKeyID, got.AccessKeyID)
+	}
+	_, err := m.Policies.Get(ctx, "parallel")
+	require.NoError(t, err)
 }
 
 func must[T any](v T, err error) T {

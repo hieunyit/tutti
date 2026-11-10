@@ -3,9 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -233,6 +235,73 @@ func TestConsoleUsers_ConfigAdminCountsAsLastAdminGuard(t *testing.T) {
 	require.NoError(t, err)
 	yes := true
 	require.NoError(t, svc.UpdateUser(ctx, "admin", "root1", "", &yes), "config admin keeps the system administrable")
+}
+
+func TestConsoleUsers_ConcurrentDemotionAndDeletePreserveLastAdmin(t *testing.T) {
+	ctx := context.Background()
+	conf := Config{Enabled: true, Users: []User{{Username: "view", PasswordHash: hash(t, "viewpw"), Role: RoleViewer}}}
+	svc, _, rc := newManagedSvc(t, conf)
+	other := *svc // separate service instance sharing Redis, without repeating bcrypt setup
+	other.managed = NewUserStore(rc)
+	for _, name := range []string{"root1", "root2"} {
+		_, _, err := svc.CreateUser(ctx, name, RoleAdmin, goodPw, false)
+		require.NoError(t, err)
+	}
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	go func() {
+		<-start
+		results <- svc.DeleteUser(ctx, "other", "root1")
+	}()
+	go func() {
+		<-start
+		results <- other.UpdateUser(ctx, "other", "root2", RoleViewer, nil)
+	}()
+	close(start)
+	a, b := <-results, <-results
+	require.True(t, (a == nil && errors.Is(b, dom.ErrFailedPrecondition)) ||
+		(b == nil && errors.Is(a, dom.ErrFailedPrecondition)), "one mutation must retain the last admin: %v, %v", a, b)
+	list, err := svc.ListUsers(ctx)
+	require.NoError(t, err)
+	admins := 0
+	for _, u := range list {
+		if u.Role == RoleAdmin && !u.Disabled {
+			admins++
+		}
+	}
+	require.Equal(t, 1, admins)
+}
+
+func TestUserStore_ConcurrentMutationsPreserveBothFields(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := newManagedSvc(t, testConf(t, true))
+	_, _, err := svc.CreateUser(ctx, "ops", RoleViewer, goodPw, false)
+	require.NoError(t, err)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	release := make(chan struct{})
+	results := make(chan error, 2)
+	for _, change := range []func(*ManagedUser){
+		func(u *ManagedUser) { u.Role = RoleAdmin },
+		func(u *ManagedUser) { u.MustChangePassword = true },
+	} {
+		go func() {
+			var first sync.Once
+			results <- svc.managed.mutate(ctx, "ops", 1, []string{"admin", "view"}, func(u *ManagedUser) (bool, bool, error) {
+				first.Do(func() { ready.Done(); <-release })
+				change(u)
+				return false, false, nil
+			})
+		}()
+	}
+	ready.Wait()
+	close(release)
+	require.NoError(t, <-results)
+	require.NoError(t, <-results)
+	u, err := svc.managed.Get(ctx, "ops")
+	require.NoError(t, err)
+	require.Equal(t, RoleAdmin, u.Role)
+	require.True(t, u.MustChangePassword)
 }
 
 func TestConsoleUsers_ConfigWinsOnConflict(t *testing.T) {

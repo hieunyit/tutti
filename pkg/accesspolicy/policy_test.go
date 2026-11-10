@@ -18,7 +18,9 @@ package accesspolicy
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -144,6 +146,32 @@ func TestStoreAndCache(t *testing.T) {
 	require.True(t, ok)
 
 	require.ErrorIs(t, NewStore(redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})).Delete(ctx, ""), dom.ErrInvalidArg)
+}
+
+func TestStore_ConcurrentUsersKeepIndependentPolicies(t *testing.T) {
+	ctx := context.Background()
+	mr := miniredis.RunT(t)
+	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+	store := NewStore(rc)
+	const users = 40
+	var wg sync.WaitGroup
+	errs := make(chan error, users)
+	for i := range users {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- store.Set(ctx, Policy{User: fmt.Sprintf("user-%d", i), Permission: ReadOnly})
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	list, err := store.List(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, users)
 }
 
 func TestCacheNeverLoaded(t *testing.T) {

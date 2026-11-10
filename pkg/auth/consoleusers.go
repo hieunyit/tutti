@@ -166,35 +166,21 @@ func (s *Service) passwordOrGenerate(username, password string, generate bool) (
 	return password, "", nil
 }
 
-// managedTarget loads a managed user and rejects config users.
-func (s *Service) managedTarget(ctx context.Context, username string) (ManagedUser, error) {
+// mutateManaged rejects config users and includes them in the atomic last-admin guard.
+func (s *Service) mutateManaged(ctx context.Context, username string,
+	fn func(*ManagedUser) (remove, checkOtherAdmin bool, err error)) error {
 	if _, ok := s.users[username]; ok {
-		return ManagedUser{}, fmt.Errorf("%w: console user %q is defined in config and cannot be modified", dom.ErrFailedPrecondition, username)
+		return fmt.Errorf("%w: console user %q is defined in config and cannot be modified", dom.ErrFailedPrecondition, username)
 	}
-	return s.managed.Get(ctx, username)
-}
-
-// otherEnabledAdmins counts enabled admins except excluded, config admins included.
-func (s *Service) otherEnabledAdmins(ctx context.Context, excluded string) (int, error) {
-	n := 0
-	for _, u := range s.users {
-		if u.Role == RoleAdmin && u.Username != excluded {
-			n++
+	configAdmins := 0
+	configNames := make([]string, 0, len(s.users))
+	for name, u := range s.users {
+		configNames = append(configNames, name)
+		if u.Role == RoleAdmin {
+			configAdmins++
 		}
 	}
-	list, err := s.managed.List(ctx)
-	if err != nil {
-		return 0, err
-	}
-	for _, m := range list {
-		if _, dup := s.users[m.Username]; dup || m.Username == excluded {
-			continue
-		}
-		if m.Role == RoleAdmin && !m.Disabled {
-			n++
-		}
-	}
-	return n, nil
+	return s.managed.mutate(ctx, username, configAdmins, configNames, fn)
 }
 
 // UpdateUser changes the role (empty keeps) and disabled flag (nil keeps) of a managed user. actor is the caller.
@@ -202,57 +188,35 @@ func (s *Service) UpdateUser(ctx context.Context, actor, username, role string, 
 	if err := s.ready(); err != nil {
 		return err
 	}
-	m, err := s.managedTarget(ctx, username)
-	if err != nil {
-		return err
-	}
 	if role != "" && !validRole(role) {
 		return fmt.Errorf("%w: role must be %q or %q", dom.ErrInvalidArg, RoleAdmin, RoleViewer)
 	}
-	newRole, newDisabled := m.Role, m.Disabled
-	if role != "" {
-		newRole = role
-	}
-	if disabled != nil {
-		newDisabled = *disabled
-	}
-	if username == actor {
-		if newDisabled && !m.Disabled {
-			return fmt.Errorf("%w: you cannot disable yourself", dom.ErrFailedPrecondition)
+	return s.mutateManaged(ctx, username, func(m *ManagedUser) (bool, bool, error) {
+		newRole, newDisabled := m.Role, m.Disabled
+		if role != "" {
+			newRole = role
 		}
-		if newRole != m.Role && m.Role == RoleAdmin {
-			return fmt.Errorf("%w: you cannot change your own role", dom.ErrFailedPrecondition)
+		if disabled != nil {
+			newDisabled = *disabled
 		}
-	}
-	loseAdmin := m.Role == RoleAdmin && !m.Disabled && (newRole != RoleAdmin || newDisabled)
-	if loseAdmin {
-		if err := s.requireOtherAdmin(ctx, username); err != nil {
-			return err
+		if username == actor {
+			if newDisabled && !m.Disabled {
+				return false, false, fmt.Errorf("%w: you cannot disable yourself", dom.ErrFailedPrecondition)
+			}
+			if newRole != m.Role && m.Role == RoleAdmin {
+				return false, false, fmt.Errorf("%w: you cannot change your own role", dom.ErrFailedPrecondition)
+			}
 		}
-	}
-	m.Role, m.Disabled, m.UpdatedAt = newRole, newDisabled, s.now().UTC()
-	return s.managed.Put(ctx, m)
-}
-
-func (s *Service) requireOtherAdmin(ctx context.Context, username string) error {
-	n, err := s.otherEnabledAdmins(ctx, username)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return fmt.Errorf("%w: cannot remove the last enabled admin", dom.ErrFailedPrecondition)
-	}
-	return nil
+		loseAdmin := m.Role == RoleAdmin && !m.Disabled && (newRole != RoleAdmin || newDisabled)
+		m.Role, m.Disabled, m.UpdatedAt = newRole, newDisabled, s.now().UTC()
+		return false, loseAdmin, nil
+	})
 }
 
 // ResetPassword sets or generates a password of a managed user, forces a change at next login and revokes the
 // sessions of the user (all sessions created before now stop working).
 func (s *Service) ResetPassword(ctx context.Context, username, password string, generate bool) (string, error) {
 	if err := s.ready(); err != nil {
-		return "", err
-	}
-	m, err := s.managedTarget(ctx, username)
-	if err != nil {
 		return "", err
 	}
 	pw, generated, err := s.passwordOrGenerate(username, password, generate)
@@ -264,8 +228,10 @@ func (s *Service) ResetPassword(ctx context.Context, username, password string, 
 		return "", err
 	}
 	now := s.now().UTC()
-	m.PasswordHash, m.PasswordChangedAt, m.UpdatedAt, m.MustChangePassword = hash, now, now, true
-	if err := s.managed.Put(ctx, m); err != nil {
+	if err := s.mutateManaged(ctx, username, func(m *ManagedUser) (bool, bool, error) {
+		m.PasswordHash, m.PasswordChangedAt, m.UpdatedAt, m.MustChangePassword = hash, now, now, true
+		return false, false, nil
+	}); err != nil {
 		return "", err
 	}
 	return generated, nil
@@ -276,19 +242,12 @@ func (s *Service) DeleteUser(ctx context.Context, actor, username string) error 
 	if err := s.ready(); err != nil {
 		return err
 	}
-	m, err := s.managedTarget(ctx, username)
-	if err != nil {
-		return err
-	}
 	if username == actor {
 		return fmt.Errorf("%w: you cannot delete yourself", dom.ErrFailedPrecondition)
 	}
-	if m.Role == RoleAdmin && !m.Disabled {
-		if err := s.requireOtherAdmin(ctx, username); err != nil {
-			return err
-		}
-	}
-	return s.managed.Delete(ctx, username)
+	return s.mutateManaged(ctx, username, func(m *ManagedUser) (bool, bool, error) {
+		return true, m.Role == RoleAdmin && !m.Disabled, nil
+	})
 }
 
 // ChangeOwnPassword verifies the current password, sets the new one and revokes all other sessions of the user.
@@ -328,8 +287,13 @@ func (s *Service) ChangeOwnPassword(ctx context.Context, token, current, newPass
 		return err
 	}
 	now := s.now().UTC()
-	m.PasswordHash, m.PasswordChangedAt, m.UpdatedAt, m.MustChangePassword = hash, now, now, false
-	if err := s.managed.Put(ctx, m); err != nil {
+	if err := s.mutateManaged(ctx, sess.Username, func(latest *ManagedUser) (bool, bool, error) {
+		if latest.PasswordHash != m.PasswordHash {
+			return false, false, ErrInvalidCredentials
+		}
+		latest.PasswordHash, latest.PasswordChangedAt, latest.UpdatedAt, latest.MustChangePassword = hash, now, now, false
+		return false, false, nil
+	}); err != nil {
 		return err
 	}
 	// Keep the caller signed in: re-stamp its session so it is not older than the password change.

@@ -319,6 +319,16 @@ func (m *Manager) Create(ctx context.Context, req CreateRequest) (*CreateResult,
 	if err := ValidName(req.Name); err != nil {
 		return nil, err
 	}
+	var result *CreateResult
+	err := m.withUserLock(ctx, req.Name, func(ctx context.Context) error {
+		var err error
+		result, err = m.createLocked(ctx, req)
+		return err
+	})
+	return result, err
+}
+
+func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateResult, error) {
 	if err := m.requireDynamic(); err != nil {
 		return nil, err
 	}
@@ -416,6 +426,15 @@ func (m *Manager) Create(ctx context.Context, req CreateRequest) (*CreateResult,
 
 // UpdateCredentials sets or replaces the dynamic credentials of an existing user on one storage.
 func (m *Manager) UpdateCredentials(ctx context.Context, user string, c Credential, verify bool) error {
+	if err := ValidName(user); err != nil {
+		return err
+	}
+	return m.withUserLock(ctx, user, func(ctx context.Context) error {
+		return m.updateCredentialsLocked(ctx, user, c, verify)
+	})
+}
+
+func (m *Manager) updateCredentialsLocked(ctx context.Context, user string, c Credential, verify bool) error {
 	if err := m.requireDynamic(); err != nil {
 		return err
 	}
@@ -459,6 +478,16 @@ func (m *Manager) Delete(ctx context.Context, name string, force bool) (*DeleteR
 	if name == "" {
 		return nil, fmt.Errorf("%w: user name is required", dom.ErrInvalidArg)
 	}
+	var result *DeleteResult
+	err := m.withUserLock(ctx, name, func(ctx context.Context) error {
+		var err error
+		result, err = m.deleteLocked(ctx, name, force)
+		return err
+	})
+	return result, err
+}
+
+func (m *Manager) deleteLocked(ctx context.Context, name string, force bool) (*DeleteResult, error) {
 	var dynamicStorages, configStorages []string
 	for _, st := range m.storageNames() {
 		switch m.Creds.CredentialSource(st, name) {
