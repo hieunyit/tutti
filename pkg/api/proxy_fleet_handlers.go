@@ -2,13 +2,16 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
@@ -38,13 +41,26 @@ func (h *resilienceHandlers) SetProxyFleetConfig(ctx context.Context, req *pb.Se
 		}
 		groups[group] = parsed
 	}
-	saved, err := proxystatus.NewFleetConfigStore(h.redis).Set(ctx, proxystatus.FleetConfig{
+	fleetStore := proxystatus.NewFleetConfigStore(h.redis)
+	prev, saved, err := fleetStore.SetExpected(ctx, proxystatus.FleetConfig{
 		Defaults: defaults,
 		Groups:   groups,
-	})
+	}, req.ExpectedVersion)
 	if err != nil {
 		return nil, err
 	}
+	// The fleet config lives in Redis (it is not a control-plane repository, so there is no transactional audit
+	// row in PostgreSQL mode either): record the change in a capped Redis list and as a structured log line.
+	actor := controlplane.ActorFrom(ctx).Name
+	rec := proxystatus.FleetAuditRecord{At: saved.UpdatedAt, Actor: actor, Before: prev, After: saved}
+	if err := fleetStore.RecordAudit(ctx, rec); err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("unable to record the fleet config audit entry")
+	}
+	before, _ := json.Marshal(prev)
+	after, _ := json.Marshal(saved)
+	zerolog.Ctx(ctx).Info().Str("audit", "proxy_fleet_config").Str("action", "set").Str("actor", actor).
+		Int64("before_version", prev.Version).Int64("after_version", saved.Version).
+		RawJSON("before", before).RawJSON("after", after).Msg("audit")
 	return fleetConfigToPb(saved), nil
 }
 

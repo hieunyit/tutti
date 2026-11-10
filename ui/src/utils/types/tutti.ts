@@ -93,6 +93,8 @@ export interface TuttiProxyStatus {
   appliedConfigVersion?: TuttiInt64;
   pendingRestart?: boolean;
   pendingRestartReasons?: string[];
+  /** set when the latest fleet configuration was rejected; the last good one stays applied */
+  configError?: string;
   /** absent for proxies that do not publish traffic stats */
   stats?: TuttiTrafficStats;
   /** live rates computed by the proxy (window of about 10 s) */

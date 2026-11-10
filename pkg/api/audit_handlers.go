@@ -33,17 +33,13 @@ func (h *resilienceHandlers) ListAuditLog(ctx context.Context, req *pb.ListAudit
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	actionFilter := strings.TrimSpace(req.GetAction())
-	dbLimit := limit
-	if actionFilter != "" {
-		dbLimit = max(limit*4, 500)
-	}
 	filter := controlplane.AuditFilter{
 		ObjectType: strings.TrimSpace(req.GetFamily()),
 		ObjectID:   strings.TrimSpace(req.GetEntityKey()),
 		Actor:      strings.TrimSpace(req.GetActor()),
+		Action:     strings.TrimSpace(req.GetAction()),
 		BeforeID:   req.GetBeforeId(),
-		Limit:      dbLimit,
+		Limit:      limit,
 	}
 	if req.GetSince() != nil {
 		filter.Since = req.GetSince().AsTime()
@@ -53,13 +49,11 @@ func (h *resilienceHandlers) ListAuditLog(ctx context.Context, req *pb.ListAudit
 	}
 	rows, err := h.cpStore.Repos().Audit.List(ctx, filter)
 	if err != nil {
-		return nil, err
+		// a database outage is 503 (retryable), not an internal error
+		return nil, controlplane.WrapWriteError(err)
 	}
 	out := make([]*pb.AuditLogEntry, 0, len(rows))
 	for _, r := range rows {
-		if actionFilter != "" && !strings.EqualFold(r.Action, actionFilter) {
-			continue
-		}
 		out = append(out, &pb.AuditLogEntry{
 			Id:         r.ID,
 			OccurredAt: timestamppb.New(r.At),
@@ -71,9 +65,6 @@ func (h *resilienceHandlers) ListAuditLog(ctx context.Context, req *pb.ListAudit
 			AfterJson:  string(r.After),
 			RequestId:  r.RequestID,
 		})
-		if len(out) >= limit {
-			break
-		}
 	}
 	return &pb.AuditLogList{
 		Enabled: true,

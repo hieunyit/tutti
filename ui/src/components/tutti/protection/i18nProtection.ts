@@ -61,7 +61,7 @@ export default <I18nMessages>{
     colState: 'State',
     colMode: 'Mode',
     colChange: 'Last change',
-    scopeUser: 'All buckets',
+    scopeUser: 'All buckets of the user',
     scopeBuckets: '{count} buckets',
     scopeBucketsOne: '1 bucket',
     primaryMark: 'primary',
@@ -85,7 +85,7 @@ export default <I18nMessages>{
     fieldUserPlaceholder: 'Select a user',
     fieldBuckets: 'Buckets (optional)',
     fieldBucketsHelp:
-      'Exact bucket names. Leave empty to protect all buckets across member storages.',
+      'Exact bucket names. Leave empty to protect all buckets of the user.',
     fieldBucketsPlaceholder: 'Type a bucket name and press Enter',
     fieldMembers: 'Members, in order',
     fieldMembersHelp:
@@ -132,8 +132,8 @@ export default <I18nMessages>{
     notFound: 'Protection group not found',
     notFoundText: 'It may have been detached. Go back to the list.',
     detailError: 'The group could not be loaded',
-    scopeLine: '{scope}',
-    scopeAllBuckets: 'All buckets',
+    scopeLine: '{user} · {scope}',
+    scopeAllBuckets: 'all buckets',
     generation: 'Generation {value}',
     edit: 'Edit',
     failoverNow: 'Failover now',
@@ -261,7 +261,8 @@ export default <I18nMessages>{
     freezeDisableText:
       'Gruppen im automatischen Modus dürfen sofort ein anderes Mitglied befördern, wenn die Mehrheit der Proxys den Primary als ausgefallen meldet.',
     freezeDisableAction: 'Fortsetzen',
-    freezeFailed: 'Der Schalter für automatisches Failover konnte nicht geändert werden',
+    freezeFailed:
+      'Der Schalter für automatisches Failover konnte nicht geändert werden',
     emptyTitle: 'Noch keine Schutzgruppen',
     emptyText:
       'Erstellen Sie eine Gruppe, um einen Benutzer auf mindestens zwei Speichern mit automatischer Kopienzahl und Failover zu halten.',
@@ -274,7 +275,7 @@ export default <I18nMessages>{
     colState: 'Zustand',
     colMode: 'Modus',
     colChange: 'Letzte Änderung',
-    scopeUser: 'Alle Buckets',
+    scopeUser: 'Alle Buckets des Benutzers',
     scopeBuckets: '{count} Buckets',
     scopeBucketsOne: '1 Bucket',
     primaryMark: 'Primary',
@@ -292,18 +293,20 @@ export default <I18nMessages>{
     dialogCreate: 'Schutzgruppe erstellen',
     dialogEdit: 'Gruppe {id} bearbeiten',
     fieldId: 'Gruppenname',
-    fieldIdHelp: 'Buchstaben, Ziffern, Bindestrich. Keine Leerzeichen, kein Doppelpunkt oder Schrägstrich.',
+    fieldIdHelp:
+      'Buchstaben, Ziffern, Bindestrich. Keine Leerzeichen, kein Doppelpunkt oder Schrägstrich.',
     fieldUser: 'Benutzer',
     fieldUserPlaceholder: 'Benutzer auswählen',
     fieldBuckets: 'Buckets (optional)',
     fieldBucketsHelp:
-      'Exakte Bucket-Namen. Leer lassen, um alle Buckets der Speicher zu schützen.',
+      'Exakte Bucket-Namen. Leer lassen, um alle Buckets des Benutzers zu schützen.',
     fieldBucketsPlaceholder: 'Bucket-Namen eingeben und Enter drücken',
     fieldMembers: 'Mitglieder, in Reihenfolge',
     fieldMembersHelp:
       'Das erste Mitglied wird zum Primary und muss aktuell das Routing-Ziel des Bereichs sein.',
     fieldMembersAdd: 'Speicher hinzufügen',
-    fieldMembersEmpty: 'Noch keine Mitglieder. Fügen Sie mindestens zwei Speicher hinzu.',
+    fieldMembersEmpty:
+      'Noch keine Mitglieder. Fügen Sie mindestens zwei Speicher hinzu.',
     fieldCopies: 'Gewünschte Kopien',
     fieldCopiesHelp: 'Zwischen 2 und der Anzahl der Mitglieder.',
     fieldMode: 'Failover-Modus',
@@ -315,7 +318,8 @@ export default <I18nMessages>{
     fieldAfter: 'Primary ausgefallen seit (Sekunden)',
     fieldAfterHelp: 'Standard 30 s.',
     fieldMaxLag: 'Max. Event-Lag',
-    fieldMaxLagHelp: 'Erlaubte nicht replizierte Events bei der Beförderung. Standard 0.',
+    fieldMaxLagHelp:
+      'Erlaubte nicht replizierte Events bei der Beförderung. Standard 0.',
     fieldSwitches: 'Max. Wechsel pro Stunde',
     fieldSwitchesHelp: 'Begrenzung für automatische Wechsel. Standard 3.',
     fieldAdopt: 'Vorhandene Replikationen übernehmen',
@@ -330,21 +334,25 @@ export default <I18nMessages>{
     cancel: 'Abbrechen',
     saveFailed: 'Das Backend hat die Gruppe abgelehnt: {message}',
     ID_REQUIRED: 'Geben Sie einen Gruppennamen ein.',
-    ID_INVALID: 'Der Name darf keine Leerzeichen, Doppelpunkte oder Schrägstriche enthalten.',
+    ID_INVALID:
+      'Der Name darf keine Leerzeichen, Doppelpunkte oder Schrägstriche enthalten.',
     USER_REQUIRED: 'Wählen Sie einen Benutzer.',
     MEMBERS_MIN: 'Wählen Sie mindestens zwei Mitgliedsspeicher.',
-    COPIES_RANGE: 'Kopien müssen zwischen 2 und der Anzahl der Mitglieder liegen.',
-    BUCKET_INVALID: 'Bucket-Namen müssen eindeutig und exakt sein, ohne Platzhalter.',
+    COPIES_RANGE:
+      'Kopien müssen zwischen 2 und der Anzahl der Mitglieder liegen.',
+    BUCKET_INVALID:
+      'Bucket-Namen müssen eindeutig und exakt sein, ohne Platzhalter.',
     LAG_NEGATIVE: 'Darf nicht negativ sein.',
     AFTER_NEGATIVE: 'Darf nicht negativ sein.',
     SWITCHES_POSITIVE: 'Muss mindestens 1 sein.',
-    ELECTORATE_MIN: 'Der automatische Modus braucht mindestens drei stimmberechtigte Proxys.',
+    ELECTORATE_MIN:
+      'Der automatische Modus braucht mindestens drei stimmberechtigte Proxys.',
     back: 'Schutzgruppen',
     notFound: 'Schutzgruppe nicht gefunden',
     notFoundText: 'Sie wurde möglicherweise gelöst. Zurück zur Liste.',
     detailError: 'Die Gruppe konnte nicht geladen werden',
-    scopeLine: '{scope}',
-    scopeAllBuckets: 'Alle Buckets',
+    scopeLine: '{user} · {scope}',
+    scopeAllBuckets: 'alle Buckets',
     generation: 'Generation {value}',
     edit: 'Bearbeiten',
     failoverNow: 'Jetzt Failover',
@@ -359,7 +367,8 @@ export default <I18nMessages>{
     switchConsequenceLag:
       '{target} hat noch nicht vollständig aufgeholt (Lag {lag}). Der Wechsel wartet darauf.',
     switchConfirm: 'Failover auf {target}',
-    switchNoTargets: 'Kein geeignetes Mitglied. Alle anderen Mitglieder sind ausgeschlossen.',
+    switchNoTargets:
+      'Kein geeignetes Mitglied. Alle anderen Mitglieder sind ausgeschlossen.',
     switchFailed: 'Switchover abgelehnt: {message}',
     abortTitle: 'Switchover abbrechen?',
     abortText:
@@ -399,7 +408,8 @@ export default <I18nMessages>{
       'Nach einer Beförderung mit Lag in Quarantäne: wird nie automatisch überschrieben.',
     writersTitle: 'Aktive Writer',
     writersCount: '{count} aktiv',
-    writersEmpty: 'Keine aktiven Writer. Eine eingefrorene Gruppe kann sofort befördern.',
+    writersEmpty:
+      'Keine aktiven Writer. Eine eingefrorene Gruppe kann sofort befördern.',
     writersError: 'Writer konnten nicht geladen werden',
     writersHelp:
       'Eine eingefrorene Gruppe befördert erst, wenn kein Writer mehr übrig ist. Einträge abgestürzter Prozesse werden nach Ablauf ihres Leases automatisch entfernt.',

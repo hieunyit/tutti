@@ -16,13 +16,7 @@
 
 <script setup lang="ts">
   import { CButton } from '@clyso/clyso-ui-kit';
-  import {
-    NButton,
-    NCheckbox,
-    NFormItem,
-    NModal,
-    NSelect,
-  } from 'naive-ui';
+  import { NButton, NCheckbox, NFormItem, NModal, NSelect } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -71,9 +65,7 @@
     writersError,
   } = storeToRefs(store);
 
-  const groupId = computed(
-    () => props.name || String(route.params.name ?? ''),
-  );
+  const groupId = computed(() => props.name || String(route.params.name ?? ''));
   const group = computed(() => detail.value?.group ?? null);
 
   function startDetailPolling() {
@@ -109,7 +101,10 @@
     const buckets = group.value.buckets ?? [];
     const scope = buckets.length ? buckets.join(', ') : t('scopeAllBuckets');
 
-    return t('scopeLine', { scope });
+    return t('scopeLine', {
+      user: group.value.user || EMPTY_VALUE,
+      scope,
+    });
   });
 
   const memberRows = computed(() =>
@@ -156,10 +151,13 @@
     switch (health) {
       case 'healthy':
         return 'success';
+
       case 'syncing':
         return 'info';
+
       case 'lagging':
         return 'warning';
+
       case 'unavailable':
         return 'danger';
     }

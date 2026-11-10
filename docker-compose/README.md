@@ -107,6 +107,10 @@ The demo config enables the features below. Everything here is for local demos o
   service and [worker-conf.yaml](./worker-conf.yaml) enables `controlPlane.backend: postgres` with `autoMigrate: true`.
   All control-plane configuration and audit history (`/audit-log` in the UI) are persisted in PostgreSQL (`postgres-data` volume)
   and projected to Redis via the transactional outbox so `proxy` continues reading Redis without a direct PostgreSQL connection.
+  The worker's DSN is built from `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` (default `tutti`) through
+  `CFG_CONTROLPLANE_POSTGRES_DSN`, so overriding them needs no edit of `worker-conf.yaml` (URL-encode special characters
+  in the password). Automatic failover decided by the proxy is applied by the worker through PostgreSQL, so keep the
+  `worker` running when `failover.enabled` is set in `proxy-conf.yaml`.
 - **Proxy accounts:** creating proxy accounts requires a master password. [s3-credentials.yaml](./s3-credentials.yaml) sets a demo
   `storage.dynamicCredentials.masterPassword` (at least 12 characters), shared by worker and proxy. Config values are not env-expanded,
   so to keep the password out of the file, set `CFG_STORAGE_DYNAMICCREDENTIALS_MASTERPASSWORD` in the environment of both services

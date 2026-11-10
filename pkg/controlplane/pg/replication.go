@@ -47,6 +47,21 @@ func (r *replications) check(id controlplane.ReplicationID) error {
 
 func dest(toStorage, toBucket string) string { return toStorage + ":" + toBucket }
 
+// replScopeKey is the outbox object key of every replication entry of one scope (user-level when fromBucket is empty).
+// The projection of a scope (destination set, generations, per-user index) is absolute, so all entries of the scope
+// must be applied in commit order: one key per scope, never one key per destination.
+func replScopeKey(user, fromBucket string) string {
+	return "replication_scope/" + user + "/" + fromBucket
+}
+
+// lockScope serializes the writers of one replication scope until the end of the transaction. The absolute
+// projection computed by scopeOps is read after the lock is held, so under READ COMMITTED it includes every
+// committed change of the scope and concurrent Add/Remove/generation changes cannot compute from stale state.
+func lockScope(ctx context.Context, tx pgx.Tx, user, fromBucket string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, replScopeKey(user, fromBucket))
+	return err
+}
+
 // scopeOps rebuilds the Redis lookup keys of one scope (user-level when fromBucket is empty) from the PostgreSQL
 // state, so that the projection is absolute and idempotent whatever order the entries are applied in.
 func scopeOps(ctx context.Context, tx pgx.Tx, user, fromBucket string) ([]RedisOp, error) {
@@ -201,6 +216,9 @@ func (r *replications) Add(ctx context.Context, id controlplane.ReplicationID, s
 	}
 	st.CreatedAt = st.CreatedAt.UTC()
 	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		if same, err := unchanged(ctx, tx, id, st); err != nil || same {
 			return err
 		}
@@ -220,7 +238,7 @@ func (r *replications) Add(ctx context.Context, id controlplane.ReplicationID, s
 		if err != nil {
 			return err
 		}
-		return record(ctx, tx, mutation{action: "create", objectType: "replication", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: append(ops, statusOps(id, st)...)})
+		return record(ctx, tx, mutation{action: "create", objectType: "replication", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: append(ops, statusOps(id, st)...), key: replScopeKey(id.User, id.FromBucket)})
 	})
 }
 
@@ -263,13 +281,16 @@ func (r *replications) PutStatus(ctx context.Context, id controlplane.Replicatio
 	}
 	st.CreatedAt = st.CreatedAt.UTC()
 	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		if same, err := sameStatus(ctx, tx, id, st); err != nil || same {
 			return err
 		}
 		if err := upsertStatus(ctx, tx, id, st); err != nil {
 			return err
 		}
-		return record(ctx, tx, mutation{action: "set", objectType: "replication_status", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: statusOps(id, st)})
+		return record(ctx, tx, mutation{action: "set", objectType: "replication_status", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: statusOps(id, st), key: replScopeKey(id.User, id.FromBucket)})
 	})
 }
 
@@ -287,6 +308,9 @@ func (r *replications) Remove(ctx context.Context, id controlplane.ReplicationID
 		return err
 	}
 	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx, `DELETE FROM replication_policies WHERE user_name=$1 AND from_bucket=$2 AND to_storage=$3 AND to_bucket=$4`, id.User, id.FromBucket, id.ToStorage, id.ToBucket)
 		if err != nil {
 			return err
@@ -298,12 +322,15 @@ func (r *replications) Remove(ctx context.Context, id controlplane.ReplicationID
 		if err != nil {
 			return err
 		}
-		return record(ctx, tx, mutation{action: "delete", objectType: "replication", objectID: id.String(), before: replDoc(id, nil), ops: ops})
+		return record(ctx, tx, mutation{action: "delete", objectType: "replication", objectID: id.String(), before: replDoc(id, nil), ops: ops, key: replScopeKey(id.User, id.FromBucket)})
 	})
 }
 
 func (r *replications) Archive(ctx context.Context, id controlplane.ReplicationID) error {
 	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		var st controlplane.ReplicationStatus
 		err := tx.QueryRow(ctx, `UPDATE replication_status SET archived=true, archived_at=now() WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5
 			RETURNING created_at, archived, archived_at, agent_url, event_source`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).
@@ -314,12 +341,15 @@ func (r *replications) Archive(ctx context.Context, id controlplane.ReplicationI
 		if err != nil {
 			return err
 		}
-		return record(ctx, tx, mutation{action: "archive", objectType: "replication_status", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: statusOps(id, st)})
+		return record(ctx, tx, mutation{action: "archive", objectType: "replication_status", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: statusOps(id, st), key: replScopeKey(id.User, id.FromBucket)})
 	})
 }
 
 func (r *replications) DeleteStatus(ctx context.Context, id controlplane.ReplicationID) error {
 	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx, `DELETE FROM replication_status WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5`,
 			id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket)
 		if err != nil {
@@ -330,7 +360,7 @@ func (r *replications) DeleteStatus(ctx context.Context, id controlplane.Replica
 		}
 		h, idx, member := statusKeys(id)
 		return record(ctx, tx, mutation{action: "delete", objectType: "replication_status", objectID: id.String(), before: replDoc(id, nil),
-			ops: []RedisOp{{Op: OpDel, Key: h}, {Op: OpSRem, Key: idx, Members: []string{member}}}})
+			ops: []RedisOp{{Op: OpDel, Key: h}, {Op: OpSRem, Key: idx, Members: []string{member}}}, key: replScopeKey(id.User, id.FromBucket)})
 	})
 }
 
@@ -447,6 +477,9 @@ func (r *replications) setGen(ctx context.Context, id controlplane.ReplicationID
 	}
 	var g int64
 	err := r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
 		var prev int64
 		err := tx.QueryRow(ctx, `SELECT generation FROM replication_generations WHERE user_name=$1 AND from_bucket=$2 AND to_storage=$3 AND to_bucket=$4 FOR UPDATE`,
 			id.User, id.FromBucket, id.ToStorage, id.ToBucket).Scan(&prev)
@@ -470,7 +503,7 @@ func (r *replications) setGen(ctx context.Context, id controlplane.ReplicationID
 			return err
 		}
 		return record(ctx, tx, mutation{action: "generation", objectType: "replication_generation", objectID: id.String(),
-			before: replDoc(id, map[string]any{"generation": prev}), after: replDoc(id, map[string]any{"generation": g}), ops: ops})
+			before: replDoc(id, map[string]any{"generation": prev}), after: replDoc(id, map[string]any{"generation": g}), ops: ops, key: replScopeKey(id.User, id.FromBucket)})
 	})
 	return g, err
 }

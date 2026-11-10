@@ -209,7 +209,8 @@ export enum ReplicationStatusFilter {
 export enum AddReplicationStepName {
   'FROM_STORAGE' = 1,
   'TO_STORAGE' = 2,
-  'BUCKETS' = 3,
+  'USER' = 3,
+  'BUCKETS' = 4,
 }
 
 export enum ReplicationType {

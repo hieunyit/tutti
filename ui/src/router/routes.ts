@@ -53,14 +53,10 @@ const TuttiConsoleUsersPage = () =>
   import('@/pages/TuttiConsoleUsersPage/TuttiConsoleUsersPage.vue');
 const TuttiChangePasswordPage = () =>
   import('@/pages/TuttiChangePasswordPage/TuttiChangePasswordPage.vue');
-const TuttiFailoverPage = () =>
-  import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
 const TuttiProtectionGroupsPage = () =>
   import('@/pages/TuttiProtectionGroupsPage/TuttiProtectionGroupsPage.vue');
 const TuttiProtectionGroupDetailPage = () =>
-  import(
-    '@/pages/TuttiProtectionGroupDetailPage/TuttiProtectionGroupDetailPage.vue'
-  );
+  import('@/pages/TuttiProtectionGroupDetailPage/TuttiProtectionGroupDetailPage.vue');
 const TuttiProxyAccountsPage = () =>
   import('@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue');
 const TuttiAuditLogPage = () =>

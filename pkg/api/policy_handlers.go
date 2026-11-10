@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -114,14 +115,9 @@ type policyHandlers struct {
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
-	if req.Id != nil && req.Id.User == "" {
-		if ids := h.credsSvc.Identities(); len(ids) > 0 {
-			req.Id.User = ids[0]
-		} else if users := h.credsSvc.ListOverrideUsers(req.Id.FromStorage); len(users) > 0 {
-			req.Id.User = users[0]
-		} else {
-			req.Id.User = "default"
-		}
+	// replications are per user: never pick a tenant on the caller's behalf
+	if req.Id != nil && strings.TrimSpace(req.Id.User) == "" {
+		return nil, fmt.Errorf("%w: replication user is required", dom.ErrInvalidArg)
 	}
 	// validate request:
 	uid, err := pbToReplicationID(req.Id)
@@ -129,6 +125,9 @@ func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicat
 		return nil, err
 	}
 	if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
+		if errors.Is(err, dom.ErrNotFound) {
+			return nil, fmt.Errorf("%w: %v", dom.ErrInvalidArg, err)
+		}
 		return nil, err
 	}
 	// acquire user lock, then the lock of both storages (the replication references them)

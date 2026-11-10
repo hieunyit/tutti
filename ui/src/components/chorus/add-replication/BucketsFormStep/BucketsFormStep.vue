@@ -23,9 +23,12 @@
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
   import BucketsSelectionList from '@/components/chorus/add-replication/BucketsSelectionList/BucketsSelectionList.vue';
 
-  const { isForAllBuckets, isBucketsAlreadyRequested, validator } = storeToRefs(
-    useChorusAddReplicationStore(),
-  );
+  const {
+    isForAllBuckets,
+    isBucketsAlreadyRequested,
+    selectedUser,
+    validator,
+  } = storeToRefs(useChorusAddReplicationStore());
   const { initBucketsList, getBucketsList } = useChorusAddReplicationStore();
 
   const { t } = useI18n({
@@ -67,7 +70,7 @@
           name="basic-demo"
           @change="isForAllBuckets = true"
         >
-          {{ t('bucketsAllOption') }}
+          {{ t('bucketsAllOption', { user: selectedUser }) }}
         </CRadio>
       </div>
 

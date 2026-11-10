@@ -96,6 +96,10 @@
     return found ? t(found) : undefined;
   }
 
+  const userOptions = computed(() =>
+    userNames.value.map((name) => ({ label: name, value: name })),
+  );
+
   const availableStorageOptions = computed(() =>
     storageNames.value
       .filter((name) => !form.value.members.includes(name))
@@ -157,10 +161,6 @@
       addBucket();
     }
 
-    if (!isEdit.value && !form.value.user) {
-      form.value.user = userNames.value[0] || 'default';
-    }
-
     showErrors.value = true;
     backendError.value = null;
 
@@ -190,7 +190,9 @@
   <NModal
     :show="show"
     preset="card"
-    :title="isEdit ? t('dialogEdit', { id: group?.id ?? '' }) : t('dialogCreate')"
+    :title="
+      isEdit ? t('dialogEdit', { id: group?.id ?? '' }) : t('dialogCreate')
+    "
     :closable="!isSaving"
     :mask-closable="!isSaving"
     :style="{ width: 'min(640px, calc(100vw - 32px))' }"
@@ -219,6 +221,20 @@
           <NInput
             v-model:value="form.id"
             :disabled="isSaving"
+          />
+        </NFormItem>
+
+        <NFormItem
+          :label="t('fieldUser')"
+          :validation-status="errorText('USER_REQUIRED') ? 'error' : undefined"
+          :feedback="errorText('USER_REQUIRED')"
+        >
+          <NSelect
+            v-model:value="form.user"
+            :options="userOptions"
+            :placeholder="t('fieldUserPlaceholder')"
+            :disabled="isSaving"
+            filterable
           />
         </NFormItem>
 

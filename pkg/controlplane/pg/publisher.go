@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
@@ -18,6 +17,10 @@ import (
 
 // publisherLockID serializes publishers: only one process applies the outbox at a time, which keeps per-object order.
 const publisherLockID int64 = 0x6f757462 // "outb"
+
+// snapshotLockID is the advisory lock shared by every transaction that writes an outbox entry and taken exclusively by
+// EnqueueSnapshot ("snap").
+const snapshotLockID int64 = 0x736e6170
 
 // bumpScript is the script of pkg/policy.bumpScript: INCR the snapshot version and PUBLISH it.
 const bumpScript = `local v = redis.call('incr', KEYS[1]); redis.call('publish', ARGV[1], tostring(v)); return v`
@@ -69,35 +72,50 @@ type outboxRow struct {
 	key      string
 	ops      []byte
 	attempts int
-	next     time.Time
 }
 
-// RunOnce applies up to BatchSize pending entries.
+// applyTimeout bounds the Redis I/O of one outbox entry, so a hung Redis cannot pin a database connection forever.
+const applyTimeout = 10 * time.Second
+
+// RunOnce applies up to BatchSize pending entries. The publisher lock is a session-level advisory lock on a dedicated
+// connection (released when the cycle ends or the connection dies); every entry is applied and marked in its own short
+// transaction, so no database transaction stays open while Redis is being written.
 func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	var res Result
-	tx, err := p.Store.pool.BeginTx(ctx, pgx.TxOptions{})
+	conn, err := p.Store.pool.Acquire(ctx)
 	if err != nil {
 		return res, err
 	}
-	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	defer conn.Release()
 	var got bool
-	if err := tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock($1)`, publisherLockID).Scan(&got); err != nil {
+	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, publisherLockID).Scan(&got); err != nil {
 		return res, err
 	}
 	if !got {
 		res.Busy = true
 		return res, nil
 	}
-	rows, err := tx.Query(ctx, `SELECT id, object_key, ops, attempts, next_attempt_at FROM outbox WHERE published_at IS NULL ORDER BY id LIMIT $1`, p.cfg.BatchSize)
+	defer func() {
+		// if the unlock fails the connection is unusable: destroy it so the lock cannot leak into the pool
+		if _, err := conn.Exec(context.WithoutCancel(ctx), `SELECT pg_advisory_unlock($1)`, publisherLockID); err != nil {
+			_ = conn.Conn().Close(context.WithoutCancel(ctx))
+		}
+	}()
+	// Due entries only (next_attempt_at is compared with the database clock), and not behind an earlier entry of the
+	// same object that waits for its retry: per-object order is kept while poison entries do not use up the batch.
+	rows, err := conn.Query(ctx, `SELECT id, object_key, ops, attempts FROM outbox o
+		WHERE o.published_at IS NULL AND o.next_attempt_at <= now()
+		  AND NOT EXISTS (SELECT 1 FROM outbox e WHERE e.published_at IS NULL AND e.object_key=o.object_key AND e.id<o.id AND e.next_attempt_at > now())
+		ORDER BY o.id LIMIT $1`, p.cfg.BatchSize)
 	if err != nil {
 		return res, err
 	}
 	var pending []outboxRow
 	for rows.Next() {
 		var r outboxRow
-		if err := rows.Scan(&r.id, &r.key, &r.ops, &r.attempts, &r.next); err != nil {
+		if err := rows.Scan(&r.id, &r.key, &r.ops, &r.attempts); err != nil {
 			rows.Close()
 			return res, err
 		}
@@ -107,15 +125,16 @@ func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 	if err := rows.Err(); err != nil {
 		return res, err
 	}
-	now := time.Now()
 	blocked := map[string]bool{}
 	for _, r := range pending {
-		if blocked[r.key] || r.next.After(now) {
-			blocked[r.key] = true
+		if blocked[r.key] {
 			res.Skipped++
 			continue
 		}
-		if err := p.apply(ctx, r.ops); err != nil {
+		actx, cancel := context.WithTimeout(ctx, applyTimeout)
+		err := p.apply(actx, r.ops)
+		cancel()
+		if err != nil {
 			blocked[r.key] = true
 			res.Failed++
 			if p.OnFailure != nil {
@@ -126,19 +145,16 @@ func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 			if delay <= 0 || delay > p.cfg.MaxBackoff {
 				delay = p.cfg.MaxBackoff
 			}
-			if _, uerr := tx.Exec(ctx, `UPDATE outbox SET attempts=attempts+1, last_error=$2, next_attempt_at=now()+$3::interval WHERE id=$1`,
+			if _, uerr := conn.Exec(ctx, `UPDATE outbox SET attempts=attempts+1, last_error=$2, next_attempt_at=now()+$3::interval WHERE id=$1`,
 				r.id, truncate(err.Error(), 500), fmt.Sprintf("%d milliseconds", delay.Milliseconds())); uerr != nil {
 				return res, uerr
 			}
 			continue
 		}
-		if _, err := tx.Exec(ctx, `UPDATE outbox SET published_at=now(), last_error='' WHERE id=$1`, r.id); err != nil {
+		if _, err := conn.Exec(ctx, `UPDATE outbox SET published_at=now(), last_error='' WHERE id=$1`, r.id); err != nil {
 			return res, err
 		}
 		res.Published++
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return res, err
 	}
 	if p.OnStats != nil {
 		if n, oldest, serr := p.Pending(ctx); serr == nil {
@@ -292,6 +308,15 @@ func (p *Publisher) Run(ctx context.Context) {
 	purge := time.NewTicker(time.Hour)
 	defer purge.Stop()
 	for {
+		if !p.Store.Ready() {
+			// degraded start (PostgreSQL not reachable yet): nothing to publish, readiness is retried elsewhere
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				continue
+			}
+		}
 		if res, err := p.RunOnce(ctx); err != nil && ctx.Err() == nil {
 			p.Log.Error().Err(err).Msg("control plane outbox: cycle failed")
 		} else if res.Published > 0 && !res.Busy {

@@ -225,8 +225,10 @@ type AuditFilter struct {
 	ObjectType string
 	ObjectID   string
 	Actor      string
-	Since      time.Time
-	Until      time.Time
+	// Action matches the action case-insensitively (applied in SQL, so Limit and BeforeID paginate the filtered rows).
+	Action string
+	Since  time.Time
+	Until  time.Time
 	// BeforeID returns only entries with a smaller ID (pagination).
 	BeforeID int64
 	Limit    int

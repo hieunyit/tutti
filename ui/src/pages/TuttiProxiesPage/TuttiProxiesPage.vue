@@ -1,6 +1,6 @@
 <!-- Copyright © 2026 hieunyit. Licensed under AGPL-3.0. -->
 <script setup lang="ts">
-  import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+  import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
@@ -29,6 +29,7 @@
   const busy = ref(false);
   const savingFleet = ref(false);
   const savedFleet = ref(false);
+  const fleetConflict = ref(false);
   const editingScope = ref<string>('__defaults__');
   const newGroupName = ref('');
   const defaultsDraft = ref<TuttiProxySettingsOverride>({});
@@ -49,17 +50,29 @@
       return defaultsDraft.value;
     }
 
-    if (!groupsDraft.value[editingScope.value]) {
-      groupsDraft.value[editingScope.value] = {};
-    }
-
-    return groupsDraft.value[editingScope.value]!;
+    return groupsDraft.value[editingScope.value] ?? {};
   });
+
+  // the draft of the group being edited must exist before the form binds to it (kept out of the computed)
+  watch(
+    [editingScope, groupsDraft],
+    () => {
+      if (
+        editingScope.value !== '__defaults__' &&
+        !groupsDraft.value[editingScope.value]
+      ) {
+        groupsDraft.value[editingScope.value] = {};
+      }
+    },
+    { flush: 'sync', immediate: true },
+  );
 
   function cloneOverride(
     src?: TuttiProxySettingsOverride,
   ): TuttiProxySettingsOverride {
-    return src ? (JSON.parse(JSON.stringify(src)) as TuttiProxySettingsOverride) : {};
+    return src
+      ? (JSON.parse(JSON.stringify(src)) as TuttiProxySettingsOverride)
+      : {};
   }
 
   function hydrateFleetDraft(fc: TuttiProxyFleetConfig) {
@@ -71,6 +84,18 @@
       nextGroups[group] = cloneOverride(ov);
     });
     groupsDraft.value = nextGroups;
+
+    if (
+      editingScope.value !== '__defaults__' &&
+      !nextGroups[editingScope.value]
+    ) {
+      editingScope.value = '__defaults__';
+    }
+  }
+
+  async function reloadFleetConfig() {
+    fleetConflict.value = false;
+    await loadFleetConfig();
   }
 
   async function loadFleetConfig() {
@@ -230,14 +255,21 @@
       const updated = await TuttiService.setProxyFleetConfig({
         defaults: defaultsDraft.value,
         groups: groupsDraft.value,
+        // optimistic concurrency: only the version this editor loaded may be overwritten
+        expectedVersion: fleetConfig.value?.version ?? 0,
       });
 
+      fleetConflict.value = false;
       hydrateFleetDraft(updated);
       configVersion.value = updated.version ?? configVersion.value;
       savedFleet.value = true;
       await load();
-    } catch {
-      error.value = true;
+    } catch (e) {
+      if (ProxiesHelper.isFleetConflict(e)) {
+        fleetConflict.value = true;
+      } else {
+        error.value = true;
+      }
     } finally {
       savingFleet.value = false;
     }
@@ -370,6 +402,12 @@
                 variant="neutral"
                 >{{ t('startupConfig') }}</StatusTag
               >
+              <div v-if="proxy.configError">
+                <StatusTag variant="danger">{{
+                  t('configRejected')
+                }}</StatusTag>
+                <div class="phase-d__muted">{{ proxy.configError }}</div>
+              </div>
               <div v-if="proxy.pendingRestart">
                 <StatusTag variant="warning">{{
                   t('pendingRestart')
@@ -650,7 +688,9 @@
         </div>
 
         <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('requireSignedContentType') }}</span>
+          <span class="phase-d__label">{{
+            t('requireSignedContentType')
+          }}</span>
           <NSelect
             :value="
               activeDraft.requireSignedContentType === undefined
@@ -703,6 +743,18 @@
           />
         </div>
       </div>
+
+      <Callout
+        v-if="fleetConflict"
+        tone="danger"
+      >
+        {{ t('fleetConflict') }}
+        <NButton
+          size="tiny"
+          @click="reloadFleetConfig"
+          >{{ t('fleetReload') }}</NButton
+        >
+      </Callout>
 
       <div class="phase-d__actions">
         <NButton

@@ -231,6 +231,12 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 		require.NotContains(t, entry.AfterJson, createdUser.GetAccessKey().GetSecretAccessKey())
 	}
 
+	// the action filter runs in SQL: a rare action is found even when newer rows of other actions exceed the limit
+	createsOnly, err := h.ListAuditLog(ctx, &pb.ListAuditLogRequest{Action: "CREATE", Limit: 1})
+	require.NoError(t, err)
+	require.Len(t, createsOnly.Entries, 1)
+	require.Equal(t, "create", createsOnly.Entries[0].Action)
+
 	// 6. Drain outbox to Redis so Redis has the warm projection
 	_, err = pub.RunOnce(ctx)
 	require.NoError(t, err)
@@ -270,6 +276,11 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 		Permission: accesspolicy.ReadWrite,
 		Buckets:    []string{"*"},
 	})
+	require.ErrorIs(t, err, dom.ErrUnavailable)
+	require.Equal(t, codes.Unavailable, status.Code(convertApiError(ctx, err)))
+
+	// the audit log cannot be read while PostgreSQL is down: 503, not an internal error
+	_, err = h.ListAuditLog(ctx, &pb.ListAuditLogRequest{Limit: 5})
 	require.ErrorIs(t, err, dom.ErrUnavailable)
 	require.Equal(t, codes.Unavailable, status.Code(convertApiError(ctx, err)))
 }

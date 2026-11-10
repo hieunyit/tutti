@@ -40,7 +40,7 @@ type routingPolicyKey struct{}
 type replicationsKey struct{}
 type replicationGenerationsKey struct{}
 type inProgressZeroDowntimeKey struct{}
-type protectionUserKey struct{}
+type sharedProtectionGroupKey struct{}
 
 type Flow string
 
@@ -234,16 +234,18 @@ func SetInProgressZeroDowntime(ctx context.Context, r entity.ReplicationSwitchIn
 	return context.WithValue(ctx, inProgressZeroDowntimeKey{}, &r)
 }
 
-func SetProtectionUser(ctx context.Context, u string) context.Context {
-	if u == "" {
+// SetSharedProtectionGroup marks a request of a user on a shared connection account whose routed storage
+// and bucket belong to a protection group of ANOTHER identity. Such a request never uses the group owner's
+// routing or replications: the write fence refuses its writes (see protectiongroups.Store.Middleware).
+func SetSharedProtectionGroup(ctx context.Context, group string) context.Context {
+	if group == "" {
 		return ctx
 	}
-	return context.WithValue(ctx, protectionUserKey{}, u)
+	return context.WithValue(ctx, sharedProtectionGroupKey{}, group)
 }
 
-func GetProtectionUser(ctx context.Context) string {
-	if u, _ := ctx.Value(protectionUserKey{}).(string); u != "" {
-		return u
-	}
-	return GetUser(ctx)
+// GetSharedProtectionGroup returns the group set by SetSharedProtectionGroup, or "".
+func GetSharedProtectionGroup(ctx context.Context) string {
+	g, _ := ctx.Value(sharedProtectionGroupKey{}).(string)
+	return g
 }

@@ -62,9 +62,10 @@ func (r *policySvc) ControlPlane() controlplane.Store {
 	return r.cp
 }
 
-// WithSharedAccount configures a predicate reporting whether requests of user on storage share a
-// storage-level connection account. When set, a user without explicit routing/replication policies
-// inherits the active protection group covering the storage/bucket.
+// WithSharedAccount configures a predicate reporting whether requests of user on storage use the storage's
+// shared connection account (credential mode "connection"; the worker's bucket scope uses the same predicate).
+// When set, writes of such a user to a bucket that another identity's protection group manages on that storage
+// are refused; the user's own routing and replications are always used (never the group owner's).
 func (r *policySvc) WithSharedAccount(fn func(storage, user string) bool) *policySvc {
 	r.sharedAccount = fn
 	return r

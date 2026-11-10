@@ -41,6 +41,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	metaURL := fs.String("redis-meta-url", os.Getenv("TUTTI_REDIS_META_URL"), "Redis that holds chorus:dynamic_creds (the metaDB role); defaults to --redis-url [env TUTTI_REDIS_META_URL]")
 	dsn := fs.String("pg-dsn", os.Getenv("TUTTI_PG_DSN"), "PostgreSQL DSN [env TUTTI_PG_DSN]")
 	dry := fs.Bool("dry-run", false, "migrate: compute and print the report without writing to PostgreSQL")
+	force := fs.Bool("force", false, "republish: overwrite Redis entries that differ from PostgreSQL (refused otherwise: they may be newer, e.g. after restoring PostgreSQL from an old backup)")
+	prune := fs.Bool("prune", false, "republish: also remove Redis entries that have no PostgreSQL row (otherwise republish only adds and overwrites)")
+	drainTimeout := fs.Duration("drain-timeout", 5*time.Minute, "republish: how long to wait for the outbox to drain")
 	format := fs.String("format", "text", "report format: text or json")
 	out := fs.String("out", "", "also write the JSON report to this file")
 	timeout := fs.Duration("timeout", 30*time.Minute, "overall timeout")
@@ -105,7 +108,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	var rep *migrate.Report
 	if cmd == "republish" {
-		rep, err = migrate.Republish(ctx, store, src, migrate.RepublishOptions{DryRun: *dry})
+		rep, err = migrate.Republish(ctx, store, src, migrate.RepublishOptions{DryRun: *dry, Force: *force, Prune: *prune, DrainTimeout: *drainTimeout})
 		if err != nil {
 			fmt.Fprintln(stderr, "error:", err)
 			return exitFailure

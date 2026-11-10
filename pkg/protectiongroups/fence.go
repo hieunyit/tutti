@@ -24,8 +24,8 @@ import (
 )
 
 // ScopeIndexKey maps a protected scope to its group ID so admission reads O(1) keys instead of
-// decoding every group. Fields: "u:<user>" (whole-user group), "b:<user>/<bucket>" (bucket group)
-// and indexVersionField. It is rebuilt from the authoritative group documents in the same Redis
+// decoding every group. Fields: "u:<user>" (whole-user group), "b:<user>/<bucket>" (bucket group),
+// "s:<storage>/<bucket>" and "o:<group>" (see scopeIndex) and indexVersionField. It is rebuilt from the authoritative group documents in the same Redis
 // transaction as every group create/delete (Store.Save/Store.Delete); scope is immutable otherwise.
 const ScopeIndexKey = "tutti:protection:scope"
 const indexVersionField = "_v"
@@ -281,6 +281,11 @@ func (s *Store) WorkerMiddleware(l *Lease) asynq.MiddlewareFunc {
 			bucket := ""
 			if id, ok := p.ID.AsBucketID(); ok {
 				bucket = id.FromBucket
+				// Same rule as the proxy: a replication of another identity on a shared connection account
+				// must not write a bucket that a protection group manages on the destination storage.
+				if err := s.checkSharedDestination(ctx, p.ID.User(), id.ToStorage, id.ToBucket); err != nil {
+					return err
+				}
 			}
 			a, err := l.Admit(ctx, p.ID.User(), bucket, p.ID.FromStorage())
 			if errors.Is(err, errStale) {
@@ -296,6 +301,39 @@ func (s *Store) WorkerMiddleware(l *Lease) asynq.MiddlewareFunc {
 			return next.ProcessTask(ctx, t)
 		})
 	}
+}
+
+// checkSharedDestination refuses (without retry) a replication task of user that would write bucket on storage
+// through the storage's shared connection account while another identity's protection group manages that
+// bucket there (see LookupSharedGroup). An unknown scope is a retryable error.
+func (s *Store) checkSharedDestination(ctx context.Context, user, storage, bucket string) error {
+	if s.SharedAccount == nil || !s.SharedAccount(storage, user) {
+		return nil
+	}
+	idx, err := SharedGroupFields(ctx, s.Redis, storage, bucket)
+	if err != nil {
+		return fmt.Errorf("%w: protection group scope index unavailable: %v", dom.ErrUnavailable, err)
+	}
+	group, ok, err := LookupSharedGroup(idx, storage, user, bucket)
+	if err == nil && !ok {
+		if err = s.EnsureIndex(ctx); err != nil {
+			return fmt.Errorf("%w: protection group scope index unavailable: %v", dom.ErrUnavailable, err)
+		}
+		if idx, err = SharedGroupFields(ctx, s.Redis, storage, bucket); err != nil {
+			return fmt.Errorf("%w: protection group scope index unavailable: %v", dom.ErrUnavailable, err)
+		}
+		group, _, err = LookupSharedGroup(idx, storage, user, bucket)
+	}
+	if err != nil {
+		return err
+	}
+	if group != "" {
+		zerolog.Ctx(ctx).Warn().Str("user", user).Str("storage", storage).Str("bucket", bucket).Str("group", group).
+			Msg("replication task refused: destination bucket is managed by a protection group of another user")
+		return fmt.Errorf("%w: bucket %s on storage %s is managed by protection group %s of another user: %w",
+			dom.ErrFailedPrecondition, bucket, storage, group, asynq.SkipRetry)
+	}
+	return nil
 }
 
 // ScopeCache resolves a scope from an in-memory copy of the scope index that is at least as new as the
@@ -315,7 +353,14 @@ func (s *Store) Middleware(l *Lease, cached ScopeCache) func(http.Handler) http.
 				return
 			}
 			ctx := r.Context()
-			user, bucket := xctx.GetProtectionUser(ctx), xctx.GetBucket(ctx)
+			if group := xctx.GetSharedProtectionGroup(ctx); group != "" {
+				// Another identity's group manages this bucket on the routed storage (shared connection
+				// account): never write it outside that group's routing, replication and fence.
+				util.WriteError(ctx, w, fmt.Errorf("%w: bucket %s on storage %s is managed by protection group %s of another user; write through that group's user",
+					dom.ErrAuth, xctx.GetBucket(ctx), xctx.GetRoutingPolicy(ctx), group))
+				return
+			}
+			user, bucket := xctx.GetUser(ctx), xctx.GetBucket(ctx)
 			if cached != nil {
 				if group, ok := cached(ctx, user, bucket); ok && group == "" {
 					next.ServeHTTP(w, r)

@@ -13,7 +13,7 @@ The controller runs in every worker (one reconcile per group per second, seriali
 
 | Field | Meaning |
 |---|---|
-| `id`, `user` | Group ID and the Tutti user whose data it protects |
+| `id`, `user` | Group ID and the Tutti user whose data it protects. `user` is required and must exist (an identity, or a user with credentials on a member); it is never chosen implicitly |
 | `buckets` | Exact bucket names; empty = all buckets of the user. Scopes of two groups may not overlap |
 | `members` | Storages (S3, at least two). The primary must currently be the routing target of the scope |
 | `copies` | Wanted healthy copies (2..members) |
@@ -22,6 +22,35 @@ The controller runs in every worker (one reconcile per group per second, seriali
 | `primary`, `generation`, `state`, `frozen`, `target`, `verified`, `quarantined`, `history` | Server-owned state |
 
 Scope and members are immutable; detach (`Delete`, ready groups only) and create again to change them.
+
+A storage is managed either by protection groups or by legacy failover policies, never both: creating or
+enabling a legacy failover policy whose source or a target is a group member is refused, and so is creating a
+group over a storage used by an enabled legacy policy. The legacy failover controller additionally skips every
+scope a group manages (resolved from the version-checked snapshot or from Redis) and every scope whose
+protection cannot be determined.
+
+### Users on a shared connection account
+
+A group never extends to other identities. A user whose requests to a storage use its shared connection account
+(credential mode `connection`) always keeps its own routing and replications. When that user's routed storage
+is a member of another user's bucket group and the bucket is one of the group's buckets (the same physical
+bucket), its writes are refused with 403 (reads are allowed): such writes would bypass the group's fence,
+replication and promotion. Whole-user groups of other users never apply (their bucket set is not known to the
+proxy). An unreadable scope index fails the request (never "unprotected"). The worker applies the same rule (same
+credential-mode predicate) to bucket replications of other identities whose destination is such a bucket: their
+tasks are refused without retry.
+
+### PostgreSQL control plane
+
+Redis is authoritative for every group it holds and is written first (WATCH/CAS). PostgreSQL receives the spec
+plus a recovery seed (primary, generation, quarantined members, history) afterwards, always stored recovery-safe
+(`frozen`, `initializing`, no verified/seeded marks). A failed PostgreSQL write is retried by the next read
+(`Store.Get`/`List` re-push a differing copy); a promotion's routing/topology change is recorded in
+`tutti:protection:cp-commit-pending` in the promotion's Redis transaction and applied to PostgreSQL by the
+reconciler. Deletes tombstone the group in `tutti:protection:deleted`, so a leftover PostgreSQL row never
+resurrects it. A group missing from Redis but present in PostgreSQL (Redis lost) is restored frozen and
+re-initializing (re-seeded and re-verified before writes resume); `Store.Recover` does this for all groups.
+With `controlPlane.readOnly`, spec changes (create, update, delete) are refused; promotions continue.
 
 ## States
 
@@ -55,8 +84,9 @@ ready --(recovered member caught up but not verified)--> initializing (frozen) -
 Every proxy write (any method but GET/HEAD) and every worker replication task of a protected scope passes the
 fence (`Store.Middleware`, `Store.WorkerMiddleware`).
 
-The scope index `tutti:protection:scope` (hash: `u:<user>` / `b:<user>/<bucket>` → group ID, plus a `_v`
-marker) is rebuilt from the group documents in the same transaction as every group create/delete. When its
+The scope index `tutti:protection:scope` (hash: `u:<user>` / `b:<user>/<bucket>` → group ID,
+`s:<storage>/<bucket>` → group ID for every member of a bucket group, `o:<group>` → user, plus a `_v` format
+marker, currently `2`; an older format is rebuilt by `EnsureIndex`) is rebuilt from the group documents in the same transaction as every group create/delete. When its
 content changes, that transaction also bumps `tutti:cfg:version` and publishes `tutti:cfg:changed`.
 
 * **Unprotected scope (proxy, policy snapshot enabled):** the proxy snapshot caches the index per config version
@@ -121,4 +151,6 @@ Replications, routings and failover policies inside a group's scope can only be 
 * Equal MD5-form ETags are trusted as equal content: a tenant able to craft MD5 collisions could keep a
   divergent object on a replica of its own data.
 * e2e: `test/resilience/protection_groups_test.go` (three MinIO storages, three-proxy electorate: failover with
-  copies restored; promotion completes after a proxy dies mid-write).
+  copies restored; promotion completes after a proxy dies mid-write) and
+  `test/resilience/protection_shared_account_test.go` (shared connection account users never inherit a group;
+  legacy policy/group overlap refused; legacy failover skips group scopes with the snapshot disabled).

@@ -28,6 +28,8 @@ import {
   type ChorusStorage,
 } from '@/utils/types/chorus';
 import { ChorusService } from '@/services/ChorusService';
+import { TuttiService } from '@/services/TuttiService';
+import type { S3User } from '@/utils/types/users';
 import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
@@ -40,6 +42,9 @@ interface ChorusAddReplicationState {
   selectedFromStorage: ChorusStorage | null;
   selectedToStorage: ChorusStorage | null;
   selectedUser: string | null;
+  /** S3 users (replications are per user), loaded from /tutti/users */
+  users: S3User[];
+  hasUsersError: boolean;
   isForAllBuckets: boolean;
   isBucketsListLoading: boolean;
   hasBucketsError: boolean;
@@ -62,6 +67,8 @@ function getInitialState(): ChorusAddReplicationState {
     selectedFromStorage: null,
     selectedToStorage: null,
     selectedUser: null,
+    users: [],
+    hasUsersError: false,
     isForAllBuckets: false,
     isBucketsListLoading: false,
     hasBucketsError: false,
@@ -87,9 +94,14 @@ export const useChorusAddReplicationStore = defineStore(
       state.hasError = false;
 
       try {
-        const { storages } = await ChorusService.getStorages();
+        const [{ storages }, usersResponse] = await Promise.all([
+          ChorusService.getStorages(),
+          TuttiService.getUsers().catch(() => null),
+        ]);
 
         state.storages = storages;
+        state.users = usersResponse?.users ?? [];
+        state.hasUsersError = usersResponse === null;
         prepareForm();
       } catch {
         state.hasError = true;
@@ -115,6 +127,10 @@ export const useChorusAddReplicationStore = defineStore(
         title: t('step3Title'),
         description: t('step3Description'),
       },
+      {
+        title: t('step4Title'),
+        description: t('step4Description'),
+      },
     ]);
     const stepsCount = computed(() => steps.value.length);
 
@@ -123,8 +139,8 @@ export const useChorusAddReplicationStore = defineStore(
         state.storages.find((storage) => storage.isMain) ?? null;
       state.selectedToStorage =
         state.storages.find((storage) => !storage.isMain) ?? null;
-      state.selectedUser =
-        (state.selectedFromStorage?.credentials ?? [])[0]?.alias ?? 'default';
+      // the user is chosen explicitly: never default to an arbitrary tenant
+      state.selectedUser = null;
       setTimeout(() => {
         state.isMainAsSourceAlertShown = true;
       }, 500);
@@ -132,20 +148,15 @@ export const useChorusAddReplicationStore = defineStore(
 
     async function getBucketsList() {
       if (
+        !state.selectedUser ||
         !state.selectedFromStorage ||
         !state.selectedToStorage
       ) {
         return;
       }
 
-      const user =
-        state.selectedUser ||
-        (state.selectedFromStorage?.credentials ?? [])[0]?.alias ||
-        'default';
-      state.selectedUser = user;
-
       state.bucketsRequestOptions = {
-        user,
+        user: state.selectedUser,
         fromStorage: state.selectedFromStorage.name,
         toStorage: state.selectedToStorage.name,
         showReplicated: true,
@@ -178,11 +189,40 @@ export const useChorusAddReplicationStore = defineStore(
 
     const isBucketsAlreadyRequested = computed(
       () =>
+        state.bucketsRequestOptions?.user === state.selectedUser &&
         state.bucketsRequestOptions?.fromStorage ===
           state.selectedFromStorage?.name &&
         state.bucketsRequestOptions?.toStorage ===
           state.selectedToStorage?.name,
     );
+
+    /** how the chosen user is signed on a storage: override, connection-account, missing or unknown */
+    function userModeOn(user: string, storage: string | undefined): string {
+      const entry = state.users
+        .find((u) => u.name === user)
+        ?.storages?.find((s) => s.storage === storage);
+
+      if (!entry) {
+        return 'unknown';
+      }
+
+      return entry.mode || (entry.configured ? 'override' : 'missing');
+    }
+
+    /** the selected user has usable credentials on both chosen storages */
+    const isSelectedUserUsable = computed(() => {
+      if (!state.selectedUser) {
+        return false;
+      }
+
+      return [
+        state.selectedFromStorage?.name,
+        state.selectedToStorage?.name,
+      ].every(
+        (storage) =>
+          userModeOn(state.selectedUser as string, storage) !== 'missing',
+      );
+    });
 
     const validator = useVuelidate(
       {
@@ -215,15 +255,11 @@ export const useChorusAddReplicationStore = defineStore(
       if (
         !selectedToStorage ||
         !selectedFromStorage ||
+        !selectedUser ||
         (!selectedBuckets.length && !isForAllBuckets)
       ) {
         return;
       }
-
-      const user =
-        selectedUser ||
-        (selectedFromStorage?.credentials ?? [])[0]?.alias ||
-        'default';
 
       state.isSubmitting = true;
 
@@ -231,7 +267,7 @@ export const useChorusAddReplicationStore = defineStore(
       const errorList: [ChorusReplicationId, string][] = [];
 
       const baseReplicationId: ChorusReplicationId = {
-        user,
+        user: selectedUser,
         fromStorage: selectedFromStorage.name,
         toStorage: selectedToStorage.name,
       };
@@ -267,7 +303,8 @@ export const useChorusAddReplicationStore = defineStore(
       if (errorList.length !== 0) {
         const content = errorList.map(([id, reason]) => {
           const bucketInfo = id.fromBucket ? ` (${id.fromBucket})` : '';
-          return `${id.fromStorage}->${id.toStorage}${bucketInfo}: ${reason}`;
+
+          return `${id.user}/${id.fromStorage}->${id.toStorage}${bucketInfo}: ${reason}`;
         });
 
         showCreateError(content ? content.join(', ') : undefined);
@@ -312,6 +349,8 @@ export const useChorusAddReplicationStore = defineStore(
       initBucketsList,
       getBucketsList,
       isBucketsAlreadyRequested,
+      userModeOn,
+      isSelectedUserUsable,
       validator,
       createReplication,
       $reset,

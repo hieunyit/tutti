@@ -80,7 +80,18 @@ function num(value: number | undefined): string | null {
   return value === undefined ? null : String(value);
 }
 
+/** gRPC FAILED_PRECONDITION, returned when the fleet config version changed under the editor */
+const GRPC_FAILED_PRECONDITION = 9;
+
 export abstract class ProxiesHelper {
+  static isFleetConflict(error: unknown): boolean {
+    const data = (
+      error as { response?: { data?: { code?: number } } } | null | undefined
+    )?.response?.data;
+
+    return data?.code === GRPC_FAILED_PRECONDITION;
+  }
+
   /** Fields on which the reporting proxies disagree (needs two or more). */
   static settingsDrift(
     proxies: TuttiProxyStatus[],

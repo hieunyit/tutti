@@ -117,12 +117,12 @@ describe('ProtectionGroupHelper.wantedCopies, isDegraded & summary', () => {
     const group = baseGroup({ copies: 2 });
 
     expect(ProtectionGroupHelper.isDegraded(group, undefined)).toBeNull();
-    expect(
-      ProtectionGroupHelper.isDegraded(group, { healthyCopies: 2 }),
-    ).toBe(false);
-    expect(
-      ProtectionGroupHelper.isDegraded(group, { healthyCopies: 1 }),
-    ).toBe(true);
+    expect(ProtectionGroupHelper.isDegraded(group, { healthyCopies: 2 })).toBe(
+      false,
+    );
+    expect(ProtectionGroupHelper.isDegraded(group, { healthyCopies: 1 })).toBe(
+      true,
+    );
   });
 
   it('summarizes total, healthy, degraded and frozen groups', () => {
@@ -244,12 +244,16 @@ describe('ProtectionGroupHelper switch helpers', () => {
     expect(
       ProtectionGroupHelper.canSwitch(baseGroup({ state: 'waiting' })),
     ).toBe(false);
-    expect(
-      ProtectionGroupHelper.canSwitch(baseGroup({ target: 's2' })),
-    ).toBe(false);
+    expect(ProtectionGroupHelper.canSwitch(baseGroup({ target: 's2' }))).toBe(
+      false,
+    );
     expect(
       ProtectionGroupHelper.canSwitch(
-        baseGroup({ members: ['s1', 's2'], primary: 's1', quarantined: ['s2'] }),
+        baseGroup({
+          members: ['s1', 's2'],
+          primary: 's1',
+          quarantined: ['s2'],
+        }),
       ),
     ).toBe(false);
 
@@ -350,6 +354,9 @@ describe('ProtectionGroupHelper.validate', () => {
       ProtectionGroupHelper.validate(baseForm({ id: 'bad/id' }), false),
     ).toContain('ID_INVALID');
     expect(
+      ProtectionGroupHelper.validate(baseForm({ user: null }), false),
+    ).toContain('USER_REQUIRED');
+    expect(
       ProtectionGroupHelper.validate(baseForm({ members: ['s1'] }), false),
     ).toContain('MEMBERS_MIN');
     expect(
@@ -392,10 +399,7 @@ describe('ProtectionGroupHelper.validate', () => {
       ProtectionGroupHelper.validate(baseForm({ afterSeconds: -5 }), true),
     ).toContain('AFTER_NEGATIVE');
     expect(
-      ProtectionGroupHelper.validate(
-        baseForm({ maxSwitchesPerHour: 0 }),
-        true,
-      ),
+      ProtectionGroupHelper.validate(baseForm({ maxSwitchesPerHour: 0 }), true),
     ).toContain('SWITCHES_POSITIVE');
     expect(
       ProtectionGroupHelper.validate(
@@ -441,14 +445,12 @@ describe('ProtectionGroupHelper.buildCreateRequest & buildUpdateRequest', () => 
     });
   });
 
-  it('defaults user to "default" in buildCreateRequest when user is not provided', () => {
+  it('never invents a user in buildCreateRequest', () => {
     const req = ProtectionGroupHelper.buildCreateRequest(
-      baseForm({
-        id: 'pg-1',
-        user: null,
-      }),
+      baseForm({ id: 'pg-1', user: null }),
     );
-    expect(req.group.user).toBe('default');
+
+    expect(req.group.user).toBe('');
   });
 
   it('builds update request preserving stored scope, members and revision', () => {

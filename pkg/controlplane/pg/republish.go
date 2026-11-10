@@ -21,6 +21,14 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("controlplane: begin snapshot: %w", err)
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	// Exclusive against every writer that has an outbox entry in flight (they hold the shared lock until commit), taken
+	// before anything is read. The transaction stays READ COMMITTED on purpose: a REPEATABLE READ snapshot would be
+	// fixed by the lock statement itself, before the wait for in-flight writers, and could miss their commits; with
+	// READ COMMITTED every statement after the lock sees all committed changes, and later writers queue behind this
+	// transaction, so their (newer) entries get higher ids than the snapshot entries and are applied after them.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, snapshotLockID); err != nil {
+		return 0, fmt.Errorf("controlplane: snapshot lock: %w", err)
+	}
 
 	r := newRepos(&runner{pool: s.pool, tx: tx, readOnly: &s.readOnly})
 	enqueued := 0
@@ -142,17 +150,8 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	statusIDs := make([]string, 0, len(statuses))
-	byID := make(map[string]struct {
-		id interface{}
-	})
-	_ = byID
-	for id := range statuses {
-		statusIDs = append(statusIDs, id.String())
-	}
-	sort.Strings(statusIDs)
 	for id, st := range statuses {
-		if err := enqueue("replication_status/"+id.String(), statusOps(id, st)); err != nil {
+		if err := enqueue(replScopeKey(id.User, id.FromBucket), statusOps(id, st)); err != nil {
 			return 0, err
 		}
 	}
@@ -188,7 +187,7 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if err := enqueue("replication/"+scopeID(sc.user, sc.bucket), ops); err != nil {
+		if err := enqueue(replScopeKey(sc.user, sc.bucket), ops); err != nil {
 			return 0, err
 		}
 	}
@@ -216,16 +215,9 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 		}
 	}
 
-	pgroups, err := r.ProtectionGroups.List(ctx)
-	if err != nil {
-		return 0, err
-	}
-	for _, v := range pgroups {
-		val := v.Value
-		if err := enqueue("protection_groups/"+val.ID, []RedisOp{opHSet(KeyProtectionGroups, val.ID, val.JSON)}); err != nil {
-			return 0, err
-		}
-	}
+	// Protection groups are deliberately not projected: Redis holds their runtime fields (promotion, fencing, scope
+	// index) next to the desired spec and pkg/protectiongroups maintains both; overwriting the documents from
+	// PostgreSQL would reset the runtime state.
 
 	stests, err := r.StorageTests.List(ctx)
 	if err != nil {

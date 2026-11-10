@@ -36,6 +36,8 @@
     isSubmitting,
     selectedFromStorage,
     selectedToStorage,
+    selectedUser,
+    isSelectedUserUsable,
   } = storeToRefs(useChorusAddReplicationStore());
 
   const isNextDisabled = computed<boolean>(() => {
@@ -49,6 +51,10 @@
 
     if (currentStep.value === AddReplicationStepName.TO_STORAGE) {
       return selectedToStorage.value === null;
+    }
+
+    if (currentStep.value === AddReplicationStepName.USER) {
+      return selectedUser.value === null || !isSelectedUserUsable.value;
     }
 
     return false;

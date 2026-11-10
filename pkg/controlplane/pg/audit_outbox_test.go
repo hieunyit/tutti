@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -287,7 +288,10 @@ func TestPublisherRetriesWhenRedisFails(t *testing.T) {
 	// still failing: the entry is retried after the backoff, not in a hot loop
 	res, _ = pub.RunOnce(ctx)
 	require.Equal(t, 0, res.Failed)
-	require.Equal(t, 1, res.Skipped)
+	require.Equal(t, 0, res.Published)
+	n, _, err := pub.Pending(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, n, "the entry waits for its retry time (filtered in SQL, not counted as skipped)")
 
 	env.mr.SetError("")
 	require.Eventually(t, func() bool {
@@ -356,8 +360,9 @@ func TestPublisherIsIdempotent(t *testing.T) {
 	require.NoError(t, r.Replications.Add(ctx, id, controlplane.ReplicationStatus{CreatedAt: t0}))
 	_, err := r.Replications.IncrementGeneration(ctx, id)
 	require.NoError(t, err)
-	_, err = pub.RunOnce(ctx)
+	first1, err := pub.RunOnce(ctx)
 	require.NoError(t, err)
+	require.Equal(t, 2, first1.Published, "next_attempt_at is compared with the database clock: new entries are always due")
 
 	dump := func() string {
 		keys := env.mr.Keys()
@@ -413,4 +418,143 @@ func TestOnlyOnePublisherRuns(t *testing.T) {
 	res, err = pub.RunOnce(ctx)
 	require.NoError(t, err)
 	require.False(t, res.Busy)
+}
+
+func TestReplicationScopeSingleOutboxKeyAndConcurrentAdds(t *testing.T) {
+	s := newStore(t)
+	env := newRedis(t)
+	ctx := actorCtx("tester")
+	pub := newPublisher(t, s, env.rdb)
+	r := s.Repos()
+
+	const n = 8
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			id := controlplane.ReplicationID{User: "alice", FromBucket: "b", ToBucket: "b", FromStorage: "s0", ToStorage: fmt.Sprint("dst", i)}
+			if err := r.Replications.Add(ctx, id, controlplane.ReplicationStatus{CreatedAt: t0}); err != nil {
+				errs[i] = err
+				return
+			}
+			_, errs[i] = r.Replications.IncrementGeneration(ctx, id)
+		}()
+	}
+	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+	var keys int
+	require.NoError(t, s.Pool().QueryRow(ctx, `SELECT count(DISTINCT object_key) FROM outbox`).Scan(&keys))
+	require.Equal(t, 1, keys, "every replication entry of a scope shares one outbox object key")
+
+	// remove a destination concurrently with the generation bumps of the others
+	require.NoError(t, r.Replications.Remove(ctx, controlplane.ReplicationID{User: "alice", FromBucket: "b", ToBucket: "b", FromStorage: "s0", ToStorage: "dst0"}))
+	for i := 0; i < 3; i++ {
+		_, err := pub.RunOnce(ctx)
+		require.NoError(t, err)
+	}
+	members, err := env.mr.Members("p:repl_bucket_to:alice:b")
+	require.NoError(t, err)
+	require.Len(t, members, n-1, "no destination is lost or resurrected by an out-of-order absolute projection")
+	require.NotContains(t, members, "dst0:b")
+	require.Len(t, env.mr.HGet("p:repl_bucket_gen:alice:b", "dst3:b"), 1)
+}
+
+func TestSnapshotCannotLandAfterNewerChange(t *testing.T) {
+	s := newStore(t)
+	env := newRedis(t)
+	ctx := actorCtx("tester")
+	pub := newPublisher(t, s, env.rdb)
+	r := s.Repos()
+	require.NoError(t, r.Routing.Set(ctx, "alice", "", "s0"))
+
+	// a writer keeps its transaction open (outbox entry written, not committed) while a snapshot is requested
+	started := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		done <- s.Tx(ctx, func(rp controlplane.Repos) error {
+			if err := rp.Routing.Set(ctx, "alice", "", "s1"); err != nil {
+				return err
+			}
+			close(started)
+			<-release
+			return nil
+		})
+	}()
+	<-started
+	snapDone := make(chan error, 1)
+	go func() { _, err := s.EnqueueSnapshot(ctx); snapDone <- err }()
+	select {
+	case err := <-snapDone:
+		t.Fatalf("snapshot must wait for the in-flight writer, finished with %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-done)
+	require.NoError(t, <-snapDone)
+	for i := 0; i < 3; i++ {
+		_, err := pub.RunOnce(ctx)
+		require.NoError(t, err)
+	}
+	require.Equal(t, "s1", env.mr.HGet(pg.KeyRouteUser, "alice"), "the snapshot saw the committed change, the older state did not land last")
+}
+
+func TestStorageTestsAreNotAuditedAndActionFilterRunsInSQL(t *testing.T) {
+	s := newStore(t)
+	env := newRedis(t)
+	ctx := actorCtx("tester")
+	pub := newPublisher(t, s, env.rdb)
+	r := s.Repos()
+
+	for i := 0; i < 5; i++ {
+		_, err := r.StorageTests.Put(ctx, controlplane.RawDoc{ID: "st1", JSON: []byte(fmt.Sprintf(`{"ok":true,"n":%d}`, i))})
+		require.NoError(t, err)
+	}
+	rows, err := r.Audit.List(ctx, controlplane.AuditFilter{ObjectType: "storage_tests"})
+	require.NoError(t, err)
+	require.Empty(t, rows, "connection test results do not spam the audit log")
+	_, err = pub.RunOnce(ctx)
+	require.NoError(t, err)
+	require.True(t, env.mr.Exists(pg.KeyStorageTests), "the Redis projection is still written")
+
+	_, err = r.AccessPolicies.Create(ctx, controlplane.AccessPolicy{User: "alice", Permission: "read-only", Buckets: []string{"*"}})
+	require.NoError(t, err)
+	for i := 0; i < 5; i++ {
+		_, err = r.AccessPolicies.Put(ctx, controlplane.AccessPolicy{User: "alice", Permission: "read-write", Buckets: []string{"*"}, Description: fmt.Sprint(i)})
+		require.NoError(t, err)
+	}
+	rows, err = r.Audit.List(ctx, controlplane.AuditFilter{Action: "CREATE", Limit: 1})
+	require.NoError(t, err)
+	require.Len(t, rows, 1, "the oldest, rare action is found although 5 newer rows of another action exist")
+	require.Equal(t, "create", rows[0].Action)
+}
+
+func TestFingerprintChangesWithEveryRowChange(t *testing.T) {
+	s := newStore(t)
+	ctx := actorCtx("tester")
+	r := s.Repos()
+	fp := func() string {
+		v, err := r.S3Identities.Fingerprint(ctx)
+		require.NoError(t, err)
+		return v
+	}
+	empty := fp()
+	require.Equal(t, empty, fp(), "stable while nothing changes")
+	_, err := r.S3Identities.Create(ctx, controlplane.S3Identity{Name: "a", CreatedAt: t0})
+	require.NoError(t, err)
+	created := fp()
+	require.NotEqual(t, empty, created)
+	_, err = r.S3Identities.Put(ctx, controlplane.S3Identity{Name: "a", CreatedAt: t0.Add(time.Hour)})
+	require.NoError(t, err)
+	updated := fp()
+	require.NotEqual(t, created, updated, "an update bumps the version")
+	require.NoError(t, r.S3Identities.Delete(ctx, "a"))
+	require.Equal(t, empty, fp())
+	d, err := r.DynamicCredentials.Fingerprint(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "empty", d)
 }

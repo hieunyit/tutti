@@ -13,6 +13,8 @@ import (
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
+	"slices"
 )
 
 type protectionBackend struct{ p *policySvc }
@@ -149,12 +151,29 @@ func (b *protectionBackend) Pause(ctx context.Context, g protectiongroups.Group)
 	return nil
 }
 
+// commitPendingKey records, per group, the primaries whose topology change is committed in Redis but not yet
+// in PostgreSQL (field = group ID, value = JSON pendingCommit). It is written in the same Redis transaction as the
+// promotion and cleared once PostgreSQL has the change, so a failed or interrupted PostgreSQL write is retried
+// (SyncControlPlane) instead of leaving PostgreSQL silently behind.
+const commitPendingKey = "tutti:protection:cp-commit-pending"
+
+type pendingCommit struct {
+	// OldPrimaries are the previous primaries whose replications must be removed in PostgreSQL.
+	OldPrimaries []string `json:"oldPrimaries,omitempty"`
+}
+
+// Commit replaces routing, removes the old topology and records the group. Redis is the commit point (WATCH on
+// the group and its writer registries); PostgreSQL follows afterwards and is retried until it succeeds (see
+// commitPendingKey). Writing PostgreSQL first would let its outbox project a routing change to Redis even when the
+// Redis transaction then fails.
 func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.Group, after *protectiongroups.Group) error {
 	ctx = protectiongroups.Managed(ctx)
 	p := b.p
 	// Watch both group metadata and writer registries. Admission cannot race a promotion
 	// because the same watched group is frozen before this commit.
 	writers := "tutti:protection:writers:" + before.ID
+	next := *after
+	next.Revision = before.Revision + 1
 	err := p.client.Watch(ctx, func(tx *redis.Tx) error {
 		raw, err := tx.HGet(ctx, protectiongroups.GroupsKey, before.ID).Result()
 		if err != nil {
@@ -176,8 +195,6 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 				return fmt.Errorf("%w: outstanding writes prevent promotion", dom.ErrFailedPrecondition)
 			}
 		}
-		next := *after
-		next.Revision = before.Revision + 1
 		rawNext, err := json.Marshal(next)
 		if err != nil {
 			return err
@@ -186,46 +203,19 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 		if err != nil {
 			return err
 		}
+		var pending []byte
 		if p.cp != nil {
-			if err := p.cp.Tx(ctx, func(repos controlplane.Repos) error {
-				if before.Primary != after.Primary {
-					for _, id := range before.Replications(before.Primary) {
-						cpID := toCPReplicationID(id)
-						if err := repos.Replications.Remove(ctx, cpID); err != nil {
-							return err
-						}
-						if err := repos.Replications.DeleteStatus(ctx, cpID); err != nil {
-							return err
-						}
-						if _, err := repos.Replications.IncrementGeneration(ctx, cpID); err != nil {
-							return err
-						}
-					}
-				}
-				if len(after.Buckets) == 0 {
-					if err := repos.Routing.Set(ctx, after.User, "", after.Primary); err != nil {
-						return err
-					}
-					bRoutes, err := repos.Routing.ListBucketRoutes(ctx, after.User)
-					if err != nil {
-						return err
-					}
-					for b := range bRoutes {
-						if err := repos.Routing.DeleteRoute(ctx, after.User, b); err != nil {
-							return err
-						}
-					}
-				} else {
-					for _, bucket := range after.Buckets {
-						if err := repos.Routing.Set(ctx, after.User, bucket, after.Primary); err != nil {
-							return err
-						}
-					}
-				}
-				_, err := repos.ProtectionGroups.Put(ctx, controlplane.RawDoc{ID: after.ID, User: after.User, JSON: rawNext})
+			var pc pendingCommit
+			if prev, err := tx.HGet(ctx, commitPendingKey, before.ID).Result(); err == nil {
+				_ = json.Unmarshal([]byte(prev), &pc)
+			} else if !errors.Is(err, redis.Nil) {
 				return err
-			}); err != nil {
-				return controlplane.WrapWriteError(err)
+			}
+			if before.Primary != after.Primary && !slices.Contains(pc.OldPrimaries, before.Primary) {
+				pc.OldPrimaries = append(pc.OldPrimaries, before.Primary)
+			}
+			if pending, err = json.Marshal(pc); err != nil {
+				return err
 			}
 		}
 		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
@@ -253,6 +243,9 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 			}
 			pipe.HSet(ctx, protectiongroups.GroupsKey, after.ID, rawNext)
 			pipe.HSet(ctx, protectiongroups.PromotionKey, after.ID, promRaw)
+			if pending != nil {
+				pipe.HSet(ctx, commitPendingKey, after.ID, pending)
+			}
 			// Redis Tx clients do not necessarily inherit hooks from their parent. Include the
 			// snapshot version explicitly in this authoritative topology transaction.
 			pipe.Incr(ctx, SnapshotVersionKey)
@@ -260,11 +253,17 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 			return nil
 		})
 		return err
-	}, protectiongroups.GroupsKey, writers, writers+":workers")
+	}, protectiongroups.GroupsKey, writers, writers+":workers", commitPendingKey)
 	if err != nil {
 		return err
 	}
-	after.Revision = before.Revision + 1
+	after.Revision = next.Revision
+	if p.cp != nil {
+		if err := b.SyncControlPlane(ctx, next); err != nil {
+			// committed in Redis: PostgreSQL is retried by the reconciler (SyncControlPlane)
+			zerolog.Ctx(ctx).Warn().Err(err).Str("group", after.ID).Msg("protection group commit not yet in PostgreSQL; will retry")
+		}
+	}
 	if before.Primary != after.Primary {
 		for _, id := range before.Replications(before.Primary) {
 			if err := tasks.StopAndPurgeReplicationQueues(ctx, p.queueSvc, id); err != nil {
@@ -284,4 +283,124 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 		}
 	}
 	return nil
+}
+
+// clearPendingScript deletes the pending marker only if it is unchanged (a newer promotion keeps its own).
+var clearPendingScript = redis.NewScript(`
+if redis.call('hget',KEYS[1],ARGV[1])==ARGV[2] then return redis.call('hdel',KEYS[1],ARGV[1]) end
+return 0
+`)
+
+// SyncControlPlane applies a promotion that is committed in Redis but still pending in PostgreSQL: it removes
+// the replications of the recorded old primaries (only those whose source still is that old primary, so a
+// replication the reconciler created since from the new primary is never touched), bumps their generations,
+// sets the routing to g's (current) primary and stores the group's PostgreSQL copy, in one PostgreSQL
+// transaction. It is idempotent and a no-op without a pending marker. g must be the current Redis group.
+func (b *protectionBackend) SyncControlPlane(ctx context.Context, g protectiongroups.Group) error {
+	p := b.p
+	if p.cp == nil {
+		return nil
+	}
+	marker, err := p.client.HGet(ctx, commitPendingKey, g.ID).Result()
+	if errors.Is(err, redis.Nil) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var pc pendingCommit
+	if err := json.Unmarshal([]byte(marker), &pc); err != nil {
+		return err
+	}
+	doc, err := protectiongroups.ControlPlaneDocument(g)
+	if err != nil {
+		return err
+	}
+	err = p.cp.Tx(ctx, func(repos controlplane.Repos) error {
+		for _, old := range pc.OldPrimaries {
+			if old == g.Primary {
+				continue // back on an earlier primary: its replications are the current ones
+			}
+			for _, id := range g.Replications(old) {
+				cpID := toCPReplicationID(id)
+				pols, err := repos.Replications.Policies(ctx, cpID.User, cpID.FromBucket)
+				if err != nil && !errors.Is(err, dom.ErrNotFound) {
+					return err
+				}
+				for _, pol := range pols {
+					if pol.FromStorage == cpID.FromStorage && pol.ToStorage == cpID.ToStorage && pol.ToBucket == cpID.ToBucket {
+						if err := repos.Replications.Remove(ctx, cpID); err != nil {
+							return err
+						}
+					}
+				}
+				if err := repos.Replications.DeleteStatus(ctx, cpID); err != nil {
+					return err
+				}
+				if _, err := repos.Replications.IncrementGeneration(ctx, cpID); err != nil {
+					return err
+				}
+			}
+		}
+		if len(g.Buckets) == 0 {
+			if err := repos.Routing.Set(ctx, g.User, "", g.Primary); err != nil {
+				return err
+			}
+			bRoutes, err := repos.Routing.ListBucketRoutes(ctx, g.User)
+			if err != nil {
+				return err
+			}
+			for bucket := range bRoutes {
+				if err := repos.Routing.DeleteRoute(ctx, g.User, bucket); err != nil {
+					return err
+				}
+			}
+		} else {
+			for _, bucket := range g.Buckets {
+				if err := repos.Routing.Set(ctx, g.User, bucket, g.Primary); err != nil {
+					return err
+				}
+			}
+		}
+		_, err := repos.ProtectionGroups.Put(ctx, controlplane.RawDoc{ID: g.ID, User: g.User, JSON: doc})
+		return err
+	})
+	if err != nil {
+		return controlplane.WrapWriteError(err)
+	}
+	return clearPendingScript.Run(ctx, p.client, []string{commitPendingKey}, g.ID, marker).Err()
+}
+
+// ProtectionGroupOf resolves the protection group managing (user, bucket) for control loops such as the legacy
+// failover controller, which are not serving a request and so have not validated the snapshot's config
+// version: the snapshot is refreshed first and used only when it is current, otherwise the index is read from
+// Redis (rebuilt when missing). An error means the scope is unknown; callers must fail closed.
+func (r *policySvc) ProtectionGroupOf(ctx context.Context, user, bucket string) (string, error) {
+	if r.snap != nil {
+		if err := r.snap.refresh(ctx, false); err == nil {
+			if idx, err := r.snap.protectionScope(ctx); err == nil {
+				if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+					return group, nil
+				}
+			}
+		}
+	}
+	idx, err := protectiongroups.ScopeFields(ctx, r.client, user, bucket)
+	if err != nil {
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
+	}
+	if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+		return group, nil
+	}
+	if err := protectiongroups.NewStore(r.client).EnsureIndex(ctx); err != nil {
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
+	}
+	idx, err = protectiongroups.ScopeFields(ctx, r.client, user, bucket)
+	if err != nil {
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
+	}
+	if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+		return group, nil
+	}
+	return "", fmt.Errorf("%w: protection group scope index is incomplete", dom.ErrUnavailable)
 }

@@ -27,6 +27,9 @@ var (
 	pgPrimaryChanges = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "protection_group_primary_changes_total",
 		Help: "Primary changes of a protection group by reason (automatic, manual)."}, []string{"group", "reason"})
+	pgReconcileErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "protection_group_reconcile_errors_total",
+		Help: "Failed reconcile cycles of a protection group. While it grows, the group's other gauges may be stale."}, []string{"group"})
 	pgReapedWriters = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "protection_group_reaped_writers_total",
 		Help: "Writer records reaped because the owning process lease expired and the process stopped reporting."})
@@ -76,6 +79,9 @@ func SetProtectionGroup(group string, s ProtectionGroupState) {
 
 // SetProtectionFrozen updates only the frozen gauge of a group.
 func SetProtectionFrozen(group string, frozen bool) {
+	pgMu.Lock()
+	pgKnown[group] = true // so KeepProtectionGroups also removes this series once the group is deleted
+	pgMu.Unlock()
 	f := 0.0
 	if frozen {
 		f = 1
@@ -98,8 +104,17 @@ func KeepProtectionGroups(ids []string) {
 		for _, v := range []*prometheus.GaugeVec{pgCopiesHealthy, pgCopiesWanted, pgMaxEventLag, pgFrozen, pgActiveWriters} {
 			v.DeleteLabelValues(g)
 		}
+		pgReconcileErrors.DeleteLabelValues(g)
 		delete(pgKnown, g)
 	}
+}
+
+// CountProtectionReconcileError counts a failed reconcile cycle of a group.
+func CountProtectionReconcileError(group string) {
+	pgMu.Lock()
+	pgKnown[group] = true
+	pgMu.Unlock()
+	pgReconcileErrors.WithLabelValues(group).Inc()
 }
 
 // CountProtectionPrimaryChange counts a primary change with reason "automatic" or "manual".

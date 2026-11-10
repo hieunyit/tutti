@@ -26,6 +26,7 @@ type kvSpec[T any] struct {
 	project    func(key string, v *T) []RedisOp // v == nil: deleted
 	extraCol   string                           // optional additional nullable timestamptz column merged into reads
 	applyExtra func(*T, *time.Time)
+	noAudit    bool // no audit rows for this family (outbox entries are still written)
 }
 
 type kv[T any] struct {
@@ -149,7 +150,7 @@ func (r *kv[T]) Create(ctx context.Context, v T) (controlplane.Versioned[T], err
 		if err != nil {
 			return fmt.Errorf("controlplane: create %s: %w", r.spec.label, err)
 		}
-		return record(ctx, tx, mutation{action: "create", objectType: r.spec.table, objectID: key, after: doc, ops: r.project(key, &v)})
+		return record(ctx, tx, mutation{action: "create", objectType: r.spec.table, noAudit: r.spec.noAudit, objectID: key, after: doc, ops: r.project(key, &v)})
 	})
 	return out, err
 }
@@ -178,7 +179,7 @@ func (r *kv[T]) store(ctx context.Context, tx pgx.Tx, key string, v *T, doc, bef
 	if err != nil {
 		return out, fmt.Errorf("controlplane: update %s: %w", r.spec.label, err)
 	}
-	return out, record(ctx, tx, mutation{action: "update", objectType: r.spec.table, objectID: key, before: before, after: doc, ops: r.project(key, v)})
+	return out, record(ctx, tx, mutation{action: "update", objectType: r.spec.table, noAudit: r.spec.noAudit, objectID: key, before: before, after: doc, ops: r.project(key, v)})
 }
 
 func (r *kv[T]) Put(ctx context.Context, v T) (controlplane.Versioned[T], error) {
@@ -204,7 +205,7 @@ func (r *kv[T]) Put(ctx context.Context, v T) (controlplane.Versioned[T], error)
 		if err != nil {
 			return fmt.Errorf("controlplane: put %s: %w", r.spec.label, err)
 		}
-		return record(ctx, tx, mutation{action: "create", objectType: r.spec.table, objectID: key, after: doc, ops: r.project(key, &v)})
+		return record(ctx, tx, mutation{action: "create", objectType: r.spec.table, noAudit: r.spec.noAudit, objectID: key, after: doc, ops: r.project(key, &v)})
 	})
 	return out, err
 }
@@ -278,5 +279,13 @@ func (r *kv[T]) deleteTx(ctx context.Context, tx pgx.Tx, key string) error {
 	if _, err := tx.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE k=$1`, r.spec.table), key); err != nil {
 		return fmt.Errorf("controlplane: delete %s: %w", r.spec.label, err)
 	}
-	return record(ctx, tx, mutation{action: "delete", objectType: r.spec.table, objectID: key, before: before, ops: r.project(key, nil)})
+	return record(ctx, tx, mutation{action: "delete", objectType: r.spec.table, noAudit: r.spec.noAudit, objectID: key, before: before, ops: r.project(key, nil)})
+}
+
+// Fingerprint digests the keys and versions of the table; every create, update (the version is bumped) and delete
+// changes it.
+func (r *kv[T]) Fingerprint(ctx context.Context) (string, error) {
+	var fp string
+	err := r.rt.q().QueryRow(ctx, fmt.Sprintf(`SELECT coalesce(md5(string_agg(k || ':' || version::text, ',' ORDER BY k)), 'empty') FROM %s`, r.spec.table)).Scan(&fp)
+	return fp, err
 }

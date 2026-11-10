@@ -177,6 +177,10 @@ export default {
     applyingVersion: 'Applying v{version}…',
     startupConfig: 'Startup config',
     pendingRestart: 'Pending restart',
+    configRejected: 'Fleet config rejected (last good config kept)',
+    fleetConflict:
+      'The fleet configuration was changed by someone else since you loaded it. Reload to see the latest version, then re-apply your edits.',
+    fleetReload: 'Reload',
     fleetConfig: 'Fleet Configuration',
     fleetConfigHint:
       'Centralized defaults and per-group overrides pushed live to all proxies.',
@@ -379,6 +383,11 @@ export default {
     applyingVersion: 'Wird angewendet v{version}…',
     startupConfig: 'Startkonfiguration',
     pendingRestart: 'Neustart erforderlich',
+    configRejected:
+      'Flottenkonfiguration abgelehnt (letzte gültige bleibt aktiv)',
+    fleetConflict:
+      'Die Flottenkonfiguration wurde seit dem Laden von jemand anderem geändert. Laden Sie neu und wenden Sie Ihre Änderungen erneut an.',
+    fleetReload: 'Neu laden',
     fleetConfig: 'Flottenkonfiguration',
     fleetConfigHint:
       'Zentrale Standardwerte und Gruppenüberschreibungen für alle Proxys.',

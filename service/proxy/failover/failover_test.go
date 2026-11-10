@@ -328,15 +328,19 @@ func TestPolicyListErrorReturned(t *testing.T) {
 
 func TestProtectedScopesSkipped(t *testing.T) {
 	e := newEnv(t, enabled("f1"))
-	e.ctrl.isProtected = func(ctx context.Context, user, bucket string) bool {
-		return user == "u-protected" || (user == "u-other" && bucket == "b-protected")
+	e.ctrl.isProtected = func(ctx context.Context, user, bucket string) (bool, error) {
+		if user == "u-unknown" {
+			return false, errors.New("scope index unavailable")
+		}
+		return user == "u-protected" || (user == "u-other" && bucket == "b-protected"), nil
 	}
 	e.userRepl("u-protected", "f1", status(0))
+	e.userRepl("u-unknown", "f1", status(0))
 	e.userRepl("u-normal", "f1", status(0))
 
 	e.run(t)
 
-	// Only u-normal should have failed over; protected scopes are skipped for Protection Groups
+	// Only u-normal should have failed over; protected scopes, and scopes whose protection is unknown, are skipped
 	require.Equal(t, []entity.UniversalReplicationID{
 		entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("u-normal", "main", "f1")),
 	}, e.pol.failedOver)

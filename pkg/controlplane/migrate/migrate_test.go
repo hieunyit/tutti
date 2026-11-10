@@ -556,19 +556,101 @@ func TestRepublishRebuildsLostRedisWithoutAuditOrVersionDrift(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stBefore.Version, stAfter.Version)
 
-	// Verify that the rebuilt Redis and PostgreSQL agree across all families.
+	// Every family agrees except the protection groups, which republish deliberately does not write: Redis holds their
+	// runtime fields next to the spec.
 	rebuiltData, err := migrate.ReadRedis(ctx, lostSrc)
 	require.NoError(t, err)
 	pgData, err := migrate.ReadPG(ctx, s.Repos())
 	require.NoError(t, err)
 	verRep := migrate.Verify(rebuiltData, pgData)
-	require.True(t, verRep.OK, verRep.Text())
-
-	// Also verify protection group scope index was rebuilt in Redis.
-	groupID, ok := protectiongroups.LookupScope(mustHGetAll(t, lostRdb, protectiongroups.ScopeIndexKey), "alice", "photos")
-	require.True(t, ok)
-	require.Equal(t, "g1", groupID)
+	require.NotEmpty(t, verRep.Mismatches)
+	for _, m := range verRep.Mismatches {
+		require.Equal(t, migrate.FamProtectionGroups, m.Family, "%+v", m)
+	}
+	// Groups lost from Redis are recovered from their PostgreSQL seed (frozen, re-initializing) by the protection
+	// store, and the scope index is rebuilt; republish itself never projects runtime fields.
+	require.Equal(t, "g1", mustHGetAll(t, lostRdb, protectiongroups.ScopeIndexKey)["b:alice/photos"])
+	recovered := mustHGetAll(t, lostRdb, "tutti:protection:groups")
+	require.Contains(t, recovered, "g1")
+	require.Contains(t, recovered["g1"], `"frozen":true`)
 	_ = origMR
+}
+
+// A Redis that holds data differing from PostgreSQL may be newer (restored PostgreSQL): republish needs --force.
+func TestRepublishRefusesToOverwriteWithoutForceAndPrunes(t *testing.T) {
+	ctx := context.Background()
+	_, origRdb := newMiniRedis(t)
+	populate(t, origRdb)
+	src, err := migrate.ReadRedis(ctx, migrate.Sources{Config: origRdb})
+	require.NoError(t, err)
+	s := newPG(t)
+	require.True(t, migrate.Import(ctx, s, src, migrate.ImportOptions{}).OK)
+
+	// Redis drifted: one entry changed, one exists only in Redis
+	require.NoError(t, origRdb.HSet(ctx, "tutti:access-policies", "alice", `{"user":"alice","permission":"read-write","buckets":["*"]}`).Err())
+	require.NoError(t, origRdb.HSet(ctx, "tutti:access-policies", "ghost", `{"user":"ghost","permission":"read-only","buckets":["*"]}`).Err())
+	before := mustHGetAll(t, origRdb, "tutti:access-policies")
+
+	rep, err := migrate.Republish(ctx, s, migrate.Sources{Config: origRdb}, migrate.RepublishOptions{})
+	require.NoError(t, err)
+	require.False(t, rep.OK)
+	require.Contains(t, rep.Text(), "refusing to overwrite Redis")
+	require.Equal(t, before, mustHGetAll(t, origRdb, "tutti:access-policies"), "nothing was written")
+
+	// --force overwrites but keeps the Redis-only entry (additive), and says so
+	rep, err = migrate.Republish(ctx, s, migrate.Sources{Config: origRdb}, migrate.RepublishOptions{Force: true})
+	require.NoError(t, err)
+	require.True(t, rep.OK, rep.Text())
+	require.Contains(t, rep.Text(), "--prune")
+	got := mustHGetAll(t, origRdb, "tutti:access-policies")
+	require.NotEqual(t, before["alice"], got["alice"])
+	require.Contains(t, got, "ghost")
+
+	// --prune --force is a real rebuild
+	rep, err = migrate.Republish(ctx, s, migrate.Sources{Config: origRdb}, migrate.RepublishOptions{Force: true, Prune: true})
+	require.NoError(t, err)
+	require.True(t, rep.OK, rep.Text())
+	require.NotContains(t, mustHGetAll(t, origRdb, "tutti:access-policies"), "ghost")
+}
+
+// A publisher that holds the lock (a worker) is waited for, not treated as failure; the check runs after draining.
+func TestRepublishWaitsForBusyPublisher(t *testing.T) {
+	ctx := context.Background()
+	_, origRdb := newMiniRedis(t)
+	populate(t, origRdb)
+	src, err := migrate.ReadRedis(ctx, migrate.Sources{Config: origRdb})
+	require.NoError(t, err)
+	s := newPG(t)
+	require.True(t, migrate.Import(ctx, s, src, migrate.ImportOptions{}).OK)
+	_, lostRdb := newMiniRedis(t)
+
+	// another process holds the publisher lock for a while
+	conn, err := s.Pool().Acquire(ctx)
+	require.NoError(t, err)
+	var got bool
+	require.NoError(t, conn.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, int64(0x6f757462)).Scan(&got))
+	require.True(t, got)
+	go func() {
+		time.Sleep(700 * time.Millisecond)
+		_, _ = conn.Exec(ctx, `SELECT pg_advisory_unlock($1)`, int64(0x6f757462))
+		conn.Release()
+	}()
+	rep, err := migrate.Republish(ctx, s, migrate.Sources{Config: lostRdb}, migrate.RepublishOptions{DrainTimeout: 20 * time.Second})
+	require.NoError(t, err)
+	require.True(t, rep.OK, rep.Text())
+	require.NotEmpty(t, mustHGetAll(t, lostRdb, "tutti:access-policies"))
+
+	// ... and times out with a clear error when it never gets free
+	conn2, err := s.Pool().Acquire(ctx)
+	require.NoError(t, err)
+	defer conn2.Release()
+	require.NoError(t, conn2.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, int64(0x6f757462)).Scan(&got))
+	_, lost2 := newMiniRedis(t)
+	rep, err = migrate.Republish(ctx, s, migrate.Sources{Config: lost2}, migrate.RepublishOptions{DrainTimeout: 600 * time.Millisecond})
+	require.NoError(t, err)
+	require.False(t, rep.OK)
+	require.Contains(t, rep.Text(), "still pending")
+	_, _ = conn2.Exec(ctx, `SELECT pg_advisory_unlock($1)`, int64(0x6f757462))
 }
 
 func mustHGetAll(t *testing.T, rdb *redis.Client, key string) map[string]string {

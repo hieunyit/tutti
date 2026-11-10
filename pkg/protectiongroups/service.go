@@ -10,6 +10,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/rs/zerolog"
 	"slices"
 	"time"
 )
@@ -38,8 +39,9 @@ type Service struct {
 	Resyncer            Resyncer
 	Reports             func(context.Context) ([]proxystatus.Status, error)
 	ValidateCredentials func(context.Context, Group) error
-	DefaultUser         func(context.Context, Group) string
-	Now                 func() time.Time
+	// ValidateLegacyFailover rejects a group over storages used by an enabled legacy failover policy.
+	ValidateLegacyFailover func(context.Context, Group) error
+	Now                    func() time.Time
 }
 
 func (s *Service) now() time.Time {
@@ -61,11 +63,10 @@ func (s *Service) WithGroup(ctx context.Context, id string, fn func(context.Cont
 	return lock.DoCtx(ctx, 10*time.Second, fn)
 }
 func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error) {
-	if g.User == "" && s.DefaultUser != nil {
-		g.User = s.DefaultUser(ctx, g)
-	}
+	// The group's user is the identity whose routing and replications the group manages: it must be explicit,
+	// never picked silently.
 	if g.User == "" {
-		g.User = "default"
+		return Group{}, fmt.Errorf("%w: protection group: user is required", dom.ErrInvalidArg)
 	}
 	if err := g.Validate(); err != nil {
 		return Group{}, err
@@ -88,6 +89,11 @@ func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error
 		}
 		if s.ValidateCredentials != nil {
 			if err := s.ValidateCredentials(ctx, g); err != nil {
+				return err
+			}
+		}
+		if s.ValidateLegacyFailover != nil {
+			if err := s.ValidateLegacyFailover(ctx, g); err != nil {
 				return err
 			}
 		}
@@ -266,10 +272,17 @@ func (s *Service) Reconcile(ctx context.Context, id string) error {
 		if err != nil {
 			return err
 		}
-		err = s.reconcile(ctx, &g)
+		exported := false
+		err = s.reconcile(ctx, &g, &exported)
+		if !exported {
+			// The step failed or returned before exporting (e.g. while promoting): export the current
+			// status anyway so the gauges are never left stale.
+			s.exportCurrent(ctx, g)
+		}
 		// The state may have changed after the status snapshot (or the step returned early).
 		metrics.SetProtectionFrozen(g.ID, g.Frozen)
 		if err != nil {
+			metrics.CountProtectionReconcileError(g.ID)
 			// Record only the error on the stored document: g may hold uncommitted in-memory
 			// transitions of the failed step that must not be persisted by this side channel.
 			if current, e := s.Store.Get(ctx, id); e == nil && current.LastError != err.Error() {
@@ -281,7 +294,27 @@ func (s *Service) Reconcile(ctx context.Context, id string) error {
 	})
 }
 
-func (s *Service) reconcile(ctx context.Context, g *Group) error {
+// controlPlaneSyncer is implemented by backends that commit promotions to Redis first and must retry the
+// PostgreSQL part (policy.protectionBackend).
+type controlPlaneSyncer interface {
+	SyncControlPlane(context.Context, Group) error
+}
+
+// exportCurrent exports the gauges of g from a fresh status. Without proxy reports members count as
+// unavailable, which is what the reconciler acts on too.
+func (s *Service) exportCurrent(ctx context.Context, g Group) {
+	reports, err := s.reports(ctx)
+	if err != nil {
+		reports = nil
+	}
+	st, err := s.status(ctx, g, reports)
+	if err != nil {
+		return
+	}
+	exportStatus(st)
+}
+
+func (s *Service) reconcile(ctx context.Context, g *Group, exported *bool) error {
 	reports, err := s.reports(ctx)
 	if err != nil {
 		return err
@@ -296,6 +329,13 @@ func (s *Service) reconcile(ctx context.Context, g *Group) error {
 	}
 	if g.State == "promoting" {
 		return s.finishFrozen(ctx, g, reports)
+	}
+	if syncer, ok := s.Backend.(controlPlaneSyncer); ok {
+		// Retry the PostgreSQL part of an earlier promotion before (re)creating replications from the new
+		// primary. A failure must not stop the group (Redis is authoritative); it is retried every cycle.
+		if err := syncer.SyncControlPlane(ctx, *g); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Str("group", g.ID).Msg("protection group: PostgreSQL sync of the last promotion failed; will retry")
+		}
 	}
 	// Reconcile every healthy member, not just Copies-1. Missing members remain desired and
 	// are retried after recovery. Failed/pending seeds are durable and never count as current.
@@ -325,6 +365,7 @@ func (s *Service) reconcile(ctx context.Context, g *Group) error {
 		return err
 	}
 	exportStatus(status)
+	*exported = true
 	if g.State == "ready" && g.Mode == "auto" {
 		frozen, err := s.Store.AutomaticFrozen(ctx)
 		if err != nil {

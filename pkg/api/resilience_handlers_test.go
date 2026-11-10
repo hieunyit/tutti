@@ -353,3 +353,51 @@ func TestResilience_ProxyFleetConfig(t *testing.T) {
 	require.Equal(t, []string{"readHeaderTimeout"}, stList.Proxies[0].PendingRestartReasons)
 	require.Equal(t, 20*time.Second, stList.Proxies[0].Settings.ReadHeaderTimeout.AsDuration())
 }
+
+func TestResilience_ProxyFleetConfigExpectedVersionAndAudit(t *testing.T) {
+	ctx := context.Background()
+	c, rc, _ := resilienceClient(t)
+
+	thresh := int32(5)
+	req := func(expected *int64) *pb.SetProxyFleetConfigRequest {
+		return &pb.SetProxyFleetConfigRequest{
+			Defaults:        &pb.ProxySettingsOverride{Health: &pb.ProxyHealthSettingsOverride{FailureThreshold: &thresh}},
+			ExpectedVersion: expected,
+		}
+	}
+	zero, one := int64(0), int64(1)
+	fc1, err := c.SetProxyFleetConfig(ctx, req(&zero))
+	require.NoError(t, err)
+	require.EqualValues(t, 1, fc1.Version)
+
+	// stale version: rejected, nothing changes
+	_, err = c.SetProxyFleetConfig(ctx, req(&zero))
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+	cur, err := c.GetProxyFleetConfig(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, cur.Version)
+
+	// matching version and unset (no check) both succeed
+	fc2, err := c.SetProxyFleetConfig(ctx, req(&one))
+	require.NoError(t, err)
+	require.EqualValues(t, 2, fc2.Version)
+	fc3, err := c.SetProxyFleetConfig(ctx, req(nil))
+	require.NoError(t, err)
+	require.EqualValues(t, 3, fc3.Version)
+
+	// every successful change is audited with before/after
+	recs, err := proxystatus.NewFleetConfigStore(rc).ListAudit(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, recs, 3)
+	require.EqualValues(t, 3, recs[0].After.Version)
+	require.EqualValues(t, 2, recs[0].Before.Version)
+	require.NotEmpty(t, recs[0].Actor)
+	require.EqualValues(t, 0, recs[2].Before.Version)
+
+	// too-small interval rejected
+	tiny := durationpb.New(time.Millisecond)
+	_, err = c.SetProxyFleetConfig(ctx, &pb.SetProxyFleetConfigRequest{
+		Defaults: &pb.ProxySettingsOverride{ReadyMaxStaleness: tiny},
+	})
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+}

@@ -9,6 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"strings"
+	"syscall"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 )
@@ -55,24 +62,58 @@ var ErrVersionConflict = fmt.Errorf("%w: version conflict, the object was change
 // ErrReadOnly is returned by every mutation while the store is in read-only fallback mode.
 var ErrReadOnly = fmt.Errorf("%w: control plane is read-only", dom.ErrFailedPrecondition)
 
+// ErrCommitUncertain wraps the error of a failed COMMIT: the connection broke while the commit was in flight, so the
+// transaction may or may not be applied. Callers that compensate a failed write must not roll back on it.
+var ErrCommitUncertain = errors.New("controlplane: commit outcome unknown")
+
 // IsConflict reports whether err is ErrVersionConflict.
 func IsConflict(err error) bool { return errors.Is(err, ErrVersionConflict) }
 
-// IsUnavailable reports whether err indicates that PostgreSQL is unreachable or timed out (rather than a domain error),
-// in which case reads should fall back to the Redis projection and writes should return 503 Unavailable.
+// IsUnavailable reports whether err indicates that PostgreSQL is unreachable or timed out (rather than a domain error
+// or a bug), in which case reads fall back to the Redis projection and writes return 503 Unavailable. It is an
+// allow-list: only connection failures, timeouts, a closed pool/transaction and the PostgreSQL connection-exception,
+// shutdown and resource-exhaustion SQLSTATEs qualify; everything else (constraint violations, programming errors,
+// dom errors) is not "unavailable" and surfaces as the error it is.
 func IsUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, dom.ErrNotFound) ||
-		errors.Is(err, dom.ErrAlreadyExists) ||
-		errors.Is(err, dom.ErrInvalidArg) ||
-		errors.Is(err, dom.ErrFailedPrecondition) ||
-		errors.Is(err, dom.ErrRoutingBlock) ||
-		errors.Is(err, dom.ErrAuth) {
+	if errors.Is(err, ErrCommitUncertain) ||
+		errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, pgx.ErrTxClosed) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) {
+		return true
+	}
+	var ce *pgconn.ConnectError
+	if errors.As(err, &ce) {
+		return true
+	}
+	if pgconn.Timeout(err) {
+		return true
+	}
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) {
+		switch {
+		case strings.HasPrefix(pe.Code, "08"), // connection exception
+			strings.HasPrefix(pe.Code, "57P"), // admin shutdown, crash shutdown, cannot connect now
+			pe.Code == "53300",                // too many connections
+			pe.Code == "57014",                // statement timeout (query_canceled)
+			pe.Code == "25P03":                // idle_in_transaction_session_timeout
+			return true
+		}
 		return false
 	}
-	return true
+	// pgxpool reports a closed pool with a plain errors.New("closed pool")
+	return strings.Contains(err.Error(), "closed pool")
 }
 
 // WrapWriteError translates a PostgreSQL write failure into dom.ErrUnavailable (503) while preserving domain errors
@@ -84,5 +125,5 @@ func WrapWriteError(err error) error {
 	if errors.Is(err, ErrReadOnly) || !IsUnavailable(err) {
 		return err
 	}
-	return fmt.Errorf("%w: control plane database unavailable: %v", dom.ErrUnavailable, err)
+	return fmt.Errorf("%w: control plane database unavailable: %w", dom.ErrUnavailable, err)
 }

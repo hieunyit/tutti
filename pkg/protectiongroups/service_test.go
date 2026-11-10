@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/stretchr/testify/require"
 )
@@ -259,19 +261,29 @@ func TestAutomaticFailoverKeepsReplicatingToRemainingMember(t *testing.T) {
 	require.Len(t, g.History, 1)
 }
 
-func TestService_Create_DefaultsUserWhenEmpty(t *testing.T) {
+// A group always manages an explicit user: no silent default.
+func TestService_Create_RequiresUser(t *testing.T) {
 	svc, _, _, _, _ := newService(t)
-	svc.DefaultUser = func(ctx context.Context, g Group) string {
-		return "auto-user"
-	}
-	ctx := t.Context()
-	g, err := svc.Create(ctx, Group{ID: "no-user", Members: []string{"a", "b", "c"}, Copies: 2}, false)
-	require.NoError(t, err)
-	require.Equal(t, "auto-user", g.User)
+	_, err := svc.Create(t.Context(), Group{ID: "no-user", Members: []string{"a", "b", "c"}, Copies: 2}, false)
+	require.ErrorIs(t, err, dom.ErrInvalidArg)
+}
 
-	// When DefaultUser is nil, fall back to "default"
-	svc2, _, _, _, _ := newService(t)
-	g2, err := svc2.Create(ctx, Group{ID: "no-user-fallback", Members: []string{"a", "b", "c"}, Copies: 2}, false)
-	require.NoError(t, err)
-	require.Equal(t, "default", g2.User)
+func TestService_Create_RejectsLegacyFailoverOverlap(t *testing.T) {
+	svc, _, _, _, _ := newService(t)
+	policies := []failover.Policy{{Source: "x", Enabled: true, Targets: []string{"b"}}, {Source: "a", Enabled: false, Targets: []string{"c"}}}
+	svc.ValidateLegacyFailover = LegacyFailoverValidator(func(context.Context) ([]failover.Policy, error) { return policies, nil })
+	_, err := svc.Create(t.Context(), Group{ID: "g", User: "u", Members: []string{"a", "b"}, Copies: 2}, false)
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.Contains(t, err.Error(), "legacy failover policy")
+	policies[0].Enabled = false
+	_, err = svc.Create(t.Context(), Group{ID: "g", User: "u", Members: []string{"a", "b"}, Copies: 2}, false)
+	require.NoError(t, err, "disabled legacy policies do not conflict")
+
+	// and the other direction: enabling a legacy policy over a member is refused
+	err = CheckLegacyFailoverPolicy(t.Context(), svc.Store.Redis, failover.Policy{Source: "a", Enabled: true, Targets: []string{"z"}})
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	err = CheckLegacyFailoverPolicy(t.Context(), svc.Store.Redis, failover.Policy{Source: "z", Enabled: true, Targets: []string{"y", "b"}})
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.NoError(t, CheckLegacyFailoverPolicy(t.Context(), svc.Store.Redis, failover.Policy{Source: "a", Enabled: false, Targets: []string{"b"}}))
+	require.NoError(t, CheckLegacyFailoverPolicy(t.Context(), svc.Store.Redis, failover.Policy{Source: "z", Enabled: true, Targets: []string{"y"}}))
 }

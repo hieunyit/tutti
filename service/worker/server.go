@@ -106,17 +106,36 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	var cpStore controlplane.Store
 	var cpPublisher *pg.Publisher
 	if conf.ControlPlane.WithDefaults().Backend == controlplane.BackendPostgres {
-		pgStore, err := pg.Open(ctx, conf.ControlPlane)
+		// Lazy: the worker must start (and serve Redis-backed config) even when PostgreSQL is down at boot. Until the
+		// database answers the store is read-only and reads fall back to the Redis projection; readiness is retried below.
+		pgStore, err := pg.OpenLazy(ctx, conf.ControlPlane)
 		if err != nil {
 			return fmt.Errorf("unable to open control-plane postgres store: %w", err)
 		}
 		defer pgStore.Close()
+		cpReady := pgStore.Ready()
+		if !cpReady {
+			if rerr := pgStore.TryReady(ctx); rerr != nil {
+				logger.Error().Err(rerr).Msg("control-plane postgres is not reachable: starting degraded (read-only, Redis projection), retrying in the background")
+			}
+		}
+		metrics.SetControlPlanePostgresReady(pgStore.Ready())
+		if !pgStore.Ready() {
+			go func() {
+				pgStore.RunReadiness(ctx, 5*time.Second, func(err error) {
+					if err == nil {
+						logger.Info().Msg("control-plane postgres is now ready")
+						metrics.SetControlPlanePostgresReady(true)
+					}
+				})
+			}()
+		}
 		cpStore = pgStore
 		cpPublisher = pg.NewPublisher(pgStore, confRedis, conf.ControlPlane.Outbox, logger)
 		cpPublisher.MetaRedis = appRedis
 		cpPublisher.OnStats = metrics.SetControlPlaneOutbox
 		cpPublisher.OnFailure = func(error) { metrics.CountControlPlaneOutboxFailure() }
-		logger.Info().Bool("read_only", conf.ControlPlane.ReadOnly).Msg("control-plane postgres connected")
+		logger.Info().Bool("read_only", conf.ControlPlane.ReadOnly).Bool("ready", pgStore.Ready()).Msg("control-plane postgres configured")
 	}
 
 	credsOpts := []objstore.CredsSvcOption{objstore.WithManagedStorages(confRedis)}
@@ -167,21 +186,15 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
 	}, accessPolicyStore)
 	groupStore := protectiongroups.NewStore(confRedis).WithControlPlane(cpStore)
+	groupStore.SharedAccount = func(storage, user string) bool {
+		return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
+	}
 	groupService := &protectiongroups.Service{Store: groupStore, Backend: policySvc.ProtectionBackend(),
 		Resyncer:            protectiongroups.NewS3Resyncer(clientRegistry, bucketScope),
 		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accessPolicyStore),
-		DefaultUser: func(ctx context.Context, g protectiongroups.Group) string {
-			if ids := credsSvc.Identities(); len(ids) > 0 {
-				return ids[0]
-			}
-			for _, m := range g.Members {
-				if users := credsSvc.ListOverrideUsers(m); len(users) > 0 {
-					return users[0]
-				}
-			}
-			return "default"
-		},
-		Reports:             func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
+		ValidateLegacyFailover: protectiongroups.LegacyFailoverValidator(
+			failover.NewStore(confRedis, nil).WithControlPlane(cpStore).ListFailoverPolicies),
+		Reports: func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 
 	workerSvc.SetBucketScope(bucketScope)
@@ -314,15 +327,43 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return err
 		}
 	}
+	// Tell the proxies which control plane is authoritative: with postgres they delegate automatic failover to the
+	// workers instead of writing routing to Redis themselves (see pkg/failover/remote.go).
+	cpBackend := conf.ControlPlane.WithDefaults().Backend
+	if err := failover.PublishBackend(ctx, confRedis, cpBackend); err != nil {
+		return fmt.Errorf("unable to publish the control-plane backend: %w", err)
+	}
+	if cpStore != nil {
+		err = server.Add("failover_executor", func(ctx context.Context) error {
+			failover.RunExecutor(ctx, confRedis, policySvc, logger)
+			return nil
+		}, func(context.Context) error { return nil })
+		if err != nil {
+			return err
+		}
+	}
 	err = server.Add("protection_groups", func(ctx context.Context) error { groupService.Run(ctx, time.Second); return nil }, func(context.Context) error { return nil })
 	if err != nil {
 		return err
 	}
 	if conf.Metrics.Enabled {
+		// Every user that may own bucket replications: users with credentials on a storage, all identities,
+		// users with routing and protection group users (which need not be identities). Duplicates are skipped.
 		users := func() []string {
 			var out []string
 			for name := range credsSvc.Storages() {
 				out = append(out, credsSvc.ListUsers(name)...)
+			}
+			out = append(out, credsSvc.Identities()...)
+			if routes, err := policySvc.GetUserRoutings(ctx); err == nil {
+				for u := range routes {
+					out = append(out, u)
+				}
+			}
+			if groups, err := groupStore.List(ctx); err == nil {
+				for _, g := range groups {
+					out = append(out, g.User)
+				}
 			}
 			return out
 		}

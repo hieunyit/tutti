@@ -42,14 +42,8 @@
   const { t } = useI18n({ messages: i18nProtection });
   const router = useRouter();
   const store = useTuttiProtectionStore();
-  const {
-    isLoading,
-    hasError,
-    groups,
-    statuses,
-    automaticFrozen,
-    summary,
-  } = storeToRefs(store);
+  const { isLoading, hasError, groups, statuses, automaticFrozen, summary } =
+    storeToRefs(store);
 
   const showCreate = ref(false);
   const showFreezeConfirm = ref(false);
@@ -60,9 +54,11 @@
   onBeforeUnmount(() => store.stopPolling());
 
   function scopeText(group: ProtectionGroup): string {
-    const count = (group.buckets ?? []).length;
+    const kind = ProtectionGroupHelper.scopeKind(group);
 
-    if (count === 0) return t('scopeAllBuckets');
+    if (kind === 'user') return t('scopeUser');
+
+    const count = (group.buckets ?? []).length;
 
     return count === 1 ? t('scopeBucketsOne') : t('scopeBuckets', { count });
   }
@@ -190,11 +186,9 @@
       <Callout
         v-if="automaticFrozen !== null"
         :tone="automaticFrozen ? 'warning' : 'info'"
-        :title="
-          `${t('freezeTitle')} · ${
-            automaticFrozen ? t('freezeOn') : t('freezeOff')
-          }`
-        "
+        :title="`${t('freezeTitle')} · ${
+          automaticFrozen ? t('freezeOn') : t('freezeOff')
+        }`"
       >
         <p class="tutti-protection-groups-page__freeze-help">
           {{ t('freezeHelp') }}
@@ -298,7 +292,10 @@
                   </RouterLink>
                 </td>
                 <td>
-                  <div>{{ scopeText(group) }}</div>
+                  <div>{{ group.user || EMPTY_VALUE }}</div>
+                  <small class="tutti-protection-groups-page__sub">{{
+                    scopeText(group)
+                  }}</small>
                 </td>
                 <td>
                   <span class="tutti-protection-groups-page__chips">

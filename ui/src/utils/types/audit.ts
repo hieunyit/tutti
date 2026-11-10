@@ -35,7 +35,9 @@ export const AUDIT_LOG_FAMILIES = [
   'proxy_fleet_config',
 ] as const;
 
-export type AuditLogFamily = (typeof AUDIT_LOG_FAMILIES)[number] | (string & {});
+export type AuditLogFamily =
+  | (typeof AUDIT_LOG_FAMILIES)[number]
+  | (string & {});
 
 export const AUDIT_LOG_ACTIONS = [
   'create',

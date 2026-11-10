@@ -229,11 +229,16 @@ type credsSvc struct {
 	managedMu     sync.Mutex
 	managedVer    int64
 	managedLoaded bool
-	listenersMu   sync.Mutex
-	listeners     []func([]StorageChange)
-	config        *Config
-	swiftCreds    map[string]swift.Credentials
-	s3Creds       map[string]s3.CredentialsV4
+	// fingerprints of the PostgreSQL tables at the last successful load ("" = unknown): while unchanged, the polls
+	// skip the full SELECT and the decoding of every document/credential.
+	managedFP   string
+	identFP     string
+	credsFP     string
+	listenersMu sync.Mutex
+	listeners   []func([]StorageChange)
+	config      *Config
+	swiftCreds  map[string]swift.Credentials
+	s3Creds     map[string]s3.CredentialsV4
 	// index of S3 credentials by access key for chorus Proxy Auth Middleware
 	s3AccessKeyIdx map[string]s3CredsByAccessKey
 	key            []byte
@@ -420,14 +425,25 @@ func (s *credsSvc) sync(ctx context.Context) error {
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
 	if s.cp != nil {
+		fp, ferr := s.cp.Repos().DynamicCredentials.Fingerprint(ctx)
+		if ferr == nil && fp != "" && fp == s.credsFP {
+			return nil // unchanged
+		}
 		list, err := s.cp.Repos().DynamicCredentials.List(ctx)
 		if err == nil {
 			allCreds := make(map[string]string, len(list))
 			for _, c := range list {
 				allCreds[c.RedisField()] = c.Sealed
 			}
-			return s.applyCredsMap(allCreds, s.version+1, false)
+			if aerr := s.applyCredsMap(allCreds, s.version+1, false); aerr != nil {
+				return aerr
+			}
+			if ferr == nil {
+				s.credsFP = fp
+			}
+			return nil
 		}
+		s.credsFP = ""
 		if s.client == nil {
 			return fmt.Errorf("failed to get all credentials from postgres: %w", err)
 		}

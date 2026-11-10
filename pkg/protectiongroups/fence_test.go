@@ -192,7 +192,7 @@ func TestAdmitScopeIndex(t *testing.T) {
 	require.Empty(t, a.Group)
 	idx, err := s.Redis.HGetAll(ctx, ScopeIndexKey).Result()
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{indexVersionField: "1", "u:tenant": "whole"}, idx)
+	require.Equal(t, map[string]string{indexVersionField: indexVersion, "u:tenant": "whole", "o:whole": "tenant"}, idx)
 }
 
 func frozenGroup(t *testing.T, s *Store) Group {

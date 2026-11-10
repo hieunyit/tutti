@@ -60,9 +60,15 @@
       type: 'selection',
     },
     {
+      title: t('columnUser'),
+      key: 'id.user',
+      width: '10%',
+      sorter: true,
+    },
+    {
       title: t('columnBucket'),
       key: 'bucket',
-      width: '30%',
+      width: '25%',
     },
     {
       title: t('columnCreatedAt'),

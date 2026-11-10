@@ -28,6 +28,11 @@ import (
 	"github.com/hieunyit/tutti/pkg/store"
 )
 
+func policyBucket(id entity.UniversalReplicationID) string {
+	_, b := policyScope(id)
+	return b
+}
+
 func policyScope(id entity.UniversalReplicationID) (user, bucket string) {
 	if b, ok := id.AsBucketID(); ok {
 		return b.User, b.FromBucket
@@ -201,9 +206,16 @@ func (r *policySvc) AddZeroDowntimeReplicationSwitch(ctx context.Context, policy
 	if err := policy.Validate(); err != nil {
 		return fmt.Errorf("unable to validate replication id: %w", err)
 	}
-	_, err := r.GetReplicationSwitchInfo(ctx, policy)
+	existing, err := r.GetReplicationSwitchInfo(ctx, policy)
+	resume := false
 	switch {
 	case err == nil:
+		// With a control plane a repeated identical request completes a start that was interrupted between the
+		// switch record, the control-plane transaction and the Redis update (see below); every step is idempotent.
+		if r.cp != nil && existing.IsZeroDowntime() && existing.LastStatus == entity.StatusInProgress && existing.MultipartTTL == opts.MultipartTTL {
+			resume = true
+			break
+		}
 		// already exists:
 		return dom.ErrAlreadyExists
 	case errors.Is(err, dom.ErrNotFound):
@@ -212,25 +224,12 @@ func (r *policySvc) AddZeroDowntimeReplicationSwitch(ctx context.Context, policy
 	default:
 		return fmt.Errorf("unable to get replication switch info: %w", err)
 	}
+	if r.cp != nil {
+		return r.addZeroDowntimeWithControlPlane(ctx, policy, opts, resume)
+	}
 	// validate corresponding replication state:
 	if err := r.validateZeroDowntimeSwitchCreation(ctx, policy, opts); err != nil {
 		return err
-	}
-
-	if r.cp != nil {
-		user, bucket := policyScope(policy)
-		cpID := toCPReplicationID(policy)
-		if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
-			if err := repos.Routing.Set(ctx, user, bucket, policy.ToStorage()); err != nil {
-				return err
-			}
-			if err := repos.Replications.Remove(ctx, cpID); err != nil {
-				return err
-			}
-			return repos.Replications.Archive(ctx, cpID)
-		}); err != nil {
-			return controlplane.WrapWriteError(err)
-		}
 	}
 
 	// start transaction:
@@ -256,6 +255,62 @@ func (r *policySvc) AddZeroDowntimeReplicationSwitch(ctx context.Context, policy
 	err = tx.Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to create zero-downtime replication switch: %w", err)
+	}
+	return nil
+}
+
+// addZeroDowntimeWithControlPlane starts a zero downtime switch when PostgreSQL holds the configuration. The steps
+// are ordered so that a failure anywhere leaves a state that the same request completes:
+//
+//  1. the switch record (Redis, in progress) is the intent marker: its existence says "this switch start owns the
+//     scope". A request that finds it (same options) is a resume and skips straight to step 2;
+//  2. routing, policy removal and status archive are committed in one PostgreSQL transaction, all idempotent. If it
+//     fails definitely the marker is removed again (nothing happened); if the outcome is unknown it stays;
+//  3. Redis gets the same routing/policy/archive changes right away (the outbox publisher projects them anyway).
+func (r *policySvc) addZeroDowntimeWithControlPlane(ctx context.Context, policy entity.UniversalReplicationID, opts *entity.ReplicationSwitchZeroDowntimeOpts, resume bool) error {
+	if !resume {
+		if err := r.validateZeroDowntimeSwitchCreation(ctx, policy, opts); err != nil {
+			return err
+		}
+		tx := r.bucketReplicationSwitchStore.TxExecutor()
+		r.createSwitchInTx(ctx, tx, policy, entity.ReplicationSwitchInfo{
+			ReplicationSwitchZeroDowntimeOpts: *opts,
+			LastStatus:                        entity.StatusInProgress,
+		})
+		if err := tx.Exec(ctx); err != nil {
+			return fmt.Errorf("unable to create zero-downtime replication switch: %w", err)
+		}
+	}
+	user, bucket := policyScope(policy)
+	cpID := toCPReplicationID(policy)
+	if err := r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+		if err := repos.Routing.Set(ctx, user, bucket, policy.ToStorage()); err != nil {
+			return err
+		}
+		if err := repos.Replications.Remove(ctx, cpID); err != nil {
+			return err
+		}
+		if st, err := repos.Replications.GetStatus(ctx, cpID); err == nil && st.Archived {
+			return nil // archived by an earlier attempt
+		}
+		return repos.Replications.Archive(ctx, cpID)
+	}); err != nil {
+		if !resume && !errors.Is(err, controlplane.ErrCommitUncertain) {
+			// definite failure: remove the marker again so the request can simply be repeated
+			dtx := r.bucketReplicationSwitchStore.TxExecutor()
+			r.removeSwitchInTx(context.WithoutCancel(ctx), dtx, policy)
+			if derr := dtx.Exec(context.WithoutCancel(ctx)); derr != nil {
+				zerolog.Ctx(ctx).Warn().Err(derr).Str("replication", policy.AsString()).Msg("zero-downtime switch: unable to remove the switch record after a failed control-plane write; repeat the request to complete the switch")
+			}
+		}
+		return controlplane.WrapWriteError(err)
+	}
+	tx := r.bucketReplicationSwitchStore.TxExecutor()
+	r.routeToNewInTx(ctx, tx, policy)
+	r.removeReplicationPolicyInTx(ctx, tx, policy)
+	r.archieveReplicationStatusInTx(ctx, tx, policy)
+	if err := tx.Exec(ctx); err != nil {
+		return fmt.Errorf("zero-downtime replication switch is committed in the control plane but Redis was not updated (repeat the request to complete it): %w", err)
 	}
 	return nil
 }
@@ -406,8 +461,13 @@ func (r *policySvc) UpdateDowntimeSwitchStatus(ctx context.Context, replID entit
 				}
 				if existing.ContinueReplication {
 					backwards := replID.Swap()
-					if err := repos.Replications.Add(ctx, toCPReplicationID(backwards), controlplane.ReplicationStatus{}); err != nil {
-						return err
+					// idempotent: a retry must not reset the status of a backward replication that already exists
+					if _, perr := repos.Replications.Policies(ctx, backwards.User(), policyBucket(backwards)); errors.Is(perr, dom.ErrNotFound) {
+						if err := repos.Replications.Add(ctx, toCPReplicationID(backwards), controlplane.ReplicationStatus{}); err != nil {
+							return err
+						}
+					} else if perr != nil {
+						return perr
 					}
 				}
 			}

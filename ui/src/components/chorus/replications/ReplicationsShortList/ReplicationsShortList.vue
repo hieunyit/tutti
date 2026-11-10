@@ -41,6 +41,9 @@
     class="replications-short-list"
   >
     <template #default="{ item }: { item: AddId<ChorusReplication> }">
+      <strong>
+        <span class="replications-short-list__user">{{ item.id.user }}: </span>
+      </strong>
       {{ item.id.fromStorage }}/<span class="replications-short-list__bucket">
         {{ item.id.fromBucket || '*' }}
       </span>

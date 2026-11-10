@@ -229,6 +229,10 @@ func (s *credsSvc) syncIdentities(ctx context.Context) error {
 	s.identMu.Lock()
 	defer s.identMu.Unlock()
 	if s.cp != nil {
+		fp, ferr := s.cp.Repos().S3Identities.Fingerprint(ctx)
+		if ferr == nil && fp != "" && s.identLoaded && fp == s.identFP {
+			return nil // unchanged
+		}
 		vs, err := s.cp.Repos().S3Identities.List(ctx)
 		if err == nil {
 			m := make(map[string]struct{}, len(vs))
@@ -239,8 +243,12 @@ func (s *credsSvc) syncIdentities(ctx context.Context) error {
 			}
 			s.identities.Store(&m)
 			s.identVer, s.identLoaded = verSum, true
+			if ferr == nil {
+				s.identFP = fp
+			}
 			return nil
 		}
+		s.identFP = ""
 		if s.managedClient == nil {
 			return fmt.Errorf("failed to get user records from postgres: %w", err)
 		}

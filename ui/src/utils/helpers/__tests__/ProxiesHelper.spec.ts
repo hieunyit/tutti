@@ -123,3 +123,19 @@ describe('ProxiesHelper.effectiveGroup & configSyncStatus', () => {
     });
   });
 });
+
+describe('ProxiesHelper.isFleetConflict', () => {
+  it('detects a FailedPrecondition (code 9) fleet config conflict', () => {
+    expect(
+      ProxiesHelper.isFleetConflict({ response: { data: { code: 9 } } }),
+    ).toBe(true);
+  });
+
+  it('ignores other errors', () => {
+    expect(
+      ProxiesHelper.isFleetConflict({ response: { data: { code: 3 } } }),
+    ).toBe(false);
+    expect(ProxiesHelper.isFleetConflict(new Error('x'))).toBe(false);
+    expect(ProxiesHelper.isFleetConflict(null)).toBe(false);
+  });
+});

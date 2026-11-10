@@ -196,6 +196,17 @@ groups:
           description: 'A proxy quorum reported the primary of {{ $labels.group }} down, but promotion was held back by {{ $labels.reason }} (global_freeze or rate_limit).'
           runbook_url: 'docs/tutti/protection-groups.md'
 
+      - alert: TuttiProtectionGroupReconcileFailing
+        expr: sum by (group) (increase(protection_group_reconcile_errors_total[5m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'Protection group {{ $labels.group }} reconcile keeps failing'
+          description: 'The reconciler of {{ $labels.group }} failed more than 3 times in 5 minutes for 5 minutes: seeding, verification, promotion and PostgreSQL sync are not progressing. See lastError on the group and the worker logs.'
+          runbook_url: 'docs/tutti/protection-groups.md'
+
   - name: tutti-controlplane-outbox
     rules:
       - alert: TuttiControlPlaneOutboxStalled
@@ -218,6 +229,17 @@ groups:
         annotations:
           summary: 'Control-plane outbox failed to publish changes to Redis'
           description: 'controlplane_outbox_failures_total is increasing. The publisher retries with exponential backoff; check Redis health.'
+          runbook_url: 'docs/tutti/control-plane-db.md'
+
+      - alert: TuttiControlPlaneDegraded
+        expr: min(controlplane_postgres_ready) < 1
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: 'A worker runs without its control-plane PostgreSQL (read-only, Redis projection)'
+          description: 'controlplane_postgres_ready is 0: the database was unreachable at start. The worker serves the Redis projection and rejects configuration changes until it connects.'
           runbook_url: 'docs/tutti/control-plane-db.md'
 
   # TODO(metrics): worker cannot reach Redis. The worker has no general Redis error counter yet.

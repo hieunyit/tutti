@@ -26,6 +26,7 @@ import type {
   TuttiFailoverEventListResponse,
   TuttiFailoverPolicy,
   TuttiFailoverPolicyListResponse,
+  TuttiInt64,
   TuttiProxyFleetConfig,
   TuttiProxySettingsOverride,
   TuttiProxyStatusListResponse,
@@ -71,6 +72,8 @@ export abstract class TuttiService {
   static async setProxyFleetConfig(payload: {
     defaults?: TuttiProxySettingsOverride;
     groups?: Record<string, TuttiProxySettingsOverride>;
+    /** the version the caller loaded: a different stored version is rejected (FailedPrecondition) */
+    expectedVersion?: TuttiInt64;
   }): Promise<TuttiProxyFleetConfig> {
     const { data } = await apiClient.put<TuttiProxyFleetConfig>(
       ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),

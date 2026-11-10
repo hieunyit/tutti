@@ -78,7 +78,11 @@
 
       return {
         ...group,
-        items: hasAudit ? baseItems : [...baseItems, AUDIT_NAV_ITEM],
+        // the audit log is admin-only on the server (ListAuditLog), so viewers must not see it
+        items:
+          hasAudit || !isAdmin.value
+            ? baseItems
+            : [...baseItems, AUDIT_NAV_ITEM],
       };
     }).filter((group) => group.items.length > 0),
   );

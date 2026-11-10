@@ -18,6 +18,7 @@
   import { storeToRefs } from 'pinia';
   import { CSkeleton } from '@clyso/clyso-ui-kit';
   import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import ReplicationsFilterByUser from '@/components/chorus/replications/ReplicationsFilterByUser/ReplicationsFilterByUser.vue';
   import ReplicationsFilterByBucket from '@/components/chorus/replications/ReplicationsFilterByBucket/ReplicationsFilterByBucket.vue';
   import ReplicationsFilterByStatus from '@/components/chorus/replications/ReplicationsFilterByStatus/ReplicationsFilterByStatus.vue';
   import ReplicationsFilterByCreatedAt from '@/components/chorus/replications/ReplicationsFilterByCreatedAt/ReplicationsFilterByCreatedAt.vue';
@@ -35,7 +36,7 @@
       class="replications-filters__list"
     >
       <CSkeleton
-        v-for="(_, index) in Array(5)"
+        v-for="(_, index) in Array(6)"
         :key="index"
         :height="34"
         :border-radius="4"
@@ -47,6 +48,8 @@
       class="replications-filters__list"
     >
       <ReplicationsFilterByType class="replications-filters__type" />
+
+      <ReplicationsFilterByUser class="replications-filters__user" />
 
       <ReplicationsFilterByBucket class="replications-filters__bucket" />
 

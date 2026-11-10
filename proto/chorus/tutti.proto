@@ -334,6 +334,9 @@ message ProxyStatus {
   bool pending_restart = 11;
   // Names of settings that require a proxy restart to take effect.
   repeated string pending_restart_reasons = 12;
+  // Set when the latest central fleet configuration was rejected by this proxy (invalid document or effective
+  // settings); the proxy keeps running on the last good configuration (applied_config_version).
+  string config_error = 13;
 }
 
 // TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds.
@@ -851,6 +854,9 @@ message ProxyFleetConfig {
 message SetProxyFleetConfigRequest {
   ProxySettingsOverride defaults = 1;
   map<string, ProxySettingsOverride> groups = 2;
+  // expected_version is the config version the caller loaded. When set and different from the stored version the
+  // update is rejected with FailedPrecondition. Unset skips the check.
+  optional int64 expected_version = 3;
 }
 
 message ListAuditLogRequest {

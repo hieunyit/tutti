@@ -73,11 +73,15 @@ type Controller struct {
 	locker   Locker
 	policies Policies
 	// Users returns users to inspect for bucket-level policies (in addition to users of user-level policies/routings).
-	users       func() []string
-	isProtected func(ctx context.Context, user, bucket string) bool
+	users func() []string
+	// isProtected reports whether a protection group manages the scope. An error means unknown: the scope is
+	// skipped (fail closed), a group-owned scope must never be failed over by the legacy controller.
+	isProtected func(ctx context.Context, user, bucket string) (bool, error)
 	now         func() time.Time
-	log   zerolog.Logger
-	onDo  func(from, to string)
+	log         zerolog.Logger
+	onDo        func(from, to string)
+	// remote delegates the failover to a worker when the cluster uses the PostgreSQL control plane (nil: always local).
+	remote *pf.Remote
 
 	mu       sync.Mutex
 	enabled  bool
@@ -87,13 +91,18 @@ type Controller struct {
 
 type Option func(*Controller)
 
-func WithClock(f func() time.Time) Option           { return func(c *Controller) { c.now = f } }
-func WithUsers(f func() []string) Option            { return func(c *Controller) { c.users = f } }
-func WithIsProtected(f func(ctx context.Context, user, bucket string) bool) Option {
+func WithClock(f func() time.Time) Option { return func(c *Controller) { c.now = f } }
+func WithUsers(f func() []string) Option  { return func(c *Controller) { c.users = f } }
+func WithIsProtected(f func(ctx context.Context, user, bucket string) (bool, error)) Option {
 	return func(c *Controller) { c.isProtected = f }
 }
 func WithOnFailover(f func(from, to string)) Option { return func(c *Controller) { c.onDo = f } }
 func WithEnabled(enabled bool) Option               { return func(c *Controller) { c.enabled = enabled } }
+
+// WithRemoteExecutor makes the controller hand failovers to a worker (which applies them through the PostgreSQL
+// control plane and records the event in the same transaction) whenever the workers announce the postgres backend.
+// Without it, or with the redis backend, the controller writes routing and event to Redis itself as before.
+func WithRemoteExecutor(r pf.Remote) Option { return func(c *Controller) { c.remote = &r } }
 
 func New(cfg Config, p Policy, h Health, l Locker, pol Policies, log zerolog.Logger, opts ...Option) *Controller {
 	c := &Controller{
@@ -280,6 +289,20 @@ func (c *Controller) failoverStorage(ctx context.Context, failed string, targets
 	return first
 }
 
+// protected reports whether the scope must be skipped because a protection group manages it, or because that
+// cannot be determined (fail closed).
+func (c *Controller) protected(ctx context.Context, user, bucket string) bool {
+	if c.isProtected == nil {
+		return false
+	}
+	yes, err := c.isProtected(ctx, user, bucket)
+	if err != nil {
+		c.log.Warn().Err(err).Str("user", user).Str("bucket", bucket).Msg("failover: protection group scope unknown; skipping scope")
+		return true
+	}
+	return yes
+}
+
 // scopesOf returns scopes currently routed to the storage which have replications from it.
 func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, error) {
 	userRoutes, err := c.policy.GetUserRoutings(ctx)
@@ -306,7 +329,7 @@ func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, err
 		if pol.FromStorage != storage || effective(pol.User) != storage {
 			continue
 		}
-		if c.isProtected != nil && c.isProtected(ctx, pol.User, "") {
+		if c.protected(ctx, pol.User, "") {
 			continue
 		}
 		s := byUser[pol.User]
@@ -352,7 +375,7 @@ func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, err
 			if pol.FromStorage != storage || routed != storage {
 				continue
 			}
-			if c.isProtected != nil && c.isProtected(ctx, user, pol.FromBucket) {
+			if c.protected(ctx, user, pol.FromBucket) {
 				continue
 			}
 			s := byBucket[pol.FromBucket]
@@ -439,10 +462,28 @@ func (c *Controller) failoverScope(ctx context.Context, failed string, s scope, 
 		}
 		return nil
 	}
+	rec := pf.Event{User: s.user, Bucket: s.bucket, From: failed, To: cand.to, Time: c.now().UTC(), EventLag: lagOf(cand.status)}
+	if c.remote != nil {
+		delegate, err := c.remote.Required(ctx)
+		if err != nil {
+			return fmt.Errorf("failover: unable to determine the control-plane backend: %w", err)
+		}
+		if delegate {
+			id := cand.id
+			if err := c.remote.Execute(ctx, id.AsString(), rec); err != nil {
+				return err
+			}
+			c.log.Warn().Str("user", rec.User).Str("bucket", rec.Bucket).Str("from", rec.From).Str("to", rec.To).
+				Int("event_lag", rec.EventLag).Msg("failover: applied by a worker through the control plane; routing switched to replica and replication from the failed storage paused; failback is manual")
+			if c.onDo != nil {
+				c.onDo(rec.From, rec.To)
+			}
+			return nil
+		}
+	}
 	if err := c.policy.FailoverReplication(ctx, cand.id); err != nil {
 		return err
 	}
-	rec := pf.Event{User: s.user, Bucket: s.bucket, From: failed, To: cand.to, Time: c.now().UTC(), EventLag: lagOf(cand.status)}
 	c.log.Warn().Str("user", rec.User).Str("bucket", rec.Bucket).Str("from", rec.From).Str("to", rec.To).
 		Int("event_lag", rec.EventLag).Time("down_since", status[failed].LastChange).
 		Msg("failover: routing switched to replica and replication from the failed storage paused; failback is manual")

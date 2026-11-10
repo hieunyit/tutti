@@ -25,6 +25,9 @@ type KV[T any] interface {
 	// Mutate applies fn to the locked current record and stores the result; fn's error aborts without changes.
 	Mutate(ctx context.Context, key string, fn func(*T) error) (Versioned[T], error)
 	Delete(ctx context.Context, key string) error
+	// Fingerprint is a cheap digest of the table (keys and versions, no documents): it changes whenever a row is
+	// created, updated or deleted. Pollers compare it to skip a full List when nothing changed.
+	Fingerprint(ctx context.Context) (string, error)
 }
 
 // Storages: runtime-managed storages (pkg/objstore managed.go). Key: storage name.
@@ -81,6 +84,8 @@ type DynamicCredentials interface {
 	// Delete removes the credentials of the user on the storage for both storage types; absent is not an error.
 	Delete(ctx context.Context, storage, user string) error
 	List(ctx context.Context) ([]DynamicCredential, error)
+	// Fingerprint is a cheap digest of the credential rows (keys and versions, no secrets); see KV.Fingerprint.
+	Fingerprint(ctx context.Context) (string, error)
 	// Salt returns the key derivation salt ("<parallelism>:<base64>"), false if not set yet.
 	Salt(ctx context.Context) (string, bool, error)
 	// SetSaltIfAbsent stores the salt (HSETNX) and reports whether it was stored.

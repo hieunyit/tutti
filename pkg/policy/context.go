@@ -76,12 +76,14 @@ func (r *policySvc) proxyContext(ctx context.Context, user, bucket string) (cont
 // so it can be shared between requests by the snapshot.
 type proxyData struct {
 	// routeErr is dom.ErrRoutingBlock when routing is blocked; no other error is ever stored.
-	routeErr       error
-	routeTo        string
-	activeSwitch   *entity.ReplicationSwitchInfo
-	replications   []entity.UniversalReplicationID
-	generations    map[entity.UniversalReplicationID]int64
-	protectionUser string
+	routeErr     error
+	routeTo      string
+	activeSwitch *entity.ReplicationSwitchInfo
+	replications []entity.UniversalReplicationID
+	generations  map[entity.UniversalReplicationID]int64
+	// sharedGroup is the protection group of ANOTHER identity managing the bucket on the routed storage of a
+	// user on a shared connection account: its writes are refused by the write fence.
+	sharedGroup string
 }
 
 func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
@@ -89,9 +91,7 @@ func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
 		return ctx, d.routeErr
 	}
 	ctx = xctx.SetRoutingPolicy(ctx, d.routeTo)
-	if d.protectionUser != "" {
-		ctx = xctx.SetProtectionUser(ctx, d.protectionUser)
-	}
+	ctx = xctx.SetSharedProtectionGroup(ctx, d.sharedGroup)
 	if d.activeSwitch != nil {
 		sw := *d.activeSwitch
 		ctx = xctx.SetInProgressZeroDowntime(ctx, sw)
@@ -121,43 +121,58 @@ func (d *proxyData) apply(ctx context.Context) (context.Context, error) {
 //
 // bucket == "" means a request without bucket (e.g. ListBuckets): only the user level data is read.
 func (r *policySvc) loadProxyData(ctx context.Context, user, bucket string) (*proxyData, error) {
-	data, hasOwn, err := r.loadProxyDataForUser(ctx, user, bucket)
-	if err != nil || hasOwn || r.sharedAccount == nil || !r.sharedAccount(data.routeTo, user) {
+	data, err := r.loadProxyDataForUser(ctx, user, bucket)
+	if err != nil || data.routeErr != nil || bucket == "" || r.sharedAccount == nil || !r.sharedAccount(data.routeTo, user) {
 		return data, err
 	}
-	owner := r.sharedProtectionOwner(ctx, user, bucket)
-	if owner == "" || owner == user {
-		return data, nil
-	}
-	sharedData, _, err := r.loadProxyDataForUser(ctx, owner, bucket)
+	// The user reaches the routed storage through its shared connection account, so its buckets there are the
+	// same physical buckets other identities see. A bucket managed by another identity's protection group must
+	// not be written outside that group: the request keeps the user's own routing and replications (never the
+	// group owner's) and the write fence refuses its writes (protectiongroups.Store.Middleware).
+	group, err := r.sharedProtectionGroup(ctx, data.routeTo, user, bucket)
 	if err != nil {
+		// never cache an unknown protection scope: the request fails closed and the next one retries
 		return nil, err
 	}
-	sharedData.protectionUser = owner
-	return sharedData, nil
+	data.sharedGroup = group
+	return data, nil
 }
 
-func (r *policySvc) sharedProtectionOwner(ctx context.Context, user, bucket string) string {
-	var (
-		idx map[string]string
-		err error
-	)
-	if r.snap != nil {
-		idx, err = r.snap.protectionScope(ctx)
-	} else {
-		idx, err = r.client.HGetAll(ctx, protectiongroups.ScopeIndexKey).Result()
+// sharedProtectionGroup returns the protection group of another identity that manages bucket on storage (see
+// protectiongroups.LookupSharedGroup). An unreadable or incomplete index is an error, never "unprotected".
+func (r *policySvc) sharedProtectionGroup(ctx context.Context, storage, user, bucket string) (string, error) {
+	read := func() (map[string]string, error) {
+		if r.snap != nil {
+			return r.snap.protectionScope(ctx)
+		}
+		// without the snapshot: only the fields this lookup needs (O(1), not the whole index)
+		return protectiongroups.SharedGroupFields(ctx, r.client, storage, bucket)
 	}
+	idx, err := read()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
 	}
-	_, owner, ok := protectiongroups.LookupSharedScope(idx, user, bucket)
-	if !ok {
-		return ""
+	group, ok, err := protectiongroups.LookupSharedGroup(idx, storage, user, bucket)
+	if err != nil || ok {
+		return group, err
 	}
-	return owner
+	// Missing or older index format: rebuild it. The rebuild bumps the config version, so the snapshot
+	// reads the new index with its next state; read Redis directly for this request.
+	if err := protectiongroups.NewStore(r.client).EnsureIndex(ctx); err != nil {
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
+	}
+	idx, err = r.client.HGetAll(ctx, protectiongroups.ScopeIndexKey).Result()
+	if err != nil {
+		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
+	}
+	group, ok, err = protectiongroups.LookupSharedGroup(idx, storage, user, bucket)
+	if err == nil && !ok {
+		err = fmt.Errorf("%w: protection group scope index is incomplete", dom.ErrUnavailable)
+	}
+	return group, err
 }
 
-func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket string) (*proxyData, bool, error) {
+func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket string) (*proxyData, error) {
 	tx := r.userRoutingStore.TxExecutor()
 	userRoutingResult := r.userRoutingStore.WithExecutor(tx).GetOp(ctx, user)
 	userActiveSwitchResult := r.userReplicationSwitchStore.WithExecutor(tx).IsZeroDowntimeActiveOp(ctx, user)
@@ -184,35 +199,31 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	// get active routing policy
 	routeTo, err := determineActiveRouting(r.mainStorage, userRoutingResult, bucketRoutingResult)
 	if errors.Is(err, dom.ErrRoutingBlock) {
-		return &proxyData{routeErr: dom.ErrRoutingBlock}, true, nil
+		return &proxyData{routeErr: dom.ErrRoutingBlock}, nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	data := &proxyData{routeTo: routeTo}
 
 	// check in_progress zero downtime switch if present
 	data.activeSwitch, err = r.getActiveZeroDowntimeSwitch(ctx, userActiveSwitchResult, bucketActiveSwitchResult, bucketReplID)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	// replication policies
 	replications, err := getReplications(bucketReplications, userReplications)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
 	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-
-	_, userRouteErr := userRoutingResult.Get()
-	_, bucketRouteErr := bucketRoutingResult.Get()
-	hasOwn := userRouteErr == nil || bucketRouteErr == nil || data.activeSwitch != nil || len(replications) > 0
-	return data, hasOwn, nil
+	return data, nil
 }
 
 // keepReplicationsFromRoute keeps only replications whose source is the storage the request is

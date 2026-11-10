@@ -322,3 +322,25 @@ Interactions:
 - Policy validation (known storages) is done by the worker that serves the API, using the worker's storage config.
 
 Source: `service/proxy/config.go` (`FailoverConfig`), `pkg/failover/store.go`, `service/proxy/failover/failover.go`.
+
+## Fleet configuration (`group`, `tutti:proxy-config`)
+
+Each proxy has an optional top-level `group` (default `default`). Behaviour settings are layered as
+YAML baseline, then the cluster `defaults`, then the override of the proxy's group, stored in Redis under
+`tutti:proxy-config` and edited on the Console **Proxies** page (`Resilience.GetProxyFleetConfig` /
+`SetProxyFleetConfig`).
+
+Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `replication.sync.*`, `health.*`,
+`failover.*`, `readHeaderTimeout`, `writerLease`, `drainDelay`, `readyMaxStaleness` and the auth option
+`requireSignedContentType` (the only central auth option; the rest of `auth` stays in YAML).
+
+- Updates carry `expected_version`; a stale version is rejected with `FailedPrecondition` (reload and retry).
+- Every change is audited (actor, before, after) in a structured log line (`audit=proxy_fleet_config`) and the
+  capped Redis list `tutti:proxy-config:audit`. The fleet config is stored in Redis in every control-plane mode, so
+  it has no PostgreSQL audit row.
+- Validation uses the YAML validators. Lower bound `100ms` for `health.openDuration`, `failover.checkInterval`
+  and `readyMaxStaleness`; `sync.enabled` needs `timeout > 0`; `sync.writeQuorum` must not exceed the number of
+  configured storages (checked by each proxy against its own storages).
+- A proxy that receives an invalid document keeps the last good configuration and reports `configError` in its status.
+- Sync is reported as enabled only on proxies that can actually synchronize (S3 proxies).
+- `readHeaderTimeout` and `writerLease` need a restart (`pendingRestart`).

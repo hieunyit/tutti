@@ -1,6 +1,8 @@
 package protectiongroups
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -121,5 +123,33 @@ func TestProtectionGroupMetricsMove(t *testing.T) {
 	// Deleted groups disappear from the exposition.
 	metrics.KeepProtectionGroups(nil)
 	_, ok := metricValue(t, "protection_group_copies_wanted", grp)
+	require.False(t, ok)
+}
+
+// A failing reconcile still exports the gauges (never left stale) and counts the error; deleted groups lose
+// every series, including frozen series set only through SetProtectionFrozen.
+func TestProtectionGroupMetricsOnReconcileError(t *testing.T) {
+	svc, backend, _, _, _ := newService(t)
+	ctx := t.Context()
+	_, err := svc.Create(ctx, Group{ID: "me", User: "tenant", Members: []string{"a", "b"}, Copies: 2}, false)
+	require.NoError(t, err)
+	grp := map[string]string{"group": "me"}
+	backend.mu.Lock()
+	backend.lag["b"] = 5
+	backend.mu.Unlock()
+	svc.Reports = func(context.Context) ([]proxystatus.Status, error) { return nil, errors.New("status unavailable") }
+	require.Error(t, svc.Reconcile(ctx, "me"))
+	requireMetric(t, "protection_group_reconcile_errors_total", grp, 1)
+	requireMetric(t, "protection_group_max_event_lag", grp, 5)
+	requireMetric(t, "protection_group_copies_healthy", grp, 0)
+	requireMetric(t, "protection_group_frozen", grp, 1)
+
+	metrics.SetProtectionFrozen("frozen-only", true)
+	metrics.KeepProtectionGroups(nil)
+	for _, name := range []string{"protection_group_reconcile_errors_total", "protection_group_max_event_lag", "protection_group_frozen"} {
+		_, ok := metricValue(t, name, grp)
+		require.False(t, ok, name)
+	}
+	_, ok := metricValue(t, "protection_group_frozen", map[string]string{"group": "frozen-only"})
 	require.False(t, ok)
 }

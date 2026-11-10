@@ -808,6 +808,11 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 		logger = &zlog.Logger
 	}
 	if s.cp != nil {
+		fp, ferr := s.cp.Repos().Storages.Fingerprint(ctx)
+		if ferr == nil && fp != "" && s.managedLoaded && fp == s.managedFP {
+			s.managedMu.Unlock()
+			return nil // unchanged
+		}
 		recs, err := s.cp.Repos().Storages.List(ctx)
 		if err == nil {
 			managed := make(map[string]ManagedStorage, len(recs))
@@ -825,10 +830,14 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 				managed[v.Value.Name] = m
 			}
 			changes := s.applyManagedSnapshot(logger, managed, verSum)
+			if ferr == nil {
+				s.managedFP = fp
+			}
 			s.managedMu.Unlock()
 			s.notify(changes)
 			return nil
 		}
+		s.managedFP = ""
 		if s.managedClient == nil {
 			s.managedMu.Unlock()
 			return fmt.Errorf("failed to get storages from postgres: %w", err)

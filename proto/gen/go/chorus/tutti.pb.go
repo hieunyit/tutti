@@ -1230,8 +1230,11 @@ type ProxyStatus struct {
 	PendingRestart bool `protobuf:"varint,11,opt,name=pending_restart,json=pendingRestart,proto3" json:"pending_restart,omitempty"`
 	// Names of settings that require a proxy restart to take effect.
 	PendingRestartReasons []string `protobuf:"bytes,12,rep,name=pending_restart_reasons,json=pendingRestartReasons,proto3" json:"pending_restart_reasons,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Set when the latest central fleet configuration was rejected by this proxy (invalid document or effective
+	// settings); the proxy keeps running on the last good configuration (applied_config_version).
+	ConfigError   string `protobuf:"bytes,13,opt,name=config_error,json=configError,proto3" json:"config_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProxyStatus) Reset() {
@@ -1346,6 +1349,13 @@ func (x *ProxyStatus) GetPendingRestartReasons() []string {
 		return x.PendingRestartReasons
 	}
 	return nil
+}
+
+func (x *ProxyStatus) GetConfigError() string {
+	if x != nil {
+		return x.ConfigError
+	}
+	return ""
 }
 
 // TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds.
@@ -5678,11 +5688,14 @@ func (x *ProxyFleetConfig) GetGroups() map[string]*ProxySettingsOverride {
 }
 
 type SetProxyFleetConfigRequest struct {
-	state         protoimpl.MessageState            `protogen:"open.v1"`
-	Defaults      *ProxySettingsOverride            `protobuf:"bytes,1,opt,name=defaults,proto3" json:"defaults,omitempty"`
-	Groups        map[string]*ProxySettingsOverride `protobuf:"bytes,2,rep,name=groups,proto3" json:"groups,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState            `protogen:"open.v1"`
+	Defaults *ProxySettingsOverride            `protobuf:"bytes,1,opt,name=defaults,proto3" json:"defaults,omitempty"`
+	Groups   map[string]*ProxySettingsOverride `protobuf:"bytes,2,rep,name=groups,proto3" json:"groups,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// expected_version is the config version the caller loaded. When set and different from the stored version the
+	// update is rejected with FailedPrecondition. Unset skips the check.
+	ExpectedVersion *int64 `protobuf:"varint,3,opt,name=expected_version,json=expectedVersion,proto3,oneof" json:"expected_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SetProxyFleetConfigRequest) Reset() {
@@ -5727,6 +5740,13 @@ func (x *SetProxyFleetConfigRequest) GetGroups() map[string]*ProxySettingsOverri
 		return x.Groups
 	}
 	return nil
+}
+
+func (x *SetProxyFleetConfigRequest) GetExpectedVersion() int64 {
+	if x != nil && x.ExpectedVersion != nil {
+		return *x.ExpectedVersion
+	}
+	return 0
 }
 
 type ListAuditLogRequest struct {
@@ -6086,7 +6106,7 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\fwriter_lease\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\vwriterLease\x12:\n" +
 	"\vdrain_delay\x18\a \x01(\v2\x19.google.protobuf.DurationR\n" +
 	"drainDelay\x12I\n" +
-	"\x13ready_max_staleness\x18\b \x01(\v2\x19.google.protobuf.DurationR\x11readyMaxStaleness\"\x9f\x04\n" +
+	"\x13ready_max_staleness\x18\b \x01(\v2\x19.google.protobuf.DurationR\x11readyMaxStaleness\"\xc2\x04\n" +
 	"\vProxyStatus\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\x129\n" +
@@ -6102,7 +6122,8 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x16applied_config_version\x18\n" +
 	" \x01(\x03R\x14appliedConfigVersion\x12'\n" +
 	"\x0fpending_restart\x18\v \x01(\bR\x0ependingRestart\x126\n" +
-	"\x17pending_restart_reasons\x18\f \x03(\tR\x15pendingRestartReasons\"\xf5\x05\n" +
+	"\x17pending_restart_reasons\x18\f \x03(\tR\x15pendingRestartReasons\x12!\n" +
+	"\fconfig_error\x18\r \x01(\tR\vconfigError\"\xf5\x05\n" +
 	"\fTrafficRates\x12%\n" +
 	"\x0ewindow_seconds\x18\x01 \x01(\x01R\rwindowSeconds\x12(\n" +
 	"\x10requests_per_sec\x18\x02 \x01(\x01R\x0erequestsPerSec\x12U\n" +
@@ -6488,13 +6509,15 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x06groups\x18\x04 \x03(\v2$.chorus.ProxyFleetConfig.GroupsEntryR\x06groups\x1aX\n" +
 	"\vGroupsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x123\n" +
-	"\x05value\x18\x02 \x01(\v2\x1d.chorus.ProxySettingsOverrideR\x05value:\x028\x01\"\xf9\x01\n" +
+	"\x05value\x18\x02 \x01(\v2\x1d.chorus.ProxySettingsOverrideR\x05value:\x028\x01\"\xbe\x02\n" +
 	"\x1aSetProxyFleetConfigRequest\x129\n" +
 	"\bdefaults\x18\x01 \x01(\v2\x1d.chorus.ProxySettingsOverrideR\bdefaults\x12F\n" +
-	"\x06groups\x18\x02 \x03(\v2..chorus.SetProxyFleetConfigRequest.GroupsEntryR\x06groups\x1aX\n" +
+	"\x06groups\x18\x02 \x03(\v2..chorus.SetProxyFleetConfigRequest.GroupsEntryR\x06groups\x12.\n" +
+	"\x10expected_version\x18\x03 \x01(\x03H\x00R\x0fexpectedVersion\x88\x01\x01\x1aX\n" +
 	"\vGroupsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x123\n" +
-	"\x05value\x18\x02 \x01(\v2\x1d.chorus.ProxySettingsOverrideR\x05value:\x028\x01\"\x91\x02\n" +
+	"\x05value\x18\x02 \x01(\v2\x1d.chorus.ProxySettingsOverrideR\x05value:\x028\x01B\x13\n" +
+	"\x11_expected_version\"\x91\x02\n" +
 	"\x13ListAuditLogRequest\x12\x16\n" +
 	"\x06family\x18\x01 \x01(\tR\x06family\x12\x1d\n" +
 	"\n" +
@@ -6888,6 +6911,7 @@ func file_chorus_tutti_proto_init() {
 	file_chorus_tutti_proto_msgTypes[75].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[76].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[77].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[79].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

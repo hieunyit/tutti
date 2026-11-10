@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -53,6 +54,44 @@ type UserRepository interface {
 type UserStore struct {
 	rdb redis.Cmdable
 	cp  controlplane.Store
+
+	// cache of PostgreSQL Get results: every API request authenticates, which must not cost a database round trip.
+	// Entries live userCacheTTL (other processes' changes become visible within it) and are dropped on local writes.
+	cacheMu sync.Mutex
+	cache   map[string]cachedUser
+}
+
+// userCacheTTL bounds how long a disabled/deleted/demoted console user can still authenticate on another process.
+const userCacheTTL = 2 * time.Second
+
+type cachedUser struct {
+	u       ManagedUser
+	expires time.Time
+}
+
+func (s *UserStore) cached(username string) (ManagedUser, bool) {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	c, ok := s.cache[username]
+	if !ok || time.Now().After(c.expires) {
+		return ManagedUser{}, false
+	}
+	return c.u, true
+}
+
+func (s *UserStore) remember(u ManagedUser) {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	if s.cache == nil {
+		s.cache = map[string]cachedUser{}
+	}
+	s.cache[u.Username] = cachedUser{u: u, expires: time.Now().Add(userCacheTTL)}
+}
+
+func (s *UserStore) forget(username string) {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	delete(s.cache, username)
 }
 
 var _ UserRepository = (*UserStore)(nil)
@@ -96,9 +135,14 @@ func fromCPUser(u controlplane.ConsoleUser) ManagedUser {
 // Get returns the user or dom.ErrNotFound.
 func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, error) {
 	if s.cp != nil {
+		if u, ok := s.cached(username); ok {
+			return u, nil
+		}
 		v, err := s.cp.Repos().ConsoleUsers.Get(ctx, username)
 		if err == nil {
-			return fromCPUser(v.Value), nil
+			u := fromCPUser(v.Value)
+			s.remember(u)
+			return u, nil
 		}
 		if !controlplane.IsUnavailable(err) || s.rdb == nil {
 			return ManagedUser{}, err
@@ -165,6 +209,7 @@ func (s *UserStore) List(ctx context.Context) ([]ManagedUser, error) {
 // Create stores a new user; fails with dom.ErrAlreadyExists if the name is taken.
 func (s *UserStore) Create(ctx context.Context, u ManagedUser) error {
 	if s.cp != nil {
+		s.forget(u.Username)
 		_, err := s.cp.Repos().ConsoleUsers.Create(ctx, toCPUser(u))
 		return controlplane.WrapWriteError(err)
 	}
@@ -185,6 +230,7 @@ func (s *UserStore) Create(ctx context.Context, u ManagedUser) error {
 // Put replaces an existing user record.
 func (s *UserStore) Put(ctx context.Context, u ManagedUser) error {
 	if s.cp != nil {
+		s.forget(u.Username)
 		_, err := s.cp.Repos().ConsoleUsers.Put(ctx, toCPUser(u))
 		return controlplane.WrapWriteError(err)
 	}
@@ -230,6 +276,8 @@ return 1
 func (s *UserStore) mutate(ctx context.Context, username string, configAdmins int, configNames []string,
 	fn func(*ManagedUser) (remove, checkOtherAdmin bool, err error)) error {
 	if s.cp != nil {
+		s.forget(username)
+		defer s.forget(username)
 		err := s.cp.Repos().ConsoleUsers.MutateGuarded(ctx, username, controlplane.ConsoleUserGuard{
 			ConfigAdmins: configAdmins,
 			ConfigNames:  configNames,
@@ -294,6 +342,8 @@ func (s *UserStore) mutate(ctx context.Context, username string, configAdmins in
 // Delete removes the user. Returns dom.ErrNotFound if missing.
 func (s *UserStore) Delete(ctx context.Context, username string) error {
 	if s.cp != nil {
+		s.forget(username)
+		defer s.forget(username)
 		return controlplane.WrapWriteError(s.cp.Repos().ConsoleUsers.Delete(ctx, username))
 	}
 	n, err := s.rdb.HDel(ctx, ConsoleUsersKey, username).Result()

@@ -135,3 +135,9 @@ func (d *dynCreds) SetSaltIfAbsent(ctx context.Context, salt string) (bool, erro
 	})
 	return stored, err
 }
+
+func (d *dynCreds) Fingerprint(ctx context.Context) (string, error) {
+	var fp string
+	err := d.rt.q().QueryRow(ctx, `SELECT coalesce(md5(string_agg(storage_type || ':' || storage || ':' || user_name || ':' || version::text, ',' ORDER BY storage_type, storage, user_name)), 'empty') FROM dynamic_credentials`).Scan(&fp)
+	return fp, err
+}

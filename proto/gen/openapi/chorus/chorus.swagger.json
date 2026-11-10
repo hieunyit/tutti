@@ -4094,6 +4094,10 @@
             "type": "string"
           },
           "description": "Names of settings that require a proxy restart to take effect."
+        },
+        "configError": {
+          "type": "string",
+          "description": "Set when the latest central fleet configuration was rejected by this proxy (invalid document or effective\nsettings); the proxy keeps running on the last good configuration (applied_config_version)."
         }
       },
       "description": "ProxyStatus is the status of one live proxy instance."
@@ -4822,6 +4826,11 @@
           "additionalProperties": {
             "$ref": "#/definitions/chorusProxySettingsOverride"
           }
+        },
+        "expectedVersion": {
+          "type": "string",
+          "format": "int64",
+          "description": "expected_version is the config version the caller loaded. When set and different from the stored version the\nupdate is rejected with FailedPrecondition. Unset skips the check."
         }
       }
     },

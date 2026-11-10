@@ -117,7 +117,10 @@ func newProtectionGroups(r *runner) controlplane.ProtectionGroups {
 }
 
 func newStorageTests(r *runner) controlplane.StorageTests {
-	return &kv[controlplane.RawDoc]{rt: r, spec: rawSpec("storage_tests", "storage test", KeyStorageTests)}
+	// every connection test overwrites the previous result: auditing them would flood the audit log
+	spec := rawSpec("storage_tests", "storage test", KeyStorageTests)
+	spec.noAudit = true
+	return &kv[controlplane.RawDoc]{rt: r, spec: spec}
 }
 
 func rawSpec(table, label, redisKey string) kvSpec[controlplane.RawDoc] {

@@ -70,6 +70,11 @@ type mutation struct {
 	before     any // marshaled; nil = absent
 	after      any
 	ops        []RedisOp
+	// noAudit skips the audit row (high-frequency, low-value results such as storage connection tests); the outbox
+	// entry is still written.
+	noAudit bool
+	// key overrides the outbox object key (default objectType/objectID); entries of one key are applied in order.
+	key string
 }
 
 func marshalOrNil(v any) ([]byte, error) {
@@ -95,24 +100,35 @@ func record(ctx context.Context, tx pgx.Tx, m mutation) error {
 	if err != nil {
 		return err
 	}
-	act := controlplane.ActorFrom(ctx)
-	var rb, ra any
-	if b != nil {
-		rb = json.RawMessage(Redact(b))
-	}
-	if a != nil {
-		ra = json.RawMessage(Redact(a))
-	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (actor, request_id, action, object_type, object_id, before, after)
+	if !m.noAudit {
+		act := controlplane.ActorFrom(ctx)
+		var rb, ra any
+		if b != nil {
+			rb = json.RawMessage(Redact(b))
+		}
+		if a != nil {
+			ra = json.RawMessage(Redact(a))
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO audit_log (actor, request_id, action, object_type, object_id, before, after)
 		VALUES ($1,$2,$3,$4,$5,$6,$7)`, act.Name, act.RequestID, m.action, m.objectType, m.objectID, rb, ra); err != nil {
-		return fmt.Errorf("controlplane: audit: %w", err)
+			return fmt.Errorf("controlplane: audit: %w", err)
+		}
 	}
 	if len(m.ops) > 0 && !controlplane.SkipOutbox(ctx) {
 		raw, err := json.Marshal(m.ops)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO outbox (object_key, ops) VALUES ($1,$2)`, m.objectType+"/"+m.objectID, json.RawMessage(raw)); err != nil {
+		key := m.key
+		if key == "" {
+			key = m.objectType + "/" + m.objectID
+		}
+		// shared with the writers, exclusive for EnqueueSnapshot: a snapshot cannot be ordered before a change that
+		// it did not see
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock_shared($1)`, snapshotLockID); err != nil {
+			return fmt.Errorf("controlplane: outbox lock: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO outbox (object_key, ops) VALUES ($1,$2)`, key, json.RawMessage(raw)); err != nil {
 			return fmt.Errorf("controlplane: outbox: %w", err)
 		}
 	}
@@ -138,6 +154,9 @@ func (a *auditRepo) List(ctx context.Context, f controlplane.AuditFilter) ([]con
 	}
 	if f.Actor != "" {
 		add("actor=$%d", f.Actor)
+	}
+	if f.Action != "" {
+		add("lower(action)=lower($%d)", f.Action)
 	}
 	if !f.Since.IsZero() {
 		add("at>=$%d", f.Since)

@@ -25,8 +25,13 @@ import type {
   ProtectionMemberStatus,
 } from '@/utils/types/protection';
 
-const ID_FORBIDDEN = /[:/\0\s]/;
-const BUCKET_FORBIDDEN = /[*?[\]:/\0\s]/;
+const ID_FORBIDDEN = /[:/\s]/;
+const BUCKET_FORBIDDEN = /[*?[\]:/\s]/;
+const NUL = String.fromCharCode(0);
+
+function hasForbidden(value: string, pattern: RegExp): boolean {
+  return pattern.test(value) || value.includes(NUL);
+}
 
 export type MemberHealth = 'healthy' | 'syncing' | 'lagging' | 'unavailable';
 
@@ -70,15 +75,22 @@ export abstract class ProtectionGroupHelper {
     switch (state) {
       case 'ready':
         return 'success';
+
       case 'initializing':
+
       case 'waiting':
         return 'info';
+
       case 'draining':
+
       case 'promoting':
+
       case 'frozen':
         return 'warning';
+
       case 'error':
         return 'danger';
+
       default:
         return 'neutral';
     }
@@ -232,7 +244,12 @@ export abstract class ProtectionGroupHelper {
   static switchSteps(
     group: ProtectionGroup,
   ): { id: SwitchStepId; status: SwitchStepStatus }[] {
-    const order: SwitchStepId[] = ['waiting', 'draining', 'promoting', 'resync'];
+    const order: SwitchStepId[] = [
+      'waiting',
+      'draining',
+      'promoting',
+      'resync',
+    ];
     let current = -1;
 
     if (group.target) {
@@ -262,7 +279,12 @@ export abstract class ProtectionGroupHelper {
   static moveMember(members: string[], index: number, dir: -1 | 1): string[] {
     const to = index + dir;
 
-    if (index < 0 || index >= members.length || to < 0 || to >= members.length) {
+    if (
+      index < 0 ||
+      index >= members.length ||
+      to < 0 ||
+      to >= members.length
+    ) {
       return members;
     }
 
@@ -331,13 +353,16 @@ export abstract class ProtectionGroupHelper {
 
     if (!isEdit) {
       if (!form.id.trim()) errors.push('ID_REQUIRED');
-      else if (ID_FORBIDDEN.test(form.id.trim())) errors.push('ID_INVALID');
+      else if (hasForbidden(form.id.trim(), ID_FORBIDDEN))
+        errors.push('ID_INVALID');
+
+      if (!form.user) errors.push('USER_REQUIRED');
 
       if (form.members.length < 2) errors.push('MEMBERS_MIN');
 
       if (
         new Set(form.buckets).size !== form.buckets.length ||
-        form.buckets.some((b) => !b || BUCKET_FORBIDDEN.test(b))
+        form.buckets.some((b) => !b || hasForbidden(b, BUCKET_FORBIDDEN))
       ) {
         errors.push('BUCKET_INVALID');
       }
@@ -393,7 +418,7 @@ export abstract class ProtectionGroupHelper {
     return {
       group: {
         id: form.id.trim(),
-        user: (form.user && form.user.trim()) || 'default',
+        user: form.user ?? '',
         buckets: [...form.buckets],
         members: [...form.members],
         ...ProtectionGroupHelper.mutable(form),

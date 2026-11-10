@@ -57,7 +57,7 @@ func TestCLIEndToEnd(t *testing.T) {
 
 	code, stdout, stderr = runCLI(t, with("schema")...)
 	require.Equal(t, exitOK, code, stderr)
-	require.Contains(t, stdout, "applied migrations: [1]")
+	require.Contains(t, stdout, "applied migrations: [1 2]")
 
 	// dry run against the empty schema, nothing written
 	code, _, stderr = runCLI(t, with("--dry-run", "migrate")...)

@@ -54,7 +54,8 @@ authoritative in Redis until `pkg/protectiongroups` is split (section 7).
 
 ## 2. Schema
 
-One migration, `pkg/controlplane/pg/migrations/0001_init.sql`, embedded with `embed`, applied by `pg.Migrate`
+Two migrations (`0001_init.sql`, `0002_outbox_pending_key.sql`: the index the publisher's per-object ordering lookup uses) in
+`pkg/controlplane/pg/migrations/`, embedded with `embed`, applied by `pg.Migrate`
 (`schema_migrations(version, name, checksum, applied_at)`, one transaction per file, `pg_advisory_xact_lock` against
 concurrent migrators, checksum drift and a database newer than the binary are errors).
 
@@ -102,7 +103,10 @@ actor, request id, action (`create`, `update`, `delete`, `set`, `block`, `genera
 and `after` documents with secret fields replaced by `***` (`secret`, `previousSecret`, `connectionAccount`,
 `previousAccount`, `passwordHash`, `sealed`, `salt`, ...). A failed or rolled back transaction leaves no audit row.
 Re-applying an identical state (migration re-run) writes none. `Audit.List` filters by object, actor, time and pages
-by `BeforeID` (for the UI). Login time updates are deliberately not audited.
+by `BeforeID` (for the UI); the `action` filter is applied in SQL, so limit and cursor paginate the filtered rows.
+Login time updates and storage connection-test results (`storage_tests`, overwritten on every test) are deliberately
+not audited (the latter still projects to Redis). The audit log carries before/after documents of every change, so
+`ListAuditLog` is **admin-only**; a database outage returns 503.
 
 ## 4. Change propagation (outbox)
 
@@ -145,8 +149,19 @@ Flags: `--dry-run`, `--format text|json`, `--out report.json`, `--timeout`.
   but are never printed. Malformed Redis entries are skipped with a warning.
 - `verify`: compares Redis and PostgreSQL both ways; exit code 0 = identical, **2 = mismatch** (the report lists family,
   key and `different` / `missing_in_target` / `missing_in_source`, no values), 1 = error.
-- `republish`: rebuilds a lost or empty Redis projection from PostgreSQL (`pg.Store.EnqueueSnapshot` + `Publisher.RunOnce`
-  loop until `Pending == 0`), restoring all configuration keys, `chorus:dynamic_creds` (meta Redis), and version counters.
+- `republish`: rebuilds a lost or empty Redis projection from PostgreSQL. Procedure: (1) wait for the outbox to drain
+  (unpublished changes are lag, not drift); (2) compare PostgreSQL and Redis; **refuse (exit 1) when Redis holds
+  entries that differ from PostgreSQL or exist only in Redis, unless `--force`**: they may be newer than PostgreSQL
+  (for example after restoring PostgreSQL from an old backup); always review `--dry-run` first; (3) enqueue a snapshot
+  (`pg.Store.EnqueueSnapshot`, exclusive against in-flight writers, so it cannot be ordered before a change it did not
+  see) and, with `--prune`, the removal of Redis-only entries (re-checked against PostgreSQL under the same lock);
+  (4) wait until the publisher has applied everything enqueued (`--drain-timeout`, default 5m; a worker's publisher
+  holding the lock is waited for, not an error); (5) only then verify. Without `--prune` the republish is **additive**
+  (it overwrites and adds, Redis-only entries stay and are reported as a warning) and is not an exact rebuild; with
+  `--prune --force` it is. It restores configuration keys, `chorus:dynamic_creds` (meta Redis) and version counters.
+  **Protection groups are never republished**: Redis holds their runtime fields (promotion, fencing, scope index) in
+  the same documents as the spec, so they are skipped (reported as a warning). Race note: changes written while the
+  republish runs may show up as mismatches in the final check; run `verify` again.
 - Not migrated by design: `tutti:cfg:version`, version counters, `failover_pending`, switch state, protection runtime,
   console login of deleted users.
 - PostgreSQL timestamps have microsecond precision; Redis keeps nanoseconds (comparisons truncate).
@@ -213,7 +228,51 @@ the existing `TUTTI_` mapping (`controlPlane.postgres.dsn` -> `TUTTI_CONTROLPLAN
 
 While `backend: postgres` is on, Redis is a warm projection, so rollback is: stop writes, wait for `Pending == 0`
 (or run `tutti-migrate-pg verify`, exit 0), set `backend: redis`, restart the workers. To rebuild a lost Redis from
-PostgreSQL, run `tutti-migrate-pg republish`.
+PostgreSQL, run `tutti-migrate-pg republish` (see section 5 for `--force` / `--prune`).
+
+### Failover with the PostgreSQL backend
+
+Routing and failover events are authoritative in PostgreSQL, so an automatic failover must go through the control
+plane. Proxies have no PostgreSQL connection, therefore the **proxy failover controller delegates**: when the workers
+announce `backend: postgres` (Redis key `tutti:fo-exec:backend`, written by every worker on start) the proxy queues
+the decision (`tutti:fo-exec:requests`) and waits (20 s) for a worker, which applies it with
+`FailoverReplicationWithEvent` (routing + event in one PostgreSQL transaction, then the Redis side) and replies. The
+proxy never writes routing or events to Redis itself in this mode. If no worker answers the controller logs it and
+re-evaluates in the next cycle; requests older than 60 s are dropped. Run at least one worker; with the PostgreSQL
+backend a failover needs PostgreSQL (and a worker) to be available.
+
+`FailoverReplicationWithEvent`, the zero-downtime/downtime switch calls and `DeleteReplicationSwitch` span PostgreSQL
+and Redis (pending flag, queue pause, switch record) and are **convergent**: each step is idempotent and repeating the
+call completes whatever an earlier call left undone (a failed Redis step after the PostgreSQL commit; a failed
+PostgreSQL step rolls the Redis marker back). A failed failover never leaves `failover_pending` set after a definite
+PostgreSQL rejection (read-only, 503 before the commit); after an unknown commit outcome the flag stays and the retry
+decides from the stored routing.
+
+### Starting without PostgreSQL
+
+The worker opens the control-plane pool lazily (`pg.OpenLazy`): if PostgreSQL is unreachable at start the worker still
+starts, serves the Redis projection, rejects mutations with `ErrReadOnly` (503), logs the error and retries
+(`Store.RunReadiness`, every 5 s, including `autoMigrate`) until the database answers. The gauge
+`controlplane_postgres_ready` (1/0) exposes it; the outbox publisher stays idle until then.
+
+### Polling cost
+
+Workers poll managed storages, S3 users and dynamic credentials every ~2 s. With PostgreSQL they first read a digest
+of the table (`KV.Fingerprint`: md5 of keys and versions, no documents, no secrets) and skip the full SELECT, the
+decoding and the credential opening while it is unchanged. Console-user lookups (one per API request) are cached for
+2 s per process and dropped on local writes: a disabled or deleted console user is rejected immediately by the
+process that made the change and within 2 s by the others.
+
+### Outbox publisher
+
+One publisher runs at a time (session advisory lock on a dedicated connection). The lock is held while Redis is
+written but **no database transaction stays open**: each entry is applied (10 s Redis timeout) and marked published
+in its own statement; connections also carry `idle_in_transaction_session_timeout=60s`. Due entries are selected in
+SQL (`next_attempt_at <= now()` on the database clock, and not behind an earlier entry of the same object that waits
+for its retry), so poison entries cannot starve newer ones, while per-object order is kept. All replication entries of
+a scope share one object key (`replication_scope/<user>/<fromBucket>`), writers of a scope serialize on an advisory
+lock and the scope projection (absolute sets) is computed under it. Metrics and alerts: `controlplane_outbox_pending`,
+`controlplane_outbox_oldest_seconds` (`TuttiControlPlaneOutboxStalled`), `controlplane_outbox_failures_total`.
 
 ### Read-only fallback
 
@@ -229,6 +288,9 @@ false` after restoring a backup).
   `backend: postgres`) from runtime promotion/fence state (`PromotionState` in Redis `tutti:protection:promotion` and
   projected into `tutti:protection:groups` so proxy admission Lua scripts run at line rate without PostgreSQL).
 - The replication switch state machine stays in Redis (workers drive it with locks and queues).
+- `controlplane.IsUnavailable` is an allow-list (connection errors, timeouts, closed pool/transaction, SQLSTATE classes
+  08/57P/53300/57014/25P03): only those fall back to Redis on reads and map to 503 on writes; every other error is
+  returned as it is.
 - The importer does not delete PostgreSQL-only records (`extra` in the report) and does not copy Redis version
   counters (the publisher recreates them).
 - Console `last-login` is mirrored to Redis best effort via outbox without writing an audit log entry.

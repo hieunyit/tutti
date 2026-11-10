@@ -27,7 +27,10 @@
   import StatusTag from '@/components/ui/StatusTag.vue';
   import { EMPTY_VALUE, type StatusVariant } from '@/components/ui/status';
   import { AuditLogService } from '@/services/AuditLogService';
-  import { formatDateTime, formatRelative } from '@/utils/helpers/DateTimeHelper';
+  import {
+    formatDateTime,
+    formatRelative,
+  } from '@/utils/helpers/DateTimeHelper';
   import {
     AUDIT_LOG_ACTIONS,
     AUDIT_LOG_FAMILIES,
@@ -145,7 +148,8 @@
       modeLabel: 'Chế độ ghi',
       modeReadOnly: 'Đang bật chế độ chỉ đọc (Read-only)',
       modeReadWrite: 'Đọc & ghi (Read-write)',
-      redisBannerTitle: 'Nhật ký kiểm toán giao dịch yêu cầu PostgreSQL backend',
+      redisBannerTitle:
+        'Nhật ký kiểm toán giao dịch yêu cầu PostgreSQL backend',
       redisBannerText:
         'Control-plane hiện đang chạy trên Redis. Nhật ký kiểm toán giao dịch bền vững với bản chụp trước/sau (before/after JSON) sẽ hoạt động khi đặt controlPlane.backend thành "postgres".',
       readOnlyBannerTitle: 'Control plane đang ở chế độ chỉ đọc',
@@ -425,18 +429,27 @@
 
     switch (normalized) {
       case 'create':
+
       case 'unblock':
         return 'success';
+
       case 'update':
+
       case 'set':
+
       case 'generation':
         return 'info';
+
       case 'delete':
+
       case 'block':
         return 'danger';
+
       case 'rotate':
+
       case 'archive':
         return 'warning';
+
       default:
         return 'neutral';
     }
@@ -1342,7 +1355,7 @@
       overflow-x: auto;
       max-height: 360px;
       white-space: pre-wrap;
-      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     &__json-empty {

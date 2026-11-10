@@ -261,9 +261,6 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 	if err != nil {
 		return fmt.Errorf("unable to get to client: %w", err)
 	}
-	if exists, bErr := toClient.S3().BucketExists(ctx, to.Bucket); bErr == nil && !exists {
-		_ = toClient.S3().MakeBucket(ctx, to.Bucket, minio.MakeBucketOptions{})
-	}
 
 	fromObjectStat, err := fromClient.S3().StatObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{
 		VersionID: from.Version,
@@ -463,9 +460,6 @@ func (r *S3CopySvc) CopyACLs(ctx context.Context, user string, from File, to Fil
 	toClient, err := r.clientRegistry.AsS3(ctx, to.Storage, user)
 	if err != nil {
 		return fmt.Errorf("unable to get to client: %w", err)
-	}
-	if exists, bErr := toClient.S3().BucketExists(ctx, to.Bucket); bErr == nil && !exists {
-		_ = toClient.S3().MakeBucket(ctx, to.Bucket, minio.MakeBucketOptions{})
 	}
 	// check if copy ACL supported for versioned objects with the same version ID
 	toStorage, err := r.credsSvc.GetS3Address(to.Storage)

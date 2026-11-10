@@ -68,11 +68,9 @@ func (h *protectionHandlers) Create(ctx context.Context, r *pb.CreateProtectionG
 	if err != nil {
 		return nil, err
 	}
-	if g.User == "" && h.service.DefaultUser != nil {
-		g.User = h.service.DefaultUser(ctx, g)
-	}
+	// No silent default: the group manages the routing and replications of exactly this (existing) user.
 	if g.User == "" {
-		g.User = "default"
+		return nil, fmt.Errorf("%w: protection group: user is required", dom.ErrInvalidArg)
 	}
 	var result pg.Group
 	work := func(ctx context.Context) error {

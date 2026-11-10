@@ -23,6 +23,13 @@ const (
 	ConfigChangedChannel = "tutti:cfg:changed"
 )
 
+// MinFleetInterval is the lower bound of fleet-configured loop intervals and durations (health open duration,
+// failover check interval, readiness staleness): shorter values only burn CPU or flap.
+const MinFleetInterval = 100 * time.Millisecond
+
+// MinWriterLease matches the YAML minimum of protectionGroups.writerLease.
+const MinWriterLease = time.Second
+
 // SyncOverride holds optional overrides for synchronous replication settings.
 type SyncOverride struct {
 	Enabled         *bool          `json:"enabled,omitempty"`
@@ -126,13 +133,13 @@ func (o SettingsOverride) Validate() error {
 		if h.FailureThreshold != nil && *h.FailureThreshold < 1 {
 			return fmt.Errorf("%w: health.failureThreshold must be >= 1", dom.ErrInvalidArg)
 		}
-		if h.OpenDuration != nil && *h.OpenDuration <= 0 {
-			return fmt.Errorf("%w: health.openDuration must be > 0", dom.ErrInvalidArg)
+		if h.OpenDuration != nil && *h.OpenDuration < MinFleetInterval {
+			return fmt.Errorf("%w: health.openDuration must be >= %s", dom.ErrInvalidArg, MinFleetInterval)
 		}
 	}
 	if f := o.Failover; f != nil {
-		if f.CheckInterval != nil && *f.CheckInterval <= 0 {
-			return fmt.Errorf("%w: failover.checkInterval must be > 0", dom.ErrInvalidArg)
+		if f.CheckInterval != nil && *f.CheckInterval < MinFleetInterval {
+			return fmt.Errorf("%w: failover.checkInterval must be >= %s", dom.ErrInvalidArg, MinFleetInterval)
 		}
 		if f.After != nil && *f.After <= 0 {
 			return fmt.Errorf("%w: failover.after must be > 0", dom.ErrInvalidArg)
@@ -144,14 +151,14 @@ func (o SettingsOverride) Validate() error {
 	if o.ReadHeaderTimeout != nil && *o.ReadHeaderTimeout <= 0 {
 		return fmt.Errorf("%w: readHeaderTimeout must be > 0", dom.ErrInvalidArg)
 	}
-	if o.WriterLease != nil && *o.WriterLease <= 0 {
-		return fmt.Errorf("%w: writerLease must be > 0", dom.ErrInvalidArg)
+	if o.WriterLease != nil && *o.WriterLease < MinWriterLease {
+		return fmt.Errorf("%w: writerLease must be >= %s", dom.ErrInvalidArg, MinWriterLease)
 	}
 	if o.DrainDelay != nil && *o.DrainDelay < 0 {
 		return fmt.Errorf("%w: drainDelay must be >= 0", dom.ErrInvalidArg)
 	}
-	if o.ReadyMaxStaleness != nil && *o.ReadyMaxStaleness <= 0 {
-		return fmt.Errorf("%w: readyMaxStaleness must be > 0", dom.ErrInvalidArg)
+	if o.ReadyMaxStaleness != nil && *o.ReadyMaxStaleness < MinFleetInterval {
+		return fmt.Errorf("%w: readyMaxStaleness must be >= %s", dom.ErrInvalidArg, MinFleetInterval)
 	}
 	return nil
 }
@@ -285,7 +292,7 @@ func (s *FleetConfigStore) Get(ctx context.Context) (*FleetConfig, error) {
 	if errors.Is(err, redis.Nil) {
 		return &FleetConfig{
 			Version: 0,
-			Groups:   map[string]SettingsOverride{},
+			Groups:  map[string]SettingsOverride{},
 		}, nil
 	}
 	if err != nil {
@@ -304,8 +311,16 @@ func (s *FleetConfigStore) Get(ctx context.Context) (*FleetConfig, error) {
 // Set validates cfg, atomically increments Version, persists the FleetConfig under tutti:proxy-config,
 // increments tutti:cfg:version, and publishes on tutti:cfg:changed.
 func (s *FleetConfigStore) Set(ctx context.Context, cfg FleetConfig) (*FleetConfig, error) {
+	_, next, err := s.SetExpected(ctx, cfg, nil)
+	return next, err
+}
+
+// SetExpected is Set with optimistic concurrency: when expected is non-nil and differs from the stored version
+// the update is rejected with dom.ErrFailedPrecondition. It returns the previous (version 0 when none) and the
+// saved configuration.
+func (s *FleetConfigStore) SetExpected(ctx context.Context, cfg FleetConfig, expected *int64) (prev, saved *FleetConfig, err error) {
 	if err := cfg.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if cfg.Groups == nil {
 		cfg.Groups = map[string]SettingsOverride{}
@@ -313,27 +328,27 @@ func (s *FleetConfigStore) Set(ctx context.Context, cfg FleetConfig) (*FleetConf
 	const maxAttempts = 16
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		raw, err := s.client.Get(ctx, FleetConfigKey).Result()
-		var prevVersion int64
+		cur := &FleetConfig{Groups: map[string]SettingsOverride{}}
 		if errors.Is(err, redis.Nil) {
 			raw = ""
 		} else if err != nil {
-			return nil, err
-		} else {
-			var cur FleetConfig
-			if err := json.Unmarshal([]byte(raw), &cur); err != nil {
-				return nil, fmt.Errorf("unmarshal %s: %w", FleetConfigKey, err)
-			}
-			prevVersion = cur.Version
+			return nil, nil, err
+		} else if err := json.Unmarshal([]byte(raw), cur); err != nil {
+			return nil, nil, fmt.Errorf("unmarshal %s: %w", FleetConfigKey, err)
+		}
+		if expected != nil && *expected != cur.Version {
+			return nil, nil, fmt.Errorf("%w: fleet config was changed by someone else (stored version %d, expected %d): reload and retry",
+				dom.ErrFailedPrecondition, cur.Version, *expected)
 		}
 		next := FleetConfig{
-			Version:   prevVersion + 1,
+			Version:   cur.Version + 1,
 			UpdatedAt: time.Now().UTC(),
 			Defaults:  cfg.Defaults,
 			Groups:    cfg.Groups,
 		}
 		b, err := json.Marshal(next)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		ok, err := casSetFleetConfigScript.Run(
 			ctx,
@@ -344,11 +359,57 @@ func (s *FleetConfigStore) Set(ctx context.Context, cfg FleetConfig) (*FleetConf
 			ConfigChangedChannel,
 		).Int()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if ok == 1 {
-			return &next, nil
+			return cur, &next, nil
 		}
 	}
-	return nil, fmt.Errorf("concurrent modification of %s", FleetConfigKey)
+	return nil, nil, fmt.Errorf("concurrent modification of %s", FleetConfigKey)
+}
+
+// FleetAuditKey is the Redis list holding the most recent fleet configuration changes (newest first).
+const FleetAuditKey = "tutti:proxy-config:audit"
+
+// FleetAuditMax caps FleetAuditKey.
+const FleetAuditMax = 200
+
+// FleetAuditRecord is one audited fleet configuration change.
+type FleetAuditRecord struct {
+	At     time.Time    `json:"at"`
+	Actor  string       `json:"actor"`
+	Before *FleetConfig `json:"before"`
+	After  *FleetConfig `json:"after"`
+}
+
+// RecordAudit appends rec to the capped audit list. The fleet configuration holds no secrets.
+func (s *FleetConfigStore) RecordAudit(ctx context.Context, rec FleetAuditRecord) error {
+	b, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+	pipe := s.client.Pipeline()
+	pipe.LPush(ctx, FleetAuditKey, string(b))
+	pipe.LTrim(ctx, FleetAuditKey, 0, FleetAuditMax-1)
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+// ListAudit returns up to limit recent audit records, newest first.
+func (s *FleetConfigStore) ListAudit(ctx context.Context, limit int) ([]FleetAuditRecord, error) {
+	if limit <= 0 || limit > FleetAuditMax {
+		limit = FleetAuditMax
+	}
+	items, err := s.client.LRange(ctx, FleetAuditKey, 0, int64(limit-1)).Result()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FleetAuditRecord, 0, len(items))
+	for _, it := range items {
+		var r FleetAuditRecord
+		if err := json.Unmarshal([]byte(it), &r); err == nil {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }

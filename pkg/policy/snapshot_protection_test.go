@@ -3,6 +3,8 @@
 package policy
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/protectiongroups"
 )
@@ -94,68 +97,133 @@ func TestSnapshot_ProtectionGroupEnforcedOnNextWrite(t *testing.T) {
 	require.Equal(t, 1, e.mr.CommandCount()-before)
 }
 
-func TestSnapshot_ProtectionGroupSharedAccountUserInheritsGroup(t *testing.T) {
+// Users on a shared connection account never inherit another identity's protection group: they keep their own
+// routing and replications, and only their writes to a bucket the group manages on their routed storage are
+// refused (same physical bucket, managed by the group). Both the snapshot and the direct Redis path.
+func TestSharedAccountUserNeverUsesOtherUsersGroup(t *testing.T) {
+	for _, snap := range []bool{true, false} {
+		t.Run(fmt.Sprintf("snapshot=%v", snap), func(t *testing.T) {
+			e := newSnapEnv(t)
+			ctx := t.Context()
+			svc := e.svc
+			if !snap {
+				svc = e.direct
+			}
+			// connection mode for everybody except "own" (override credentials)
+			svc.WithSharedAccount(func(storage, user string) bool { return user != "own" })
+			// alice: group on [main, follower] for bucket "shared" and her replication
+			require.NoError(t, svc.SetUserRouting(ctx, "alice", "main"))
+			_, err := svc.AddUserReplicationPolicy(ctx, entity.UserReplicationPolicy{User: "alice", FromStorage: "main", ToStorage: "follower"}, entity.ReplicationOptions{})
+			require.NoError(t, err)
+			// bob: routed to s0, which is not a group member; carol: routed to main without own policies
+			require.NoError(t, svc.SetUserRouting(ctx, "bob", "s0"))
+
+			other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+			t.Cleanup(func() { _ = other.Close() })
+			groups := protectiongroups.NewStore(other)
+			lease := groups.NewLease("p1", false, 0)
+			g := protectiongroups.Group{ID: "alice-g", User: "alice", Buckets: []string{"shared"}, Members: []string{"main", "follower"},
+				Copies: 2, Generation: 1, State: "ready"}
+			require.NoError(t, g.Validate())
+			require.NoError(t, groups.Save(ctx, &g))
+
+			reached := 0
+			fence := groups.Middleware(lease, svc.ProtectionScope)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached++ }))
+			write := func(user, bucket string) (int, context.Context) {
+				rctx, err := svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, user), bucket), user, bucket)
+				require.NoError(t, err)
+				rec := httptest.NewRecorder()
+				fence.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/"+bucket+"/k", nil).WithContext(rctx))
+				return rec.Code, rctx
+			}
+
+			// bob keeps routing to s0, never gets alice's replications, and may write
+			code, bctx := write("bob", "shared")
+			require.Equal(t, http.StatusOK, code)
+			require.Equal(t, "s0", xctx.GetRoutingPolicy(bctx))
+			require.Empty(t, xctx.GetReplications(bctx))
+			require.Empty(t, xctx.GetSharedProtectionGroup(bctx))
+
+			// carol is routed to a member: own routing, no replications of alice, write refused (403)
+			code, cctx := write("carol", "shared")
+			require.Equal(t, http.StatusForbidden, code)
+			require.Equal(t, "main", xctx.GetRoutingPolicy(cctx))
+			require.Empty(t, xctx.GetReplications(cctx))
+			require.Equal(t, "alice-g", xctx.GetSharedProtectionGroup(cctx))
+			// other buckets of carol are not managed by the group
+			code, _ = write("carol", "carol-bucket")
+			require.Equal(t, http.StatusOK, code)
+
+			// a user with its own credentials on the storage is not on the shared account
+			code, octx := write("own", "shared")
+			require.Equal(t, http.StatusOK, code)
+			require.Empty(t, xctx.GetSharedProtectionGroup(octx))
+
+			// alice herself is fenced by her group (ready, primary main): admitted with her replication
+			code, actx := write("alice", "shared")
+			require.Equal(t, http.StatusOK, code)
+			require.Equal(t, []string{"alice:main:follower"}, replStrings(xctx.GetReplications(actx)))
+			require.Equal(t, 4, reached, "bob, carol-bucket, own and alice were admitted; carol on the managed bucket was not")
+		})
+	}
+}
+
+func replStrings(ids []entity.UniversalReplicationID) []string {
+	var out []string
+	for _, id := range ids {
+		out = append(out, id.AsString())
+	}
+	return out
+}
+
+// An unreadable scope index is never cached as "not protected": the request fails closed.
+func TestSharedAccountGuardFailsClosedWhenIndexUnavailable(t *testing.T) {
 	e := newSnapEnv(t)
 	ctx := t.Context()
-	e.svc.WithSharedAccount(func(storage, user string) bool {
-		return true // all users on storage share connection account
-	})
-	require.NoError(t, e.svc.SetUserRouting(ctx, "user1", "main"))
-	_, err := e.svc.AddUserReplicationPolicy(ctx, entity.UserReplicationPolicy{User: "user1", FromStorage: "main", ToStorage: "follower"}, entity.ReplicationOptions{})
+	e.direct.WithSharedAccount(func(string, string) bool { return true })
+	e.mr.SetError("LOADING")
+	_, err := e.direct.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "b"), "bob", "b")
+	require.Error(t, err)
+	e.mr.SetError("")
+	// wrong type at the index key: HGETALL fails, the error is returned (and nothing is cached)
+	require.NoError(t, e.client.Set(ctx, protectiongroups.ScopeIndexKey, "x", 0).Err())
+	_, err = e.direct.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "b"), "bob", "b")
+	require.ErrorIs(t, err, dom.ErrUnavailable)
+	require.NoError(t, e.client.Del(ctx, protectiongroups.ScopeIndexKey).Err())
+	// a missing index is rebuilt, then the lookup answers
+	rctx, err := e.direct.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "b"), "bob", "b")
 	require.NoError(t, err)
+	require.Empty(t, xctx.GetSharedProtectionGroup(rctx))
+	v, err := e.client.HGet(ctx, protectiongroups.ScopeIndexKey, "_v").Result()
+	require.NoError(t, err)
+	require.Equal(t, "2", v)
+}
 
-	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
-	t.Cleanup(func() { _ = other.Close() })
-	groups := protectiongroups.NewStore(other)
-	require.NoError(t, groups.EnsureIndex(ctx))
-	lease := groups.NewLease("p1", false, 0)
-
-	g := protectiongroups.Group{
-		ID:         "group-1",
-		User:       "user1",
-		Members:    []string{"main", "follower"},
-		Copies:     2,
-		Generation: 1,
-		State:      "ready",
-		Frozen:     false,
+// The failover controller's protection check validates the config version and falls back to Redis.
+func TestProtectionGroupOfUsesCurrentIndex(t *testing.T) {
+	for _, snap := range []bool{true, false} {
+		e := newSnapEnv(t)
+		ctx := t.Context()
+		svc := e.svc
+		if !snap {
+			svc = e.direct
+		}
+		group, err := svc.ProtectionGroupOf(ctx, "alice", "b")
+		require.NoError(t, err)
+		require.Empty(t, group)
+		other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+		t.Cleanup(func() { _ = other.Close() })
+		groups := protectiongroups.NewStore(other)
+		g := protectiongroups.Group{ID: "g", User: "alice", Members: []string{"main", "follower"}, Copies: 2, State: "ready"}
+		require.NoError(t, g.Validate())
+		require.NoError(t, groups.Save(ctx, &g))
+		// no request validated the new version: the check must still see the group
+		group, err = svc.ProtectionGroupOf(ctx, "alice", "b")
+		require.NoError(t, err)
+		require.Equal(t, "g", group)
+		e.mr.SetError("LOADING")
+		_, err = svc.ProtectionGroupOf(ctx, "alice", "other")
+		require.Error(t, err, "unknown scope must be an error (fail closed), snapshot=%v", snap)
+		e.mr.SetError("")
 	}
-	require.NoError(t, g.Validate())
-	require.NoError(t, groups.Save(ctx, &g))
-
-	// User "test" (no explicit routing or replications of its own)
-	// BuildProxyContext for "test" on bucket "mybucket"
-	reqCtx := xctx.SetBucket(xctx.SetUser(ctx, "test"), "mybucket")
-	pCtx, err := e.svc.BuildProxyContext(reqCtx, "test", "mybucket")
-	require.NoError(t, err)
-
-	require.Equal(t, "main", xctx.GetRoutingPolicy(pCtx))
-	require.Equal(t, "user1", xctx.GetProtectionUser(pCtx))
-	repls := xctx.GetReplications(pCtx)
-	require.Len(t, repls, 1)
-	require.Equal(t, "user1:main:follower", repls[0].AsString())
-
-	// Write fence with lease
-	reached := 0
-	fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reached++
-	}))
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/mybucket/file.txt", nil).WithContext(pCtx)
-	fence.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, 1, reached)
-
-	// Now freeze group-1: write from "test" must be refused (503 Service Unavailable)
-	g.Frozen = true
-	g.State = "draining"
-	require.NoError(t, groups.Save(ctx, &g))
-
-	pCtx2, err := e.svc.BuildProxyContext(reqCtx, "test", "mybucket")
-	require.NoError(t, err)
-	rec2 := httptest.NewRecorder()
-	req2 := httptest.NewRequest(http.MethodPut, "/mybucket/file.txt", nil).WithContext(pCtx2)
-	fence.ServeHTTP(rec2, req2)
-	require.Equal(t, http.StatusServiceUnavailable, rec2.Code)
-	require.Equal(t, 1, reached, "write should have been blocked while frozen")
 }

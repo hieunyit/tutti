@@ -72,7 +72,6 @@ var viewerMethods = map[string]struct{}{
 	"/chorus.Resilience/ListAccessPolicies":       {},
 	"/chorus.Resilience/ListProxyAccounts":        {},
 	"/chorus.Resilience/GetProxyFleetConfig":      {},
-	"/chorus.Resilience/ListAuditLog":             {},
 	// ListS3Users returns metadata only (no secrets). Console user RPCs and all mutations are admin-only.
 	"/chorus.Resilience/ListS3Users": {},
 }

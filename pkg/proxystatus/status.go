@@ -97,6 +97,8 @@ type Status struct {
 	AppliedConfigVersion  int64     `json:"appliedConfigVersion"`
 	PendingRestart        bool      `json:"pendingRestart,omitempty"`
 	PendingRestartReasons []string  `json:"pendingRestartReasons,omitempty"`
+	// ConfigError is set when the latest fleet configuration was rejected; the last good one stays applied.
+	ConfigError string `json:"configError,omitempty"`
 	// Stats are cumulative traffic counters since StartedAt (nil for old documents).
 	Stats *trafficstats.Snapshot `json:"stats,omitempty"`
 	// Rates are the current traffic rates computed by the proxy over a short sliding window (nil for old documents).

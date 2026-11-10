@@ -143,8 +143,17 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		logger.Warn().Err(err).Msg("unable to load initial proxy fleet config, using startup settings")
 		initialFC = &proxystatus.FleetConfig{Version: 0, Groups: map[string]proxystatus.SettingsOverride{}}
 	}
-	initEff, initPending, initReasons := proxystatus.Resolve(startupSettings, group, initialFC)
+	// sync needs the Syncer, which only the S3 proxy has
+	syncAvailable := len(conf.Storage.S3Storages()) != 0
+	nStorages := len(conf.Storage.Storages)
+	initEff, initPending, initReasons, initErr := resolveFleet(startupSettings, group, initialFC, nStorages, syncAvailable)
+	if initErr != nil {
+		logger.Error().Err(initErr).Msg("stored proxy fleet config rejected, using startup settings")
+		initEff, initPending, initReasons, _ = resolveFleet(startupSettings, group, nil, nStorages, syncAvailable)
+		initialFC = &proxystatus.FleetConfig{Version: 0, Groups: map[string]proxystatus.SettingsOverride{}}
+	}
 	cfgState := &fleetConfigState{
+		configError:    errString(initErr),
 		settings:       initEff,
 		version:        initialFC.Version,
 		pendingRestart: initPending,
@@ -188,12 +197,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
+		// same predicate as the worker's bucket scope: only requests that really use the shared connection account
 		policySvc.WithSharedAccount(func(storage, user string) bool {
-			if credsSvc.CredentialMode(storage, user) == objstore.ModeConnection {
-				return true
-			}
-			_, ok := credsSvc.ConnectionAccount(storage)
-			return ok
+			return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
 		})
 		healthReg = health.NewRegistry(health.Config{
 			FailureThreshold: initEff.Health.FailureThreshold,
@@ -251,6 +257,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			MainStorage:        conf.Storage.Main,
 		}, policySvc, healthReg, failovercontroller.RedisLocker{Client: lockRedis}, failoverStore, logger,
 			failovercontroller.WithEnabled(initEff.Failover.Enabled),
+			// with controlPlane.backend=postgres the worker applies the failover through the control plane
+			failovercontroller.WithRemoteExecutor(failover.Remote{Client: confRedis}),
 			failovercontroller.WithUsers(func() []string {
 				var users []string
 				for name := range credsSvc.Storages() {
@@ -258,9 +266,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				}
 				return users
 			}),
-			failovercontroller.WithIsProtected(func(ctx context.Context, user, bucket string) bool {
-				group, ok := policySvc.ProtectionScope(ctx, user, bucket)
-				return ok && group != ""
+			failovercontroller.WithIsProtected(func(ctx context.Context, user, bucket string) (bool, error) {
+				// version-validated snapshot or Redis; unknown is an error and the scope is skipped
+				group, err := policySvc.ProtectionGroupOf(ctx, user, bucket)
+				return group != "", err
 			}),
 			failovercontroller.WithOnFailover(func(from, to string) {
 				if conf.Metrics.Enabled {
@@ -369,7 +378,20 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}
 			return
 		}
-		eff, pending, reasons := proxystatus.Resolve(startupSettings, group, fc)
+		eff, pending, reasons, err := resolveFleet(startupSettings, group, fc, nStorages, syncAvailable)
+		if err != nil {
+			// keep the last good configuration, report the rejection once per distinct error
+			if cfgState.setError(err.Error()) {
+				logger.Error().Err(err).Int64("version", fc.Version).Msg("proxy fleet config rejected, keeping the last good configuration")
+				if statusPub != nil {
+					if perr := statusPub.PublishOnce(ctx); perr != nil && ctx.Err() == nil {
+						logger.Warn().Err(perr).Msg("unable to publish proxy status after fleet config rejection")
+					}
+				}
+			}
+			return
+		}
+		cfgState.setError("")
 		proxyMux.SetReplicationOptions(router.ReplicationOptions{
 			OnEventError:     eff.Replication.OnEventError,
 			EventRetryBudget: eff.Replication.EventRetryBudget,
@@ -513,7 +535,30 @@ func storageProbe(clients objstore.Clients, creds objstore.CredsService, storage
 	}
 }
 
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// setError records the last fleet config rejection ("" clears it) and reports whether it changed.
+func (s *fleetConfigState) setError(msg string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	changed := s.configError != msg
+	s.configError = msg
+	return changed
+}
+
+func (s *fleetConfigState) getError() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.configError
+}
+
 type fleetConfigState struct {
+	configError    string
 	mu             sync.RWMutex
 	settings       proxystatus.Settings
 	version        int64
@@ -652,6 +697,7 @@ func proxyStatus(conf *Config, group string, cfgState *fleetConfigState, reg *he
 		AppliedConfigVersion:  version,
 		PendingRestart:        pending,
 		PendingRestartReasons: reasons,
+		ConfigError:           cfgState.getError(),
 	}
 	snapStats := trafficstats.Default.Snapshot()
 	st.Stats = &snapStats

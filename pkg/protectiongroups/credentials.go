@@ -19,11 +19,8 @@ func CredentialValidator(creds objstore.CredsService, policies *accesspolicy.Sto
 				}
 			}
 		}
-		if !known && (g.User == "default" || len(creds.Identities()) == 0) {
-			known = true
-		}
 		if !known {
-			return fmt.Errorf("%w: unknown protection-group user", dom.ErrInvalidArg)
+			return fmt.Errorf("%w: unknown protection-group user %q: use a configured S3 identity or a user with override credentials on a member", dom.ErrInvalidArg, g.User)
 		}
 		for _, m := range g.Members {
 			if creds.Storages()[m] != dom.S3 {

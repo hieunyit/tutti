@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,6 +26,11 @@ type ReplicationLister interface {
 }
 
 type replKey struct{ user, from, to string }
+
+var (
+	replMetricsMu   sync.Mutex
+	replMetricsKeys = map[replKey]bool{}
+)
 
 // CollectReplicationMetrics reads all replications once and replaces the replication_unprocessed_events series.
 // users lists the users that may own bucket replications.
@@ -51,9 +57,21 @@ func CollectReplicationMetrics(ctx context.Context, l ReplicationLister, users f
 			sums[replKey{p.User, p.FromStorage, p.ToStorage}] += float64(st.EventMigration.Unprocessed)
 		}
 	}
-	replicationUnprocessed.Reset()
+	// Update in place and delete only the series that disappeared: a Reset() would leave a window in which
+	// scrapes see no series at all (absent lag alerts flap, rate/increase queries break).
+	replMetricsMu.Lock()
+	defer replMetricsMu.Unlock()
 	for k, v := range sums {
 		replicationUnprocessed.WithLabelValues(k.user, k.from, k.to).Set(v)
+	}
+	for k := range replMetricsKeys {
+		if _, ok := sums[k]; !ok {
+			replicationUnprocessed.DeleteLabelValues(k.user, k.from, k.to)
+		}
+	}
+	replMetricsKeys = make(map[replKey]bool, len(sums))
+	for k := range sums {
+		replMetricsKeys[k] = true
 	}
 	return nil
 }

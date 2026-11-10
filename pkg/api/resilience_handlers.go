@@ -16,6 +16,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/s3users"
@@ -124,6 +125,7 @@ func (h *resilienceHandlers) GetProxyStatus(ctx context.Context, _ *emptypb.Empt
 			AppliedConfigVersion:  st.AppliedConfigVersion,
 			PendingRestart:        st.PendingRestart,
 			PendingRestartReasons: st.PendingRestartReasons,
+			ConfigError:           st.ConfigError,
 			Settings: &pb.ProxySettings{
 				Replication: &pb.ReplicationSettings{
 					OnEventError:     st.Settings.Replication.OnEventError,
@@ -261,6 +263,10 @@ func (h *resilienceHandlers) SetFailoverPolicy(ctx context.Context, req *pb.Fail
 	}
 	// the policy references its source and targets: serialize with runtime storage update/delete
 	if err := h.storageLocker.With(ctx, append([]string{p.Source}, p.Targets...), func(ctx context.Context) error {
+		// protection groups own the failover of their members: never let both act on the same storages
+		if err := protectiongroups.CheckLegacyFailoverPolicy(ctx, h.redis, p); err != nil {
+			return err
+		}
 		return h.store.SetFailoverPolicy(ctx, p)
 	}); err != nil {
 		return nil, err
