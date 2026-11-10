@@ -40,6 +40,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
@@ -251,12 +252,25 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Auth != nil {
 			defaultPolicy = conf.Auth.DefaultPolicy
 		}
-		proxyConfig.AccessMiddleware = access.Middleware(accessCache.Lookup,
+		accessMiddleware := access.Middleware(accessCache.Lookup,
 			access.WithDefaultPolicy(defaultPolicy),
 			access.WithSharedAccount(func(ctx context.Context, user string) bool {
 				// the policy middleware has set the routing policy: the storage the request goes to
 				return credsSvc.CredentialMode(xctx.GetRoutingPolicy(ctx), user) == objstore.ModeConnection
 			}))
+		// Writer lease of this proxy: refreshed while it runs, so a crashed proxy cannot block group promotion forever.
+		groupStore := protectiongroups.NewStore(confRedis)
+		// unprotected writes then cost one lookup (the fence rebuilds a missing index itself)
+		if err := groupStore.EnsureIndex(ctx); err != nil {
+			logger.Warn().Err(err).Msg("unable to prepare the protection group scope index")
+		}
+		groupLease := groupStore.NewLease(app.AppID, false, conf.ProtectionGroups.WriterLease)
+		// keep the lease (and its self-fencing) alive while the listener drains in-flight writes
+		leaseCtx, leaseStop := context.WithCancel(context.WithoutCancel(ctx))
+		defer leaseStop()
+		go groupLease.Run(leaseCtx)
+		groupFence := groupStore.Middleware(groupLease)
+		proxyConfig.AccessMiddleware = func(next http.Handler) http.Handler { return groupFence(accessMiddleware(next)) }
 		// runtime-managed accounts: secrets are sealed with the dynamic credentials master password.
 		// Without it no dynamic account can be created or authenticate.
 		accountCache := proxyaccount.NewCache(proxyaccount.NewStore(confRedis, func() (proxyaccount.Sealer, error) {
@@ -301,7 +315,17 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	// 0 = no drain wait (programmatic configs such as the standalone binary and tests); the embedded
 	// config.yaml sets drainDelay: 5s for the proxy binary
 	drainDelay := conf.DrainDelay
-	proxyServer := http.Server{Addr: fmt.Sprintf(":%d", conf.Port), Handler: ready.wrap(proxyMux)}
+	// no WriteTimeout: large uploads and downloads stream for a long time
+	readHeaderTimeout := conf.ReadHeaderTimeout
+	if readHeaderTimeout <= 0 {
+		readHeaderTimeout = DefaultReadHeaderTimeout
+	}
+	proxyServer := http.Server{
+		Addr:              fmt.Sprintf(":%d", conf.Port),
+		Handler:           ready.wrap(proxyMux),
+		ReadHeaderTimeout: readHeaderTimeout,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	server := util.NewServer()
 	err = server.Add("proxy_http", func(_ context.Context) error {
@@ -312,7 +336,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		ready.draining.Store(true)
 		logger.Info().Dur("drain_delay", drainDelay).Msg("shutdown: reporting not ready, draining")
 		if drainDelay > 0 {
-			time.Sleep(drainDelay)
+			select {
+			case <-time.After(drainDelay):
+			case <-shutdownCtx.Done():
+			}
 		}
 		return proxyServer.Shutdown(shutdownCtx)
 	})

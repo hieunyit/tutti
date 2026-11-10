@@ -72,6 +72,17 @@ type Config struct {
 	ReadHeaderTimeout time.Duration `yaml:"readHeaderTimeout"`
 	// Snapshot configures the in-memory routing/replication policy snapshot.
 	Snapshot SnapshotConfig `yaml:"snapshot"`
+	// ProtectionGroups configures the protection group write fence.
+	ProtectionGroups ProtectionGroupsConfig `yaml:"protectionGroups"`
+}
+
+// ProtectionGroupsConfig configures the protection group write fence of the proxy.
+type ProtectionGroupsConfig struct {
+	// WriterLease is the TTL of this proxy's writer lease, refreshed every WriterLease/6 while the proxy runs.
+	// After a crash, promotion of a frozen group waits at most this long (plus the status report expiry) for
+	// the dead proxy's in-flight writes. A proxy that cannot refresh it for WriterLease/2 cancels its in-flight
+	// protected writes. Default 30s.
+	WriterLease time.Duration `yaml:"writerLease"`
 }
 
 // ReadyConfig configures the readiness endpoint GET /ready.
@@ -97,6 +108,9 @@ func (c *Config) validateReady() error {
 	}
 	if c.Snapshot.PollInterval < 0 || c.Snapshot.FullReload < 0 {
 		return fmt.Errorf("proxy config: snapshot.pollInterval and fullReload must not be negative")
+	}
+	if c.ProtectionGroups.WriterLease < 0 || (c.ProtectionGroups.WriterLease > 0 && c.ProtectionGroups.WriterLease < time.Second) {
+		return fmt.Errorf("proxy config: protectionGroups.writerLease must be 0 (default) or at least 1s")
 	}
 	return nil
 }

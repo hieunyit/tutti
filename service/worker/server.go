@@ -42,7 +42,9 @@ import (
 	"github.com/hieunyit/tutti/pkg/notifications"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
+	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/rpc"
@@ -141,6 +143,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	bucketScope := accesspolicy.NewScope(func(storage, user string) bool {
 		return credsSvc.CredentialMode(storage, user) == objstore.ModeConnection
 	}, accesspolicy.NewStore(confRedis))
+	groupStore := protectiongroups.NewStore(confRedis)
+	groupService := &protectiongroups.Service{Store: groupStore, Backend: policySvc.ProtectionBackend(),
+		Resyncer:            protectiongroups.NewS3Resyncer(clientRegistry, bucketScope),
+		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accesspolicy.NewStore(confRedis)),
+		Reports:             func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 
 	workerSvc.SetBucketScope(bucketScope)
@@ -194,6 +201,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if conf.Metrics.Enabled {
 		mux.Use(metrics.WorkerMiddleware())
 	}
+	groupLease := groupStore.NewLease(app.AppID, true, protectiongroups.DefaultWriterLease)
+	// keep the lease alive until Start returns, i.e. after in-flight tasks finished on shutdown
+	leaseCtx, leaseStop := context.WithCancel(context.WithoutCancel(ctx))
+	defer leaseStop()
+	go groupLease.Run(leaseCtx)
+	mux.Use(groupStore.WorkerMiddleware(groupLease))
 	mux.Use(tasks.DropStaleReplicationTasks(policySvc.GetReplicationGeneration))
 	// common workers
 	switchWorker := handler.NewSwitchSvc(conf.Worker, policySvc, clientRegistry, replicationStatusLocker)
@@ -261,6 +274,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	logger.Info().Msg("registered diff fix workers")
 
 	server := util.NewServer()
+	err = server.Add("protection_groups", func(ctx context.Context) error { groupService.Run(ctx, time.Second); return nil }, func(context.Context) error { return nil })
+	if err != nil {
+		return err
+	}
 	err = server.Add("queue_workers", func(ctx context.Context) error {
 		err := srv.Start(mux)
 		if err != nil {
@@ -314,7 +331,16 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			// dynamic proxy accounts act as a storage user of the main storage
 			return credsSvc.HasUser(credsSvc.MainStorage(), user) == nil
 		}), api.WithS3Users(credsSvc, s3users.MinioVerifier(credsSvc.GetS3Address),
-			func(events *failover.Store) s3users.References { return s3users.PolicyReferences(policySvc, events) }),
+			func(events *failover.Store) s3users.References {
+				return func(ctx context.Context, user string) ([]string, error) {
+					reasons, err := s3users.PolicyReferences(policySvc, events)(ctx, user)
+					if err != nil {
+						return nil, err
+					}
+					groups, err := groupStore.References(ctx, user, "")
+					return append(reasons, groups...), err
+				}
+			}),
 			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)),
 			api.WithStorageLocker(storageLocker))
 
@@ -329,6 +355,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 
 		registerServices := func(srv *grpc.Server) {
+			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker))
 			pb.RegisterChorusServer(srv, chorusHandler)
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
@@ -361,6 +388,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				return err
 			}
 			if err := pb.RegisterResilienceHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
+				return err
+			}
+			if err := pb.RegisterProtectionGroupsHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
 			}
 			if webhookEnabled && !webhookOnSeparatePorts {

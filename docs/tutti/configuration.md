@@ -27,6 +27,7 @@ Defaults below are the effective values: the embedded `config.yaml` is always lo
 | `snapshot.disabled` | bool | `false` | [Policy snapshot](#policy-snapshot) |
 | `snapshot.pollInterval` | duration | `1s` | [Policy snapshot](#policy-snapshot) |
 | `snapshot.fullReload` | duration | `30s` | [Policy snapshot](#policy-snapshot) |
+| `protectionGroups.writerLease` | duration | `30s` | Writer lease of the protection group write fence (0 = default, else ≥ 1s); see [Protection groups](./protection-groups.md#writer-leases-and-crashed-proxies) |
 | `redis.addresses`, `redis.sentinel.*` | | none | [Redis](#redis) |
 | `redis.config` / `queue` / `lock` / `meta` | object | inherit | [Redis](#redis) |
 | `failover.enabled` | bool | `false` | [Automatic failover](#automatic-failover) |

@@ -11,6 +11,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/protectiongroups"
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/redis/go-redis/v9"
@@ -27,6 +28,11 @@ const (
 func RuntimeStorageReferences(pol s3users.PolicyService, creds objstore.CredsService, configRedis redis.UniversalClient, metaRedis redis.Cmdable) StorageReferences {
 	return func(ctx context.Context, name string) ([]string, error) {
 		var refs []string
+		groups, err := protectiongroups.NewStore(configRedis).References(ctx, "", name)
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, groups...)
 		users := map[string]struct{}{}
 		for st := range creds.Storages() {
 			for _, u := range creds.ListUsers(st) {

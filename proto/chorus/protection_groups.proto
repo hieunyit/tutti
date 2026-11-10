@@ -1,0 +1,58 @@
+syntax = "proto3";
+package chorus;
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+
+service ProtectionGroups {
+ rpc List(google.protobuf.Empty) returns (ProtectionGroupList);
+ rpc Get(ProtectionGroupID) returns (ProtectionGroupStatus);
+ rpc Create(CreateProtectionGroupRequest) returns (ProtectionGroup);
+ rpc Update(ProtectionGroup) returns (ProtectionGroup);
+ // Detach management; routing, replication and stored objects are preserved.
+ rpc Delete(ProtectionGroupID) returns (google.protobuf.Empty);
+ rpc Switchover(ProtectionGroupSwitchRequest) returns (google.protobuf.Empty);
+ rpc AbortSwitch(ProtectionGroupID) returns (google.protobuf.Empty);
+ rpc SetAutomaticFreeze(ProtectionAutomaticFreeze) returns (google.protobuf.Empty);
+ rpc GetAutomaticFreeze(google.protobuf.Empty) returns (ProtectionAutomaticFreeze);
+ rpc ListWriters(ProtectionGroupID) returns (ProtectionWriters);
+ rpc ClearWriter(ProtectionWriterClearRequest) returns (google.protobuf.Empty);
+}
+message ProtectionGroupID { string id=1; }
+message ProtectionGroup {
+ string id=1;
+ string user=2;
+ repeated string buckets=3;
+ repeated string members=4;
+ int32 copies=5;
+ int32 max_event_lag=6;
+ string mode=7;
+ google.protobuf.Duration after=8;
+ repeated string electorate=9;
+ int32 max_switches_per_hour=10;
+ string primary=11;
+ int64 generation=12;
+ int64 revision=13;
+ string state=14;
+ string target=15;
+ bool frozen=16;
+ repeated ProtectionGroupEvent history=17;
+ string last_error=18;
+ repeated string quarantined=19;
+}
+message ProtectionGroupEvent {
+ string from=1;string to=2;int64 generation=3;google.protobuf.Timestamp at=4;bool automatic=5;int32 event_lag=6;
+}
+message ProtectionGroupMemberStatus {
+ string storage=1;bool available=2;bool initialized=3;int32 event_lag=4;bool current=5;
+}
+message ProtectionGroupStatus {
+ ProtectionGroup group=1;repeated ProtectionGroupMemberStatus members=2;int32 healthy_copies=3;int64 active_writers=4;
+}
+message ProtectionGroupList { repeated ProtectionGroup groups=1; }
+message CreateProtectionGroupRequest { ProtectionGroup group=1;bool adopt_existing=2; }
+message ProtectionGroupSwitchRequest { string id=1;string target=2; }
+message ProtectionAutomaticFreeze { bool frozen=1; }
+message ProtectionWriters { map<string,string> writers=1;map<string,string> workers=2; }
+message ProtectionWriterClearRequest { string id=1;string token=2;bool externally_fenced=3;bool worker=4; }

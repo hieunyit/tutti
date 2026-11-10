@@ -232,3 +232,39 @@ Each item was checked against `main`. Items only present on upstream branches ar
 | PERF-3 | ~8 Redis ops per S3 request in the policy middleware | **Confirmed** (see `performance-and-redis.md`) | Plan, Phase 1: in-memory policy/routing snapshot with versioned invalidation (pub/sub); must keep switch/failover correctness (generation checks) |
 | PERF-4 | 4 logical DBs on one Redis; Redis Cluster supports only DB 0 | **Confirmed** | Plan, Phase 1/6: separate instances (config / queues+locks / metadata) and key prefixes instead of DB numbers, so each can be scaled or clustered |
 | PERF-5 | synchronous replication latency wall (lock + read + write per destination per PUT) | **Confirmed by design** | Document the trade-off; Phase 3 protection groups use async by default with quorum only where required; consider streaming the client body to destinations directly (tee) instead of re-reading from the primary |
+
+## 5. Review of protection groups (2026-11-10)
+
+External static review of the Phase 3 / Phase 4 implementation (`pkg/protectiongroups`, see
+[Protection groups](./protection-groups.md)), verified against the code, then fixed.
+
+| ID | Finding | Verdict | Status |
+|---|---|---|---|
+| NEW-01 | admission Lua script runs `HVALS tutti:protection:groups` and decodes every group on every proxy write | **Confirmed** (`fence.go` admit script): O(groups) Redis CPU per write, and Lua blocks Redis for its duration | **Done** — scope index `tutti:protection:scope` (`u:<user>` / `b:<user>/<bucket>` → id) rebuilt in the same transaction as group create/delete; admission = one HMGET (+ HGET of that one group, HSET writer record, SET lease when protected). Missing index is rebuilt before deciding (never admits unfenced). Test counts commands per admit: constant for 1/50/500 groups |
+| NEW-02 | writer records never expire; a crashed proxy blocks promotion forever until `ClearWriter` | **Confirmed** (by design, `fence.go` comment): crashed proxy, or even a live proxy whose release `HDEL` failed once, starved promotion permanently | **Done** — per-process lease (instance nonce, TTL `protectionGroups.writerLease`, default 30s, refreshed every TTL/6); a record is reaped only when its lease expired/was replaced **and** the proxy is absent from fresh status reports (or reports a later restart); self-fencing cancels in-flight protected writes after TTL/2 without refresh; failed releases are retried. Promotion after a crash waits ≤ lease + status expiry + 1 reconcile; alive slow writers still block. `ClearWriter` kept |
+| NEW-03 | resync streams and SHA-256-hashes every object on both sides, twice per object, while frozen | **Confirmed** (`resync.go` source loop and destination loop both call `verifyResyncObject`): 4 full reads per object under the write freeze, plus a HEAD per object | **Done** — one merge-join pass over both listings; size → ETag (when it decides) → hash only if inconclusive (multipart layouts), each side read at most once; copies verified from the streamed digest. Plus catch-up before freeze (below) |
+
+Additional findings fixed in the same pass:
+
+| Finding | Impact | Fix |
+|---|---|---|
+| Groups stayed **frozen during the whole initial migration** after creation and after every promotion (`Create` and `Commit` set `frozen`, and `initializing` waited for full catch-up while frozen) | After a failover, writes were refused until the new primary had re-copied everything to the other members: an outage proportional to data size | `initializing` now unfreezes while members catch up and freezes only for the final drain + resync of caught-up members |
+| `Reconcile` error path saved the in-memory group with `LastError`, persisting half-applied transitions (e.g. `ready`/unfrozen when the final `Commit` failed) | Group marked ready without a successful commit | Error path reloads the stored group and records only `LastError`; the final transition is built on a copy |
+| Unbounded `history` in the group document | Grows the document decoded by every admission | Keep the newest `max(100, maxSwitchesPerHour)` events |
+| Worker tasks of a replication from a demoted primary were retried forever by the fence | Queue noise, retries until max retry | Stale-route refusals are `SkipRetry` (their generation was already bumped) |
+| `proto/http.yaml` had a second block of selectors for RPCs that do not exist (`ListProtectionGroups`, …) | `buf generate` fails (`HTTP rules without a matching selector`) | Removed the dangling block |
+| Resync could delete target objects based on an out-of-order listing | Replica object loss before the error is detected | Deletions are applied only after both listings were consumed in ascending order |
+
+Verification: unit tests in `pkg/protectiongroups` (fence/index/lease/reaper, controller with fake backend,
+resync metadata-first), `-race`; e2e `test/resilience/protection_groups_test.go`: 3 MinIO storages, group
+primary A blackholed → automatic failover to B by a three-proxy electorate, C keeps receiving copies; a proxy
+partitioned from Redis mid-write → switchover completes ~4s after the partition (lease 3s).
+
+Remaining risks / next steps:
+- A frozen group still waits for in-flight writes to a blackholed primary until the storage HTTP timeout; a
+  proxy-side abort of protected writes when its group freezes would bound this further.
+- Self-fencing cancels the request context; a backend that already received the whole body may still commit
+  shortly after. The TTL/2 margin covers normal completion times, not arbitrarily slow storages.
+- Workers have no status reports: their lease alone decides reaping.
+- No automatic failover while a group is `initializing` (catch-up after a previous promotion).
+- Equal MD5-form ETags are trusted as equal content (MD5 collisions crafted by the tenant itself).

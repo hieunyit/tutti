@@ -56,6 +56,11 @@ snapshot:
   disabled: false
   pollInterval: 1s
   fullReload: 30s
+# Protection group write fence. Each proxy holds a writer lease (Redis key tutti:protection:lease:proxy:<app_id>, refreshed
+# every writerLease/6). A frozen group waits for the in-flight writes of a crashed proxy at most writerLease (plus the status
+# report expiry) before its promotion proceeds; a proxy that cannot refresh its lease for writerLease/2 cancels its writes.
+protectionGroups:
+  writerLease: 30s
 cors:
   enabled: false
   allowAll: false

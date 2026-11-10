@@ -188,3 +188,32 @@ http:
       body: "*"
     - selector: chorus.Resilience.GetRuntimeStorage
       get: /tutti/storages/{name}
+    - selector: chorus.ProtectionGroups.List
+      get: /tutti/protection-groups
+    - selector: chorus.ProtectionGroups.Get
+      get: /tutti/protection-groups/{id}
+    - selector: chorus.ProtectionGroups.Create
+      post: /tutti/protection-groups
+      body: "*"
+    - selector: chorus.ProtectionGroups.Update
+      put: /tutti/protection-groups
+      body: "*"
+    - selector: chorus.ProtectionGroups.Delete
+      post: /tutti/protection-groups/delete
+      body: "*"
+    - selector: chorus.ProtectionGroups.Switchover
+      post: /tutti/protection-groups/switchover
+      body: "*"
+    - selector: chorus.ProtectionGroups.AbortSwitch
+      post: /tutti/protection-groups/abort-switch
+      body: "*"
+    - selector: chorus.ProtectionGroups.SetAutomaticFreeze
+      put: /tutti/protection-groups/automatic-freeze
+      body: "*"
+    - selector: chorus.ProtectionGroups.GetAutomaticFreeze
+      get: /tutti/protection-groups/automatic-freeze/status
+    - selector: chorus.ProtectionGroups.ListWriters
+      get: /tutti/protection-groups/{id}/writers
+    - selector: chorus.ProtectionGroups.ClearWriter
+      post: /tutti/protection-groups/clear-writer
+      body: "*"
