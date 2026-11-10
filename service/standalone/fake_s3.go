@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
@@ -28,7 +29,12 @@ import (
 func serveFakeS3(ctx context.Context, port int) error {
 	mux := http.NewServeMux()
 	mux.Handle("/", gofakes3.New(s3mem.New()).Server())
-	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	server := http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	go func() {
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())

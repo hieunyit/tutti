@@ -67,6 +67,9 @@ type Config struct {
 	Ready ReadyConfig `yaml:"ready"`
 	// DrainDelay is how long the proxy reports not-ready before it stops listening on SIGTERM. Default 5s (embedded config.yaml); 0 disables the wait.
 	DrainDelay time.Duration `yaml:"drainDelay"`
+	// ReadHeaderTimeout bounds how long a client may take to send request headers (Slowloris protection).
+	// It is not applied to the request body or response, so large uploads and downloads are not cut off. Default 10s.
+	ReadHeaderTimeout time.Duration `yaml:"readHeaderTimeout"`
 	// Snapshot configures the in-memory routing/replication policy snapshot.
 	Snapshot SnapshotConfig `yaml:"snapshot"`
 }
@@ -89,8 +92,8 @@ type SnapshotConfig struct {
 }
 
 func (c *Config) validateReady() error {
-	if c.Ready.MaxStaleness < 0 || c.DrainDelay < 0 {
-		return fmt.Errorf("proxy config: ready.maxStaleness and drainDelay must not be negative")
+	if c.Ready.MaxStaleness < 0 || c.DrainDelay < 0 || c.ReadHeaderTimeout < 0 {
+		return fmt.Errorf("proxy config: ready.maxStaleness, drainDelay and readHeaderTimeout must not be negative")
 	}
 	if c.Snapshot.PollInterval < 0 || c.Snapshot.FullReload < 0 {
 		return fmt.Errorf("proxy config: snapshot.pollInterval and fullReload must not be negative")

@@ -203,3 +203,4 @@ See [performance and Redis recovery](./performance-and-redis.md) for the measure
 - [Runbooks](./runbooks.md): step-by-step procedures for failover, failback, Redis incidents, key rotation and console lockout.
 - [Storage accounts](./storage-accounts.md): credentials and policies for each storage (connection account: available, see Phase 2 backend).
 - [Redis operations](./redis-operations.md): Redis keys by kind, persistence, Sentinel, backup and restore, monitoring.
+- [Upstream branches](./upstream-branches.md): which `upstream/*` branches are safe to merge, review, or must not be merged.

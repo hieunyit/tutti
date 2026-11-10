@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 )
@@ -39,7 +40,12 @@ func serveUI(ctx context.Context, port int) (func() error, error) {
 	_ = f.Close()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleSPA)
-	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	server := http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	go func() {
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())

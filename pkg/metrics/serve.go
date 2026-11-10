@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -66,7 +67,12 @@ func Server(ctx context.Context, port int, version dom.AppInfo) (start func(cont
 	mux.HandleFunc("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
 	mux.HandleFunc("/debug/pprof/mutex", pprof.Handler("mutex").ServeHTTP)
 
-	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	server := http.Server{
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	start = func(_ context.Context) error {
 		return server.ListenAndServe()

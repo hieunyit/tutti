@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
@@ -69,7 +70,11 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 	}).Handler(mux)
 
 	handler := wsproxy.WebsocketProxy(withCors)
-	srv := &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", conf.HttpPort)}
+	srv := &http.Server{
+		Addr:              fmt.Sprintf("0.0.0.0:%d", conf.HttpPort),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	srv.Handler = handler
 
 	start = func(_ context.Context) error {

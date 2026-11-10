@@ -172,10 +172,38 @@ func (s *snapshot) status() SnapshotStatus {
 	return st
 }
 
+// resubscribe/backoff bounds for the change-notification subscription after its channel closed.
+const (
+	resubscribeMin = 500 * time.Millisecond
+	resubscribeMax = 30 * time.Second
+)
+
+// nextBackoff doubles d up to resubscribeMax.
+func nextBackoff(d time.Duration) time.Duration {
+	d *= 2
+	if d > resubscribeMax {
+		return resubscribeMax
+	}
+	return d
+}
+
+// resubscribe opens a new change-notification subscription and waits until Redis confirms it.
+func (s *snapshot) resubscribe(ctx context.Context) (*redis.PubSub, error) {
+	ps := s.rc.Subscribe(ctx, SnapshotChannel)
+	if _, err := ps.ReceiveTimeout(ctx, 2*time.Second); err != nil {
+		_ = ps.Close()
+		return nil, err
+	}
+	return ps, nil
+}
+
 func (s *snapshot) run(ctx context.Context) {
 	ps := s.rc.Subscribe(ctx, SnapshotChannel)
-	defer ps.Close()
+	defer func() { _ = ps.Close() }()
 	msgs := ps.Channel()
+	// resubC fires when a new subscription should be attempted after the channel was closed
+	var resubC <-chan time.Time
+	backoff := resubscribeMin
 	t := time.NewTicker(s.cfg.PollInterval)
 	defer t.Stop()
 	for {
@@ -184,10 +212,26 @@ func (s *snapshot) run(ctx context.Context) {
 			return
 		case _, ok := <-msgs:
 			if !ok {
-				msgs = nil // closed: the poll keeps the snapshot fresh
+				// closed: the poll keeps the snapshot fresh meanwhile; re-subscribe with backoff
+				_ = ps.Close()
+				msgs = nil
+				s.cfg.Logger.Warn().Dur("retry_in", backoff).Msg("policy snapshot: change subscription closed, resubscribing")
+				resubC = time.After(backoff)
 				continue
 			}
 			_ = s.refresh(ctx, false)
+		case <-resubC:
+			resubC = nil
+			nps, err := s.resubscribe(ctx)
+			if err != nil {
+				backoff = nextBackoff(backoff)
+				s.cfg.Logger.Warn().Err(err).Dur("retry_in", backoff).Msg("policy snapshot: resubscribe failed")
+				resubC = time.After(backoff)
+				continue
+			}
+			ps, msgs = nps, nps.Channel()
+			backoff = resubscribeMin
+			_ = s.refresh(ctx, false) // catch up on changes missed while unsubscribed
 		case <-t.C:
 			force := false
 			if cur := s.cur.Load(); cur != nil && time.Since(cur.created) >= s.cfg.FullReload {

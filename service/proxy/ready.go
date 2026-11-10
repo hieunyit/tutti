@@ -12,6 +12,9 @@ import (
 // DefaultReadyMaxStaleness is how long the proxy stays ready on its last known snapshot while Redis is down.
 const DefaultReadyMaxStaleness = 30 * time.Second
 
+// DefaultReadHeaderTimeout bounds how long a client may take to send request headers when the config leaves it unset.
+const DefaultReadHeaderTimeout = 10 * time.Second
+
 // readiness answers GET /ready for the load balancer.
 type readiness struct {
 	snapshot     func() policy.SnapshotStatus
