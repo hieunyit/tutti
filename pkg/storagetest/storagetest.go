@@ -976,7 +976,14 @@ func (r *runner) versioning(ctx context.Context, key string, wrote bool) {
 		fail(err)
 		return
 	}
-	_ = resp
+	var config struct {
+		Status string `xml:"Status"`
+	}
+	if err := xml.Unmarshal(resp.body, &config); err != nil {
+		fail(fmt.Errorf("decode bucket versioning: %w", err))
+		return
+	}
+	r.versioned = r.versioned || config.Status == "Enabled" || config.Status == "Suspended"
 	if !r.ownsBucket {
 		r.add(Step{ID: StepVersioning, Status: Warn, LatencyMs: time.Since(start).Milliseconds(),
 			Message: "GetBucketVersioning works; versioning was not changed on the existing probe bucket " + r.bucket,
@@ -1193,31 +1200,7 @@ func (r *runner) cleanup(ctx context.Context) {
 			note(err, r.bucket+"/"+k)
 		}
 	}
-	if r.versioned {
-		resp, err := r.signed(cctx, "ListObjectVersions", "GET", r.bucket, "", url.Values{"versions": {""}}, nil, nil)
-		if err != nil {
-			note(err, "bucket "+r.bucket)
-		} else {
-			var vs struct {
-				Versions []struct {
-					Key, VersionId string
-				} `xml:"Version"`
-				Markers []struct {
-					Key, VersionId string
-				} `xml:"DeleteMarker"`
-			}
-			_ = xml.Unmarshal(resp.body, &vs)
-			all := append(vs.Versions, vs.Markers...)
-			for _, v := range all {
-				if !strings.HasPrefix(v.Key, r.runPrefix()) {
-					continue
-				}
-				if _, err := r.signed(cctx, "DeleteObjectVersion", "DELETE", r.bucket, v.Key, url.Values{"versionId": {v.VersionId}}, nil, nil); err != nil {
-					note(err, r.bucket+"/"+v.Key+" (version "+v.VersionId+")")
-				}
-			}
-		}
-	}
+
 	// objects of the multipart/feature steps that are not tracked: list and remove what is left under the probe prefix
 	if len(errs) == 0 {
 		if resp, err := r.signed(cctx, "ListObjectsV2", "GET", r.bucket, "", url.Values{"list-type": {"2"}, "prefix": {r.runPrefix()}}, nil, nil); err == nil {
@@ -1232,6 +1215,19 @@ func (r *runner) cleanup(ctx context.Context) {
 			}
 		}
 	}
+	if r.versioned {
+		versions, err := r.probeVersions(cctx)
+		if err != nil {
+			note(err, r.bucket+"/"+r.runPrefix()+" (versions could not be listed)")
+		} else {
+			for _, v := range versions {
+				if _, err := r.signed(cctx, "DeleteObjectVersion", "DELETE", r.bucket, v.Key, url.Values{"versionId": {v.VersionId}}, nil, nil); err != nil {
+					note(err, r.bucket+"/"+v.Key+" (version "+v.VersionId+")")
+				}
+			}
+		}
+	}
+
 	if r.ownsBucket {
 		if _, err := r.signed(cctx, "DeleteBucket", "DELETE", r.bucket, "", nil, nil, nil); err != nil {
 			note(err, "bucket "+r.bucket)
@@ -1254,6 +1250,45 @@ func (r *runner) cleanup(ctx context.Context) {
 	r.pass(StepDelete, time.Since(start), msg)
 }
 
+type probeVersion struct {
+	Key, VersionId string
+}
+
+// Collect before deleting: pagination markers may name versions removed by cleanup.
+func (r *runner) probeVersions(ctx context.Context) ([]probeVersion, error) {
+	query := url.Values{"versions": {""}, "prefix": {r.runPrefix()}}
+	var versions []probeVersion
+	for {
+		resp, err := r.signed(ctx, "ListObjectVersions", "GET", r.bucket, "", query, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		var page struct {
+			Versions    []probeVersion `xml:"Version"`
+			Markers     []probeVersion `xml:"DeleteMarker"`
+			Truncated   bool           `xml:"IsTruncated"`
+			NextKey     string         `xml:"NextKeyMarker"`
+			NextVersion string         `xml:"NextVersionIdMarker"`
+		}
+		if err := xml.Unmarshal(resp.body, &page); err != nil {
+			return nil, fmt.Errorf("decode probe versions: %w", err)
+		}
+		for _, v := range append(page.Versions, page.Markers...) {
+			if strings.HasPrefix(v.Key, r.runPrefix()) {
+				versions = append(versions, v)
+			}
+		}
+		if !page.Truncated {
+			return versions, nil
+		}
+		if page.NextKey == "" || (page.NextKey == query.Get("key-marker") && page.NextVersion == query.Get("version-id-marker")) {
+			return nil, errors.New("probe version listing returned a non-advancing pagination marker")
+		}
+		query.Set("key-marker", page.NextKey)
+		query.Set("version-id-marker", page.NextVersion)
+	}
+}
+
 // actualLeftovers re-checks what is really still there after failed deletions (a failed call may have been
 // compensated by another one); it falls back to the failed targets if the storage cannot be listed.
 func (r *runner) actualLeftovers(ctx context.Context, fallback []string) []string {
@@ -1268,14 +1303,18 @@ func (r *runner) actualLeftovers(ctx context.Context, fallback []string) []strin
 		}
 		out = append(out, "bucket "+r.bucket)
 	}
+	if r.versioned {
+		versions, err := r.probeVersions(ctx)
+		if err != nil {
+			return fallback
+		}
+		for _, v := range versions {
+			out = append(out, r.bucket+"/"+v.Key+" (version "+v.VersionId+")")
+		}
+		return out
+	}
 	q := url.Values{"list-type": {"2"}, "prefix": {r.runPrefix()}}
-	if r.versioned {
-		q = url.Values{"versions": {""}, "prefix": {r.runPrefix()}}
-	}
 	call := "ListObjectsV2"
-	if r.versioned {
-		call = "ListObjectVersions"
-	}
 	resp, err := r.signed(ctx, call, "GET", r.bucket, "", q, nil, nil)
 	if err != nil {
 		return fallback
@@ -1482,6 +1521,10 @@ func (r *runner) send(ctx context.Context, method, rawURL string, headers map[st
 // signed sends a signed request; a status >= 300 is returned as *callError together with the response.
 func (r *runner) signed(ctx context.Context, call, method, bucket, key string, q url.Values, headers map[string]string, body []byte) (*response, error) {
 	resp, err := r.send(ctx, method, r.reqURL(bucket, key, q), headers, body, call, true)
+	// Detect versioned writes even when the optional versioning feature check is disabled.
+	if resp != nil && resp.status < 300 && bucket == r.bucket && strings.HasPrefix(key, r.runPrefix()) && resp.header.Get("X-Amz-Version-Id") != "" {
+		r.versioned = true
+	}
 	if err != nil {
 		return resp, err
 	}

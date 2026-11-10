@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"math/big"
 	"net"
 	"net/http"
@@ -412,4 +413,44 @@ func TestContextCancelled(t *testing.T) {
 	cancel()
 	res := storagetest.Run(ctx, opts(srv.URL))
 	require.False(t, res.OK)
+}
+
+func TestExistingVersionedProbeBucketCleansEveryProbeVersion(t *testing.T) {
+	for _, featureEnabled := range []bool{true, false} {
+		t.Run(fmt.Sprint(featureEnabled), func(t *testing.T) {
+			srv := fakes3.New()
+			defer srv.Close()
+			srv.SeedVersionedObject("existing", "original-user-data", []byte("keep me"))
+			srv.VersionPageSize = 2
+			o := opts(srv.URL)
+			o.ProbeBucket = "existing"
+			o.Features = &storagetest.Features{Versioning: featureEnabled}
+			o.Throughput = true
+			res := storagetest.Run(t.Context(), o)
+			require.True(t, res.OK, "%+v", res.Steps)
+			require.Empty(t, res.Leftovers)
+			require.Equal(t, 1, srv.Objects("existing"), "only the original user object version should remain")
+			for _, request := range srv.Requests {
+				if request.Op == "DeleteObjectVersion" || request.Op == "DeleteObject" {
+					require.NotEqual(t, "original-user-data", request.Key)
+				}
+			}
+		})
+	}
+}
+
+func TestExistingVersionedProbeBucketReportsDeniedVersionCleanup(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	srv.SeedVersionedObject("existing", "original-user-data", []byte("keep me"))
+	srv.Deny["DeleteObjectVersion"] = true
+	o := opts(srv.URL)
+	o.ProbeBucket = "existing"
+	o.Features = &storagetest.Features{}
+	res := storagetest.Run(t.Context(), o)
+	require.False(t, res.OK)
+	require.NotEmpty(t, res.Leftovers)
+	require.Equal(t, storagetest.Fail, step(t, res, storagetest.StepDelete).Status)
+	require.Contains(t, step(t, res, storagetest.StepDelete).MissingPermission, "s3:DeleteObjectVersion")
+	require.Greater(t, srv.Objects("existing"), 1)
 }

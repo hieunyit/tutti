@@ -39,8 +39,9 @@ type Request struct {
 }
 
 type version struct {
-	id   string
-	data []byte
+	id     string
+	data   []byte
+	marker bool
 }
 
 type bucket struct {
@@ -66,6 +67,8 @@ type Server struct {
 	DateOffset time.Duration
 	// NoVersioning answers the versioning calls with NotImplemented.
 	NoVersioning bool
+	// VersionPageSize bounds pages in ListObjectVersions for pagination tests.
+	VersionPageSize int
 	// Owner is the owner display name of ListBuckets.
 	Owner string
 	// Region is the bucket location.
@@ -116,6 +119,19 @@ func (s *Server) CreateBucket(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.buckets[name] = &bucket{objects: map[string][]version{}, uploads: map[string]string{}}
+}
+
+// SeedVersionedObject creates an existing versioned object for connection-test fixtures.
+func (s *Server) SeedVersionedObject(bucketName, key string, data []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	b := s.buckets[bucketName]
+	if b == nil {
+		b = &bucket{objects: map[string][]version{}, uploads: map[string]string{}}
+		s.buckets[bucketName] = b
+	}
+	b.versioned = true
+	b.objects[key] = []version{{id: "original", data: append([]byte(nil), data...)}}
 }
 
 // Objects returns the number of stored objects (all versions) of the bucket.
@@ -312,7 +328,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		prefix := q.Get("prefix")
 		keys := make([]string, 0)
 		for k, vs := range b.objects {
-			if strings.HasPrefix(k, prefix) && len(vs) > 0 {
+			if strings.HasPrefix(k, prefix) && len(vs) > 0 && !vs[len(vs)-1].marker {
 				keys = append(keys, k)
 			}
 		}
@@ -335,10 +351,35 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		sort.Strings(keys)
+		type listed struct {
+			key string
+			v   version
+		}
+		var all []listed
 		for _, k := range keys {
 			for _, v := range b.objects[k] {
-				fmt.Fprintf(w, "<Version><Key>%s</Key><VersionId>%s</VersionId></Version>", k, v.id)
+				all = append(all, listed{key: k, v: v})
 			}
+		}
+		if marker := q.Get("key-marker"); marker != "" {
+			for i, item := range all {
+				if item.key == marker && item.v.id == q.Get("version-id-marker") {
+					all = all[i+1:]
+					break
+				}
+			}
+		}
+		if s.VersionPageSize > 0 && len(all) > s.VersionPageSize {
+			all = all[:s.VersionPageSize]
+			last := all[len(all)-1]
+			fmt.Fprintf(w, "<IsTruncated>true</IsTruncated><NextKeyMarker>%s</NextKeyMarker><NextVersionIdMarker>%s</NextVersionIdMarker>", last.key, last.v.id)
+		}
+		for _, item := range all {
+			tag := "Version"
+			if item.v.marker {
+				tag = "DeleteMarker"
+			}
+			fmt.Fprintf(w, "<%s><Key>%s</Key><VersionId>%s</VersionId></%s>", tag, item.key, item.v.id, tag)
 		}
 		fmt.Fprint(w, `</ListVersionsResult>`)
 	case "ListMultipartUploads":
@@ -390,7 +431,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		}
 	case "GetObject", "HeadObject":
 		vs := b.objects[key]
-		if len(vs) == 0 {
+		if len(vs) == 0 || vs[len(vs)-1].marker {
 			xmlErr(w, 404, "NoSuchKey", "The specified key does not exist.")
 			return
 		}
@@ -399,7 +440,16 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		}
 	case "GetObjectTagging", "PutObjectTagging", "GetObjectAcl", "PutObjectAcl":
 	case "DeleteObject":
-		delete(b.objects, key)
+		if b.versioned {
+			id := make([]byte, 4)
+			_, _ = rand.Read(id)
+			markerID := hex.EncodeToString(id)
+			b.objects[key] = append(b.objects[key], version{id: markerID, marker: true})
+			w.Header().Set("X-Amz-Version-Id", markerID)
+			w.Header().Set("X-Amz-Delete-Marker", "true")
+		} else {
+			delete(b.objects, key)
+		}
 		w.WriteHeader(204)
 	case "DeleteObjectVersion":
 		id := q.Get("versionId")
