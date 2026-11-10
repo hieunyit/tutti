@@ -114,6 +114,15 @@ type policyHandlers struct {
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
+	if req.Id != nil && req.Id.User == "" {
+		if ids := h.credsSvc.Identities(); len(ids) > 0 {
+			req.Id.User = ids[0]
+		} else if users := h.credsSvc.ListOverrideUsers(req.Id.FromStorage); len(users) > 0 {
+			req.Id.User = users[0]
+		} else {
+			req.Id.User = "default"
+		}
+	}
 	// validate request:
 	uid, err := pbToReplicationID(req.Id)
 	if err != nil {

@@ -22,7 +22,7 @@ export default <I18nMessages>{
     statusLagging: 'Behind',
     replicationsListTitle: 'Replication jobs',
     pageDescription:
-      'Continuously copy objects from a source storage to a destination, for a single bucket or for all buckets of a user.',
+      'Continuously copy objects from a source storage to a destination, for a single bucket or for all buckets.',
     replicationsTitle: 'Replication',
     noResultsTitle: 'No Replications yet',
     noResultsText:
@@ -145,11 +145,11 @@ export default <I18nMessages>{
     filterStatusLiveBehind: 'Live Replication: Behind',
     filterByCreatedAtStartPlaceholder: 'Filter by',
     filterByCreatedAtEndPlaceholder: 'Created At',
-    userReplication: 'User Replication',
+    userReplication: 'All Buckets',
     userReplicationDescription:
-      'Replicates all current and future buckets for the user.',
+      'Replicates all current and future buckets on the storage.',
     filterTypeBucket: 'Bucket replication',
-    filterTypeUser: 'User replication',
+    filterTypeUser: 'All buckets replication',
     filterByTypePlaceholder: 'Filter by Type',
   },
   [I18nLocale.DE]: {
@@ -157,7 +157,7 @@ export default <I18nMessages>{
     statusLagging: 'Im Rückstand',
     replicationsListTitle: 'Replikationsjobs',
     pageDescription:
-      'Kopiert Objekte fortlaufend von einem Quellspeicher in ein Ziel, für einen einzelnen Bucket oder alle Buckets eines Benutzers.',
+      'Kopiert Objekte fortlaufend von einem Quellspeicher in ein Ziel, für einen einzelnen Bucket oder alle Buckets.',
     replicationsTitle: 'Replikation',
     noResultsTitle: 'Noch keine Replikationen',
     noResultsText:
@@ -284,11 +284,11 @@ export default <I18nMessages>{
     filterStatusLiveBehind: 'Live-Replikation: Hinterher',
     filterByCreatedAtStartPlaceholder: 'Filtern nach',
     filterByCreatedAtEndPlaceholder: 'Erstellt am',
-    userReplication: 'Benutzer-Replikation',
+    userReplication: 'Alle Buckets',
     userReplicationDescription:
-      'Repliziert alle aktuellen und zukünftigen Buckets dieses Nutzers.',
+      'Repliziert alle aktuellen und zukünftigen Buckets dieses Speichers.',
     filterTypeBucket: 'Bucket-Replikation',
-    filterTypeUser: 'Benutzer-Replikation',
+    filterTypeUser: 'Alle-Buckets-Replikation',
     filterByTypePlaceholder: 'Nach Typ filtern',
   },
 };

@@ -19,7 +19,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     pageDescription:
-      'Choose a source and destination storage, a user and the buckets to replicate. Existing objects are copied first, then changes are kept in sync.',
+      'Choose a source and destination storage, and the buckets to replicate. Existing objects are copied first, then changes are kept in sync.',
     backToReplication: 'Replication',
     breadcrumbAddReplication: 'Add Replication',
     addReplicationTitle: 'Add replication',
@@ -27,10 +27,8 @@ export default <I18nMessages>{
     step1Description: 'Select storage to replicate from',
     step2Title: 'Destination Storage',
     step2Description: 'Select storage to replicate to',
-    step3Title: 'User',
-    step3Description: 'Select user',
-    step4Title: 'Buckets',
-    step4Description: 'Select buckets for replication',
+    step3Title: 'Buckets',
+    step3Description: 'Select buckets for replication',
     nextAction: 'Next',
     addReplicationAction: 'Add Replication',
     fromStorageStepTitle: 'Select Source storage for replication:',
@@ -55,7 +53,7 @@ export default <I18nMessages>{
       'An error occurred while processing the list of buckets. Please try again.',
     noResultsTitle: 'No Buckets found',
     noResultsText:
-      'There is no buckets available for replication on {storage} storage for {user} user.',
+      'There is no buckets available for replication on {storage} storage.',
     filterNoResultsTitle: 'No Buckets found',
     filterNoResultsText: 'There is no buckets matching your search query.',
     filterNoResultsAction: 'Reset search',
@@ -76,7 +74,7 @@ export default <I18nMessages>{
   },
   [I18nLocale.DE]: {
     pageDescription:
-      'Wählen Sie Quell- und Zielspeicher, einen Benutzer und die zu replizierenden Buckets. Vorhandene Objekte werden zuerst kopiert, danach werden Änderungen synchron gehalten.',
+      'Wählen Sie Quell- und Zielspeicher und die zu replizierenden Buckets. Vorhandene Objekte werden zuerst kopiert, danach werden Änderungen synchron gehalten.',
     backToReplication: 'Replikation',
     breadcrumbAddReplication: 'Replikation hinzufügen',
     addReplicationTitle: 'Replikation hinzufügen',
@@ -86,10 +84,8 @@ export default <I18nMessages>{
     step2Title: 'Zielspeicher',
     step2Description:
       'Wählen Sie den Speicher aus, in den repliziert werden soll',
-    step3Title: 'Benutzer',
-    step3Description: 'Wählen Sie einen Benutzer',
-    step4Title: 'Buckets',
-    step4Description: 'Wählen Sie Buckets für die Replikation aus',
+    step3Title: 'Buckets',
+    step3Description: 'Wählen Sie Buckets für die Replikation aus',
     nextAction: 'Weiter',
     addReplicationAction: 'Replikation hinzufügen',
     fromStorageStepTitle: 'Quellspeicher für die Replikation auswählen:',
@@ -114,7 +110,7 @@ export default <I18nMessages>{
       'Beim Verarbeiten der Bucket-Liste ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     noResultsTitle: 'Keine Buckets gefunden',
     noResultsText:
-      'Es sind keine Buckets zur Replikation im Speicher {storage} für den Benutzer {user} verfügbar.',
+      'Es sind keine Buckets zur Replikation im Speicher {storage} verfügbar.',
     filterNoResultsTitle: 'Keine Buckets gefunden',
     filterNoResultsText:
       'Es gibt keine Buckets, die Ihrer Suchanfrage entsprechen.',

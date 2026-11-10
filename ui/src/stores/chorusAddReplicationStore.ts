@@ -115,10 +115,6 @@ export const useChorusAddReplicationStore = defineStore(
         title: t('step3Title'),
         description: t('step3Description'),
       },
-      {
-        title: t('step4Title'),
-        description: t('step4Description'),
-      },
     ]);
     const stepsCount = computed(() => steps.value.length);
 
@@ -128,7 +124,7 @@ export const useChorusAddReplicationStore = defineStore(
       state.selectedToStorage =
         state.storages.find((storage) => !storage.isMain) ?? null;
       state.selectedUser =
-        (state.selectedFromStorage?.credentials ?? [])[0]?.alias ?? null;
+        (state.selectedFromStorage?.credentials ?? [])[0]?.alias ?? 'default';
       setTimeout(() => {
         state.isMainAsSourceAlertShown = true;
       }, 500);
@@ -136,15 +132,20 @@ export const useChorusAddReplicationStore = defineStore(
 
     async function getBucketsList() {
       if (
-        !state.selectedUser ||
         !state.selectedFromStorage ||
         !state.selectedToStorage
       ) {
         return;
       }
 
+      const user =
+        state.selectedUser ||
+        (state.selectedFromStorage?.credentials ?? [])[0]?.alias ||
+        'default';
+      state.selectedUser = user;
+
       state.bucketsRequestOptions = {
-        user: state.selectedUser,
+        user,
         fromStorage: state.selectedFromStorage.name,
         toStorage: state.selectedToStorage.name,
         showReplicated: true,
@@ -177,7 +178,6 @@ export const useChorusAddReplicationStore = defineStore(
 
     const isBucketsAlreadyRequested = computed(
       () =>
-        state.bucketsRequestOptions?.user === state.selectedUser &&
         state.bucketsRequestOptions?.fromStorage ===
           state.selectedFromStorage?.name &&
         state.bucketsRequestOptions?.toStorage ===
@@ -215,11 +215,15 @@ export const useChorusAddReplicationStore = defineStore(
       if (
         !selectedToStorage ||
         !selectedFromStorage ||
-        !selectedUser ||
         (!selectedBuckets.length && !isForAllBuckets)
       ) {
         return;
       }
+
+      const user =
+        selectedUser ||
+        (selectedFromStorage?.credentials ?? [])[0]?.alias ||
+        'default';
 
       state.isSubmitting = true;
 
@@ -227,7 +231,7 @@ export const useChorusAddReplicationStore = defineStore(
       const errorList: [ChorusReplicationId, string][] = [];
 
       const baseReplicationId: ChorusReplicationId = {
-        user: selectedUser,
+        user,
         fromStorage: selectedFromStorage.name,
         toStorage: selectedToStorage.name,
       };
@@ -262,7 +266,8 @@ export const useChorusAddReplicationStore = defineStore(
 
       if (errorList.length !== 0) {
         const content = errorList.map(([id, reason]) => {
-          return `${id.user}/${id.fromStorage}->${id.toStorage}: ${reason}`;
+          const bucketInfo = id.fromBucket ? ` (${id.fromBucket})` : '';
+          return `${id.fromStorage}->${id.toStorage}${bucketInfo}: ${reason}`;
         });
 
         showCreateError(content ? content.join(', ') : undefined);

@@ -28,7 +28,6 @@
   import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
   import { IconName } from '@/utils/types/icon';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
-  import ChorusUserCard from '@/components/chorus/common/ChorusUserCard/ChorusUserCard.vue';
   import SummaryBucketsList from '@/components/chorus/add-replication/SummaryBucketsList/SummaryBucketsList.vue';
 
   const { t } = useI18n({
@@ -36,7 +35,6 @@
   });
 
   const {
-    selectedUser,
     selectedFromStorage,
     selectedToStorage,
     selectedBuckets,
@@ -81,18 +79,6 @@
             :storage="selectedToStorage"
           />
         </div>
-      </CDescriptionItem>
-
-      <CDescriptionItem
-        v-if="selectedUser"
-        class="summary-list__item"
-      >
-        <template #label> {{ t('user') }}: </template>
-
-        <ChorusUserCard
-          class="user-card"
-          :user="selectedUser"
-        />
       </CDescriptionItem>
 
       <CDescriptionItem
