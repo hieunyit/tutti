@@ -119,7 +119,11 @@ export const useTuttiAccessPolicyStore = defineStore(
         await reloadAccounts();
 
         return true;
-      } catch {
+      } catch (e) {
+        // e.g. FailedPrecondition: the last policy of a shared-account user
+        state.saveError =
+          AccessPolicyHelper.getValidationMessage(e) ?? 'unknown';
+
         return false;
       }
     }

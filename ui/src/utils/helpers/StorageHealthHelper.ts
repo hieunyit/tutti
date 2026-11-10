@@ -31,6 +31,11 @@ export interface StorageHealthSummary {
   /** earliest "since" of the unavailable reports, ISO string */
   since?: string;
   lastError?: string;
+  /**
+   * Error text of a proxy that still reports the storage available, e.g.
+   * "authentication: SignatureDoesNotMatch" (account or clock problem).
+   */
+  warning?: string;
   /** p95 in ms, only when it can be attributed to this storage alone */
   p95Ms: number | null;
 }
@@ -81,6 +86,10 @@ export abstract class StorageHealthHelper {
         if (health.lastError && !result.lastError) {
           result.lastError = health.lastError;
         }
+      }
+
+      if (health.available === true && health.lastError && !result.warning) {
+        result.warning = health.lastError;
       }
 
       const rates = proxy.rates;

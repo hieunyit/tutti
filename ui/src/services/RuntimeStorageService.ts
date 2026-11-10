@@ -8,6 +8,9 @@ import type {
   RuntimeStorageList,
   RuntimeStorageMutation,
   RuntimeStorageTestResult,
+  StorageRotateRequest,
+  StorageTestRequest,
+  StorageTestResult,
 } from '@/utils/types/runtimeStorage';
 
 const url = (suffix = '') =>
@@ -30,15 +33,27 @@ export abstract class RuntimeStorageService {
     await apiClient.put(url('/delete'), { name });
   }
 
-  static async test(
+  /** Full connection test of a saved (`name`) or unsaved (`storage`) storage. */
+  static async test(input: StorageTestRequest): Promise<StorageTestResult> {
+    return (await apiClient.post<StorageTestResult>(url('/test'), input)).data;
+  }
+
+  /** The old per-user credential check. */
+  static async testCredential(
     storage: RuntimeStorage,
     credential?: RuntimeStorageCredential,
   ): Promise<RuntimeStorageTestResult> {
     return (
-      await apiClient.post<RuntimeStorageTestResult>(url('/test'), {
+      await apiClient.post<RuntimeStorageTestResult>(url('/test-credential'), {
         storage,
         credential,
       })
+    ).data;
+  }
+
+  static async rotate(input: StorageRotateRequest): Promise<RuntimeStorage> {
+    return (
+      await apiClient.put<RuntimeStorage>(url('/connection-account'), input)
     ).data;
   }
 }

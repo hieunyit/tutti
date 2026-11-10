@@ -16,6 +16,7 @@
 
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
+import { UserHelper } from '@/utils/helpers/UserHelper';
 import { TuttiService } from '@/services/TuttiService';
 import type { S3User } from '@/utils/types/users';
 
@@ -53,7 +54,8 @@ export const useTuttiUsersStore = defineStore('tuttiUsers', () => {
   const usersWithMain = computed(() =>
     state.users.filter((user) =>
       (user.storages ?? []).some(
-        (s) => s.storage === state.mainStorage && s.configured,
+        (s) =>
+          s.storage === state.mainStorage && UserHelper.modeOf(s) !== 'missing',
       ),
     ),
   );

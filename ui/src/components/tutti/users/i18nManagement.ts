@@ -1,17 +1,39 @@
 /* Copyright © 2026 hieunyit. Licensed under AGPL-3.0. */
 export default {
   en: {
+    modeConnection: 'connection account',
+    modeOverride: 'override on {storages}',
+    modeMissing: 'missing on {storages}',
+    mode: 'Mode',
+    modeConnectionLabel: 'Connection account',
+    modeOverrideLabel: 'Override',
+    modeMissingLabel: 'Missing',
+    advancedCreds: 'Advanced: per-storage credentials',
+    advancedHint:
+      'Optional. An override signs the traffic of this user to a storage with its own key instead of the connection account.',
+    legacyRequired:
+      'Storages without a connection account need credentials for this user: {storages}.',
+    sharedAccount:
+      'This user shares the connection account on {storages}. An access policy is required so it can only reach its own buckets.',
+    bucketsRequired:
+      'Enter at least one bucket pattern: with a shared account the policy is mandatory.',
+    removeOverride: 'Remove override',
+    overrideRemoved: 'Override removed.',
+    removeOverrideConfirm:
+      'Remove the override of {name} on {storage}? Requests will use the connection account.',
+    removeUnavailable:
+      'Removing an override is not supported by this backend version.',
     users: 'Users',
     usersHint:
-      'S3 identities. Configure storage credentials, then give clients access keys and permissions.',
+      'S3 identities with permissions and access keys. Storages are reached through their connection account unless a user has an override.',
     createUser: 'Create user',
     search: 'Search users…',
     all: 'All',
     incomplete: 'Incomplete',
     missing:
-      'Missing credentials: {storages}. Replication and failover need credentials on their destinations.',
+      'No credentials on: {storages}. Add a connection account to the storage or an override for this user.',
     user: 'User',
-    credentials: 'Storage credentials',
+    credentials: 'Credentials',
     permission: 'Permission',
     keys: 'Access keys',
     source: 'Source',
@@ -39,7 +61,7 @@ export default {
       '1–64 letters, numbers, dots, underscores or hyphens; start with a letter or number.',
     invalidName: 'Enter a valid, unique user name.',
     createHint:
-      'Register an S3 identity, configure credentials on your storages, then create its first access key.',
+      'Register an S3 identity, set what it may access, then create its first access key. No storage keys needed: storages use their connection account.',
     accessKeyId: 'Access key ID',
     secret: 'Secret access key',
     verify: 'Verify',
@@ -63,14 +85,14 @@ export default {
       'Dynamic credentials are disabled. Configure a master password before creating or updating users.',
     userNotFound: 'This user does not exist.',
     update: 'Update',
-    add: 'Add credentials',
+    add: 'Add override',
     test: 'Test',
     configured: 'Configured',
     absent: 'Missing',
     main: 'Main',
     editConfig: 'Managed in configuration',
     credentialHint:
-      'Credentials are encrypted before they are stored. Existing secrets are never returned.',
+      'A storage is reached through its connection account. An override signs the traffic of this user to that storage with its own key (tenant isolation, billing). Secrets are encrypted and never returned.',
     removeUnsupported:
       'Storage credentials defined in configuration must be edited in configuration.',
     keyHint:
@@ -152,17 +174,39 @@ export default {
     saved: 'Saved',
   },
   de: {
+    modeConnection: 'Verbindungskonto',
+    modeOverride: 'Überschreibung auf {storages}',
+    modeMissing: 'fehlt auf {storages}',
+    mode: 'Modus',
+    modeConnectionLabel: 'Verbindungskonto',
+    modeOverrideLabel: 'Überschreibung',
+    modeMissingLabel: 'Fehlt',
+    advancedCreds: 'Erweitert: Zugangsdaten pro Speicher',
+    advancedHint:
+      'Optional. Eine Überschreibung signiert den Verkehr dieses Benutzers zu einem Speicher mit einem eigenen Schlüssel statt mit dem Verbindungskonto.',
+    legacyRequired:
+      'Speicher ohne Verbindungskonto brauchen Zugangsdaten für diesen Benutzer: {storages}.',
+    sharedAccount:
+      'Dieser Benutzer teilt das Verbindungskonto auf {storages}. Eine Zugriffsrichtlinie ist nötig, damit er nur seine eigenen Buckets erreicht.',
+    bucketsRequired:
+      'Geben Sie mindestens ein Bucket-Muster ein: Mit geteiltem Konto ist die Richtlinie Pflicht.',
+    removeOverride: 'Überschreibung entfernen',
+    overrideRemoved: 'Überschreibung entfernt.',
+    removeOverrideConfirm:
+      'Überschreibung von {name} auf {storage} entfernen? Anfragen nutzen dann das Verbindungskonto.',
+    removeUnavailable:
+      'Das Entfernen einer Überschreibung wird von dieser Backend-Version nicht unterstützt.',
     users: 'Benutzer',
     usersHint:
-      'S3-Identitäten. Speicher-Zugangsdaten hinterlegen, dann Zugriffsschlüssel und Berechtigungen vergeben.',
+      'S3-Identitäten mit Berechtigungen und Zugriffsschlüsseln. Speicher werden über ihr Verbindungskonto erreicht, sofern ein Benutzer keine Überschreibung hat.',
     createUser: 'Benutzer erstellen',
     search: 'Benutzer suchen…',
     all: 'Alle',
     incomplete: 'Unvollständig',
     missing:
-      'Fehlende Zugangsdaten: {storages}. Replikation und Failover benötigen Zugangsdaten an ihren Zielen.',
+      'Keine Zugangsdaten auf: {storages}. Richten Sie am Speicher ein Verbindungskonto ein oder legen Sie eine Überschreibung für diesen Benutzer an.',
     user: 'Benutzer',
-    credentials: 'Speicher-Zugangsdaten',
+    credentials: 'Zugangsdaten',
     permission: 'Berechtigung',
     keys: 'Zugriffsschlüssel',
     source: 'Quelle',
@@ -190,7 +234,7 @@ export default {
       '1–64 Buchstaben, Zahlen, Punkte, Unterstriche oder Bindestriche; mit Buchstabe oder Zahl beginnen.',
     invalidName: 'Geben Sie einen gültigen, eindeutigen Namen ein.',
     createHint:
-      'Eine S3-Identität registrieren, Speicher-Zugangsdaten hinterlegen und den ersten Zugriffsschlüssel erstellen.',
+      'Eine S3-Identität registrieren, ihre Berechtigung festlegen und den ersten Zugriffsschlüssel erstellen. Speicherschlüssel sind nicht nötig: Speicher nutzen ihr Verbindungskonto.',
     accessKeyId: 'Zugriffsschlüssel-ID',
     secret: 'Geheimer Zugriffsschlüssel',
     verify: 'Prüfen',
@@ -214,14 +258,14 @@ export default {
       'Dynamische Zugangsdaten sind deaktiviert. Zuerst ein Master-Passwort konfigurieren.',
     userNotFound: 'Dieser Benutzer existiert nicht.',
     update: 'Aktualisieren',
-    add: 'Zugangsdaten hinzufügen',
+    add: 'Überschreibung hinzufügen',
     test: 'Testen',
     configured: 'Konfiguriert',
     absent: 'Fehlt',
     main: 'Hauptspeicher',
     editConfig: 'In Konfiguration verwaltet',
     credentialHint:
-      'Zugangsdaten werden verschlüsselt gespeichert. Bestehende Geheimnisse werden nie zurückgegeben.',
+      'Ein Speicher wird über sein Verbindungskonto erreicht. Eine Überschreibung signiert den Verkehr dieses Benutzers zu diesem Speicher mit einem eigenen Schlüssel (Mandantentrennung, Abrechnung). Geheimnisse werden verschlüsselt und nie zurückgegeben.',
     removeUnsupported:
       'Zugangsdaten aus der Konfiguration müssen dort bearbeitet werden.',
     keyHint:

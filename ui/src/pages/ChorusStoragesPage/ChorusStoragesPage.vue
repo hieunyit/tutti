@@ -13,6 +13,7 @@
   import SectionCard from '@/components/ui/SectionCard.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
   import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
+  import { StorageTestHelper } from '@/utils/helpers/StorageTestHelper';
   import { useTuttiStoragesStore } from '@/stores/tuttiStoragesStore';
   import { RouteName } from '@/utils/types/router';
 
@@ -25,7 +26,6 @@
     isLoading,
     hasError,
     managedStoragesEnabled,
-    users,
     runtimeStorages,
   } = storeToRefs(store);
   const query = ref('');
@@ -50,8 +50,9 @@
     name: RouteName.CHORUS_STORAGE_DETAILS,
     params: { storageName: name },
   });
-  const source = (name: string) =>
-    runtimeStorages.value.find((storage) => storage.name === name)?.source;
+  const runtime = (name: string) =>
+    runtimeStorages.value.find((storage) => storage.name === name);
+  const source = (name: string) => runtime(name)?.source;
 
   onBeforeMount(store.startPolling);
   onBeforeUnmount(store.stopPolling);
@@ -141,6 +142,7 @@
             <tr>
               <th>{{ t('name') }}</th>
               <th>{{ t('health') }}</th>
+              <th>{{ t('credentialsColumn') }}</th>
               <th>{{ t('breaker') }}</th>
               <th>{{ t('requests') }}</th>
               <th>{{ t('users') }}</th>
@@ -178,7 +180,39 @@
                         : 'neutral'
                   "
                   >{{ t(row.health.status) }}</StatusTag
-                ><small>{{ row.health.reporting }} {{ t('reporting') }}</small>
+                ><small>{{ row.health.reporting }} {{ t('reporting') }}</small
+                ><StatusTag
+                  v-if="row.health.warning"
+                  variant="warning"
+                  :title="row.health.warning"
+                  >{{ t('errorBadge') }}</StatusTag
+                ><small
+                  v-if="row.health.status === 'available' && row.health.warning"
+                  >{{ row.health.warning }}</small
+                >
+              </td>
+              <td :data-label="t('credentialsColumn')">
+                <StatusTag
+                  :variant="
+                    runtime(row.name)?.legacyCredentials ? 'warning' : 'success'
+                  "
+                  >{{
+                    runtime(row.name)?.legacyCredentials
+                      ? t('legacyBadge')
+                      : t('accountBadge')
+                  }}</StatusTag
+                ><StatusTag
+                  v-if="
+                    StorageTestHelper.counts(runtime(row.name)?.lastTest).fail >
+                      0 || runtime(row.name)?.lastTest?.ok === false
+                  "
+                  variant="danger"
+                  >{{ t('testFailedBadge') }}</StatusTag
+                ><StatusTag
+                  v-else-if="runtime(row.name)?.lastTest?.hasWarnings"
+                  variant="warning"
+                  >{{ t('testWarnBadge') }}</StatusTag
+                >
               </td>
               <td :data-label="t('breaker')">
                 {{ t(row.breaker.state)
@@ -217,7 +251,6 @@
     </SectionCard>
     <AddStorageDialog
       v-model:show="showAdd"
-      :users="users.map((user) => user.name)"
       @created="store.refresh()"
     />
   </div>

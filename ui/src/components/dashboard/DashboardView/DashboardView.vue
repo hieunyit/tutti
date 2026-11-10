@@ -42,7 +42,7 @@
   const { locale } = storeToRefs(useI18nStore());
   const { setLocale } = useI18nStore();
 
-  const { showUserMenu, authEnabled } = storeToRefs(useAuthStore());
+  const { showUserMenu, authEnabled, warnings } = storeToRefs(useAuthStore());
 
   const { isCollapsed, isMobile, isDrawerOpen, toggleCollapsed } = useSidebar();
 
@@ -148,6 +148,22 @@
             <RouterLink :to="{ name: RouteName.TUTTI_DOCS }">{{
               t('authDisabledLink')
             }}</RouterLink>
+          </template>
+        </Callout>
+        <Callout
+          v-if="warnings.includes('webhook_unauthenticated')"
+          class="dashboard-view__auth-warning"
+          tone="warning"
+        >
+          {{ t('webhookUnauthenticated') }}
+          <template #actions>
+            <RouterLink
+              :to="{
+                name: RouteName.TUTTI_DOCS,
+                params: { slug: 'configuration' },
+              }"
+              >{{ t('authDisabledLink') }}</RouterLink
+            >
           </template>
         </Callout>
       </div>

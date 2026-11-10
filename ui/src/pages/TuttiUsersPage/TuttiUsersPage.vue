@@ -131,13 +131,16 @@
             <td>
               <div class="phase-d__actions">
                 <StatusTag
-                  v-for="storage in user.storages"
-                  :key="storage.storage"
-                  :variant="storage.configured ? 'success' : 'warning'"
-                  >{{ storage.storage }} ·
-                  {{
-                    t(storage.configured ? 'configured' : 'absent')
-                  }}</StatusTag
+                  v-for="part in UserHelper.credentialParts(user)"
+                  :key="part.kind"
+                  :variant="
+                    part.kind === 'connection-account'
+                      ? 'success'
+                      : part.kind === 'override'
+                        ? 'info'
+                        : 'warning'
+                  "
+                  >{{ UserHelper.credentialText(part, t) }}</StatusTag
                 >
               </div>
             </td>

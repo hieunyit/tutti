@@ -213,6 +213,17 @@ export abstract class TuttiService {
     });
   }
 
+  /** Removes the per-user override on one storage (falls back to the connection account). */
+  static async removeUserCredential(
+    name: string,
+    storage: string,
+  ): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getChorusAPIUrl('/tutti/users/credentials/delete'),
+      { user: name, storage },
+    );
+  }
+
   static async deleteUser(name: string, force: boolean): Promise<void> {
     await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/delete'), {
       name,

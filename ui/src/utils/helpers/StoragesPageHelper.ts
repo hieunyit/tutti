@@ -14,6 +14,7 @@
  *  limitations under the License.
  */
 
+import { UserHelper } from '@/utils/helpers/UserHelper';
 import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
 import { FailoverHelper } from '@/utils/helpers/FailoverHelper';
 import {
@@ -100,10 +101,14 @@ export abstract class StoragesPageHelper {
       const bySource = active.filter((r) => r.id.fromStorage === name);
       const byTarget = active.filter((r) => r.id.toStorage === name);
       const configured = users.filter((user) =>
-        (user.storages ?? []).some((s) => s.storage === name && s.configured),
+        (user.storages ?? []).some(
+          (s) => s.storage === name && UserHelper.modeOf(s) !== 'missing',
+        ),
       );
       const missing = users.filter((user) =>
-        (user.storages ?? []).some((s) => s.storage === name && !s.configured),
+        (user.storages ?? []).some(
+          (s) => s.storage === name && UserHelper.modeOf(s) === 'missing',
+        ),
       );
       let retry: number | null = null;
 
@@ -230,7 +235,7 @@ export abstract class StoragesPageHelper {
         ? {
             name: incomplete.name,
             missing: (incomplete.storages ?? [])
-              .filter((s) => !s.configured)
+              .filter((s) => UserHelper.modeOf(s) === 'missing')
               .map((s) => s.storage),
           }
         : null,

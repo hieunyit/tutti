@@ -18,11 +18,18 @@
 
 export type S3UserCredentialSource = 'config' | 'dynamic';
 
+/** How requests of a user to a storage are signed. */
+export type S3UserCredentialMode =
+  | 'override'
+  | 'connection-account'
+  | 'missing';
+
 export interface S3UserStorage {
   storage: string;
   configured: boolean;
   source?: S3UserCredentialSource;
   accessKeyId?: string;
+  mode?: S3UserCredentialMode | string;
 }
 
 export interface S3UserKeyCounts {
@@ -68,7 +75,8 @@ export interface S3UserPolicyInput {
 
 export interface S3UserCreateRequest {
   name: string;
-  credentials: S3UserCredentialInput[];
+  /** per-storage overrides, optional when every storage has a connection account */
+  credentials?: S3UserCredentialInput[];
   verify: boolean;
   createAccessKey: boolean;
   description?: string;

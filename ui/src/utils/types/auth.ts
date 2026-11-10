@@ -38,6 +38,8 @@ export interface AuthMeResponse {
   /** config users are read-only, managed users live in Redis */
   source?: 'config' | 'managed';
   mustChangePassword?: boolean;
+  /** operator warning codes, e.g. webhook_unauthenticated */
+  warnings?: string[];
 }
 
 export type AuthLoginErrorKind =

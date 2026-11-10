@@ -36,6 +36,8 @@ interface AuthState {
   /** 'config' users cannot change their password here */
   source: 'config' | 'managed' | null;
   mustChangePassword: boolean;
+  /** operator warning codes from /auth/me */
+  warnings: string[];
   isLoggingIn: boolean;
   loginError: AuthLoginErrorKind | null;
   /** seconds from Retry-After when rate limited */
@@ -53,6 +55,7 @@ function getInitialState(): AuthState {
     role: null,
     source: null,
     mustChangePassword: false,
+    warnings: [],
     isLoggingIn: false,
     loginError: null,
     retryAfterSeconds: null,
@@ -86,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     state.role = me.role ?? null;
     state.source = me.source ?? null;
     state.mustChangePassword = me.mustChangePassword ?? false;
+    state.warnings = me.warnings ?? [];
   }
 
   function clearSession() {

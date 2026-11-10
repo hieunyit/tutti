@@ -16,6 +16,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { UserHelper } from '../UserHelper';
+import type { S3User } from '@/utils/types/users';
 
 describe('UserHelper.validateName', () => {
   const existing = ['user1'];
@@ -158,5 +159,122 @@ describe('UserHelper.isIncomplete', () => {
         storages: [{ storage: 'x', configured: false }],
       }),
     ).toBe(true);
+  });
+});
+
+describe('UserHelper credential modes', () => {
+  const user = (storages: S3User['storages']): S3User => ({
+    name: 'alice',
+    storages,
+  });
+  const text = (key: string, p: { storages: string }) =>
+    ({
+      modeConnection: 'connection account',
+      modeOverride: `override on ${p.storages}`,
+      modeMissing: `missing on ${p.storages}`,
+    })[key]!;
+
+  it('derives the mode and falls back to configured for old backends', () => {
+    expect(
+      UserHelper.modeOf({
+        storage: 'a',
+        configured: true,
+        mode: 'connection-account',
+      }),
+    ).toBe('connection-account');
+    expect(UserHelper.modeOf({ storage: 'a', configured: true })).toBe(
+      'override',
+    );
+    expect(UserHelper.modeOf({ storage: 'a', configured: false })).toBe(
+      'missing',
+    );
+  });
+
+  it('groups storages by mode for the Credentials column', () => {
+    const parts = UserHelper.credentialParts(
+      user([
+        { storage: 'a', configured: true, mode: 'connection-account' },
+        { storage: 'b', configured: true, mode: 'override' },
+        { storage: 'c', configured: true, mode: 'override' },
+        { storage: 'd', configured: false, mode: 'missing' },
+      ]),
+    );
+
+    expect(parts.map((p) => UserHelper.credentialText(p, text))).toEqual([
+      'connection account',
+      'override on b, c',
+      'missing on d',
+    ]);
+  });
+
+  it('shows only the connection account when every storage uses it', () => {
+    const parts = UserHelper.credentialParts(
+      user([
+        { storage: 'a', configured: true, mode: 'connection-account' },
+        { storage: 'b', configured: true, mode: 'connection-account' },
+      ]),
+    );
+
+    expect(parts).toHaveLength(1);
+    expect(UserHelper.credentialText(parts[0]!, text)).toBe(
+      'connection account',
+    );
+  });
+
+  it('counts a missing mode as incomplete', () => {
+    expect(
+      UserHelper.isIncomplete(
+        user([{ storage: 'a', configured: false, mode: 'missing' }]),
+      ),
+    ).toBe(true);
+    expect(
+      UserHelper.isIncomplete(
+        user([{ storage: 'a', configured: false, mode: 'connection-account' }]),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('UserHelper create wizard rules', () => {
+  const shared = { name: 'a', connectionAccount: { configured: true } };
+  const legacy = { name: 'b', connectionAccount: { configured: false } };
+  const row = (storage: string, key = '', secret = '') => ({
+    storage,
+    accessKeyId: key,
+    secretAccessKey: secret,
+    result: null,
+  });
+
+  it('requires the policy when a storage resolves via a connection account', () => {
+    expect(UserHelper.policyRequired([shared, legacy])).toBe(true);
+    expect(UserHelper.policyRequired([legacy])).toBe(false);
+    // unknown storages: stay on the safe side
+    expect(UserHelper.policyRequired(null)).toBe(true);
+  });
+
+  it('lifts the requirement when every shared storage has an override', () => {
+    expect(UserHelper.policyRequired([shared, legacy], ['a'])).toBe(false);
+  });
+
+  it('validates the bucket patterns of a mandatory policy', () => {
+    expect(UserHelper.validatePolicy('', true)).toBe('bucketsRequired');
+    expect(UserHelper.validatePolicy(' , ', true)).toBe('bucketsRequired');
+    expect(UserHelper.validatePolicy('', false)).toBeNull();
+    expect(UserHelper.validatePolicy('app-*', true)).toBeNull();
+    expect(UserHelper.validatePolicy('a b', true)).toBe('invalidBuckets');
+  });
+
+  it('needs overrides only on storages without a connection account', () => {
+    expect(UserHelper.legacyStorages([shared, legacy])).toEqual(['b']);
+    expect(UserHelper.validateOverrides([row('a'), row('b')], ['b'])).toBe(
+      'mainRequired',
+    );
+    expect(
+      UserHelper.validateOverrides([row('a'), row('b', 'k', 's')], ['b']),
+    ).toBeNull();
+    expect(UserHelper.validateOverrides([row('a'), row('b')], [])).toBeNull();
+    expect(UserHelper.validateOverrides([row('a', 'k', '')], [])).toBe(
+      'incompleteRow',
+    );
   });
 });

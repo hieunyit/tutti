@@ -2,6 +2,7 @@
 <script setup lang="ts">
   import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import axios from 'axios';
   import { useRouter } from 'vue-router';
   import { NButton, NInput, NModal, NCheckbox } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
@@ -114,6 +115,30 @@
     }
   }
 
+  const removeStorage = ref<string | null>(null);
+
+  async function removeOverride() {
+    if (!removeStorage.value) return;
+
+    busy.value = true;
+    error.value = '';
+
+    try {
+      await TuttiService.removeUserCredential(props.name, removeStorage.value);
+      removeStorage.value = null;
+      await load();
+    } catch (e) {
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+
+      error.value =
+        status === 404 || status === 405 || status === 501
+          ? t('removeUnavailable')
+          : (ProxyAccountHelper.getMessage(e) ?? t('error'));
+    } finally {
+      busy.value = false;
+    }
+  }
+
   async function test(storage: string) {
     busy.value = true;
 
@@ -193,7 +218,7 @@
       ></PageHeader
     >
     <Callout
-      v-if="error && !showDelete && !editStorage"
+      v-if="error && !showDelete && !editStorage && !removeStorage"
       tone="danger"
       >{{ error }}</Callout
     ><Callout
@@ -247,7 +272,7 @@
           <thead>
             <tr>
               <th>{{ t('storages') }}</th>
-              <th>{{ t('status') }}</th>
+              <th>{{ t('mode') }}</th>
               <th>{{ t('accessKeyId') }}</th>
               <th>{{ t('source') }}</th>
               <th>{{ t('actions') }}</th>
@@ -271,9 +296,21 @@
               </td>
               <td>
                 <StatusTag
-                  :variant="entry.configured ? 'success' : 'warning'"
+                  :variant="
+                    UserHelper.modeOf(entry) === 'connection-account'
+                      ? 'success'
+                      : UserHelper.modeOf(entry) === 'override'
+                        ? 'info'
+                        : 'warning'
+                  "
                   >{{
-                    t(entry.configured ? 'configured' : 'absent')
+                    t(
+                      {
+                        'connection-account': 'modeConnectionLabel',
+                        override: 'modeOverrideLabel',
+                        missing: 'modeMissingLabel',
+                      }[UserHelper.modeOf(entry)],
+                    )
                   }}</StatusTag
                 >
                 <div class="phase-d__muted">
@@ -289,7 +326,7 @@
                   <WriteGate
                     ><NButton
                       size="small"
-                      :disabled="busy || !entry.configured"
+                      :disabled="busy || UserHelper.modeOf(entry) === 'missing'"
                       @click="test(entry.storage)"
                       >{{ t('test') }}</NButton
                     ><NButton
@@ -298,7 +335,24 @@
                         entry.source === 'config' || !store.dynamicEnabled
                       "
                       @click="edit(entry.storage)"
-                      >{{ t(entry.configured ? 'update' : 'add') }}</NButton
+                      >{{
+                        t(
+                          UserHelper.modeOf(entry) === 'override'
+                            ? 'update'
+                            : 'add',
+                        )
+                      }}</NButton
+                    ><NButton
+                      v-if="
+                        UserHelper.modeOf(entry) === 'override' &&
+                        entry.source !== 'config'
+                      "
+                      size="small"
+                      secondary
+                      type="error"
+                      :disabled="busy || !store.dynamicEnabled"
+                      @click="removeStorage = entry.storage"
+                      >{{ t('removeOverride') }}</NButton
                     ></WriteGate
                   >
                 </div>
@@ -351,7 +405,7 @@
     <NModal
       :show="editStorage !== null"
       preset="card"
-      :title="t('credentials')"
+      :title="t('add')"
       style="width: 560px; max-width: 94vw"
       @update:show="!$event && ((editStorage = null), (secretKey = ''))"
       ><div class="phase-d phase-d__form">
@@ -389,6 +443,37 @@
             >{{ t('verify') }} &amp; {{ t('save') }}</NButton
           >
         </form>
+      </div></NModal
+    >
+    <NModal
+      :show="removeStorage !== null"
+      preset="card"
+      :title="t('removeOverride')"
+      style="width: 520px; max-width: 94vw"
+      @update:show="!$event && (removeStorage = null)"
+      ><div class="phase-d">
+        <p>
+          {{
+            t('removeOverrideConfirm', {
+              name,
+              storage: removeStorage ?? '',
+            })
+          }}
+        </p>
+        <Callout
+          v-if="error"
+          tone="danger"
+          >{{ error }}</Callout
+        >
+        <div class="phase-d__actions">
+          <NButton @click="removeStorage = null">{{ t('cancel') }}</NButton
+          ><NButton
+            type="error"
+            :loading="busy"
+            @click="removeOverride"
+            >{{ t('removeOverride') }}</NButton
+          >
+        </div>
       </div></NModal
     >
     <NModal

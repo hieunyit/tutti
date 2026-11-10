@@ -14,8 +14,11 @@
  *  limitations under the License.
  */
 
+import type { RuntimeStorage } from '@/utils/types/runtimeStorage';
 import type {
   S3User,
+  S3UserCredentialMode,
+  S3UserStorage,
   S3UserCredentialInput,
   S3UserVerification,
 } from '@/utils/types/users';
@@ -62,13 +65,132 @@ export interface CredentialCheck {
   error?: string;
 }
 
+export interface CredentialPart {
+  kind: S3UserCredentialMode;
+  storages: string[];
+}
+
+export type PolicyStepError = 'bucketsRequired' | 'invalidBuckets' | null;
+
 export type CredentialsStepError = 'mainRequired' | 'incompleteRow' | null;
 
 export abstract class UserHelper {
+  /** Mode of one storage entry; older backends only send `configured`. */
+  static modeOf(entry: S3UserStorage): S3UserCredentialMode {
+    if (
+      entry.mode === 'override' ||
+      entry.mode === 'connection-account' ||
+      entry.mode === 'missing'
+    )
+      return entry.mode;
+
+    return entry.configured ? 'override' : 'missing';
+  }
+
+  /**
+   * The "Credentials" column: storages grouped by mode, in the order
+   * connection-account, override, missing.
+   */
+  static credentialParts(user: S3User): CredentialPart[] {
+    const order: S3UserCredentialMode[] = [
+      'connection-account',
+      'override',
+      'missing',
+    ];
+
+    return order
+      .map((kind) => ({
+        kind,
+        storages: (user.storages ?? [])
+          .filter((entry) => UserHelper.modeOf(entry) === kind)
+          .map((entry) => entry.storage),
+      }))
+      .filter((part) => part.storages.length > 0);
+  }
+
+  /** Text of one part; `translate` is the i18n function: (key, storages). */
+  static credentialText(
+    part: CredentialPart,
+    translate: (key: string, params: { storages: string }) => string,
+  ): string {
+    const key = {
+      'connection-account': 'modeConnection',
+      override: 'modeOverride',
+      missing: 'modeMissing',
+    }[part.kind];
+
+    return translate(key, { storages: part.storages.join(', ') });
+  }
+
+  /** The proxy would sign for this user with the storage connection account. */
+  static usesConnectionAccount(
+    storage: Pick<RuntimeStorage, 'connectionAccount'>,
+  ) {
+    return storage.connectionAccount?.configured === true;
+  }
+
+  /**
+   * The access policy is mandatory when any storage resolves through its
+   * connection account (no override entered for it). Unknown storages count
+   * as shared: the backend decides, the UI stays on the safe side.
+   */
+  static policyRequired(
+    storages: Pick<RuntimeStorage, 'name' | 'connectionAccount'>[] | null,
+    overridden: string[] = [],
+  ): boolean {
+    if (storages === null) return true;
+
+    return storages.some(
+      (storage) =>
+        UserHelper.usesConnectionAccount(storage) &&
+        !overridden.includes(storage.name),
+    );
+  }
+
+  /** Storages without a connection account need an override for the user. */
+  static legacyStorages(
+    storages: Pick<RuntimeStorage, 'name' | 'connectionAccount'>[],
+  ): string[] {
+    return storages
+      .filter((storage) => !UserHelper.usesConnectionAccount(storage))
+      .map((storage) => storage.name);
+  }
+
+  /** Validates the bucket patterns; with a shared account they are mandatory. */
+  static validatePolicy(input: string, required: boolean): PolicyStepError {
+    const parsed = UserHelper.parseBucketPatterns(input);
+
+    if (parsed.invalid.length) return 'invalidBuckets';
+
+    return required && parsed.patterns.length === 0 ? 'bucketsRequired' : null;
+  }
+
+  /** Legacy storages (no connection account) need a complete override. */
+  static validateOverrides(
+    rows: CredentialRow[],
+    legacy: string[],
+  ): CredentialsStepError {
+    const partial = rows.some(
+      (row) =>
+        !UserHelper.isRowFilled(row) &&
+        (row.accessKeyId.trim() !== '' || row.secretAccessKey !== ''),
+    );
+
+    if (partial) return 'incompleteRow';
+
+    return legacy.some((name) => {
+      const row = rows.find((item) => item.storage === name);
+
+      return !row || !UserHelper.isRowFilled(row);
+    })
+      ? 'mainRequired'
+      : null;
+  }
+
   /** Names of the storages the user has no credentials on. */
   static missingStorages(user: S3User): string[] {
     return (user.storages ?? [])
-      .filter((entry) => !entry.configured)
+      .filter((entry) => UserHelper.modeOf(entry) === 'missing')
       .map((entry) => entry.storage);
   }
 

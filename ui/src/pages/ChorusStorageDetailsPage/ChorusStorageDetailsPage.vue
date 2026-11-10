@@ -126,6 +126,11 @@
             tone="danger"
             :title="t('unavailable')"
             >{{ row.health.lastError || t('noHealth') }}</Callout
+          ><Callout
+            v-else-if="row.health.warning"
+            tone="warning"
+            :title="t('errorBadge')"
+            >{{ row.health.warning }}</Callout
           >
           <div class="storage-detail__kpis">
             <KpiCard

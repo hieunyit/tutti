@@ -2,133 +2,153 @@
 <script setup lang="ts">
   import {
     NButton,
+    NCheckbox,
     NForm,
-    NFormItem,
-    NInput,
     NModal,
-    NSteps,
+    NSpin,
     NStep,
+    NSteps,
   } from 'naive-ui';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import StorageAccountForm from './StorageAccountForm.vue';
   import StorageConnectionForm from './StorageConnectionForm.vue';
+  import StorageTestSteps from './StorageTestSteps.vue';
   import i18nStorages from './i18nStorages';
   import Callout from '@/components/ui/Callout.vue';
   import { RuntimeStorageService } from '@/services/RuntimeStorageService';
   import { RuntimeStorageHelper } from '@/utils/helpers/RuntimeStorageHelper';
+  import { StorageTestHelper } from '@/utils/helpers/StorageTestHelper';
   import type {
-    RuntimeStorageCredential,
-    RuntimeStorageTestResult,
+    StorageConnectionAccount,
+    StorageTestResult,
   } from '@/utils/types/runtimeStorage';
 
-  const props = defineProps<{ show: boolean; users: string[] }>();
+  const props = defineProps<{ show: boolean }>();
   const emit = defineEmits<{
     (e: 'update:show', value: boolean): void;
     (e: 'created', name: string): void;
   }>();
   const { t } = useI18n({ messages: i18nStorages });
   const storage = ref(RuntimeStorageHelper.empty());
-  const credentials = ref<RuntimeStorageCredential[]>([]);
-  const results = ref<Record<string, RuntimeStorageTestResult>>({});
+  const account = ref<StorageConnectionAccount>({
+    accessKeyId: '',
+    secretAccessKey: '',
+  });
+  const options = ref(StorageTestHelper.emptyOptions());
+  const result = ref<StorageTestResult | null>(null);
   const step = ref(1);
   const busy = ref(false);
+  const testing = ref(false);
   const error = ref('');
-  const tested = ref('');
-  const supplied = computed(() =>
-    credentials.value.filter(
-      (item) => item.accessKeyId || item.secretAccessKey,
-    ),
-  );
-  const complete = computed(
-    () =>
-      supplied.value.length > 0 &&
-      supplied.value.every(
-        (item) => item.accessKeyId.trim() && item.secretAccessKey,
-      ),
-  );
+  const saveAnyway = ref(false);
+  const confirmed = ref(false);
   const fingerprint = computed(() =>
     JSON.stringify([
       RuntimeStorageHelper.payload(storage.value),
-      supplied.value,
+      account.value,
+      StorageTestHelper.toOptions(options.value),
     ]),
   );
-  const canSave = computed(
-    () => complete.value && tested.value === fingerprint.value,
+  const accountComplete = computed(
+    () =>
+      account.value.accessKeyId.trim() !== '' &&
+      account.value.secretAccessKey !== '',
   );
+  const gate = computed(() =>
+    StorageTestHelper.saveGate(result.value, saveAnyway.value),
+  );
+  const canSave = computed(() =>
+    StorageTestHelper.canSave(result.value, saveAnyway.value, confirmed.value),
+  );
+  const failing = computed(() => StorageTestHelper.counts(result.value).fail);
+  let generation = 0;
+
+  function reset() {
+    generation += 1;
+    storage.value = RuntimeStorageHelper.empty();
+    account.value = { accessKeyId: '', secretAccessKey: '' };
+    options.value = StorageTestHelper.emptyOptions();
+    result.value = null;
+    step.value = 1;
+    error.value = '';
+    saveAnyway.value = false;
+    confirmed.value = false;
+    testing.value = false;
+    busy.value = false;
+  }
 
   watch(
     () => props.show,
-    (show) => {
-      if (!show) {
-        credentials.value = [];
-        results.value = {};
-        tested.value = '';
-
-        return;
-      }
-
-      storage.value = RuntimeStorageHelper.empty();
-      credentials.value = props.users.map((user) => ({
-        user,
-        accessKeyId: '',
-        secretAccessKey: '',
-      }));
-      step.value = 1;
-      error.value = '';
-      tested.value = '';
-      results.value = {};
-    },
+    (show) => onShow(show),
   );
   watch(fingerprint, () => {
-    tested.value = '';
-    results.value = {};
+    generation += 1;
+    result.value = null;
+    saveAnyway.value = false;
+    confirmed.value = false;
+    testing.value = false;
   });
+  watch(saveAnyway, (value) => {
+    if (!value) confirmed.value = false;
+  });
+
+  function onShow(show: boolean) {
+    if (show) reset();
+    else {
+      // never keep a secret in memory after the dialog closed
+      account.value = { accessKeyId: '', secretAccessKey: '' };
+      result.value = null;
+    }
+  }
 
   function next() {
     error.value = '';
 
-    if (!RuntimeStorageHelper.validConnection(storage.value)) {
+    if (
+      step.value === 1 &&
+      !RuntimeStorageHelper.validConnection(storage.value)
+    ) {
       error.value = t('invalid');
 
       return;
     }
 
-    step.value = 2;
-  }
-
-  async function test() {
-    if (busy.value) return;
-
-    error.value = '';
-
-    if (!complete.value) {
-      error.value = t('incomplete');
+    if (step.value === 2 && !accountComplete.value) {
+      error.value = t('accountRequired');
 
       return;
     }
 
-    busy.value = true;
-    const version = fingerprint.value;
-    const output: Record<string, RuntimeStorageTestResult> = {};
+    step.value += 1;
+
+    if (step.value === 3 && !result.value) runTest();
+  }
+
+  async function runTest() {
+    if (testing.value || busy.value) return;
+
+    error.value = '';
+    result.value = null;
+    saveAnyway.value = false;
+    confirmed.value = false;
+    testing.value = true;
+
+    const current = generation;
 
     try {
-      for (const credential of supplied.value) {
-        output[credential.user] = await RuntimeStorageService.test(
-          RuntimeStorageHelper.payload(storage.value),
-          credential,
-        );
-      }
+      const response = await RuntimeStorageService.test({
+        storage: RuntimeStorageHelper.payload(storage.value),
+        connectionAccount: account.value,
+        options: StorageTestHelper.toOptions(options.value),
+      });
 
-      if (version !== fingerprint.value) return;
-
-      results.value = output;
-
-      if (Object.values(output).every((result) => result.ok))
-        tested.value = version;
+      if (current === generation) result.value = response;
     } catch (e) {
-      error.value = RuntimeStorageHelper.error(e, t('testFailed'));
+      if (current === generation)
+        error.value = RuntimeStorageHelper.error(e, t('testError'));
     } finally {
-      busy.value = false;
+      if (current === generation) testing.value = false;
     }
   }
 
@@ -141,12 +161,18 @@
     try {
       const created = await RuntimeStorageService.create({
         storage: RuntimeStorageHelper.payload(storage.value),
-        credentials: supplied.value,
+        connectionAccount: account.value,
+        testOptions: StorageTestHelper.toOptions(options.value),
+        force: StorageTestHelper.forceFlag(
+          result.value,
+          saveAnyway.value,
+          confirmed.value,
+        ),
       });
 
       emit('created', created.name);
       emit('update:show', false);
-      credentials.value = [];
+      onShow(false);
     } catch (e) {
       error.value = RuntimeStorageHelper.error(e, t('error'));
     } finally {
@@ -162,15 +188,19 @@
     :title="t('add')"
     :closable="!busy"
     :mask-closable="!busy"
-    :style="{ width: 'min(680px, calc(100vw - 32px))' }"
+    :style="{ width: 'min(820px, calc(100vw - 32px))' }"
     @update:show="emit('update:show', $event)"
   >
     <p class="storage-dialog__sub">{{ t('propagation') }}</p>
-    <NSteps
-      :current="step"
-      size="small"
-      ><NStep :title="t('connection')" /><NStep :title="t('credentials')"
-    /></NSteps>
+    <div class="storage-dialog__steps">
+      <NSteps
+        :current="step"
+        size="small"
+        ><NStep :title="t('connection')" /><NStep
+          :title="t('accountStep')" /><NStep :title="t('testStep')" /><NStep
+          :title="t('saveStep')"
+      /></NSteps>
+    </div>
     <NForm
       class="storage-dialog__form"
       label-placement="top"
@@ -182,58 +212,57 @@
         show-name
         :readonly="busy"
       />
+      <StorageAccountForm
+        v-else-if="step === 2"
+        v-model:account="account"
+        v-model:options="options"
+        :provider="storage.provider"
+        :readonly="busy"
+      />
+      <template v-else-if="step === 3">
+        <p class="storage-dialog__sub">{{ t('testIntro') }}</p>
+        <div
+          v-if="testing"
+          class="storage-dialog__busy"
+          role="status"
+        >
+          <NSpin size="small" />{{ t('testing') }}
+        </div>
+        <StorageTestSteps
+          v-else-if="result"
+          :result="result"
+        />
+        <NButton
+          v-if="!testing"
+          class="storage-dialog__retry"
+          @click="runTest"
+          >{{ result ? t('retest') : t('runTest') }}</NButton
+        >
+      </template>
       <template v-else>
-        <p class="storage-dialog__sub">{{ t('credentialsHint') }}</p>
+        <StorageTestSteps
+          v-if="result && failing > 0"
+          :result="result"
+        />
         <Callout
-          v-if="users.length === 0"
-          tone="warning"
-          >{{ t('noUsers') }}</Callout
+          v-if="gate === 'ok'"
+          :tone="result?.hasWarnings ? 'warning' : 'info'"
+          >{{ result?.hasWarnings ? t('saveWarn') : t('saveOk') }}</Callout
         >
-        <fieldset
-          v-for="credential in credentials"
-          :key="credential.user"
-          class="storage-dialog__credential"
-          :disabled="busy"
-        >
-          <legend>{{ credential.user }}</legend>
-          <div class="storage-dialog__pair">
-            <NFormItem :label="t('accessKey')"
-              ><NInput
-                v-model:value="credential.accessKeyId"
-                :placeholder="t('skip')"
-                :disabled="busy"
-                autocomplete="off" /></NFormItem
-            ><NFormItem :label="t('secret')"
-              ><NInput
-                v-model:value="credential.secretAccessKey"
-                type="password"
-                show-password-on="click"
-                :disabled="busy"
-                autocomplete="new-password"
-            /></NFormItem>
-          </div>
-          <p
-            v-if="results[credential.user]"
-            role="status"
-            :class="
-              results[credential.user]?.ok
-                ? 'storage-dialog__ok'
-                : 'storage-dialog__failed'
-            "
+        <template v-else>
+          <Callout tone="danger">{{ t('saveBlocked') }}</Callout>
+          <NCheckbox
+            v-model:checked="saveAnyway"
+            :disabled="busy || !result"
+            >{{ t('saveAnyway') }} · {{ t('saveAnywayHint') }}</NCheckbox
           >
-            {{
-              results[credential.user]?.ok
-                ? t('testOk', { ms: results[credential.user]?.latencyMs ?? 0 })
-                : results[credential.user]?.error || t('testFailed')
-            }}
-          </p>
-          <p
-            v-else-if="!credential.accessKeyId && !credential.secretAccessKey"
-            class="storage-dialog__sub"
+          <NCheckbox
+            v-if="saveAnyway"
+            v-model:checked="confirmed"
+            :disabled="busy"
+            >{{ t('saveAnywayConfirm') }}</NCheckbox
           >
-            {{ t('skipped') }}
-          </p>
-        </fieldset>
+        </template>
       </template>
       <Callout
         v-if="error"
@@ -250,28 +279,23 @@
         >
         <div class="storage-dialog__buttons">
           <NButton
-            v-if="step === 2"
-            :disabled="busy"
-            @click="step = 1"
+            v-if="step > 1"
+            :disabled="busy || testing"
+            @click="step -= 1"
             >{{ t('back') }}</NButton
           ><NButton
-            v-if="step === 1"
+            v-if="step < 4"
             type="primary"
+            :disabled="testing || (step === 3 && !result)"
             @click="next"
             >{{ t('next') }}</NButton
-          ><template v-else
-            ><NButton
-              :loading="busy"
-              :disabled="!complete"
-              @click="test"
-              >{{ t('test') }}</NButton
-            ><NButton
-              type="primary"
-              :loading="busy"
-              :disabled="!canSave"
-              @click="save"
-              >{{ t('add') }}</NButton
-            ></template
+          ><NButton
+            v-else
+            type="primary"
+            :loading="busy"
+            :disabled="!canSave"
+            @click="save"
+            >{{ t('add') }}</NButton
           >
         </div>
       </div></template
@@ -286,22 +310,27 @@
       font-size: 13px;
     }
 
+    &__steps {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
     &__form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-top: 20px;
     }
 
-    &__credential {
-      min-width: 0;
-      margin: 12px 0;
-      padding: 12px;
-      border: 1px solid var(--tt-border);
-      border-radius: 8px;
+    &__busy {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--tt-text-2);
     }
 
-    &__pair {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+    &__retry {
+      align-self: flex-start;
     }
 
     &__actions,
@@ -310,20 +339,6 @@
       flex-wrap: wrap;
       gap: 8px;
       justify-content: space-between;
-    }
-
-    &__ok {
-      color: var(--tt-success);
-    }
-
-    &__failed {
-      color: var(--tt-danger);
-      overflow-wrap: anywhere;
-    }
-    @media (max-width: 600px) {
-      &__pair {
-        grid-template-columns: minmax(0, 1fr);
-      }
     }
   }
 </style>

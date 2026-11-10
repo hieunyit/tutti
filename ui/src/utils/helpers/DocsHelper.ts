@@ -29,6 +29,7 @@ export interface DocEntry {
 export const DOCS: DocEntry[] = [
   { slug: 'operations', path: 'docs/tutti/operations.md' },
   { slug: 'configuration', path: 'docs/tutti/configuration.md' },
+  { slug: 'storage-accounts', path: 'docs/tutti/storage-accounts.md' },
   { slug: 'resilience-api', path: 'docs/tutti/api.md' },
   {
     slug: 'upgrading-from-chorus',

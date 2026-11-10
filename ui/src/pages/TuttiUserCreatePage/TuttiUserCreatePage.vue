@@ -3,7 +3,16 @@
   import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { NButton, NCheckbox, NInput, NSelect, NSteps, NStep } from 'naive-ui';
+  import {
+    NButton,
+    NCheckbox,
+    NCollapse,
+    NCollapseItem,
+    NInput,
+    NSelect,
+    NSteps,
+    NStep,
+  } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
   import BackLink from '@/components/tutti/common/BackLink.vue';
   import SectionCard from '@/components/ui/SectionCard.vue';
@@ -11,10 +20,12 @@
   import StatusTag from '@/components/ui/StatusTag.vue';
   import ProxySecretModal from '@/components/tutti/accounts/ProxySecretModal.vue';
   import messages from '@/components/tutti/users/i18nManagement';
+  import { RuntimeStorageService } from '@/services/RuntimeStorageService';
   import { TuttiService } from '@/services/TuttiService';
   import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
   import { UserHelper, type CredentialRow } from '@/utils/helpers/UserHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
+  import type { RuntimeStorage } from '@/utils/types/runtimeStorage';
   import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
   import { RouteName } from '@/utils/types/router';
   const { t } = useI18n({ messages });
@@ -31,6 +42,8 @@
   const buckets = ref('*');
   const description = ref('');
   const secret = ref<TuttiProxyAccountSecret | null>(null);
+  /** null when the storages could not be loaded: treated as shared */
+  const storages = ref<RuntimeStorage[] | null>(null);
   const verticalSteps = ref(false);
   let mobileQuery: MediaQueryList | undefined;
   const permissionOptions = computed(() => [
@@ -44,6 +57,9 @@
     verticalSteps.value = mobileQuery.matches;
     mobileQuery.addEventListener('change', updateMobileSteps);
     await store.load();
+    storages.value = await RuntimeStorageService.list()
+      .then((list) => list.storages ?? [])
+      .catch(() => null);
     rows.value = UserHelper.newCredentialRows(
       [
         store.mainStorage,
@@ -51,6 +67,26 @@
       ].filter(Boolean),
     );
   });
+  const overridden = computed(() =>
+    rows.value.filter(UserHelper.isRowFilled).map((row) => row.storage),
+  );
+  /** storages the user would share the connection account on */
+  const sharedStorages = computed(() =>
+    (storages.value ?? [])
+      .filter(
+        (item) =>
+          UserHelper.usesConnectionAccount(item) &&
+          !overridden.value.includes(item.name),
+      )
+      .map((item) => item.name),
+  );
+  const legacyStorages = computed(() =>
+    UserHelper.legacyStorages(storages.value ?? []),
+  );
+  const policyRequired = computed(() =>
+    UserHelper.policyRequired(storages.value, overridden.value),
+  );
+
   onBeforeUnmount(() => {
     mobileQuery?.removeEventListener('change', updateMobileSteps);
     rows.value = [];
@@ -103,16 +139,13 @@
     }
 
     if (step.value === 2) {
-      if (UserHelper.validateCredentials(rows.value, store.mainStorage)) {
-        error.value = t('mainRequired');
+      const problem = UserHelper.validatePolicy(
+        buckets.value,
+        policyRequired.value,
+      );
 
-        return;
-      }
-
-      if (
-        rows.value.filter(UserHelper.isRowFilled).some((r) => !r.result?.ok)
-      ) {
-        error.value = t('verifyBefore');
+      if (problem) {
+        error.value = t(problem);
 
         return;
       }
@@ -123,9 +156,21 @@
 
   async function submit() {
     const parsed = UserHelper.parseBucketPatterns(buckets.value);
+    const policyProblem = UserHelper.validatePolicy(
+      buckets.value,
+      policyRequired.value,
+    );
+    const overrideProblem = UserHelper.validateOverrides(
+      rows.value,
+      legacyStorages.value,
+    );
 
-    if (parsed.invalid.length) {
-      error.value = t('invalidBuckets');
+    if (policyProblem || overrideProblem) {
+      error.value = policyProblem
+        ? t(policyProblem)
+        : overrideProblem === 'incompleteRow'
+          ? t('mainRequired')
+          : t('legacyRequired', { storages: legacyStorages.value.join(', ') });
 
       return;
     }
@@ -189,13 +234,11 @@
       :current="step"
       size="small"
       :vertical="verticalSteps"
-      ><NStep :title="t('identity')" /><NStep :title="t('credentials')" /><NStep
+      ><NStep :title="t('identity')" /><NStep :title="t('permission')" /><NStep
         :title="t('keys')"
     /></NSteps>
     <SectionCard
-      :title="
-        t(step === 1 ? 'identity' : step === 2 ? 'credentials' : 'permission')
-      "
+      :title="t(step === 1 ? 'identity' : step === 2 ? 'permission' : 'keys')"
       ><form
         class="phase-d__form"
         @submit.prevent="step === 3 ? submit() : advance()"
@@ -211,64 +254,27 @@
           <p class="phase-d__muted">{{ t('nameHint') }}</p></template
         >
         <template v-if="step === 2"
-          ><Callout>{{ t('credentialHint') }}</Callout>
-          <div
-            v-for="row in rows"
-            :key="row.storage"
-            class="phase-d__panel phase-d__stack"
-          >
-            <strong
-              >{{ row.storage }}
-              <StatusTag
-                v-if="row.storage === store.mainStorage"
-                variant="info"
-                >{{ t('main') }}</StatusTag
-              ></strong
-            >
-            <div class="phase-d__grid">
-              <label class="phase-d__field"
-                >{{ t('accessKeyId')
-                }}<NInput
-                  v-model:value="row.accessKeyId"
-                  :input-props="{
-                    'aria-label': `${row.storage} ${t('accessKeyId')}`,
-                    autocomplete: 'off',
-                  }"
-                  @update:value="row.result = null" /></label
-              ><label class="phase-d__field"
-                >{{ t('secret')
-                }}<NInput
-                  v-model:value="row.secretAccessKey"
-                  type="password"
-                  show-password-on="click"
-                  :input-props="{
-                    'aria-label': `${row.storage} ${t('secret')}`,
-                    autocomplete: 'new-password',
-                  }"
-                  @update:value="row.result = null"
-              /></label>
-            </div>
-            <div class="phase-d__actions">
-              <NButton
-                :disabled="!UserHelper.isRowFilled(row) || verifying !== null"
-                :loading="verifying === row.storage"
-                @click="verify(row)"
-                >{{ t('verify') }}</NButton
-              ><StatusTag
-                v-if="row.result"
-                :variant="row.result.ok ? 'success' : 'danger'"
-                >{{
-                  row.result.ok
-                    ? t('verified', { latency: row.result.latencyMs ?? 0 })
-                    : row.result.error || t('failed')
-                }}</StatusTag
-              >
-            </div>
-          </div>
-          <NButton @click="rows = UserHelper.applySameCredentials(rows)">{{
-            t('same')
-          }}</NButton
-          ><Callout tone="warning">{{ t('skipHint') }}</Callout></template
+          ><Callout
+            v-if="sharedStorages.length"
+            :tone="policyRequired ? 'warning' : 'info'"
+            >{{
+              t('sharedAccount', { storages: sharedStorages.join(', ') })
+            }}</Callout
+          ><label class="phase-d__field"
+            >{{ t('permission')
+            }}<NSelect
+              v-model:value="permission"
+              :options="permissionOptions" /></label
+          ><label class="phase-d__field"
+            >{{ t('buckets') }}{{ policyRequired ? ' *' : ''
+            }}<NInput
+              v-model:value="buckets"
+              :input-props="{
+                'aria-label': t('buckets'),
+                'aria-required': policyRequired,
+              }"
+          /></label>
+          <p class="phase-d__muted">{{ t('bucketsHint') }}</p></template
         >
         <template v-if="step === 3"
           ><NCheckbox v-model:checked="createKey">{{ t('firstKey') }}</NCheckbox
@@ -276,29 +282,81 @@
             >{{ t('description')
             }}<NInput
               v-model:value="description"
-              :input-props="{ 'aria-label': t('description') }" /></label
-          ><label class="phase-d__field"
-            >{{ t('permission')
-            }}<NSelect
-              v-model:value="permission"
-              :options="permissionOptions" /></label
-          ><label class="phase-d__field"
-            >{{ t('buckets')
-            }}<NInput
-              v-model:value="buckets"
-              :input-props="{ 'aria-label': t('buckets') }"
+              :input-props="{ 'aria-label': t('description') }"
           /></label>
-          <p class="phase-d__muted">{{ t('bucketsHint') }}</p>
           <Callout
-            v-if="UserHelper.skippedStorages(rows).length"
+            v-if="legacyStorages.length"
             tone="warning"
             >{{
-              t('missing', {
-                storages: UserHelper.skippedStorages(rows).join(', '),
-              })
+              t('legacyRequired', { storages: legacyStorages.join(', ') })
             }}</Callout
-          ></template
-        >
+          >
+          <NCollapse
+            :default-expanded-names="legacyStorages.length ? ['advanced'] : []"
+          >
+            <NCollapseItem
+              :title="t('advancedCreds')"
+              name="advanced"
+            >
+              <p class="phase-d__muted">{{ t('advancedHint') }}</p>
+              <div
+                v-for="row in rows"
+                :key="row.storage"
+                class="phase-d__panel phase-d__stack"
+              >
+                <strong
+                  >{{ row.storage }}
+                  <StatusTag
+                    v-if="row.storage === store.mainStorage"
+                    variant="info"
+                    >{{ t('main') }}</StatusTag
+                  ></strong
+                >
+                <div class="phase-d__grid">
+                  <label class="phase-d__field"
+                    >{{ t('accessKeyId')
+                    }}<NInput
+                      v-model:value="row.accessKeyId"
+                      :input-props="{
+                        'aria-label': `${row.storage} ${t('accessKeyId')}`,
+                        autocomplete: 'off',
+                      }"
+                      @update:value="row.result = null" /></label
+                  ><label class="phase-d__field"
+                    >{{ t('secret')
+                    }}<NInput
+                      v-model:value="row.secretAccessKey"
+                      type="password"
+                      show-password-on="click"
+                      :input-props="{
+                        'aria-label': `${row.storage} ${t('secret')}`,
+                        autocomplete: 'new-password',
+                      }"
+                      @update:value="row.result = null"
+                  /></label>
+                </div>
+                <div class="phase-d__actions">
+                  <NButton
+                    :disabled="
+                      !UserHelper.isRowFilled(row) || verifying !== null
+                    "
+                    :loading="verifying === row.storage"
+                    @click="verify(row)"
+                    >{{ t('verify') }}</NButton
+                  ><StatusTag
+                    v-if="row.result"
+                    :variant="row.result.ok ? 'success' : 'danger'"
+                    >{{
+                      row.result.ok
+                        ? t('verified', { latency: row.result.latencyMs ?? 0 })
+                        : row.result.error || t('failed')
+                    }}</StatusTag
+                  >
+                </div>
+              </div>
+            </NCollapseItem>
+          </NCollapse>
+        </template>
         <div class="phase-d__actions">
           <NButton
             v-if="step > 1"

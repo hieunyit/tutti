@@ -44,8 +44,20 @@
       render: (row) =>
         h(
           NTag,
-          { type: row.available ? 'success' : 'error', size: 'small' },
-          () => (row.available ? t('available') : t('unavailable')),
+          {
+            type: !row.available
+              ? 'error'
+              : row.lastError
+                ? 'warning'
+                : 'success',
+            size: 'small',
+          },
+          () =>
+            !row.available
+              ? t('unavailable')
+              : row.lastError
+                ? t('availableWarning')
+                : t('available'),
         ),
     },
     {

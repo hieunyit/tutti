@@ -36,6 +36,8 @@ export default <I18nMessages>{
     authDisabledBanner:
       'Sign-in is disabled: anyone who can reach this console has admin access. Enable api.auth in the worker config.',
     authDisabledLink: 'Read the documentation',
+    webhookUnauthenticated:
+      'Webhooks are reachable without a token on the main API port. Set api.webhook.token.',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
     collapse: 'Collapse sidebar',
@@ -71,6 +73,8 @@ export default <I18nMessages>{
     authDisabledBanner:
       'Die Anmeldung ist deaktiviert: Jeder, der diese Konsole erreichen kann, hat Administratorzugriff. Aktivieren Sie api.auth in der Worker-Konfiguration.',
     authDisabledLink: 'Dokumentation lesen',
+    webhookUnauthenticated:
+      'Webhooks sind auf dem Haupt-API-Port ohne Token erreichbar. Setzen Sie api.webhook.token.',
     openMenu: 'Menü öffnen',
     closeMenu: 'Menü schließen',
     collapse: 'Seitenleiste einklappen',
