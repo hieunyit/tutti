@@ -87,7 +87,10 @@ describe('chorusAddReplicationStore user step', () => {
 
     expect(AddReplicationStepName.USER).toBe(3);
     expect(store.stepsCount).toBe(4);
-    expect(store.users.map((u: { name: string }) => u.name)).toEqual(['alice', 'bob']);
+    expect(store.users.map((u: { name: string }) => u.name)).toEqual([
+      'alice',
+      'bob',
+    ]);
     expect(store.selectedUser).toBeNull();
   });
 
