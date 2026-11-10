@@ -160,8 +160,8 @@ Failback never happens automatically. After the old storage is repaired:
 2. Delete the paused old -> new replication:
    `chorctl repl delete -f old -t new -u <user> [-b <bucket>]`.
 3. Create the reverse replication so the old storage catches up with writes made during the outage:
-   `chorctl repl add -f new -t old -u <user> [-b <bucket>]`, and wait until it is done and the event lag is 0 (`chorctl repl`, `chorctl dash`).
-4. Switch routing back using the replication switch APIs (`chorctl repl switch zero-downtime ...` or `chorctl repl switch downtime ...`, see [live-migration](../live-migration.md)).
+   `chorctl repl add -f new -t old -u <user> [-b <bucket>]`, and wait until its `EVENTS` column shows done == total and `PROGRESS` is 100%. Do not use the `LAG` column as the completion signal: it shows the age of the oldest queued task (a duration), not a count of events (`chorctl repl`, `chorctl dash`).
+4. Switch routing back. The routing change itself is the `PUT /routing/update` and `PUT /routing/block` sequence in [runbooks.md](./runbooks.md#b-manual-failback-return-routing-to-the-original-storage) step 5, not a `chorctl repl switch` command: the switch commands work on bucket-level replications and also change replication direction, so do not use them for failback.
 5. Acknowledge the failover event so it disappears from the list: `PUT /tutti/failover/events/delete` (UI `/failover` -> acknowledge), or `redis-cli del tutti:failover:user:<user>` (bucket scope: `tutti:failover:bucket:<user>:<bucket>`).
 6. Re-create the old -> new replication if you want the original topology back.
 
@@ -204,3 +204,4 @@ See [performance and Redis recovery](./performance-and-redis.md) for the measure
 - [Storage accounts](./storage-accounts.md): credentials and policies for each storage (connection account: available, see Phase 2 backend).
 - [Redis operations](./redis-operations.md): Redis keys by kind, persistence, Sentinel, backup and restore, monitoring.
 - [Upstream branches](./upstream-branches.md): which `upstream/*` branches are safe to merge, review, or must not be merged.
+- [Prometheus alert rules](../../deploy/alerts/README.md): alerting rules (`deploy/alerts/tutti-alerts.yml`) for storage breakers, failover, policy snapshot and Redis, error rates and worker failures. Each alert links to a runbook section.

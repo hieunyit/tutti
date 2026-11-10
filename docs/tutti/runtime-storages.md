@@ -25,12 +25,67 @@ All mutation/test endpoints require an administrator session. The list is availa
 |---|---|---|
 | GET | `/tutti/storages` | None |
 | GET | `/tutti/storages/{name}` | None |
-| POST | `/tutti/storages` | `{storage, connectionAccount?, credentials?, testOptions?, force?}` |
-| PUT | `/tutti/storages` | `{storage, connectionAccount?, clearConnectionAccount?, credentials?, confirm?, testOptions?, force?}` |
+| POST | `/tutti/storages` | `{storage: <object>, connectionAccount?, credentials?, testOptions?, force?}` |
+| PUT | `/tutti/storages` | `{storage: <object>, connectionAccount?, clearConnectionAccount?, credentials?, confirm?, testOptions?, force?}` |
 | PUT | `/tutti/storages/delete` | `{name}` |
-| POST | `/tutti/storages/test` | `{name}` or `{storage, connectionAccount}`, `options?`: [connection test](./storage-accounts.md#test-connection) |
+| POST | `/tutti/storages/test` | `{name}` (existing storage) or `{storage: <object>, connectionAccount}` (unsaved settings), `options?`: [connection test](./storage-accounts.md#test-connection) |
 | PUT | `/tutti/storages/connection-account` | `{name, newAccount, options?, force?}`: [rotation](./storage-accounts.md#rotate-the-connection-account) |
-| POST | `/tutti/storages/test-credential` | `{storage, credential?}`: one `ListBuckets` with a credential (the former `/tutti/storages/test`) |
+| POST | `/tutti/storages/test-credential` | `{storage: <object>, credential?}`: one `ListBuckets` with a credential. This is the old `/tutti/storages/test`, which now runs the connection test. |
+
+### Request examples
+
+`storage` is a JSON object (the `RuntimeStorage` message), not a string. Field names are the protobuf JSON names (camelCase). Durations are protobuf JSON seconds.
+
+Create (`POST /tutti/storages`):
+
+```json
+{
+  "storage": {
+    "name": "archive",
+    "address": "https://rgw.example.internal",
+    "provider": "Ceph",
+    "defaultRegion": "us-east-1",
+    "isSecure": true,
+    "httpTimeout": "60s",
+    "healthCheckInterval": "10s",
+    "rateLimit": { "enabled": true, "rpm": 6000, "includeMetadataApi": false }
+  },
+  "connectionAccount": { "accessKeyId": "<key id>", "secretAccessKey": "<secret>" },
+  "credentials": [
+    { "user": "user1", "accessKeyId": "<key id>", "secretAccessKey": "<secret>" }
+  ],
+  "force": false
+}
+```
+
+Test unsaved settings (`POST /tutti/storages/test`, runs the connection test; `options` is the `StorageTestOptions` message):
+
+```json
+{
+  "storage": { "name": "archive", "address": "https://rgw.example.internal", "provider": "Ceph", "defaultRegion": "us-east-1", "isSecure": true },
+  "connectionAccount": { "accessKeyId": "<key id>", "secretAccessKey": "<secret>" },
+  "options": { "probeBucketPrefix": "app-tutti-probe-" }
+}
+```
+
+Test an existing storage by name: `{"name": "archive"}`.
+
+Test one credential (`POST /tutti/storages/test-credential`, one `ListBuckets` call):
+
+```json
+{
+  "storage": { "name": "archive", "address": "https://rgw.example.internal", "provider": "Ceph", "defaultRegion": "us-east-1", "isSecure": true },
+  "credential": { "user": "user1", "accessKeyId": "<key id>", "secretAccessKey": "<secret>" }
+}
+```
+
+Rotate the connection account (`PUT /tutti/storages/connection-account`):
+
+```json
+{ "name": "archive", "newAccount": { "accessKeyId": "<new key id>", "secretAccessKey": "<new secret>" }, "force": false }
+```
+
+Delete (`PUT /tutti/storages/delete`): `{"name": "archive"}`.
 
 The test endpoints do not save settings (the connection test of an existing storage stores its result as `lastTest`). When editing an existing storage, it can use an existing stored credential. Normal create/update operations verify on the server again, so client-side test results are not trusted as authorization. With a connection account, create/update run the full connection test and refuse on a failing step; `force` saves anyway and records `lastForcedSaveBy/At` (for unreferenced storages only; referenced updates cannot bypass the test).
 

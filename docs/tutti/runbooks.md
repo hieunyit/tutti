@@ -397,6 +397,15 @@ There is no tested re-seal tool. The steps below are the only sequence the code 
 
 If you cannot re-enter the secrets, the affected users and accounts cannot be used again, and recovery means creating new ones.
 
+## (i) Error rate, access denied and task failure alerts
+
+**Status: Available now.** Triage for the alerts `TuttiProxy5xxRateWarning`, `TuttiProxy5xxRateCritical`, `TuttiProxyAccessDeniedSpike` and `TuttiReplicationTaskFailures` in [deploy/alerts/tutti-alerts.yml](../../deploy/alerts/tutti-alerts.yml).
+
+1. **Break the proxy responses down by status**: `sum by (status) (rate(proxy_response_status[5m]))` (Prometheus, proxy metrics endpoint).
+2. **5xx**: check `storage_available` (0 means the breaker is open, see (a)) and `policy_snapshot_refresh_errors_total` (Redis, see (d)). When Redis is unreachable, every request that is not GET, HEAD or LIST returns 503. Reads keep working from the last known snapshot. Then read the proxy logs for the error of the failing requests.
+3. **403 spike**: the proxy logs name the access key of the denied requests. If the key was rotated or deleted, see (e). If the access policy of the user changed, check it with `GET /tutti/users`.
+4. **Worker task failures**: `sum by (queue, task_type) (rate(worker_failed_tasks_total[15m]))` shows which queue and task type fail. Failed attempts include retries, so compare with `worker_processed_tasks_total`. Read the worker logs for the error. Storage breaker and missing credentials (see (g)) are the usual causes.
+
 ---
 
 ## See also

@@ -1,0 +1,170 @@
+# Prometheus alerting rules for Tutti (proxy and worker).
+#
+# Every expression uses a metric that the code registers (pkg/metrics, pkg/policy/snapshot.go). Metrics are only
+# exported when metrics.enabled is true in the proxy/worker configuration. Rules that need a metric which does not
+# exist yet are kept at the bottom as commented-out TODO rules.
+#
+# Runbook links are relative to the repository root (docs/tutti/runbooks.md). Replace the prefix if your
+# documentation is hosted elsewhere. See README.md in this directory for loading and tuning.
+groups:
+  - name: tutti-storage
+    rules:
+      - alert: TuttiStorageBreakerOpen
+        expr: min by (storage) (storage_available) == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: proxy
+        annotations:
+          summary: 'Storage {{ $labels.storage }} circuit breaker is open'
+          description: 'storage_available{storage="{{ $labels.storage }}"} is 0 on at least one proxy, so requests to this storage fail fast. The breaker opens after about 3 failed probes or requests (about 30s with defaults). The 2m wait avoids alerts for short blips. Check per-proxy state with chorctl proxies.'
+          runbook_url: 'docs/tutti/runbooks.md#a-a-storage-is-down-and-automatic-failover-happened'
+
+      - alert: TuttiStorageBreakerFlapping
+        expr: sum by (storage) (increase(storage_breaker_transitions_total{to="open"}[30m])) >= 3
+        for: 5m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'Storage {{ $labels.storage }} circuit breaker opened {{ $value | humanize }} times in 30m'
+          description: 'The storage keeps going up and down. Check network path, storage health and the health check interval before failover policies trigger on a transient outage.'
+          runbook_url: 'docs/tutti/runbooks.md#a-a-storage-is-down-and-automatic-failover-happened'
+
+  - name: tutti-failover
+    rules:
+      - alert: TuttiAutomaticFailover
+        expr: sum by (from, to) (increase(failover_total[10m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'Automatic failover from {{ $labels.from }} to {{ $labels.to }}'
+          description: 'Routing for at least one user or bucket moved to {{ $labels.to }}. Replication from {{ $labels.from }} is paused. Failback is manual: check the failover event (chorctl failover events) and the eventLag, then follow the failback procedure. Acknowledge the event only after failback.'
+          runbook_url: 'docs/tutti/runbooks.md#a-a-storage-is-down-and-automatic-failover-happened'
+
+
+  - name: tutti-proxy-policy-snapshot
+    rules:
+      - alert: TuttiPolicySnapshotStale
+        expr: max by (instance) (policy_snapshot_age_seconds) > 30
+        for: 2m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'Proxy {{ $labels.instance }} has not validated its policy snapshot for {{ $value | humanize }}s'
+          description: 'policy_snapshot_age_seconds is the time since the last successful read of the config version from Redis. The proxy serves reads from its last known data. Writes are rejected with 503 if Redis stays unreachable. Compare with the Redis alert and the proxy logs.'
+          runbook_url: 'docs/tutti/runbooks.md#d-redis-is-down-or-full'
+
+      - alert: TuttiRedisUnreachableFromProxy
+        expr: sum by (instance) (increase(policy_snapshot_refresh_errors_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: critical
+          component: proxy
+        annotations:
+          summary: 'Proxy {{ $labels.instance }} cannot read the config version from Redis'
+          description: 'policy_snapshot_refresh_errors_total is increasing. Non-read requests fail with 503 until Redis responds. Check the Redis process, memory limit (used_memory vs maxmemory) and network.'
+          runbook_url: 'docs/tutti/runbooks.md#d-redis-is-down-or-full'
+
+      - alert: TuttiStaleSnapshotReadsServed
+        expr: sum by (instance) (increase(policy_snapshot_stale_served_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'Proxy {{ $labels.instance }} serves reads from a stale policy snapshot'
+          description: 'Read requests were served from the last known snapshot while Redis was unreachable. Routing changes made during the outage may not be visible on this proxy yet.'
+          runbook_url: 'docs/tutti/runbooks.md#d-redis-is-down-or-full'
+
+  - name: tutti-proxy-http
+    rules:
+      - alert: TuttiProxy5xxRateWarning
+        expr: sum(rate(proxy_response_status{status=~"5.."}[5m])) / sum(rate(proxy_response_status[5m])) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'More than 2% of proxy responses are 5xx'
+          description: 'Share of 5xx responses from the S3 proxy over 5 minutes is {{ $value | humanizePercentage }}. Break it down by status with proxy_response_status, and check storage_available and policy_snapshot alerts first. The 2% threshold is a starting point; tune it to your normal error rate.'
+          runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
+
+      - alert: TuttiProxy5xxRateCritical
+        expr: sum(rate(proxy_response_status{status=~"5.."}[5m])) / sum(rate(proxy_response_status[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: proxy
+        annotations:
+          summary: 'More than 10% of proxy responses are 5xx'
+          description: 'Share of 5xx responses from the S3 proxy is {{ $value | humanizePercentage }}. Clients are seeing widespread failures.'
+          runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
+
+      - alert: TuttiProxyAccessDeniedSpike
+        expr: sum(rate(proxy_response_status{status="403"}[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: proxy
+        annotations:
+          summary: 'Proxy returns more than 1 access denied (403) response per second'
+          description: 'A spike in 403 responses can mean a client with a revoked or rotated access key, a policy change that removed access, or a scan. Check the access key rotation state and the access policy of the affected user. The threshold of 1 req/s is an absolute value; tune it to your traffic.'
+          runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
+
+  - name: tutti-worker
+    rules:
+      - alert: TuttiReplicationTaskFailures
+        expr: sum(rate(worker_failed_tasks_total[15m])) / sum(rate(worker_processed_tasks_total[15m])) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: 'More than 5% of worker tasks fail'
+          description: 'worker_failed_tasks_total counts failed attempts, including retries, divided by processed tasks. Check worker logs for the error of the failing task_type and queue. Storage breaker and credential problems are the usual causes.'
+          runbook_url: 'docs/tutti/runbooks.md#i-error-rate-access-denied-and-task-failure-alerts'
+
+  # TODO: the rules below cannot be written with the metrics that exist today. They are kept commented out so they
+  # can be enabled once the metric is added.
+  #
+  # TODO(metrics): replication lag above threshold (unprocessed events per replication). Needed: a gauge per
+  #   replication with the number of unprocessed events (EventMigration.Unprocessed in pkg/policy/replication.go).
+  #   Today this value is only available through the API and chorctl repl, not as a metric.
+  # - alert: TuttiReplicationLagHigh
+  #   expr: max by (from, to) (tutti_replication_unprocessed_events) > 10000
+  #   for: 15m
+  #   labels: {severity: warning, component: worker}
+  #   annotations:
+  #     summary: 'Replication {{ $labels.from }} -> {{ $labels.to }} has {{ $value }} unprocessed events'
+  #     runbook_url: 'docs/tutti/runbooks.md#b-manual-failback-return-routing-to-the-original-storage'
+  #
+  # TODO(metrics): protection group copies below wanted (pkg/protectiongroups status: Copies vs wanted). Needed: a
+  #   gauge per group with the healthy and wanted copy counts.
+  # - alert: TuttiProtectionGroupCopiesBelowWanted
+  #   expr: tutti_protection_group_copies_healthy < tutti_protection_group_copies_wanted
+  #   for: 15m
+  #   labels: {severity: warning, component: worker}
+  #   annotations:
+  #     summary: 'Protection group {{ $labels.group }} has fewer healthy copies than wanted'
+  #
+  # TODO(metrics): protection group primary changed (manual or automatic). failover_total only counts automatic
+  #   routing failovers in the proxy. Needed: a counter incremented on every primary change, or a log-based alert.
+  # - alert: TuttiProtectionGroupPrimaryChanged
+  #   expr: increase(tutti_protection_group_primary_changes_total[10m]) > 0
+  #   for: 1m
+  #   labels: {severity: warning, component: worker}
+  #
+  # TODO(metrics): worker cannot reach Redis. The worker has no Redis error counter. Needed: a counter on the
+  #   worker's Redis client errors or the config-version poll errors.
+  # - alert: TuttiWorkerRedisUnreachable
+  #   expr: increase(tutti_worker_redis_errors_total[5m]) > 0
+  #   for: 2m
+  #   labels: {severity: critical, component: worker}
+  #
+  # TODO(logs, no metric): "storage ... has no credentials for user ..." (dom.ErrNoCredentials, proxy answers 503).
+  #   There is no counter for it. A log-based alert (Loki or similar) on that message is the workaround. See
+  #   docs/tutti/runbooks.md#g-add-a-storage-at-runtime-and-add-credentials for the fix.
