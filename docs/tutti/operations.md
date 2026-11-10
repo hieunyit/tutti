@@ -201,5 +201,5 @@ See [performance and Redis recovery](./performance-and-redis.md) for the measure
 ## See also
 
 - [Runbooks](./runbooks.md): step-by-step procedures for failover, failback, Redis incidents, key rotation and console lockout.
-- [Storage accounts](./storage-accounts.md): credentials and policies for each storage (connection account planned for Phase 2).
+- [Storage accounts](./storage-accounts.md): credentials and policies for each storage (connection account: available, see Phase 2 backend).
 - [Redis operations](./redis-operations.md): Redis keys by kind, persistence, Sentinel, backup and restore, monitoring.

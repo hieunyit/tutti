@@ -24,12 +24,15 @@ All mutation/test endpoints require an administrator session. The list is availa
 | Method | Path | Request |
 |---|---|---|
 | GET | `/tutti/storages` | None |
-| POST | `/tutti/storages` | `{storage, credentials}` |
-| PUT | `/tutti/storages` | `{storage, credentials?, confirm?}` |
+| GET | `/tutti/storages/{name}` | None |
+| POST | `/tutti/storages` | `{storage, connectionAccount?, credentials?, testOptions?, force?}` |
+| PUT | `/tutti/storages` | `{storage, connectionAccount?, clearConnectionAccount?, credentials?, confirm?, testOptions?, force?}` |
 | PUT | `/tutti/storages/delete` | `{name}` |
-| POST | `/tutti/storages/test` | `{storage, credential?}` |
+| POST | `/tutti/storages/test` | `{name}` or `{storage, connectionAccount}`, `options?`: [connection test](./storage-accounts.md#test-connection) |
+| PUT | `/tutti/storages/connection-account` | `{name, newAccount, options?, force?}`: [rotation](./storage-accounts.md#rotate-the-connection-account) |
+| POST | `/tutti/storages/test-credential` | `{storage, credential?}`: one `ListBuckets` with a credential (the former `/tutti/storages/test`) |
 
-The test endpoint does not save settings. When editing an existing storage, it can use an existing stored credential. Normal create/update operations verify on the server again, so client-side test results are not trusted as authorization. A `force` override is available to API administrators for unreferenced storages; referenced updates cannot bypass verification.
+The test endpoints do not save settings (the connection test of an existing storage stores its result as `lastTest`). When editing an existing storage, it can use an existing stored credential. Normal create/update operations verify on the server again, so client-side test results are not trusted as authorization. With a connection account, create/update run the full connection test and refuse on a failing step; `force` saves anyway and records `lastForcedSaveBy/At` (for unreferenced storages only; referenced updates cannot bypass the test).
 
 Durations use protobuf JSON seconds (`"60s"`); the UI also accepts Go-style input such as `1m30s` and converts it. Endpoint URLs cannot contain embedded credentials, query strings, fragments or non-root paths.
 

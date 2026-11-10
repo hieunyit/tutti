@@ -41,7 +41,7 @@ Redis is still the right tool for locks, queues and fast shared state, as long a
 
 ### Phase 2: Storage connection accounts (fixes the credentials matrix)
 
-#### 2.1 Model
+#### 2.1 Model (backend done)
 1. Each storage gets one **connection account** (a dedicated S3 user on that storage, e.g. `tutti-svc`), stored sealed
    with the master key. Proxy, worker (replication, diff, migration) and health checks use it by default.
 2. Tutti users become **identities + permissions** only: name, access policy (permission + bucket globs), proxy access keys.
@@ -53,7 +53,7 @@ Redis is still the right tool for locks, queues and fast shared state, as long a
 5. Migration: config-defined per-user credentials become overrides and keep working; a storage without a connection account
    keeps the current per-user behaviour; the UI marks it "legacy credentials".
 
-#### 2.2 Request flow (client never sees storage credentials)
+#### 2.2 Request flow (client never sees storage credentials) (backend done)
 ```
 client --SigV4 with Tutti key (TUT…)--> proxy
 proxy: 1) find key (static / dynamic), reject disabled or unknown (403 InvalidAccessKeyId)
@@ -65,7 +65,7 @@ proxy: 1) find key (static / dynamic), reject disabled or unknown (403 InvalidAc
 Consequences: revoking a client = disable/rotate its Tutti key; adding a storage or failing over never changes client config.
 `auth.useStorage` (clients using storage keys directly) stays only for backward compatibility and is not offered in the UI.
 
-#### 2.3 Permissions the connection account needs
+#### 2.3 Permissions the connection account needs (backend done)
 Every member of a protection group can become primary after failover, so **every storage needs read and write**.
 Required set depends on enabled features:
 
@@ -117,7 +117,7 @@ existing buckets of other owners need a bucket policy granting `tutti-svc` the a
 `radosgw-admin bucket link --bucket=<b> --uid=tutti-svc` (changes ownership: confirm with the storage owner).
 The docs page ships these files (`docs/tutti/storage-accounts.md`) and the UI offers "Copy policy" for the enabled features.
 
-#### 2.4 "Test connection": exact checks (on add, on edit, and on demand)
+#### 2.4 "Test connection": exact checks (on add, on edit, and on demand) (backend done)
 Run in order with the entered settings and connection account; each step reports **pass / fail / warning / skipped**, the API
 call, latency and, on failure, the exact S3 error code and the missing permission. A fail blocks saving unless the admin
 ticks "save anyway" (recorded in the audit log). All probes use a temporary bucket `tutti-probe-<random>` (or, if bucket

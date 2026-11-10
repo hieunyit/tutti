@@ -313,6 +313,7 @@ func trafficStatsToPb(s *trafficstats.Snapshot) *pb.TrafficStats {
 		SyncBelowQuorum:     s.Sync.BelowQuorum,
 		SyncSkipped:         s.Sync.Skipped,
 		ChunkedVerifyFailed: s.ChunkedVerifyFailed,
+		NoCredentials:       s.NoCredentials,
 		BytesIn:             s.BytesIn,
 		BytesOut:            s.BytesOut,
 		Latency: &pb.LatencyHistogram{

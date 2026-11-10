@@ -149,6 +149,31 @@ Interactions:
 
 Source: `service/proxy/config.go` (`SyncConfig`), `service/proxy/router/sync_replication.go`, `service/proxy/server.go`.
 
+## Storage connection account
+
+```yaml
+storage:
+  storages:
+    main:
+      type: S3
+      address: "minio.example.internal:9000"
+      provider: Minio
+      defaultRegion: us-east-1
+      connectionAccount:           # optional: the dedicated account Tutti uses on this storage
+        accessKeyID: tutti-svc
+        secretAccessKey: "<secret>"
+      credentials:                 # optional per-user overrides (win over the connection account)
+        alice:
+          accessKeyID: ALICEKEY
+          secretAccessKey: "<secret>"
+```
+
+- `storage.storages.<name>.connectionAccount.accessKeyID` / `secretAccessKey` (both required if the block is present): the account the proxy, the worker (replication, diff, migration, switch), failover and the health checks use for every user without an override on this storage. Resolution order: `credentials.<user>` or dynamic credentials of the user, then `connectionAccount`, otherwise `storage S has no credentials for user U` (proxy: 503).
+- Config-defined accounts are read-only in the API (`connectionAccount.source: "config"`, rotation through the API is refused) and are stored in plain text in the file: restrict it. Storages created through the API store the account sealed with `storage.dynamicCredentials.masterPassword`.
+- Set it on the worker **and** the proxies (both read `storage.storages`). Prepare the account and its policy first: [Storage accounts](./storage-accounts.md).
+
+Source: `pkg/s3/config.go`, `pkg/objstore/connection.go`.
+
 ## Circuit breaker and health checks
 
 ```yaml
@@ -171,11 +196,11 @@ What counts as a failure: network errors, timeouts and HTTP 5xx (except 501). An
 Interactions:
 
 - `healthCheckInterval` times `failureThreshold` is the typical time to detect a dead storage (for example 3 x 10s = about 30 s). Real requests that fail also count, so a busy proxy can detect it earlier. See [operations](./operations.md#circuit-breaker-and-health-checks).
-- Probes (a `ListBuckets` call with the alphabetically first configured credential of the storage) run only for S3 storages. A storage without credentials is not probed. Swift storages are not probed.
+- Probes run only for S3 storages. With a connection account the probe runs steps 1 to 5 of the [connection test](./storage-accounts.md#test-connection) (DNS/TCP, TLS, S3 endpoint, clock skew, authentication) and reports a problem as `lastError` with the step name (`authentication: SignatureDoesNotMatch`); host, TLS and endpoint failures count as outages, authentication and clock problems are only reported. Without a connection account the probe is a `ListBuckets` call with the alphabetically first per-user credential of the storage; a storage without any credential is not probed. Swift storages are not probed.
 - The same `health` settings apply to all storages in one proxy; the interval is per storage.
 - Metrics (when `metrics.enabled`): `storage_available`, `storage_breaker_transitions_total`.
 
-Source: `pkg/health/`, `pkg/s3/config.go`, `service/proxy/server.go` (`storageProbe`).
+Source: `pkg/health/`, `pkg/storagetest/probe.go`, `pkg/s3/config.go`, `service/proxy/managed_health.go`.
 
 ## Redis
 

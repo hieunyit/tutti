@@ -19,6 +19,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/proxyaccount"
 	"github.com/hieunyit/tutti/pkg/s3"
 )
@@ -43,6 +44,8 @@ type fakeCreds struct {
 	failSet  string // storage whose SetS3Credentials fails
 	deleted  []string
 	storages map[string]dom.StorageType
+	conn     map[string]objstore.ConnectionInfo
+	idents   map[string]bool
 }
 
 type blockingCreds struct {
@@ -91,7 +94,57 @@ func (f *fakeCreds) ListUsers(st string) []string {
 	for u := range f.dyn[st] {
 		r = append(r, u)
 	}
+	if _, ok := f.conn[st]; ok {
+		for u := range f.idents {
+			r = append(r, u)
+		}
+	}
 	return r
+}
+func (f *fakeCreds) ConnectionAccount(st string) (objstore.ConnectionInfo, bool) {
+	c, ok := f.conn[st]
+	return c, ok
+}
+func (f *fakeCreds) Identities() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var r []string
+	for u := range f.idents {
+		r = append(r, u)
+	}
+	return r
+}
+func (f *fakeCreds) HasIdentity(u string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.idents[u]
+}
+func (f *fakeCreds) AddIdentity(_ context.Context, u string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.idents == nil {
+		f.idents = map[string]bool{}
+	}
+	if f.idents[u] {
+		return dom.ErrAlreadyExists
+	}
+	f.idents[u] = true
+	return nil
+}
+func (f *fakeCreds) RemoveIdentity(_ context.Context, u string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.idents, u)
+	return nil
+}
+func (f *fakeCreds) ResolveS3Credentials(st, u string) (s3.CredentialsV4, objstore.CredMode, error) {
+	if c, err := f.GetS3Credentials(st, u); err == nil {
+		return c, objstore.ModeOverride, nil
+	}
+	if c, ok := f.conn[st]; ok {
+		return c.Credentials, objstore.ModeConnection, nil
+	}
+	return s3.CredentialsV4{}, objstore.ModeMissing, &objstore.NoCredentialsError{Storage: st, User: u}
 }
 func (f *fakeCreds) CredentialSource(st, u string) string {
 	f.mu.Lock()
@@ -180,12 +233,12 @@ func TestList_UnionAndNeverSecrets(t *testing.T) {
 	require.Equal(t, "partial", partial.Name)
 	require.Equal(t, "user1", u1.Name)
 	require.True(t, u1.Complete)
-	require.Equal(t, StorageState{Storage: "backup", Configured: true, Source: "config", AccessKeyID: "bk1"}, u1.Storages[0])
+	require.Equal(t, StorageState{Storage: "backup", Configured: true, Source: "config", AccessKeyID: "bk1", Mode: objstore.ModeOverride}, u1.Storages[0])
 	require.Equal(t, KeyCounts{DynamicActive: 1, DynamicDisabled: 1}, u1.KeyCounts)
 	require.Equal(t, PolicySummary{HasPolicy: true, Permission: "read-only", Buckets: []string{"a*"}}, u1.Policy)
 	require.False(t, partial.Complete)
-	require.Equal(t, StorageState{Storage: "backup"}, partial.Storages[0])
-	require.Equal(t, StorageState{Storage: "main", Configured: true, Source: "dynamic", AccessKeyID: "pk"}, partial.Storages[1])
+	require.Equal(t, StorageState{Storage: "backup", Mode: objstore.ModeMissing}, partial.Storages[0])
+	require.Equal(t, StorageState{Storage: "main", Configured: true, Source: "dynamic", AccessKeyID: "pk", Mode: objstore.ModeOverride}, partial.Storages[1])
 	require.Equal(t, PolicySummary{Permission: "read-write", Buckets: []string{"*"}}, partial.Policy)
 }
 

@@ -14,6 +14,11 @@ import (
 
 type ctxKey struct{}
 
+// ContextWithSession returns a context that carries the signed-in session.
+func ContextWithSession(ctx context.Context, sess *Session) context.Context {
+	return context.WithValue(ctx, ctxKey{}, sess)
+}
+
 // FromContext returns the authenticated session placed by the interceptor.
 func FromContext(ctx context.Context) (*Session, bool) {
 	s, ok := ctx.Value(ctxKey{}).(*Session)
@@ -139,7 +144,7 @@ func (s *Service) check(ctx context.Context, method string) (context.Context, er
 	if !Allowed(sess.Role, method) {
 		return ctx, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s", sess.Role, method)
 	}
-	return context.WithValue(ctx, ctxKey{}, sess), nil
+	return ContextWithSession(ctx, sess), nil
 }
 
 // UnaryInterceptor enforces authentication and roles on unary RPCs.

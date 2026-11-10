@@ -178,5 +178,13 @@ http:
       put: /tutti/storages/delete
       body: "*"
     - selector: chorus.Resilience.TestRuntimeStorage
+      post: /tutti/storages/test-credential
+      body: "*"
+    - selector: chorus.Resilience.TestStorageConnection
       post: /tutti/storages/test
       body: "*"
+    - selector: chorus.Resilience.RotateStorageConnectionAccount
+      put: /tutti/storages/connection-account
+      body: "*"
+    - selector: chorus.Resilience.GetRuntimeStorage
+      get: /tutti/storages/{name}

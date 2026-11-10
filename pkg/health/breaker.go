@@ -64,9 +64,30 @@ const (
 	Neutral
 )
 
+// ProbeError is the failure of one step of the connection check of a storage with its connection account
+// (pkg/storagetest, steps 1-5), e.g. "authentication: SignatureDoesNotMatch".
+type ProbeError struct {
+	// Step is the id of the failed step.
+	Step   string
+	Detail string
+	// Unavailable is true if the storage cannot be used at all (host, TLS or endpoint failure): it counts like a
+	// network error and can open the breaker. Otherwise (authentication, clock skew) the storage answered: the problem
+	// is only reported in LastError and never fails traffic fast or triggers a failover.
+	Unavailable bool
+}
+
+func (e *ProbeError) Error() string { return e.Step + ": " + e.Detail }
+
 // Classify maps an error to its availability meaning.
 func Classify(err error) Outcome {
 	if err == nil {
+		return Success
+	}
+	var pe *ProbeError
+	if errors.As(err, &pe) {
+		if pe.Unavailable {
+			return Failure
+		}
 		return Success
 	}
 	var s3Err mclient.ErrorResponse
@@ -122,9 +143,11 @@ type breaker struct {
 	openUntil  time.Time
 	trialAt    time.Time
 	lastErr    string
-	failures   int
-	open       bool
-	trial      bool
+	// problem is the last definitive probe problem (see ProbeError), cleared by the next clean probe.
+	problem  string
+	failures int
+	open     bool
+	trial    bool
 }
 
 // Registry is a concurrency-safe set of per-storage circuit breakers.
@@ -217,6 +240,20 @@ func (r *Registry) Allow(storage string) bool {
 	return true
 }
 
+// ObserveProbe records the outcome of a periodic probe. Besides the effect of Observe, a ProbeError of a storage that
+// still answers (authentication, clock skew) is kept as LastError until a clean probe clears it.
+func (r *Registry) ObserveProbe(storage string, err error) {
+	var pe *ProbeError
+	problem := ""
+	if errors.As(err, &pe) && !pe.Unavailable {
+		problem = err.Error()
+	}
+	r.mu.Lock()
+	r.get(storage).problem = problem
+	r.mu.Unlock()
+	r.Observe(storage, err)
+}
+
 // Observe records the outcome of a request or probe to the storage.
 func (r *Registry) Observe(storage string, err error) {
 	outcome := Classify(err)
@@ -275,7 +312,7 @@ func (r *Registry) Snapshot() []Status {
 	for name, b := range r.breakers {
 		res = append(res, Status{
 			Name: name, Available: !b.open, ConsecutiveFailures: b.failures,
-			LastError: b.lastErr, LastChange: b.lastChange,
+			LastError: firstNonEmpty(b.lastErr, b.problem), LastChange: b.lastChange,
 		})
 	}
 	sort.Slice(res, func(i, j int) bool { return res[i].Name < res[j].Name })
@@ -295,4 +332,11 @@ func (r *Registry) Reset(storage string) {
 	defer r.mu.Unlock()
 	delete(r.breakers, storage)
 	r.get(storage)
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }

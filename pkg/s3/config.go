@@ -55,8 +55,11 @@ func (p Provider) SupportsRetainVersionID() bool {
 }
 
 type Storage struct {
-	Credentials    map[string]CredentialsV4 `yaml:"credentials"`
-	StorageAddress `yaml:",inline" mapstructure:",squash"`
+	// Credentials are per-user credentials (overrides of the connection account).
+	Credentials map[string]CredentialsV4 `yaml:"credentials"`
+	// ConnectionAccount is the optional dedicated account Tutti uses on this storage for users without an override.
+	ConnectionAccount *CredentialsV4 `yaml:"connectionAccount"`
+	StorageAddress    `yaml:",inline" mapstructure:",squash"`
 }
 
 type StorageAddress struct {
@@ -105,6 +108,11 @@ func (c CredentialsV4) Validate() error {
 }
 
 func (s *Storage) Validate() error {
+	if s.ConnectionAccount != nil {
+		if err := s.ConnectionAccount.Validate(); err != nil {
+			return fmt.Errorf("%w: connectionAccount", err)
+		}
+	}
 	for user, cred := range s.Credentials {
 		if err := cred.Validate(); err != nil {
 			return fmt.Errorf("%w: for user %q", err, user)

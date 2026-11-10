@@ -2,7 +2,7 @@
 
 How to prepare the account Tutti uses to talk to each storage.
 
-> **Status.** The *connection account* model described here is **planned (Phase 2 of the [scale plan](./scale-plan.md))**. It is not implemented. Today every (Tutti user, storage) pair needs its own storage credentials, as described in [Today (before Phase 2)](#today-before-phase-2). Use the planned sections to prepare accounts and policies now; they are written to match the plan so the change will not require new accounts.
+> **Status.** The *connection account* model (Phase 2 of the [scale plan](./scale-plan.md), backend) is **available**: connection account per storage, credential resolution (override, then connection account), users without storage keys, the connection test, rotation and the periodic re-check. Storages without a connection account keep the per-user behaviour ([Per-user overrides](#per-user-overrides-and-legacy-credentials)). UI support is a separate change; everything below is reachable through the REST API.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Tutti sits between clients and storages. Clients should not need storage keys, a
 
 Because any storage in a protection group can become the primary after a failover, the connection account on **every** storage needs read and write rights, not only the storage that is currently primary.
 
-## Request flow (planned)
+## Request flow
 
 ```
 client --SigV4 with Tutti key (TUT...)--> proxy
@@ -48,13 +48,13 @@ Copied from the scale plan (section 2.3). The required set depends on the featur
 | Lifecycle sync | `s3:GetLifecycleConfiguration`, `s3:PutLifecycleConfiguration` | `features.lifecycle` |
 | Bucket policy sync | `s3:GetBucketPolicy`, `s3:PutBucketPolicy`, `s3:DeleteBucketPolicy` | `features.policy` |
 
-Scope: `Resource` may be limited to a bucket prefix (for example `app-*`) when Tutti manages only part of a storage. Tutti users' access policies must then stay inside that prefix. Never use the root account (`minioadmin`, a Ceph admin user); the connection test flags it.
+Scope: `Resource` may be limited to a bucket prefix (for example `app-*`) when Tutti manages only part of a storage. Tutti users' access policies must then stay inside that prefix. Never use the root account (`minioadmin`, a Ceph admin user); the connection test flags it (by name only, see step 6). The ACL actions exist on Ceph RGW and AWS S3 but **not on MinIO**.
 
 ## MinIO
 
 ### Full-storage policy
 
-This is the scale-plan example for a storage where Tutti manages every bucket and all features are enabled. Save it as `tutti-rw.json`.
+This is the scale-plan example for a storage where Tutti manages every bucket and all features are enabled, without the ACL actions: **MinIO has no `s3:GetBucketAcl`, `s3:PutBucketAcl`, `s3:GetObjectAcl` or `s3:PutObjectAcl` actions and rejects policies that name them** (`unsupported action`). ACL calls are not policy-controlled on MinIO. Ceph RGW and AWS S3 do have them: add them to the policy there if `features.acl` is enabled. Save it as `tutti-rw.json`.
 
 ```json
 {
@@ -64,14 +64,14 @@ This is the scale-plan example for a storage where Tutti manages every bucket an
     {"Effect": "Allow",
      "Action": ["s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket", "s3:ListBucketVersions",
                 "s3:ListBucketMultipartUploads", "s3:GetBucketVersioning", "s3:PutBucketVersioning",
-                "s3:GetBucketTagging", "s3:PutBucketTagging", "s3:GetBucketAcl", "s3:PutBucketAcl",
+                "s3:GetBucketTagging", "s3:PutBucketTagging",
                 "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
                 "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy"],
      "Resource": ["arn:aws:s3:::*"]},
     {"Effect": "Allow",
      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion",
                 "s3:ListMultipartUploadParts", "s3:AbortMultipartUpload",
-                "s3:GetObjectTagging", "s3:PutObjectTagging", "s3:GetObjectAcl", "s3:PutObjectAcl"],
+                "s3:GetObjectTagging", "s3:PutObjectTagging"],
      "Resource": ["arn:aws:s3:::*/*"]}
   ]
 }
@@ -102,14 +102,14 @@ Use this when Tutti manages only buckets named `app-*` on a shared storage. Save
      "Action": ["s3:CreateBucket", "s3:DeleteBucket", "s3:GetBucketLocation", "s3:ListBucket",
                 "s3:ListBucketVersions", "s3:ListBucketMultipartUploads",
                 "s3:GetBucketVersioning", "s3:PutBucketVersioning",
-                "s3:GetBucketTagging", "s3:PutBucketTagging", "s3:GetBucketAcl", "s3:PutBucketAcl",
+                "s3:GetBucketTagging", "s3:PutBucketTagging",
                 "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
                 "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy"],
      "Resource": ["arn:aws:s3:::app-*"]},
     {"Effect": "Allow",
      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject", "s3:DeleteObject", "s3:DeleteObjectVersion",
                 "s3:ListMultipartUploadParts", "s3:AbortMultipartUpload",
-                "s3:GetObjectTagging", "s3:PutObjectTagging", "s3:GetObjectAcl", "s3:PutObjectAcl"],
+                "s3:GetObjectTagging", "s3:PutObjectTagging"],
      "Resource": ["arn:aws:s3:::app-*/*"]}
   ]
 }
@@ -122,7 +122,7 @@ mc admin policy attach myminio tutti-app-rw --user tutti-svc
 
 Caveats:
 
-- The connection test creates a probe bucket named `tutti-probe-<random>` (scale plan 2.4). That name is outside `app-*`, so with this policy the create-bucket check fails until the probe name can be chosen inside the allowed prefix (open item for Phase 2). Until then, the test reports the step as not allowed, and the bucket-access checks use a bucket you select.
+- The connection test creates a probe bucket named `tutti-probe-<random>` by default. That name is outside `app-*`: pass `probeBucketPrefix: "app-tutti-probe-"` (the probe bucket becomes `app-tutti-probe-<random>`), or choose an existing bucket inside the prefix with `probeBucket`.
 - Tutti users' access policies must use buckets inside `app-*`.
 
 ## Ceph RGW
@@ -179,34 +179,148 @@ This changes the bucket owner to `tutti-svc`. The previous owner loses ownership
 
 Ceph RGW `ListBuckets` returns only buckets the account owns. The health check still works with a connection account that owns nothing, but the "existing buckets" check (step 16 below) is where the bucket policy matters.
 
-## Test connection (planned, scale plan 2.4)
+## Test connection
 
-Runs on add, on edit, and on demand, with the entered settings and the connection account. Each step reports pass, fail, warning or skipped. A fail blocks saving unless an admin ticks "save anyway", which is recorded in the audit log. All probes use a temporary bucket and clean up afterwards.
+`POST /tutti/storages/test` runs the checks below against **unsaved settings** (`storage` + `connectionAccount`) or an **existing storage** (`name`, optionally with another `connectionAccount` to try it before a rotation). It never answers with an error because a check failed: the result lists every step. Create, update and rotation run the same test and **refuse to save when a step fails**, unless `force: true` (then who and when are stored in the storage document as `lastForcedSaveBy` / `lastForcedSaveAt`). The last result of an existing storage is stored with it (`lastTest`) and returned by `GET /tutti/storages` and `GET /tutti/storages/{name}`.
 
-| # | Check | Passes when | Typical failure and fix |
-|---|---|---|---|
-| 1 | DNS and TCP to host:port | connected within `httpTimeout` | DNS or refused or timeout: fix the endpoint, port, firewall |
-| 2 | TLS (https) | valid chain for the host name, expiry more than 14 days | certificate error: install a valid cert or provide the CA |
-| 3 | S3 endpoint | S3 XML response to unauthenticated `GET /` | HTML or redirect: the endpoint is not S3 (check path and port) |
-| 4 | Clock skew | difference under 5 minutes (warning above 1 minute) | sync NTP on the proxy or worker host; SigV4 fails otherwise |
-| 5 | Authentication (`ListBuckets` signed) | 200 | `InvalidAccessKeyId`: key does not exist on the storage; `SignatureDoesNotMatch`: wrong secret or a proxy that changes the Host header |
-| 6 | Root or admin account | not the root user | use the dedicated account from this page |
-| 7 | Region | matches `defaultRegion`, or storage reports none | set `defaultRegion` to the reported value |
-| 8 | Create bucket | 200 | `AccessDenied` on `s3:CreateBucket`; or skipped if bucket creation is disabled |
-| 9 | Write and read (`PutObject`, `GetObject`, `HeadObject`) | content matches | missing `s3:PutObject` or `s3:GetObject` |
-| 10 | List (`ListObjectsV2`) | probe object listed | missing `s3:ListBucket` |
-| 11 | Multipart (create, put one 5 MiB part, list, abort) | all succeed | missing the multipart action named in the error |
-| 12 | Versioning (if provider supports it and used) | two versions written and listed, one deleted | `NotImplemented`: provider has no versioning, disable the feature for this storage |
-| 13 | Enabled features (tagging, ACL, lifecycle, policy) | get and put succeed | missing action for that feature; or disable the feature for this storage |
-| 14 | Delete (`DeleteObject`, `DeleteBucket`) | 200 or 204 | missing `s3:DeleteObject` or `s3:DeleteBucket`; the test lists any probe left behind |
-| 15 | Existing buckets referenced by users, routings or groups | `HeadBucket` and `ListObjectsV2 max-keys=1` succeed | "owned by another account": add the bucket policy above, or link the bucket |
-| 16 | Throughput (optional, on demand) | warning only | none required |
+Request:
 
-Today, the nearest checks are `POST /tutti/storages/test` (runtime storages; `ListBuckets` with the given credential) and `POST /tutti/users/test` (stored credentials of one user on one storage). See [runtime storages](./runtime-storages.md) and [API](./api.md#s3-users-api).
+```json
+{
+  "name": "archive",
+  "connectionAccount": {"accessKeyId": "tutti-svc", "secretAccessKey": "..."},
+  "options": {
+    "probeBucketPrefix": "app-tutti-probe-",
+    "probeBucket": "",
+    "features": {"versioning": true, "tagging": false, "acl": false, "lifecycle": false, "policy": false},
+    "throughput": false
+  }
+}
+```
 
-## Today (before Phase 2)
+- `probeBucketPrefix`: prefix of the temporary bucket (default `tutti-probe-`; lowercase letters, digits, `-`, `.`). Use a prefix inside the bucket prefix your account policy is limited to.
+- `probeBucket`: use this existing bucket instead of creating one (bucket creation not allowed). The bucket is never deleted or reconfigured; only the probe objects under `tutti-probe/<run id>/` are written and removed. Bucket-level feature checks are skipped on it.
+- `features`: which optional steps run. Omitted: versioning runs for the Minio and Ceph providers, no other feature.
+- `throughput`: also run step 17.
 
-Available now. Each Tutti user needs its own storage credentials on **every** storage used for replication or failover (`complete: true` in `GET /tutti/users`).
+Result (abridged):
+
+```json
+{
+  "testedAt": "2026-11-10T09:51:08Z", "ok": false, "hasWarnings": true, "durationMs": "812",
+  "accessKeyId": "tutti-nodel", "probeBucket": "tutti-probe-9f2c61aa", "leftovers": [], "kind": "full",
+  "steps": [
+    {"id": "dns-tcp", "number": 1, "name": "DNS + TCP", "status": "pass", "call": "resolve host, connect to port",
+     "latencyMs": "1", "message": "connected to 10.0.0.12:9000", "missingPermission": "", "hint": ""},
+    {"id": "authentication", "number": 5, "name": "Authentication", "status": "pass", "call": "ListBuckets", "latencyMs": "4",
+     "message": "authenticated as tutti-nodel (3 bucket(s) visible)", "missingPermission": "", "hint": ""},
+    {"id": "write", "number": 9, "name": "Write", "status": "pass", "call": "PutObject", "latencyMs": "6",
+     "message": "wrote 21 bytes", "missingPermission": "", "hint": ""},
+    {"id": "delete", "number": 15, "name": "Delete", "status": "fail", "call": "DeleteObject, DeleteBucket", "latencyMs": "31",
+     "message": "DeleteObject failed: AccessDenied: Access Denied.; DeleteObjectVersion failed: AccessDenied: Access Denied.",
+     "missingPermission": "s3:DeleteObject, s3:DeleteObjectVersion",
+     "hint": "Remove the leftovers manually and grant the missing permissions."}
+  ]
+}
+```
+
+`status` is `pass`, `fail`, `warn` or `skip`. A failed early step skips the steps that depend on it (for example a TLS failure skips steps 3 to 16). Cleanup always runs; whatever could not be removed is listed in `leftovers` and in the message of step 15.
+
+| # | id | Check | Passes when | Typical failure and fix |
+|---|---|---|---|---|
+| 1 | `dns-tcp` | resolve host, connect to port | connected within `httpTimeout` (max 30s) | DNS, refused or timeout: fix the endpoint, port, firewall |
+| 2 | `tls` | TLS handshake (https) | valid chain for the host name; expiry more than 14 days (else `warn`) | certificate error text and expiry date, "custom CA required": install the CA on the Tutti hosts |
+| 3 | `endpoint` | unauthenticated `GET /` | S3 XML response, not HTML or a redirect | "Endpoint does not look like S3 (got status/content-type)": use the S3 API address |
+| 4 | `clock-skew` | `Date` header of that response | skew under 1 minute (`warn` up to 5 minutes, `fail` above) | sync NTP; SigV4 fails otherwise |
+| 5 | `authentication` | `ListBuckets` signed with the account | 200 | `InvalidAccessKeyId`, `SignatureDoesNotMatch`, `AccessDenied`... each with a hint |
+| 6 | `root-account` | heuristic on the account | not a well-known administrator name | `warn`: use the dedicated account. Only the access key id and the owner name/id (`minioadmin`, `root`, `admin`, `rgwadmin`) are checked: MinIO reports the same fixed owner for every user, so it cannot be used, and the root user cannot be detected otherwise without admin credentials |
+| 7 | `region` | `GetBucketLocation` on the probe (or an existing) bucket | equals `defaultRegion`, or none configured | `warn` "Storage reports region X": set `defaultRegion` |
+| 8 | `create-bucket` | `CreateBucket` of the probe bucket | 200 | missing `s3:CreateBucket`; with `probeBucket` the step is `skip` |
+| 9 | `write` | `PutObject` | 200 | missing `s3:PutObject` |
+| 10 | `read` | `GetObject` + `HeadObject` | content matches | missing `s3:GetObject` |
+| 11 | `list` | `ListObjectsV2` | probe object listed | missing `s3:ListBucket` |
+| 12 | `multipart` | create, upload one 5 MiB part, `ListParts`, `ListMultipartUploads`, abort | all succeed | the missing action of the failing call (`s3:ListMultipartUploadParts`, `s3:ListBucketMultipartUploads`, `s3:AbortMultipartUpload`) |
+| 13 | `versioning` | `GetBucketVersioning`, enable on the probe, two writes, `ListObjectVersions`, delete one version | all succeed | missing versioning action; `warn` "provider does not support versioning" on `NotImplemented` |
+| 14 | `features` | tagging, ACL, lifecycle, policy get+put (one entry per enabled feature) | all succeed | missing action per feature; `skip` if none enabled |
+| 15 | `delete` | `DeleteObject`, remaining versions, `DeleteBucket` | all succeed | missing `s3:DeleteObject`, `s3:DeleteObjectVersion` or `s3:DeleteBucket`; leftovers listed |
+| 16 | `existing-buckets` | `HeadBucket` + `ListObjectsV2 max-keys=1` on every bucket that bucket routings and bucket replications place on this storage, and on every visible bucket matching the bucket globs of the access policies of users that reach it (users with a bucket routing or replication to it; every user for the main storage) | accessible | `fail` "Account cannot access bucket B (owned by another account)" with a copyable bucket policy; `warn` if the bucket does not exist yet |
+| 17 | `throughput` | 3 x PUT and GET of 1 MiB (only with `throughput: true`) | always (informational: MiB/s, p95) | warning only |
+
+**Periodic re-check.** For every storage with a connection account the proxy health checker runs steps 1 to 5 on its normal `healthCheckInterval`. A problem appears as the storage health error with the step name, for example `authentication: SignatureDoesNotMatch` or `dns-tcp: connection refused` (`lastError` of the storage in `GET /tutti/proxies`). Host, TLS and endpoint failures count as outages like before (circuit breaker, failover). Authentication and clock problems are **only reported**: the storage still answers, so the breaker stays closed and no failover starts; the error clears with the next clean check. Storages without a connection account keep the old `ListBuckets` probe with the first per-user credential.
+
+Other API calls: `POST /tutti/users/test` (stored credentials of one user on one storage; with a connection account it tests the account) and `POST /tutti/storages/test-credential` (the former `/tutti/storages/test`: one `ListBuckets` with a given credential).
+
+## Connection account: set up and manage
+
+### Config storage (read-only in the API)
+
+```yaml
+storage:
+  storages:
+    main:
+      type: S3
+      address: "minio.example.internal:9000"
+      provider: Minio
+      defaultRegion: us-east-1
+      connectionAccount:
+        accessKeyID: tutti-svc
+        secretAccessKey: "<secret>"
+```
+
+Config-defined accounts show `connectionAccount.source: "config"`, cannot be changed or rotated through the API (`FailedPrecondition`) and are not sealed: protect the config file. `credentials.<user>` in the same storage keep working as per-user overrides.
+
+### Managed storage (API)
+
+Needs `storage.dynamicCredentials` with a `masterPassword` (the account is stored sealed, like dynamic credentials). `POST /tutti/storages`:
+
+```json
+{
+  "storage": {"name": "archive", "address": "http://minio-b.example.internal:9000", "provider": "Minio", "defaultRegion": "us-east-1"},
+  "connectionAccount": {"accessKeyId": "tutti-svc", "secretAccessKey": "<secret>"},
+  "testOptions": {"probeBucketPrefix": "tutti-probe-"},
+  "force": false
+}
+```
+
+The storage is created only if the test passes (or `force`). The response is the storage: `connectionAccount` (`configured`, `accessKeyId`, `source`, never the secret), `lastTest`, `lastForcedSaveBy/At`, `legacyCredentials`. `PUT /tutti/storages` (update) takes `connectionAccount` to set one, omits it to keep the stored one, `clearConnectionAccount: true` to go back to legacy per-user credentials; it re-runs the test with the account that will be effective.
+
+### Resolution: which key signs a request
+
+For a request of user U to storage S, the proxy, the worker (replication, diff, migration, switch) and failover use the first that exists:
+
+1. the **override** of U on S (config `credentials.<U>` or dynamic credentials): unchanged behaviour;
+2. the **connection account** of S;
+3. otherwise the error `storage S has no credentials for user U`. The proxy answers **503** `ServiceUnavailable` with that message in the S3 error XML and counts it (`noCredentials` in the proxy statistics); the worker fails the task with the same message.
+
+Health checks and the connection test use the connection account when present.
+
+### Users without storage keys
+
+```bash
+curl -s -X POST $API/tutti/users -H 'Content-Type: application/json' -d '{
+  "name": "alice", "createAccessKey": true,
+  "policy": {"permission": "read-write", "buckets": ["app-*"]}
+}'
+```
+
+`credentials` may be empty when **every S3 storage has a connection account**; otherwise every storage without one needs an override in `credentials` (the main storage must always resolve). `GET /tutti/users` reports per storage `mode`: `connection-account`, `override` or `missing`, and `complete: true` when every storage resolves. A user created without any credentials exists as a lightweight record in the config DB (Redis hash `tutti:s3users`), so it is listed and can be used in replications and routings. An override can be added later with `PUT /tutti/users/credentials` (tenant isolation, per-user quota or billing on the storage side).
+
+### Rotate the connection account
+
+1. Create the new account on the storage (same policy). Keep the old one enabled.
+2. `PUT /tutti/storages/connection-account`:
+
+```json
+{"name": "archive", "newAccount": {"accessKeyId": "tutti-svc-2", "secretAccessKey": "<secret>"}, "options": {}, "force": false}
+```
+
+The new account is tested first; the switch is refused if a step fails (unless `force`). The switch is one atomic write of the storage document that also bumps the storages version. The previous account is kept (sealed) in the document until the next rotation and returned as `connectionAccount.previousAccessKeyId`.
+
+3. **Propagation delay.** Proxies and workers poll the storages version every **2 seconds at most** (the poll interval is capped at 2s when managed storages are enabled). Until a process has polled, it keeps signing with the old key, so there is no downtime as long as the old key stays valid. **Do not disable or delete the old account on the storage before `connectionAccount.safeToRevokePreviousAfter`** (rotation time + 60 seconds). Requests already in flight finish with the key they were signed with. Config storages are rotated by changing the config file and restarting.
+
+## Per-user overrides and legacy credentials
+
+A Tutti user may have its **own** storage credentials on a storage: an *override*. It wins over the connection account for that user and storage. This was the only model before the connection account, so existing setups keep working unchanged. A storage without a connection account needs an override for every user that reaches it, including for replication and failover (`complete: true` in `GET /tutti/users`, `mode: override` on every storage).
 
 ### Create the per-user account on the storage
 
@@ -261,12 +375,12 @@ Rotate a dynamic user's credentials on one storage with `PUT /tutti/users/creden
 
 Check the result: `GET /tutti/users` shows `complete` and each storage's `accessKeyId` (never the secret).
 
-### What changes in Phase 2
+### Migration
 
-- New users do not need storage keys. Existing per-user credentials become **overrides** and keep working.
-- Storages without a connection account keep the per-user behaviour and show "legacy credentials" in the UI.
+- Existing per-user credentials (config `credentials.<user>` and dynamic) are overrides and keep working. Nothing needs to change when a connection account is added to a storage; users without an override start to resolve through it.
+- Storages without a connection account keep the per-user behaviour and report `legacyCredentials: true`.
 
-## Checklist before enabling Phase 2
+## Checklist before adding a connection account
 
 - [ ] One connection account per storage, not root or admin.
 - [ ] Policy attached on every storage, covering the features you enable.

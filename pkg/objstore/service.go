@@ -207,7 +207,7 @@ func NewRegistry(ctx context.Context, creds CredsService, metricsSvc metrics.Ser
 	// pre-populate clients cache with existing storages and users
 	storsages := creds.Storages()
 	for storageName, storageType := range storsages {
-		users := creds.ListUsers(storageName)
+		users := creds.ListOverrideUsers(storageName)
 		for _, user := range users {
 			switch storageType {
 			case dom.S3:
@@ -262,7 +262,7 @@ type swiftCacheVal struct {
 }
 
 func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Client, error) {
-	creds, err := r.credsSvc.GetS3Credentials(storage, user)
+	creds, _, err := r.credsSvc.ResolveS3Credentials(storage, user)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 	r.Lock()
 	defer r.Unlock()
 	// re-check cache after acquiring write lock
-	cred, err := r.credsSvc.GetS3Credentials(storage, user)
+	cred, _, err := r.credsSvc.ResolveS3Credentials(storage, user)
 	if err != nil {
 		return nil, err
 	}

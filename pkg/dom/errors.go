@@ -34,6 +34,8 @@ var (
 	ErrAuth                 = errors.New("AuthError")
 	ErrPolicy               = errors.New("PolicyError")
 	ErrRoutingBlock         = errors.New("RoutingBlockedError")
+	// ErrNoCredentials: neither a per-user override nor a connection account exists for the user on the storage.
+	ErrNoCredentials = errors.New("NoStorageCredentials")
 	// ErrUnavailable: a dependency (e.g. Redis) is unreachable; the proxy answers 503 ServiceUnavailable.
 	ErrUnavailable = errors.New("ServiceUnavailable")
 )

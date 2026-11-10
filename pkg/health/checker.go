@@ -79,7 +79,7 @@ func (r *Registry) runTarget(ctx context.Context, t Target) {
 			cancelProbe()
 			result, deadline = nil, nil
 			if !timedOut && !errors.Is(err, ErrSkipProbe) && ctx.Err() == nil {
-				r.Observe(t.Storage, err)
+				r.ObserveProbe(t.Storage, err)
 			}
 		case <-deadline:
 			deadline = nil

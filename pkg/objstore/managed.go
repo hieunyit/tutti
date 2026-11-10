@@ -74,6 +74,18 @@ type ManagedStorage struct {
 	Name      string
 	Address   s3.StorageAddress
 	RateLimit ratelimit.RateLimit
+	// ConnectionAccount is the account Tutti uses on the storage for users without a per-user override. Stored sealed.
+	// On UpdateManaged an empty value keeps the stored account (unless ClearConnectionAccount is set).
+	ConnectionAccount s3.CredentialsV4
+	// PreviousAccount is the account replaced by the last rotation, kept until the next rotation so that proxies that
+	// have not polled the new version yet keep working. RotatedAt is the time of the rotation.
+	PreviousAccount s3.CredentialsV4
+	RotatedAt       time.Time
+	// LastForcedSaveBy/At record who saved the storage although its connection test had failing steps.
+	LastForcedSaveBy string
+	LastForcedSaveAt time.Time
+	// ClearConnectionAccount (UpdateManaged input only, not stored) removes the connection account.
+	ClearConnectionAccount bool
 }
 
 // Normalize validates the definition and fills defaults (address scheme, http timeout).
@@ -103,6 +115,11 @@ func (m ManagedStorage) Normalize() (ManagedStorage, error) {
 	if m.RateLimit.RPM < 0 {
 		return m, fmt.Errorf("%w: rateLimit.rpm must not be negative", dom.ErrInvalidArg)
 	}
+	if m.ConnectionAccount != (s3.CredentialsV4{}) {
+		if err := m.ConnectionAccount.Validate(); err != nil {
+			return m, fmt.Errorf("%w: connection account: %w", dom.ErrInvalidArg, err)
+		}
+	}
 	return m, nil
 }
 
@@ -119,10 +136,56 @@ type managedDoc struct {
 	RateMetadata        bool      `json:"rateLimitIncludeMetadataApi,omitempty"`
 	CreatedAt           time.Time `json:"createdAt"`
 	UpdatedAt           time.Time `json:"updatedAt"`
+	// Sealed JSON of s3.CredentialsV4 (AES-GCM with the dynamic credentials master key).
+	ConnectionAccount string    `json:"connectionAccount,omitempty"`
+	PreviousAccount   string    `json:"previousAccount,omitempty"`
+	RotatedAt         time.Time `json:"rotatedAt,omitzero"`
+	LastForcedSaveBy  string    `json:"lastForcedSaveBy,omitempty"`
+	LastForcedSaveAt  time.Time `json:"lastForcedSaveAt,omitzero"`
 }
 
-func (m ManagedStorage) marshal() ([]byte, error) {
+// sealer seals and opens the credentials in storage documents.
+type sealer interface {
+	Seal([]byte) (string, error)
+	Open(string) ([]byte, error)
+}
+
+func sealCred(sl sealer, c s3.CredentialsV4) (string, error) {
+	if c == (s3.CredentialsV4{}) {
+		return "", nil
+	}
+	raw, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return sl.Seal(raw)
+}
+
+func openCred(sl sealer, sealed string) (s3.CredentialsV4, error) {
+	var c s3.CredentialsV4
+	if sealed == "" {
+		return c, nil
+	}
+	raw, err := sl.Open(sealed)
+	if err != nil {
+		return c, err
+	}
+	err = json.Unmarshal(raw, &c)
+	return c, err
+}
+
+func (m ManagedStorage) marshal(sl sealer) ([]byte, error) {
+	conn, err := sealCred(sl, m.ConnectionAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to seal the connection account: %w", err)
+	}
+	prev, err := sealCred(sl, m.PreviousAccount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to seal the previous connection account: %w", err)
+	}
 	return json.Marshal(managedDoc{
+		ConnectionAccount: conn, PreviousAccount: prev, RotatedAt: m.RotatedAt,
+		LastForcedSaveBy: m.LastForcedSaveBy, LastForcedSaveAt: m.LastForcedSaveAt,
 		Name: m.Name, Address: m.Address.Address, Provider: string(m.Address.Provider), DefaultRegion: m.Address.DefaultRegion,
 		IsSecure: m.Address.IsSecure, HealthCheckInterval: int64(m.Address.HealthCheckInterval), HttpTimeout: int64(m.Address.HttpTimeout),
 		RateEnabled: m.RateLimit.Enabled, RateRPM: m.RateLimit.RPM, RateMetadata: m.RateLimit.IncludeMetadataAPI,
@@ -130,7 +193,7 @@ func (m ManagedStorage) marshal() ([]byte, error) {
 	})
 }
 
-func unmarshalManaged(field string, raw string) (ManagedStorage, error) {
+func unmarshalManaged(sl sealer, field string, raw string) (ManagedStorage, error) {
 	var d managedDoc
 	if err := json.Unmarshal([]byte(raw), &d); err != nil {
 		return ManagedStorage{}, err
@@ -138,7 +201,17 @@ func unmarshalManaged(field string, raw string) (ManagedStorage, error) {
 	if d.Name != field {
 		return ManagedStorage{}, fmt.Errorf("document name %q does not match field %q", d.Name, field)
 	}
+	conn, err := openCred(sl, d.ConnectionAccount)
+	if err != nil {
+		return ManagedStorage{}, fmt.Errorf("failed to open the connection account: %w", err)
+	}
+	prev, err := openCred(sl, d.PreviousAccount)
+	if err != nil {
+		return ManagedStorage{}, fmt.Errorf("failed to open the previous connection account: %w", err)
+	}
 	return ManagedStorage{
+		ConnectionAccount: conn, PreviousAccount: prev, RotatedAt: d.RotatedAt,
+		LastForcedSaveBy: d.LastForcedSaveBy, LastForcedSaveAt: d.LastForcedSaveAt,
 		Name: d.Name,
 		Address: s3.StorageAddress{
 			Address: d.Address, Provider: s3.Provider(d.Provider), DefaultRegion: d.DefaultRegion, IsSecure: d.IsSecure,
@@ -155,6 +228,8 @@ type storagesView struct {
 	s3      map[string]s3.StorageAddress
 	rate    map[string]ratelimit.RateLimit
 	managed map[string]ManagedStorage
+	// conn holds the connection account of S3 storages (config or managed).
+	conn map[string]ConnectionInfo
 }
 
 func buildView(conf *Config, managed map[string]ManagedStorage) *storagesView {
@@ -163,9 +238,13 @@ func buildView(conf *Config, managed map[string]ManagedStorage) *storagesView {
 		s3:      make(map[string]s3.StorageAddress),
 		rate:    conf.RateLimitConf(),
 		managed: managed,
+		conn:    make(map[string]ConnectionInfo),
 	}
 	for name, st := range conf.S3Storages() {
 		v.s3[name] = st.StorageAddress
+		if st.ConnectionAccount != nil {
+			v.conn[name] = ConnectionInfo{Credentials: *st.ConnectionAccount, Source: StorageSourceConfig}
+		}
 	}
 	for name, m := range managed {
 		if _, ok := conf.Storages[name]; ok {
@@ -174,6 +253,9 @@ func buildView(conf *Config, managed map[string]ManagedStorage) *storagesView {
 		v.types[name] = dom.S3
 		v.s3[name] = m.Address
 		v.rate[name] = m.RateLimit
+		if m.ConnectionAccount != (s3.CredentialsV4{}) {
+			v.conn[name] = ConnectionInfo{Credentials: m.ConnectionAccount, Source: StorageSourceManaged, Previous: m.PreviousAccount, RotatedAt: m.RotatedAt}
+		}
 	}
 	return v
 }
@@ -288,7 +370,7 @@ func (s *credsSvc) CreateManaged(ctx context.Context, m ManagedStorage) (Managed
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	m.CreatedAt, m.UpdatedAt = now, now
-	raw, err := m.marshal()
+	raw, err := m.marshal(s)
 	if err != nil {
 		return m, err
 	}
@@ -324,18 +406,43 @@ func (s *credsSvc) UpdateManaged(ctx context.Context, m ManagedStorage) (Managed
 	if err != nil {
 		return m, fmt.Errorf("failed to read storage from redis: %w", err)
 	}
-	old, err := unmarshalManaged(m.Name, rawOld)
+	old, err := unmarshalManaged(s, m.Name, rawOld)
 	if err != nil {
 		return m, fmt.Errorf("%w: stored storage %q is corrupted: %w", dom.ErrInternal, m.Name, err)
 	}
 	m.CreatedAt, m.UpdatedAt = old.CreatedAt, time.Now().UTC().Truncate(time.Second)
-	raw, err := m.marshal()
+	switch {
+	case m.ClearConnectionAccount:
+		m.ConnectionAccount, m.PreviousAccount, m.RotatedAt = s3.CredentialsV4{}, s3.CredentialsV4{}, time.Time{}
+	case m.ConnectionAccount == (s3.CredentialsV4{}):
+		m.ConnectionAccount, m.PreviousAccount, m.RotatedAt = old.ConnectionAccount, old.PreviousAccount, old.RotatedAt
+	case m.ConnectionAccount != old.ConnectionAccount:
+		m.PreviousAccount, m.RotatedAt = old.ConnectionAccount, m.UpdatedAt
+	default:
+		m.PreviousAccount, m.RotatedAt = old.PreviousAccount, old.RotatedAt
+	}
+	if m.LastForcedSaveBy == "" {
+		m.LastForcedSaveBy, m.LastForcedSaveAt = old.LastForcedSaveBy, old.LastForcedSaveAt
+	}
+	m.ClearConnectionAccount = false
+	raw, err := m.marshal(s)
 	if err != nil {
 		return m, err
 	}
-	// replace only if the document is unchanged since it was read: concurrent updates fail instead of silently losing one
-	err = s.managedClient.Watch(ctx, func(tx *redis.Tx) error {
-		cur, err := tx.HGet(ctx, managedStoragesKey, m.Name).Result()
+	if err := s.replaceManaged(ctx, m.Name, rawOld, raw); err != nil {
+		return m, err
+	}
+	if err := s.syncManaged(ctx); err != nil {
+		return m, fmt.Errorf("failed to sync storages after update: %w", err)
+	}
+	return m, nil
+}
+
+// replaceManaged replaces the document only if it is unchanged since it was read: concurrent updates fail instead of
+// silently losing one.
+func (s *credsSvc) replaceManaged(ctx context.Context, name, rawOld string, raw []byte) error {
+	err := s.managedClient.Watch(ctx, func(tx *redis.Tx) error {
+		cur, err := tx.HGet(ctx, managedStoragesKey, name).Result()
 		if err != nil {
 			return err
 		}
@@ -343,20 +450,65 @@ func (s *credsSvc) UpdateManaged(ctx context.Context, m ManagedStorage) (Managed
 			return redis.TxFailedErr
 		}
 		_, err = tx.TxPipelined(ctx, func(p redis.Pipeliner) error {
-			p.HSet(ctx, managedStoragesKey, m.Name, raw)
+			p.HSet(ctx, managedStoragesKey, name, raw)
 			p.Incr(ctx, managedStoragesVersionKey)
 			return nil
 		})
 		return err
 	}, managedStoragesKey)
 	if errors.Is(err, redis.TxFailedErr) {
-		return m, fmt.Errorf("%w: storage %q was changed concurrently, retry", dom.ErrFailedPrecondition, m.Name)
+		return fmt.Errorf("%w: storage %q was changed concurrently, retry", dom.ErrFailedPrecondition, name)
 	}
 	if err != nil {
-		return m, fmt.Errorf("failed to update storage in redis: %w", err)
+		return fmt.Errorf("failed to update storage in redis: %w", err)
+	}
+	return nil
+}
+
+// RotateConnectionAccount switches the connection account of a managed storage atomically (one Redis transaction that
+// also bumps the storages version). The replaced account is kept in the document (sealed) as PreviousAccount until the
+// next rotation. Proxies and workers pick the new account up on their next poll of the storages version (at most 2s);
+// until then they keep signing with the old one, which therefore must stay valid on the storage for
+// RotationPropagationDelay after RotatedAt.
+func (s *credsSvc) RotateConnectionAccount(ctx context.Context, name string, next s3.CredentialsV4, forcedBy string) (ManagedStorage, error) {
+	if err := s.managedPrecondition(); err != nil {
+		return ManagedStorage{}, err
+	}
+	if _, ok := s.config.Storages[name]; ok {
+		return ManagedStorage{}, fmt.Errorf("%w: storage %q is defined in config: change connectionAccount in the config file", dom.ErrFailedPrecondition, name)
+	}
+	if err := next.Validate(); err != nil {
+		return ManagedStorage{}, fmt.Errorf("%w: %w", dom.ErrInvalidArg, err)
+	}
+	rawOld, err := s.managedClient.HGet(ctx, managedStoragesKey, name).Result()
+	if errors.Is(err, redis.Nil) {
+		return ManagedStorage{}, fmt.Errorf("%w: storage %q", dom.ErrNotFound, name)
+	}
+	if err != nil {
+		return ManagedStorage{}, fmt.Errorf("failed to read storage from redis: %w", err)
+	}
+	m, err := unmarshalManaged(s, name, rawOld)
+	if err != nil {
+		return m, fmt.Errorf("%w: stored storage %q is corrupted: %w", dom.ErrInternal, name, err)
+	}
+	if m.ConnectionAccount == next {
+		return m, fmt.Errorf("%w: the new connection account equals the current one", dom.ErrInvalidArg)
+	}
+	m.PreviousAccount, m.ConnectionAccount = m.ConnectionAccount, next
+	m.RotatedAt = time.Now().UTC().Truncate(time.Second)
+	m.UpdatedAt = m.RotatedAt
+	if forcedBy != "" {
+		m.LastForcedSaveBy, m.LastForcedSaveAt = forcedBy, m.RotatedAt
+	}
+	raw, err := m.marshal(s)
+	if err != nil {
+		return m, err
+	}
+	if err := s.replaceManaged(ctx, name, rawOld, raw); err != nil {
+		return m, err
 	}
 	if err := s.syncManaged(ctx); err != nil {
-		return m, fmt.Errorf("failed to sync storages after update: %w", err)
+		return m, fmt.Errorf("failed to sync storages after rotation: %w", err)
 	}
 	return m, nil
 }
@@ -383,6 +535,7 @@ func (s *credsSvc) DeleteManaged(ctx context.Context, name string) error {
 	}
 	tx := s.managedClient.TxPipeline()
 	tx.HDel(ctx, managedStoragesKey, name)
+	tx.HDel(ctx, storageTestsKey, name)
 	tx.Incr(ctx, managedStoragesVersionKey)
 	if _, err := tx.Exec(ctx); err != nil {
 		return fmt.Errorf("failed to delete storage in redis: %w", err)
@@ -461,7 +614,7 @@ func (s *credsSvc) syncManaged(ctx context.Context) error {
 	}
 	managed := make(map[string]ManagedStorage, len(docs))
 	for name, raw := range docs {
-		m, err := unmarshalManaged(name, raw)
+		m, err := unmarshalManaged(s, name, raw)
 		if err == nil {
 			m, err = m.Normalize()
 		}

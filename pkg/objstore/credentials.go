@@ -62,7 +62,21 @@ type CredsService interface {
 	ListUsers(storage string) []string
 
 	GetSwiftCredentials(storage, user string) (swift.Credentials, error)
+	// GetS3Credentials returns the per-user credentials (override) of the user on the storage.
 	GetS3Credentials(storage, user string) (s3.CredentialsV4, error)
+	// ResolveS3Credentials returns the credentials to sign requests of the user to the storage with: the override, else
+	// the connection account of the storage, else *NoCredentialsError (errors.Is dom.ErrNoCredentials).
+	ResolveS3Credentials(storage, user string) (s3.CredentialsV4, CredMode, error)
+	// ConnectionAccount returns the connection account of an S3 storage.
+	ConnectionAccount(storage string) (ConnectionInfo, bool)
+	// ListOverrideUsers lists the users that have their own credentials on the storage. ListUsers additionally lists
+	// all Tutti identities if the storage has a connection account.
+	ListOverrideUsers(storage string) []string
+	// Identities lists the users recorded as Tutti identities (users may have no storage credentials at all).
+	Identities() []string
+	HasIdentity(user string) bool
+	AddIdentity(ctx context.Context, user string) error
+	RemoveIdentity(ctx context.Context, user string) error
 
 	SetSwiftCredentials(ctx context.Context, storage, user string, cred swift.Credentials) error
 	SetS3Credentials(ctx context.Context, storage, user string, cred s3.CredentialsV4) error
@@ -141,10 +155,13 @@ func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient, op
 	if err := instance.syncManaged(ctx); err != nil {
 		return nil, fmt.Errorf("failed to sync managed storages: %w", err)
 	}
+	if err := instance.syncIdentities(ctx); err != nil {
+		return nil, fmt.Errorf("failed to sync user records: %w", err)
+	}
 	// start background sync goroutine
 	go func() {
 		interval := conf.DynamicCredentials.PollInterval
-		if instance.ManagedStoragesEnabled() && interval > 2*time.Second {
+		if (instance.ManagedStoragesEnabled() || instance.identitiesEnabled()) && interval > 2*time.Second {
 			interval = 2 * time.Second
 		}
 		ticker := time.NewTicker(interval)
@@ -159,6 +176,9 @@ func NewCredsSvc(ctx context.Context, conf *Config, rc redis.UniversalClient, op
 				}
 				if err := instance.syncManaged(ctx); err != nil {
 					zerolog.Ctx(ctx).Error().Err(err).Msg("failed to sync managed storages")
+				}
+				if err := instance.syncIdentities(ctx); err != nil {
+					zerolog.Ctx(ctx).Error().Err(err).Msg("failed to sync user records")
 				}
 			}
 		}
@@ -196,6 +216,11 @@ type credsSvc struct {
 	view atomic.Pointer[storagesView]
 	// managedClient is the config DB Redis with the managed storages (nil: managed storages disabled).
 	managedClient redis.UniversalClient
+	// identities are the Tutti user records of the config DB (see connection.go).
+	identities    atomic.Pointer[map[string]struct{}]
+	identMu       sync.Mutex
+	identVer      int64
+	identLoaded   bool
 	managedMu     sync.Mutex
 	managedVer    int64
 	managedLoaded bool
@@ -261,7 +286,26 @@ func (s *credsSvc) GetSwiftAddress(storage string) (swift.StorageAddress, error)
 	return res.StorageAddress, nil
 }
 
+// ListUsers lists the users that can act on the storage: the users with their own credentials, plus every Tutti
+// identity if the storage has a connection account.
 func (s *credsSvc) ListUsers(storage string) []string {
+	users := s.listOverrideUsers(storage)
+	if _, ok := s.view.Load().conn[storage]; !ok {
+		return users
+	}
+	seen := make(map[string]struct{}, len(users))
+	for _, u := range users {
+		seen[u] = struct{}{}
+	}
+	for _, u := range s.Identities() {
+		if _, ok := seen[u]; !ok {
+			users = append(users, u)
+		}
+	}
+	return users
+}
+
+func (s *credsSvc) listOverrideUsers(storage string) []string {
 	view := s.view.Load()
 	storageConf, inConfig := s.config.Storages[storage]
 	var users []string
@@ -338,6 +382,10 @@ func (s *credsSvc) ValidateReplicationID(id entity.UniversalReplicationID) error
 }
 
 func (s *credsSvc) HasUser(storage string, user string) error {
+	if _, ok := s.view.Load().conn[storage]; ok && s.knownUser(user) {
+		// the connection account serves every Tutti user
+		return nil
+	}
 	err := s.config.Exists(storage, user)
 	if !s.config.DynamicCredentials.Enabled {
 		// dynamic credentials disabled, return result from config
@@ -825,4 +873,17 @@ func buildS3AccessKeyIdxFromConf(conf *Config) map[string]s3CredsByAccessKey {
 		}
 	}
 	return res
+}
+
+// knownUser reports whether the user is a Tutti identity or has its own credentials on any storage.
+func (s *credsSvc) knownUser(user string) bool {
+	if s.HasIdentity(user) {
+		return true
+	}
+	for name := range s.view.Load().types {
+		if s.CredentialSource(name, user) != "" {
+			return true
+		}
+	}
+	return false
 }

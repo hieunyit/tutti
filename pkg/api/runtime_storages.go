@@ -21,6 +21,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/s3users"
+	"github.com/hieunyit/tutti/pkg/storagetest"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
@@ -33,6 +34,9 @@ type RuntimeStorages interface {
 	UpdateManaged(context.Context, objstore.ManagedStorage) (objstore.ManagedStorage, error)
 	DeleteManaged(context.Context, string) error
 	RateLimits() map[string]ratelimit.RateLimit
+	RotateConnectionAccount(ctx context.Context, name string, next s3.CredentialsV4, forcedBy string) (objstore.ManagedStorage, error)
+	SaveStorageTest(ctx context.Context, storage string, resultJSON []byte) error
+	StorageTests(ctx context.Context) (map[string]string, error)
 }
 
 type StorageReferences func(context.Context, string) ([]string, error)
@@ -75,6 +79,13 @@ func runtimeStorageFromPb(in *pb.RuntimeStorage) (objstore.ManagedStorage, error
 	return m.Normalize()
 }
 func (h *resilienceHandlers) runtimeStoragePb(ctx context.Context, name string) (*pb.RuntimeStorage, error) {
+	tests, err := h.runtimeStorages.StorageTests(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return h.runtimeStoragePbWithTests(ctx, name, tests)
+}
+func (h *resilienceHandlers) runtimeStoragePbWithTests(ctx context.Context, name string, tests map[string]string) (*pb.RuntimeStorage, error) {
 	c := h.runtimeStorages
 	a, err := c.GetS3Address(name)
 	if err != nil {
@@ -85,8 +96,15 @@ func (h *resilienceHandlers) runtimeStoragePb(ctx context.Context, name string) 
 	if m, ok := c.GetManaged(name); ok {
 		out.CreatedAt = timestamppb.New(m.CreatedAt)
 		out.UpdatedAt = timestamppb.New(m.UpdatedAt)
+		out.LastForcedSaveBy = m.LastForcedSaveBy
+		if !m.LastForcedSaveAt.IsZero() {
+			out.LastForcedSaveAt = timestamppb.New(m.LastForcedSaveAt)
+		}
 	}
-	users := c.ListUsers(name)
+	out.ConnectionAccount = h.connectionInfoPb(c, name)
+	out.LegacyCredentials = !out.ConnectionAccount.Configured
+	out.LastTest = testResultFromJSON(tests[name])
+	users := c.ListOverrideUsers(name)
 	sort.Strings(users)
 	for _, u := range users {
 		cr, err := c.GetS3Credentials(name, u)
@@ -116,8 +134,12 @@ func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, _ *emptypb
 		}
 	}
 	sort.Strings(names)
+	tests, err := c.StorageTests(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, n := range names {
-		s, err := h.runtimeStoragePb(ctx, n)
+		s, err := h.runtimeStoragePbWithTests(ctx, n, tests)
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +203,23 @@ func (h *resilienceHandlers) CreateRuntimeStorage(ctx context.Context, req *pb.C
 	if err != nil {
 		return nil, err
 	}
-	if err = h.verifyStorageCredentials(ctx, m, credentials, req.Force); err != nil {
+	m.ConnectionAccount = connectionFromPb(req.ConnectionAccount)
+	var testRes *storagetest.Result
+	if m.ConnectionAccount != (s3.CredentialsV4{}) {
+		// the connection account is tested with the full checks of the scale plan (2.4); overrides keep the ListBuckets check
+		if testRes, err = h.runStorageTest(ctx, "", m.Address, m.ConnectionAccount, req.TestOptions); err != nil {
+			return nil, err
+		}
+		if !testRes.OK {
+			if !req.Force {
+				return nil, failedTestError("storage not created", testRes)
+			}
+			m.LastForcedSaveBy, m.LastForcedSaveAt = forcedBy(ctx), time.Now().UTC().Truncate(time.Second)
+		}
+		if err = h.verifyOverrides(ctx, m, credentials, req.Force); err != nil {
+			return nil, err
+		}
+	} else if err = h.verifyStorageCredentials(ctx, m, credentials, req.Force); err != nil {
 		return nil, err
 	}
 	_, err = c.CreateManaged(ctx, m)
@@ -196,7 +234,23 @@ func (h *resilienceHandlers) CreateRuntimeStorage(ctx context.Context, req *pb.C
 			return nil, errors.Join(err, rollback)
 		}
 	}
+	h.saveTest(ctx, m.Name, testRes)
 	return h.runtimeStoragePb(ctx, m.Name)
+}
+
+func forcedBy(ctx context.Context) string {
+	if u := actorName(ctx); u != "" {
+		return u
+	}
+	return "unknown"
+}
+
+// verifyOverrides checks per-user overrides next to a connection account (they are optional, so none is not an error).
+func (h *resilienceHandlers) verifyOverrides(ctx context.Context, m objstore.ManagedStorage, creds map[string]s3.CredentialsV4, force bool) error {
+	if force || len(creds) == 0 {
+		return nil
+	}
+	return h.verifyStorageCredentials(ctx, m, creds, false)
 }
 func (h *resilienceHandlers) UpdateRuntimeStorage(ctx context.Context, req *pb.UpdateRuntimeStorageRequest) (out *pb.RuntimeStorage, err error) {
 	c, err := h.storageManager()
@@ -239,7 +293,7 @@ func (h *resilienceHandlers) updateRuntimeStorageLocked(ctx context.Context, c R
 		return nil, err
 	}
 	verify := map[string]s3.CredentialsV4{}
-	for _, u := range c.ListUsers(m.Name) {
+	for _, u := range c.ListOverrideUsers(m.Name) {
 		cr, err := c.GetS3Credentials(m.Name, u)
 		if err != nil {
 			return nil, err
@@ -249,7 +303,33 @@ func (h *resilienceHandlers) updateRuntimeStorageLocked(ctx context.Context, c R
 	for u, cr := range changes {
 		verify[u] = cr
 	}
-	if err = h.verifyStorageCredentials(ctx, m, verify, req.Force); err != nil {
+	m.ConnectionAccount = connectionFromPb(req.ConnectionAccount)
+	m.ClearConnectionAccount = req.ClearConnectionAccount
+	if m.ClearConnectionAccount && m.ConnectionAccount != (s3.CredentialsV4{}) {
+		return nil, fmt.Errorf("%w: connection_account and clear_connection_account are mutually exclusive", dom.ErrInvalidArg)
+	}
+	effective := m.ConnectionAccount
+	if effective == (s3.CredentialsV4{}) && !m.ClearConnectionAccount {
+		if ci, ok := c.ConnectionAccount(m.Name); ok {
+			effective = ci.Credentials
+		}
+	}
+	var testRes *storagetest.Result
+	if effective != (s3.CredentialsV4{}) {
+		// settings or account changed: run the full test with the account that will be effective
+		if testRes, err = h.runStorageTest(ctx, m.Name, m.Address, effective, req.TestOptions); err != nil {
+			return nil, err
+		}
+		if !testRes.OK {
+			if !req.Force {
+				return nil, failedTestError("storage not updated", testRes)
+			}
+			m.LastForcedSaveBy, m.LastForcedSaveAt = forcedBy(ctx), time.Now().UTC().Truncate(time.Second)
+		}
+		if err = h.verifyOverrides(ctx, m, verify, req.Force); err != nil {
+			return nil, err
+		}
+	} else if err = h.verifyStorageCredentials(ctx, m, verify, req.Force); err != nil {
 		return nil, err
 	}
 	// Keep a rollback snapshot: credential writes can fail independently of the definition DB.
@@ -283,6 +363,7 @@ func (h *resilienceHandlers) updateRuntimeStorageLocked(ctx context.Context, c R
 			return nil, errors.Join(append([]error{err}, rollback...)...)
 		}
 	}
+	h.saveTest(ctx, m.Name, testRes)
 	return h.runtimeStoragePb(ctx, m.Name)
 }
 func (h *resilienceHandlers) DeleteRuntimeStorage(ctx context.Context, req *pb.RuntimeStorageName) (*emptypb.Empty, error) {
@@ -355,7 +436,7 @@ func (h *resilienceHandlers) TestRuntimeStorage(ctx context.Context, req *pb.Tes
 }
 
 // ScanStorageUsers finds users even if their storage credentials have been removed.
-func ScanStorageUsers(ctx context.Context, rc redis.UniversalClient) ([]string, error) {
+func ScanStorageUsers(ctx context.Context, rc redis.Cmdable) ([]string, error) {
 	users := map[string]struct{}{}
 	for _, prefix := range []string{"p:route_bucket:", "p:repl_bucket_status_index:"} {
 		var cursor uint64

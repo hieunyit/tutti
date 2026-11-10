@@ -8,7 +8,7 @@ REST JSON follows protobuf JSON mapping: camelCase field names, durations as str
 
 ## Service
 
-Runtime S3 storage management is available under `/tutti/storages` (list/create/update/delete/test). See [Runtime storage management](./runtime-storages.md) for encrypted storage, live propagation, read-only configuration and deletion protection.
+Runtime S3 storage management is available under `/tutti/storages` (list/get/create/update/delete/test). See [Runtime storage management](./runtime-storages.md) for encrypted storage, live propagation, read-only configuration and deletion protection, and [Storage accounts](./storage-accounts.md) for the connection account, connection test and rotation.
 
 | RPC | REST | Description |
 |---|---|---|
@@ -21,6 +21,41 @@ Runtime S3 storage management is available under `/tutti/storages` (list/create/
 | `DeleteFailoverEvent(FailoverEventID) -> Empty` | `PUT /tutti/failover/events/delete` | Clear the record of a failover (not found if missing) |
 
 Errors: invalid arguments (unknown storage, enabled policy without targets, target equal to source, duplicate or empty target, negative `after`/`maxEventLag`, missing `source`/`user`) are rejected as invalid argument; deleting a missing policy or event returns not found.
+
+## Storages and connection accounts
+
+All on `chorus.Resilience`; list/get are viewer-readable, the rest is admin only. Secrets are never returned. Full behaviour, the 17 test steps and the rotation procedure: [Storage accounts](./storage-accounts.md).
+
+| RPC | REST | Description |
+|---|---|---|
+| `ListRuntimeStorages(Empty) -> RuntimeStorageList` | `GET /tutti/storages` | All S3 storages with `connectionAccount`, `lastTest`, `legacyCredentials`, `lastForcedSaveBy/At`, override `users` |
+| `GetRuntimeStorage(RuntimeStorageName) -> RuntimeStorage` | `GET /tutti/storages/{name}` | One storage |
+| `CreateRuntimeStorage(CreateRuntimeStorageRequest) -> RuntimeStorage` | `POST /tutti/storages` | `{storage, connectionAccount?, credentials?, testOptions?, force?}`; runs the connection test, refuses on a failing step unless `force` |
+| `UpdateRuntimeStorage(UpdateRuntimeStorageRequest) -> RuntimeStorage` | `PUT /tutti/storages` | `{storage, connectionAccount?, clearConnectionAccount?, credentials?, confirm?, testOptions?, force?}` |
+| `TestStorageConnection(TestStorageConnectionRequest) -> StorageTestResult` | `POST /tutti/storages/test` | `{name}` or `{storage, connectionAccount}` (+ `options`); never an error for a failed step |
+| `RotateStorageConnectionAccount(RotateStorageConnectionAccountRequest) -> RuntimeStorage` | `PUT /tutti/storages/connection-account` | `{name, newAccount, options?, force?}`: test, then switch atomically |
+| `TestRuntimeStorage(TestRuntimeStorageRequest) -> TestS3UserCredentialsResponse` | `POST /tutti/storages/test-credential` | One `ListBuckets` with a given credential (the former `/tutti/storages/test`) |
+
+```bash
+# test unsaved settings (or {"name":"archive"}); steps in order with status pass|fail|warn|skip
+curl -X POST $API/tutti/storages/test -d '{"storage":{"name":"archive","address":"http://minio-b:9000","provider":"Minio"},
+  "connectionAccount":{"accessKeyId":"tutti-svc","secretAccessKey":"..."},"options":{"probeBucketPrefix":"app-tutti-probe-"}}'
+# {"ok":false,"hasWarnings":false,"probeBucket":"app-tutti-probe-9f2c61aa","leftovers":[],"kind":"full","durationMs":"640",
+#  "steps":[...,{"id":"write","number":9,"name":"Write","status":"fail","call":"PutObject","latencyMs":"3",
+#    "message":"PutObject failed: AccessDenied: Access Denied.","missingPermission":"s3:PutObject",
+#    "hint":"Grant s3:PutObject to the connection account (see docs/tutti/storage-accounts.md)."}, ...]}
+
+# create with a connection account; a failed test answers 400 FailedPrecondition "... connection test failed: step 9 write: ..."
+curl -X POST $API/tutti/storages -d '{"storage":{...},"connectionAccount":{"accessKeyId":"tutti-svc","secretAccessKey":"..."}}'
+# {"name":"archive",...,"connectionAccount":{"configured":true,"accessKeyId":"tutti-svc","source":"managed",
+#   "previousAccessKeyId":"","rotatedAt":null,"safeToRevokePreviousAfter":null},"legacyCredentials":false,
+#  "lastTest":{"ok":true,...},"lastForcedSaveBy":"","lastForcedSaveAt":null}
+
+# rotate: answers the storage with previousAccessKeyId and safeToRevokePreviousAfter (rotation time + 60s)
+curl -X PUT $API/tutti/storages/connection-account -d '{"name":"archive","newAccount":{"accessKeyId":"tutti-svc-2","secretAccessKey":"..."}}'
+```
+
+`StorageTestResult`: `testedAt`, `ok` (no failed step), `hasWarnings`, `steps[]` (`id`, `number`, `name`, `status`, `call`, `latencyMs`, `message`, `missingPermission`, `hint`), `probeBucket`, `leftovers[]`, `durationMs`, `accessKeyId`, `kind` (`full`, or `periodic` for the health checker). Proxy statistics (`stats.noCredentials`) count requests answered 503 `storage S has no credentials for user U`.
 
 ## Messages and examples
 
@@ -156,7 +191,7 @@ source `dynamic`. `ListProxyAccounts` also returns `dynamicAccounts: { "availabl
 
 ## S3 users API
 
-An S3 user (for example `user1`) is an identity that has credentials on each storage (from `storage.storages.<name>.credentials` in the worker config, or dynamic credentials), plus optional proxy access keys and an access policy. All RPCs are on `chorus.Resilience`; `ListS3Users` is viewer-readable, everything else is admin only. Secrets are never returned except the secret of a newly created access key, once.
+An S3 user (for example `user1`) is an identity with optional proxy access keys and an access policy. Its requests to a storage are signed with the user's **override** credentials on that storage (`storage.storages.<name>.credentials` in the worker config, or dynamic credentials) or, without one, with the **connection account** of the storage ([resolution](./storage-accounts.md#resolution-which-key-signs-a-request)). All RPCs are on `chorus.Resilience`; `ListS3Users` is viewer-readable, everything else is admin only. Secrets are never returned except the secret of a newly created access key, once.
 
 | RPC | REST | Description |
 |---|---|---|
@@ -170,8 +205,8 @@ An S3 user (for example `user1`) is an identity that has credentials on each sto
 # list (no secrets)
 curl $API/tutti/users
 # {"users":[{"name":"user1",
-#    "storages":[{"storage":"main","configured":true,"source":"config","accessKeyId":"testKey1"},
-#                {"storage":"f1","configured":true,"source":"dynamic","accessKeyId":"AKIA..."}],
+#    "storages":[{"storage":"main","configured":true,"source":"config","accessKeyId":"testKey1","mode":"override"},
+#                {"storage":"f1","configured":false,"source":"","accessKeyId":"","mode":"connection-account"}],
 #    "complete":true,
 #    "accessKeys":{"static":1,"dynamicActive":1,"dynamicDisabled":0},
 #    "policy":{"hasPolicy":true,"permission":"read-only","buckets":["photos-*"]}}],
@@ -196,9 +231,9 @@ curl -X PUT $API/tutti/users/delete -d '{"name":"user3","force":true}'
 # {"deletedStorages":["f1","main"],"deletedAccessKeys":1,"deletedPolicy":true}
 ```
 
-- `complete` is true when the user has credentials on every storage (needed for replication and failover). `source` is `config` or `dynamic`. Only S3 storages are supported for create and update.
+- `mode` per storage: `override` (own credentials; `configured: true`, `source` `config` or `dynamic`), `connection-account` or `missing` (requests fail with 503). `complete` is true when every storage resolves (needed for replication and failover). Users that exist only as a Tutti identity (created without credentials) are listed too. Only S3 storages are supported for create and update.
 - User names: 1-64 characters, letters, digits, `.`, `_`, `-`, starting with a letter or digit. Existing users (on any storage, from config or dynamic) are rejected with already exists.
-- `CreateS3User` requires dynamic credentials (`storage.dynamicCredentials.enabled` with a `masterPassword`), otherwise failed precondition with the reason. The main storage credentials are required. With `verify: true` every credential is checked with `ListBuckets` before anything is saved; failures are returned as invalid argument listing each storage and error. Order of steps: verify, credentials, policy, access key; a failing step rolls back the previous ones (best effort). `createAccessKey` needs the sealing key (same requirement as `CreateProxyAccount`) and is checked up front.
+- `CreateS3User` requires dynamic credentials (`storage.dynamicCredentials.enabled` with a `masterPassword`), otherwise failed precondition with the reason. `credentials` may be empty when every S3 storage has a connection account; every storage without one needs an entry, and the main storage must resolve. A user created without credentials is stored as a record in the config DB (`tutti:s3users`). With `verify: true` every credential is checked with `ListBuckets` before anything is saved; failures are returned as invalid argument listing each storage and error. Order of steps: verify, credentials, policy, access key; a failing step rolls back the previous ones (best effort). `createAccessKey` needs the sealing key (same requirement as `CreateProxyAccount`) and is checked up front.
 - `UpdateS3UserCredentials` fails with failed precondition `defined in config` for config-sourced credentials.
 - `DeleteS3User` is refused with failed precondition, listing every reason, if: credentials come from the worker config (never deleted by the API, `force` does not help); replications, routings or failover events reference the user (`force` does not help, delete them first); or the user has active proxy access keys (only this is overridden by `force`; disabled keys never block). Deletion order: access keys, access policy, then credentials, so a retry after a partial failure finishes the job. Proxies and workers drop deleted credentials on their next poll (`storage.dynamicCredentials.pollInterval`); the worker handling the request drops them immediately.
 - Failure examples: `{"code":9,...,"details":[{"reason":"FailedPrecondition: s3 user \"user3\" cannot be deleted: 1 replication(s) exist (main->f1): delete them first"}]}`.

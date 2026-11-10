@@ -16,6 +16,15 @@ service Resilience {
   rpc UpdateRuntimeStorage(UpdateRuntimeStorageRequest) returns (RuntimeStorage);
   rpc DeleteRuntimeStorage(RuntimeStorageName) returns (google.protobuf.Empty);
   rpc TestRuntimeStorage(TestRuntimeStorageRequest) returns (TestS3UserCredentialsResponse);
+  // GetRuntimeStorage returns one storage with its connection account (never the secret) and the last connection test.
+  rpc GetRuntimeStorage(RuntimeStorageName) returns (RuntimeStorage);
+  // TestStorageConnection runs the connection checks of the scale plan (2.4) against unsaved settings (storage +
+  // connection_account) or an existing storage (name). It never fails because a check failed: the failing steps are in
+  // the result. Results of existing storages are stored with the storage (last_test).
+  rpc TestStorageConnection(TestStorageConnectionRequest) returns (StorageTestResult);
+  // RotateStorageConnectionAccount replaces the connection account of a storage: the new account is tested first,
+  // then switched atomically. The previous account is kept (sealed) so that proxies that have not polled yet keep working.
+  rpc RotateStorageConnectionAccount(RotateStorageConnectionAccountRequest) returns (RuntimeStorage);
 
   // GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
   // Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
@@ -389,6 +398,8 @@ message TrafficStats {
   LatencyHistogram latency = 19;
   // Responses with a status outside 2xx-5xx.
   uint64 responses_other = 20;
+  // Requests failed with 503 because the storage has no credentials for the user (no override, no connection account).
+  uint64 no_credentials = 21;
 }
 
 // LatencyHistogram is a fixed-bucket histogram of full request durations.
@@ -474,8 +485,11 @@ message S3UserStorage {
   bool configured = 2;
   // "config" or "dynamic" (empty if not configured).
   string source = 3;
-  // Never the secret.
+  // Never the secret. Empty for mode "connection-account" and "missing".
   string access_key_id = 4;
+  // How the proxy and the worker sign requests of this user to the storage: "override" (per-user credentials),
+  // "connection-account" (the storage connection account) or "missing" (requests fail with 503).
+  string mode = 5;
 }
 
 message S3UserAccessKeys {
@@ -496,7 +510,7 @@ message S3User {
   string name = 1;
   // One entry for every configured storage.
   repeated S3UserStorage storages = 2;
-  // True if the user has credentials on every storage (needed for replication and failover).
+  // True if every S3 storage can be resolved for the user: an override or a connection account on each storage.
   bool complete = 3;
   S3UserAccessKeys access_keys = 4;
   S3UserPolicy policy = 5;
@@ -518,6 +532,8 @@ message S3UserCredential {
 
 message CreateS3UserRequest {
   string name = 1;
+  // Optional per-user credentials (overrides). May be empty if every S3 storage has a connection account; every storage
+  // without a connection account needs one entry.
   repeated S3UserCredential credentials = 2;
   // Check every credential with a ListBuckets call before saving anything.
   bool verify = 3;
@@ -645,12 +661,108 @@ message RuntimeStorage {
  repeated string references = 12;
  google.protobuf.Timestamp created_at = 13;
  google.protobuf.Timestamp updated_at = 14;
+ // Connection account of the storage (never the secret). configured=false: legacy per-user credentials only.
+ ConnectionAccountInfo connection_account = 15;
+ // Result of the last connection test (on save, on demand or the periodic re-check of steps 1-5).
+ StorageTestResult last_test = 16;
+ // Set when the storage was saved although the test had failing steps (force).
+ string last_forced_save_by = 17;
+ google.protobuf.Timestamp last_forced_save_at = 18;
+ // True if the storage has no connection account: it only works with per-user credentials.
+ bool legacy_credentials = 19;
 }
 message RuntimeStorageRateLimit { bool enabled = 1; int32 rpm = 2; bool include_metadata_api = 3; }
 message RuntimeStorageUser { string user = 1; string access_key_id = 2; string source = 3; }
 message RuntimeStorageCredential { string user = 1; string access_key_id = 2; string secret_access_key = 3; }
 message RuntimeStorageList { repeated RuntimeStorage storages = 1; string main_storage = 2; bool managed_storages_enabled = 3; }
-message CreateRuntimeStorageRequest { RuntimeStorage storage = 1; repeated RuntimeStorageCredential credentials = 2; bool force = 3; }
-message UpdateRuntimeStorageRequest { RuntimeStorage storage = 1; repeated RuntimeStorageCredential credentials = 2; bool confirm = 3; bool force = 4; }
+message CreateRuntimeStorageRequest {
+  RuntimeStorage storage = 1;
+  // Per-user overrides (optional when connection_account is given).
+  repeated RuntimeStorageCredential credentials = 2;
+  // Save although the connection test has failing steps (recorded as last_forced_save_by/at).
+  bool force = 3;
+  ConnectionAccount connection_account = 4;
+  StorageTestOptions test_options = 5;
+}
+message UpdateRuntimeStorageRequest {
+  RuntimeStorage storage = 1;
+  repeated RuntimeStorageCredential credentials = 2;
+  bool confirm = 3;
+  bool force = 4;
+  // Unset keeps the current connection account. Use RotateStorageConnectionAccount to replace a working account.
+  ConnectionAccount connection_account = 5;
+  // Remove the connection account (back to legacy per-user credentials).
+  bool clear_connection_account = 6;
+  StorageTestOptions test_options = 7;
+}
 message RuntimeStorageName { string name = 1; }
 message TestRuntimeStorageRequest { RuntimeStorage storage = 1; RuntimeStorageCredential credential = 2; }
+
+// ConnectionAccount is the S3 account Tutti uses on a storage. The secret is only ever sent to the server.
+message ConnectionAccount { string access_key_id = 1; string secret_access_key = 2; }
+message ConnectionAccountInfo {
+  bool configured = 1;
+  string access_key_id = 2;
+  // "config" (read-only, storages.<name>.connectionAccount) or "managed".
+  string source = 3;
+  // Set after a rotation: the previous key id, still usable on the storage until revoked.
+  string previous_access_key_id = 4;
+  google.protobuf.Timestamp rotated_at = 5;
+  // Earlier than this the previous key must NOT be revoked on the storage: some proxies may not have polled the
+  // new version yet (poll interval 2s + margin).
+  google.protobuf.Timestamp safe_to_revoke_previous_after = 6;
+}
+message StorageTestFeatures { bool versioning = 1; bool tagging = 2; bool acl = 3; bool lifecycle = 4; bool policy = 5; }
+message StorageTestOptions {
+  // Prefix of the temporary probe bucket. Default "tutti-probe-". Use e.g. "app-tutti-probe-" when the account policy
+  // is limited to a bucket prefix.
+  string probe_bucket_prefix = 1;
+  // Existing bucket to use instead of creating one (when bucket creation is not allowed). The bucket is not deleted.
+  string probe_bucket = 2;
+  // Features to check in steps 13/14. Unset: versioning if the provider supports it, no others.
+  StorageTestFeatures features = 3;
+  // Run the optional throughput check (step 17).
+  bool throughput = 4;
+}
+message StorageTestStep {
+  string id = 1;
+  // Step number of the plan table (1-17).
+  int32 number = 2;
+  string name = 3;
+  // "pass", "fail", "warn" or "skip".
+  string status = 4;
+  string call = 5;
+  int64 latency_ms = 6;
+  string message = 7;
+  string missing_permission = 8;
+  string hint = 9;
+}
+message StorageTestResult {
+  google.protobuf.Timestamp tested_at = 1;
+  // False if any step failed.
+  bool ok = 2;
+  bool has_warnings = 3;
+  repeated StorageTestStep steps = 4;
+  string probe_bucket = 5;
+  // Probe buckets/objects that could not be removed.
+  repeated string leftovers = 6;
+  int64 duration_ms = 7;
+  string access_key_id = 8;
+  // "full" (all steps) or "periodic" (steps 1-5, run by the health checker).
+  string kind = 9;
+}
+message TestStorageConnectionRequest {
+  // Existing storage name. Alternatively give storage settings (and a connection_account) for an unsaved storage.
+  string name = 1;
+  RuntimeStorage storage = 2;
+  // For an existing storage: test this account instead of the stored one (does not change the stored account).
+  ConnectionAccount connection_account = 3;
+  StorageTestOptions options = 4;
+}
+message RotateStorageConnectionAccountRequest {
+  string name = 1;
+  ConnectionAccount new_account = 2;
+  StorageTestOptions options = 3;
+  // Switch although the test has failing steps.
+  bool force = 4;
+}

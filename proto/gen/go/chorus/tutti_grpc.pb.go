@@ -20,36 +20,39 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Resilience_ListRuntimeStorages_FullMethodName      = "/chorus.Resilience/ListRuntimeStorages"
-	Resilience_CreateRuntimeStorage_FullMethodName     = "/chorus.Resilience/CreateRuntimeStorage"
-	Resilience_UpdateRuntimeStorage_FullMethodName     = "/chorus.Resilience/UpdateRuntimeStorage"
-	Resilience_DeleteRuntimeStorage_FullMethodName     = "/chorus.Resilience/DeleteRuntimeStorage"
-	Resilience_TestRuntimeStorage_FullMethodName       = "/chorus.Resilience/TestRuntimeStorage"
-	Resilience_GetProxyStatus_FullMethodName           = "/chorus.Resilience/GetProxyStatus"
-	Resilience_GetStatsHistory_FullMethodName          = "/chorus.Resilience/GetStatsHistory"
-	Resilience_ListFailoverPolicies_FullMethodName     = "/chorus.Resilience/ListFailoverPolicies"
-	Resilience_SetFailoverPolicy_FullMethodName        = "/chorus.Resilience/SetFailoverPolicy"
-	Resilience_DeleteFailoverPolicy_FullMethodName     = "/chorus.Resilience/DeleteFailoverPolicy"
-	Resilience_ListFailoverEvents_FullMethodName       = "/chorus.Resilience/ListFailoverEvents"
-	Resilience_DeleteFailoverEvent_FullMethodName      = "/chorus.Resilience/DeleteFailoverEvent"
-	Resilience_ListAccessPolicies_FullMethodName       = "/chorus.Resilience/ListAccessPolicies"
-	Resilience_SetAccessPolicy_FullMethodName          = "/chorus.Resilience/SetAccessPolicy"
-	Resilience_DeleteAccessPolicy_FullMethodName       = "/chorus.Resilience/DeleteAccessPolicy"
-	Resilience_ListProxyAccounts_FullMethodName        = "/chorus.Resilience/ListProxyAccounts"
-	Resilience_CreateProxyAccount_FullMethodName       = "/chorus.Resilience/CreateProxyAccount"
-	Resilience_RotateProxyAccountSecret_FullMethodName = "/chorus.Resilience/RotateProxyAccountSecret"
-	Resilience_SetProxyAccountStatus_FullMethodName    = "/chorus.Resilience/SetProxyAccountStatus"
-	Resilience_DeleteProxyAccount_FullMethodName       = "/chorus.Resilience/DeleteProxyAccount"
-	Resilience_ListS3Users_FullMethodName              = "/chorus.Resilience/ListS3Users"
-	Resilience_CreateS3User_FullMethodName             = "/chorus.Resilience/CreateS3User"
-	Resilience_UpdateS3UserCredentials_FullMethodName  = "/chorus.Resilience/UpdateS3UserCredentials"
-	Resilience_DeleteS3User_FullMethodName             = "/chorus.Resilience/DeleteS3User"
-	Resilience_TestS3UserCredentials_FullMethodName    = "/chorus.Resilience/TestS3UserCredentials"
-	Resilience_ListConsoleUsers_FullMethodName         = "/chorus.Resilience/ListConsoleUsers"
-	Resilience_CreateConsoleUser_FullMethodName        = "/chorus.Resilience/CreateConsoleUser"
-	Resilience_UpdateConsoleUser_FullMethodName        = "/chorus.Resilience/UpdateConsoleUser"
-	Resilience_ResetConsoleUserPassword_FullMethodName = "/chorus.Resilience/ResetConsoleUserPassword"
-	Resilience_DeleteConsoleUser_FullMethodName        = "/chorus.Resilience/DeleteConsoleUser"
+	Resilience_ListRuntimeStorages_FullMethodName            = "/chorus.Resilience/ListRuntimeStorages"
+	Resilience_CreateRuntimeStorage_FullMethodName           = "/chorus.Resilience/CreateRuntimeStorage"
+	Resilience_UpdateRuntimeStorage_FullMethodName           = "/chorus.Resilience/UpdateRuntimeStorage"
+	Resilience_DeleteRuntimeStorage_FullMethodName           = "/chorus.Resilience/DeleteRuntimeStorage"
+	Resilience_TestRuntimeStorage_FullMethodName             = "/chorus.Resilience/TestRuntimeStorage"
+	Resilience_GetRuntimeStorage_FullMethodName              = "/chorus.Resilience/GetRuntimeStorage"
+	Resilience_TestStorageConnection_FullMethodName          = "/chorus.Resilience/TestStorageConnection"
+	Resilience_RotateStorageConnectionAccount_FullMethodName = "/chorus.Resilience/RotateStorageConnectionAccount"
+	Resilience_GetProxyStatus_FullMethodName                 = "/chorus.Resilience/GetProxyStatus"
+	Resilience_GetStatsHistory_FullMethodName                = "/chorus.Resilience/GetStatsHistory"
+	Resilience_ListFailoverPolicies_FullMethodName           = "/chorus.Resilience/ListFailoverPolicies"
+	Resilience_SetFailoverPolicy_FullMethodName              = "/chorus.Resilience/SetFailoverPolicy"
+	Resilience_DeleteFailoverPolicy_FullMethodName           = "/chorus.Resilience/DeleteFailoverPolicy"
+	Resilience_ListFailoverEvents_FullMethodName             = "/chorus.Resilience/ListFailoverEvents"
+	Resilience_DeleteFailoverEvent_FullMethodName            = "/chorus.Resilience/DeleteFailoverEvent"
+	Resilience_ListAccessPolicies_FullMethodName             = "/chorus.Resilience/ListAccessPolicies"
+	Resilience_SetAccessPolicy_FullMethodName                = "/chorus.Resilience/SetAccessPolicy"
+	Resilience_DeleteAccessPolicy_FullMethodName             = "/chorus.Resilience/DeleteAccessPolicy"
+	Resilience_ListProxyAccounts_FullMethodName              = "/chorus.Resilience/ListProxyAccounts"
+	Resilience_CreateProxyAccount_FullMethodName             = "/chorus.Resilience/CreateProxyAccount"
+	Resilience_RotateProxyAccountSecret_FullMethodName       = "/chorus.Resilience/RotateProxyAccountSecret"
+	Resilience_SetProxyAccountStatus_FullMethodName          = "/chorus.Resilience/SetProxyAccountStatus"
+	Resilience_DeleteProxyAccount_FullMethodName             = "/chorus.Resilience/DeleteProxyAccount"
+	Resilience_ListS3Users_FullMethodName                    = "/chorus.Resilience/ListS3Users"
+	Resilience_CreateS3User_FullMethodName                   = "/chorus.Resilience/CreateS3User"
+	Resilience_UpdateS3UserCredentials_FullMethodName        = "/chorus.Resilience/UpdateS3UserCredentials"
+	Resilience_DeleteS3User_FullMethodName                   = "/chorus.Resilience/DeleteS3User"
+	Resilience_TestS3UserCredentials_FullMethodName          = "/chorus.Resilience/TestS3UserCredentials"
+	Resilience_ListConsoleUsers_FullMethodName               = "/chorus.Resilience/ListConsoleUsers"
+	Resilience_CreateConsoleUser_FullMethodName              = "/chorus.Resilience/CreateConsoleUser"
+	Resilience_UpdateConsoleUser_FullMethodName              = "/chorus.Resilience/UpdateConsoleUser"
+	Resilience_ResetConsoleUserPassword_FullMethodName       = "/chorus.Resilience/ResetConsoleUserPassword"
+	Resilience_DeleteConsoleUser_FullMethodName              = "/chorus.Resilience/DeleteConsoleUser"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -64,6 +67,15 @@ type ResilienceClient interface {
 	UpdateRuntimeStorage(ctx context.Context, in *UpdateRuntimeStorageRequest, opts ...grpc.CallOption) (*RuntimeStorage, error)
 	DeleteRuntimeStorage(ctx context.Context, in *RuntimeStorageName, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	TestRuntimeStorage(ctx context.Context, in *TestRuntimeStorageRequest, opts ...grpc.CallOption) (*TestS3UserCredentialsResponse, error)
+	// GetRuntimeStorage returns one storage with its connection account (never the secret) and the last connection test.
+	GetRuntimeStorage(ctx context.Context, in *RuntimeStorageName, opts ...grpc.CallOption) (*RuntimeStorage, error)
+	// TestStorageConnection runs the connection checks of the scale plan (2.4) against unsaved settings (storage +
+	// connection_account) or an existing storage (name). It never fails because a check failed: the failing steps are in
+	// the result. Results of existing storages are stored with the storage (last_test).
+	TestStorageConnection(ctx context.Context, in *TestStorageConnectionRequest, opts ...grpc.CallOption) (*StorageTestResult, error)
+	// RotateStorageConnectionAccount replaces the connection account of a storage: the new account is tested first,
+	// then switched atomically. The previous account is kept (sealed) so that proxies that have not polled yet keep working.
+	RotateStorageConnectionAccount(ctx context.Context, in *RotateStorageConnectionAccountRequest, opts ...grpc.CallOption) (*RuntimeStorage, error)
 	// GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
 	// Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
 	GetProxyStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProxyStatusList, error)
@@ -187,6 +199,36 @@ func (c *resilienceClient) TestRuntimeStorage(ctx context.Context, in *TestRunti
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TestS3UserCredentialsResponse)
 	err := c.cc.Invoke(ctx, Resilience_TestRuntimeStorage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) GetRuntimeStorage(ctx context.Context, in *RuntimeStorageName, opts ...grpc.CallOption) (*RuntimeStorage, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimeStorage)
+	err := c.cc.Invoke(ctx, Resilience_GetRuntimeStorage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) TestStorageConnection(ctx context.Context, in *TestStorageConnectionRequest, opts ...grpc.CallOption) (*StorageTestResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StorageTestResult)
+	err := c.cc.Invoke(ctx, Resilience_TestStorageConnection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) RotateStorageConnectionAccount(ctx context.Context, in *RotateStorageConnectionAccountRequest, opts ...grpc.CallOption) (*RuntimeStorage, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimeStorage)
+	err := c.cc.Invoke(ctx, Resilience_RotateStorageConnectionAccount_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -455,6 +497,15 @@ type ResilienceServer interface {
 	UpdateRuntimeStorage(context.Context, *UpdateRuntimeStorageRequest) (*RuntimeStorage, error)
 	DeleteRuntimeStorage(context.Context, *RuntimeStorageName) (*emptypb.Empty, error)
 	TestRuntimeStorage(context.Context, *TestRuntimeStorageRequest) (*TestS3UserCredentialsResponse, error)
+	// GetRuntimeStorage returns one storage with its connection account (never the secret) and the last connection test.
+	GetRuntimeStorage(context.Context, *RuntimeStorageName) (*RuntimeStorage, error)
+	// TestStorageConnection runs the connection checks of the scale plan (2.4) against unsaved settings (storage +
+	// connection_account) or an existing storage (name). It never fails because a check failed: the failing steps are in
+	// the result. Results of existing storages are stored with the storage (last_test).
+	TestStorageConnection(context.Context, *TestStorageConnectionRequest) (*StorageTestResult, error)
+	// RotateStorageConnectionAccount replaces the connection account of a storage: the new account is tested first,
+	// then switched atomically. The previous account is kept (sealed) so that proxies that have not polled yet keep working.
+	RotateStorageConnectionAccount(context.Context, *RotateStorageConnectionAccountRequest) (*RuntimeStorage, error)
 	// GetProxyStatus returns all live proxy instances with the health of their storages and effective settings.
 	// Proxies publish their status periodically; an instance that stopped publishing disappears after a short TTL.
 	GetProxyStatus(context.Context, *emptypb.Empty) (*ProxyStatusList, error)
@@ -547,6 +598,15 @@ func (UnimplementedResilienceServer) DeleteRuntimeStorage(context.Context, *Runt
 }
 func (UnimplementedResilienceServer) TestRuntimeStorage(context.Context, *TestRuntimeStorageRequest) (*TestS3UserCredentialsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method TestRuntimeStorage not implemented")
+}
+func (UnimplementedResilienceServer) GetRuntimeStorage(context.Context, *RuntimeStorageName) (*RuntimeStorage, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRuntimeStorage not implemented")
+}
+func (UnimplementedResilienceServer) TestStorageConnection(context.Context, *TestStorageConnectionRequest) (*StorageTestResult, error) {
+	return nil, status.Error(codes.Unimplemented, "method TestStorageConnection not implemented")
+}
+func (UnimplementedResilienceServer) RotateStorageConnectionAccount(context.Context, *RotateStorageConnectionAccountRequest) (*RuntimeStorage, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateStorageConnectionAccount not implemented")
 }
 func (UnimplementedResilienceServer) GetProxyStatus(context.Context, *emptypb.Empty) (*ProxyStatusList, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProxyStatus not implemented")
@@ -729,6 +789,60 @@ func _Resilience_TestRuntimeStorage_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResilienceServer).TestRuntimeStorage(ctx, req.(*TestRuntimeStorageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_GetRuntimeStorage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RuntimeStorageName)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).GetRuntimeStorage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_GetRuntimeStorage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).GetRuntimeStorage(ctx, req.(*RuntimeStorageName))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_TestStorageConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestStorageConnectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).TestStorageConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_TestStorageConnection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).TestStorageConnection(ctx, req.(*TestStorageConnectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_RotateStorageConnectionAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateStorageConnectionAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).RotateStorageConnectionAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_RotateStorageConnectionAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).RotateStorageConnectionAccount(ctx, req.(*RotateStorageConnectionAccountRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1209,6 +1323,18 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TestRuntimeStorage",
 			Handler:    _Resilience_TestRuntimeStorage_Handler,
+		},
+		{
+			MethodName: "GetRuntimeStorage",
+			Handler:    _Resilience_GetRuntimeStorage_Handler,
+		},
+		{
+			MethodName: "TestStorageConnection",
+			Handler:    _Resilience_TestStorageConnection_Handler,
+		},
+		{
+			MethodName: "RotateStorageConnectionAccount",
+			Handler:    _Resilience_RotateStorageConnectionAccount_Handler,
 		},
 		{
 			MethodName: "GetProxyStatus",

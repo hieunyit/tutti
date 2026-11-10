@@ -29,6 +29,7 @@ import (
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/s3/chunked"
+	"github.com/hieunyit/tutti/pkg/trafficstats"
 )
 
 func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
@@ -90,6 +91,16 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 			BucketName: xctx.GetBucket(ctx),
 			Key:        xctx.GetObject(ctx),
 			StatusCode: http.StatusNotFound,
+		}
+	case errors.Is(err, dom.ErrNoCredentials):
+		logLevel = zerolog.WarnLevel
+		trafficstats.Default.NoCredentials()
+		s3Err = mclient.ErrorResponse{
+			Code:       "ServiceUnavailable",
+			Message:    err.Error(),
+			BucketName: xctx.GetBucket(ctx),
+			Key:        xctx.GetObject(ctx),
+			StatusCode: http.StatusServiceUnavailable,
 		}
 	case errors.Is(err, dom.ErrPolicy):
 		s3Err = mclient.ErrorResponse{

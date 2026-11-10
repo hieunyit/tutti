@@ -1632,6 +1632,39 @@
         ]
       }
     },
+    "/tutti/storages/connection-account": {
+      "put": {
+        "summary": "RotateStorageConnectionAccount replaces the connection account of a storage: the new account is tested first,\nthen switched atomically. The previous account is kept (sealed) so that proxies that have not polled yet keep working.",
+        "operationId": "Resilience_RotateStorageConnectionAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusRotateStorageConnectionAccountRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/storages/delete": {
       "put": {
         "operationId": "Resilience_DeleteRuntimeStorage",
@@ -1667,6 +1700,39 @@
     },
     "/tutti/storages/test": {
       "post": {
+        "summary": "TestStorageConnection runs the connection checks of the scale plan (2.4) against unsaved settings (storage +\nconnection_account) or an existing storage (name). It never fails because a check failed: the failing steps are in\nthe result. Results of existing storages are stored with the storage (last_test).",
+        "operationId": "Resilience_TestStorageConnection",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusStorageTestResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusTestStorageConnectionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/storages/test-credential": {
+      "post": {
         "operationId": "Resilience_TestRuntimeStorage",
         "responses": {
           "200": {
@@ -1690,6 +1756,37 @@
             "schema": {
               "$ref": "#/definitions/chorusTestRuntimeStorageRequest"
             }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
+    "/tutti/storages/{name}": {
+      "get": {
+        "summary": "GetRuntimeStorage returns one storage with its connection account (never the secret) and the last connection test.",
+        "operationId": "Resilience_GetRuntimeStorage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusRuntimeStorage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -2123,6 +2220,46 @@
         }
       }
     },
+    "chorusConnectionAccount": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        }
+      },
+      "description": "ConnectionAccount is the S3 account Tutti uses on a storage. The secret is only ever sent to the server."
+    },
+    "chorusConnectionAccountInfo": {
+      "type": "object",
+      "properties": {
+        "configured": {
+          "type": "boolean"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "\"config\" (read-only, storages.\u003cname\u003e.connectionAccount) or \"managed\"."
+        },
+        "previousAccessKeyId": {
+          "type": "string",
+          "description": "Set after a rotation: the previous key id, still usable on the storage until revoked."
+        },
+        "rotatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "safeToRevokePreviousAfter": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Earlier than this the previous key must NOT be revoked on the storage: some proxies may not have polled the\nnew version yet (poll interval 2s + margin)."
+        }
+      }
+    },
     "chorusConsoleUser": {
       "type": "object",
       "properties": {
@@ -2234,10 +2371,18 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/chorusRuntimeStorageCredential"
-          }
+          },
+          "description": "Per-user overrides (optional when connection_account is given)."
         },
         "force": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Save although the connection test has failing steps (recorded as last_forced_save_by/at)."
+        },
+        "connectionAccount": {
+          "$ref": "#/definitions/chorusConnectionAccount"
+        },
+        "testOptions": {
+          "$ref": "#/definitions/chorusStorageTestOptions"
         }
       }
     },
@@ -2252,7 +2397,8 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/chorusS3UserCredential"
-          }
+          },
+          "description": "Optional per-user credentials (overrides). May be empty if every S3 storage has a connection account; every storage\nwithout a connection account needs one entry."
         },
         "verify": {
           "type": "boolean",
@@ -3256,6 +3402,24 @@
         }
       }
     },
+    "chorusRotateStorageConnectionAccountRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "newAccount": {
+          "$ref": "#/definitions/chorusConnectionAccount"
+        },
+        "options": {
+          "$ref": "#/definitions/chorusStorageTestOptions"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Switch although the test has failing steps."
+        }
+      }
+    },
     "chorusRoutingID": {
       "type": "object",
       "properties": {
@@ -3385,6 +3549,26 @@
         "updatedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "connectionAccount": {
+          "$ref": "#/definitions/chorusConnectionAccountInfo",
+          "description": "Connection account of the storage (never the secret). configured=false: legacy per-user credentials only."
+        },
+        "lastTest": {
+          "$ref": "#/definitions/chorusStorageTestResult",
+          "description": "Result of the last connection test (on save, on demand or the periodic re-check of steps 1-5)."
+        },
+        "lastForcedSaveBy": {
+          "type": "string",
+          "description": "Set when the storage was saved although the test had failing steps (force)."
+        },
+        "lastForcedSaveAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "legacyCredentials": {
+          "type": "boolean",
+          "description": "True if the storage has no connection account: it only works with per-user credentials."
         }
       },
       "description": "RuntimeStorage contains connection settings and metadata, never credentials secrets."
@@ -3535,7 +3719,7 @@
         },
         "complete": {
           "type": "boolean",
-          "description": "True if the user has credentials on every storage (needed for replication and failover)."
+          "description": "True if every S3 storage can be resolved for the user: an override or a connection account on each storage."
         },
         "accessKeys": {
           "$ref": "#/definitions/chorusS3UserAccessKeys"
@@ -3636,7 +3820,11 @@
         },
         "accessKeyId": {
           "type": "string",
-          "description": "Never the secret."
+          "description": "Never the secret. Empty for mode \"connection-account\" and \"missing\"."
+        },
+        "mode": {
+          "type": "string",
+          "description": "How the proxy and the worker sign requests of this user to the storage: \"override\" (per-user credentials),\n\"connection-account\" (the storage connection account) or \"missing\" (requests fail with 503)."
         }
       },
       "description": "S3UserStorage is the credential state of an S3 user on one storage."
@@ -3823,6 +4011,127 @@
         }
       },
       "description": "StorageHealth is the circuit breaker state of one storage as seen by one proxy."
+    },
+    "chorusStorageTestFeatures": {
+      "type": "object",
+      "properties": {
+        "versioning": {
+          "type": "boolean"
+        },
+        "tagging": {
+          "type": "boolean"
+        },
+        "acl": {
+          "type": "boolean"
+        },
+        "lifecycle": {
+          "type": "boolean"
+        },
+        "policy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusStorageTestOptions": {
+      "type": "object",
+      "properties": {
+        "probeBucketPrefix": {
+          "type": "string",
+          "description": "Prefix of the temporary probe bucket. Default \"tutti-probe-\". Use e.g. \"app-tutti-probe-\" when the account policy\nis limited to a bucket prefix."
+        },
+        "probeBucket": {
+          "type": "string",
+          "description": "Existing bucket to use instead of creating one (when bucket creation is not allowed). The bucket is not deleted."
+        },
+        "features": {
+          "$ref": "#/definitions/chorusStorageTestFeatures",
+          "description": "Features to check in steps 13/14. Unset: versioning if the provider supports it, no others."
+        },
+        "throughput": {
+          "type": "boolean",
+          "description": "Run the optional throughput check (step 17)."
+        }
+      }
+    },
+    "chorusStorageTestResult": {
+      "type": "object",
+      "properties": {
+        "testedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ok": {
+          "type": "boolean",
+          "description": "False if any step failed."
+        },
+        "hasWarnings": {
+          "type": "boolean"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusStorageTestStep"
+          }
+        },
+        "probeBucket": {
+          "type": "string"
+        },
+        "leftovers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Probe buckets/objects that could not be removed."
+        },
+        "durationMs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "description": "\"full\" (all steps) or \"periodic\" (steps 1-5, run by the health checker)."
+        }
+      }
+    },
+    "chorusStorageTestStep": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Step number of the plan table (1-17)."
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "description": "\"pass\", \"fail\", \"warn\" or \"skip\"."
+        },
+        "call": {
+          "type": "string"
+        },
+        "latencyMs": {
+          "type": "string",
+          "format": "int64"
+        },
+        "message": {
+          "type": "string"
+        },
+        "missingPermission": {
+          "type": "string"
+        },
+        "hint": {
+          "type": "string"
+        }
+      }
     },
     "chorusSwiftCredential": {
       "type": "object",
@@ -4056,6 +4365,25 @@
         }
       }
     },
+    "chorusTestStorageConnectionRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Existing storage name. Alternatively give storage settings (and a connection_account) for an unsaved storage."
+        },
+        "storage": {
+          "$ref": "#/definitions/chorusRuntimeStorage"
+        },
+        "connectionAccount": {
+          "$ref": "#/definitions/chorusConnectionAccount",
+          "description": "For an existing storage: test this account instead of the stored one (does not change the stored account)."
+        },
+        "options": {
+          "$ref": "#/definitions/chorusStorageTestOptions"
+        }
+      }
+    },
     "chorusTrafficRates": {
       "type": "object",
       "properties": {
@@ -4228,6 +4556,11 @@
           "type": "string",
           "format": "uint64",
           "description": "Responses with a status outside 2xx-5xx."
+        },
+        "noCredentials": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Requests failed with 503 because the storage has no credentials for the user (no override, no connection account)."
         }
       },
       "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
@@ -4283,6 +4616,17 @@
         },
         "force": {
           "type": "boolean"
+        },
+        "connectionAccount": {
+          "$ref": "#/definitions/chorusConnectionAccount",
+          "description": "Unset keeps the current connection account. Use RotateStorageConnectionAccount to replace a working account."
+        },
+        "clearConnectionAccount": {
+          "type": "boolean",
+          "description": "Remove the connection account (back to legacy per-user credentials)."
+        },
+        "testOptions": {
+          "$ref": "#/definitions/chorusStorageTestOptions"
         }
       }
     },

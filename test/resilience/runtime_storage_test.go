@@ -32,7 +32,7 @@ func TestRuntimeStorageWithoutRestart(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond, "proxy must publish its initial process identity")
 	config := map[string]any{"name": "archive", "address": storages[f2Key].Address, "provider": "Minio", "isSecure": false, "defaultRegion": "us-east-1", "httpTimeout": "5s", "healthCheckInterval": "1s"}
 	credentials := []map[string]any{{"user": user, "accessKeyId": mainCreds.AccessKeyID, "secretAccessKey": mainCreds.SecretAccessKey}}
-	test := e.restJSON(t, http.MethodPost, "/tutti/storages/test", map[string]any{"storage": config, "credential": credentials[0]})
+	test := e.restJSON(t, http.MethodPost, "/tutti/storages/test-credential", map[string]any{"storage": config, "credential": credentials[0]})
 	require.Equal(t, true, test["ok"])
 	e.restJSON(t, http.MethodPost, "/tutti/storages", map[string]any{"storage": config, "credentials": credentials})
 	listed := e.restJSON(t, http.MethodGet, "/tutti/storages", nil)

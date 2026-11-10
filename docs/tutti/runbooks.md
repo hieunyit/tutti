@@ -319,7 +319,7 @@ Prerequisites: `storage.dynamicCredentials.enabled: true` and a `masterPassword`
 1. **Test the storage and one credential before saving.** It does not save anything.
 
    ```bash
-   curl -s -X POST "${AUTH[@]}" $API/tutti/storages/test -H 'Content-Type: application/json' -d '{
+   curl -s -X POST "${AUTH[@]}" $API/tutti/storages/test-credential -H 'Content-Type: application/json' -d '{
      "storage": {"name": "archive", "address": "https://archive.example.internal:9000",
                  "provider": "Other", "isSecure": true, "httpTimeout": "60s", "healthCheckInterval": "10s"},
      "credential": {"user": "user1", "accessKeyId": "KEY", "secretAccessKey": "SECRET"}

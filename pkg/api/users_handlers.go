@@ -28,7 +28,7 @@ func s3UserToPb(u s3users.User) *pb.S3User {
 		Policy:     &pb.S3UserPolicy{HasPolicy: u.Policy.HasPolicy, Permission: u.Policy.Permission, Buckets: u.Policy.Buckets},
 	}
 	for _, s := range u.Storages {
-		res.Storages = append(res.Storages, &pb.S3UserStorage{Storage: s.Storage, Configured: s.Configured, Source: s.Source, AccessKeyId: s.AccessKeyID})
+		res.Storages = append(res.Storages, &pb.S3UserStorage{Storage: s.Storage, Configured: s.Configured, Source: s.Source, AccessKeyId: s.AccessKeyID, Mode: string(s.Mode)})
 	}
 	return res
 }

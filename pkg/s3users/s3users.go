@@ -28,10 +28,18 @@ type Credentials interface {
 	ListUsers(storage string) []string
 	HasUser(storage, user string) error
 	GetS3Credentials(storage, user string) (s3.CredentialsV4, error)
+	ResolveS3Credentials(storage, user string) (s3.CredentialsV4, objstore.CredMode, error)
 	SetS3Credentials(ctx context.Context, storage, user string, cred s3.CredentialsV4) error
 	DeleteUserCredentials(ctx context.Context, storage, user string) error
 	CredentialSource(storage, user string) string
 	DynamicCredentialsEnabled() bool
+	// ConnectionAccount reports whether the S3 storage has a connection account.
+	ConnectionAccount(storage string) (objstore.ConnectionInfo, bool)
+	// Identities are the users recorded in Tutti, including users without any storage credentials.
+	Identities() []string
+	HasIdentity(user string) bool
+	AddIdentity(ctx context.Context, user string) error
+	RemoveIdentity(ctx context.Context, user string) error
 }
 
 var _ Credentials = objstore.CredsService(nil)
@@ -64,10 +72,13 @@ func ValidName(name string) error {
 
 // StorageState is the credential state of a user on one storage.
 type StorageState struct {
-	Storage     string
+	Storage string
+	// Configured is true if the user has its own credentials (override) on the storage.
 	Configured  bool
 	Source      string
 	AccessKeyID string
+	// Mode is how requests of the user are signed on the storage: objstore.ModeOverride, ModeConnection or ModeMissing.
+	Mode objstore.CredMode
 }
 
 type KeyCounts struct{ Static, DynamicActive, DynamicDisabled int }
@@ -80,8 +91,9 @@ type PolicySummary struct {
 
 // User is the listing view of an S3 user. It never contains secrets.
 type User struct {
-	Name      string
-	Storages  []StorageState
+	Name     string
+	Storages []StorageState
+	// Complete is true if requests of the user resolve on every storage (override or connection account).
 	Complete  bool
 	KeyCounts KeyCounts
 	Policy    PolicySummary
@@ -105,6 +117,14 @@ func (m *Manager) storageNames() []string {
 	return names
 }
 
+func (m *Manager) hasConnectionAccount(storage string) bool {
+	if m.Creds.Storages()[storage] != dom.S3 {
+		return false
+	}
+	_, ok := m.Creds.ConnectionAccount(storage)
+	return ok
+}
+
 func (m *Manager) accessKeyID(storage, user string) string {
 	if m.Creds.Storages()[storage] != dom.S3 {
 		return ""
@@ -124,6 +144,9 @@ func (m *Manager) List(ctx context.Context) (*Listing, error) {
 		for _, u := range m.Creds.ListUsers(st) {
 			names[u] = struct{}{}
 		}
+	}
+	for _, u := range m.Creds.Identities() {
+		names[u] = struct{}{}
 	}
 	static, err := m.staticKeyCounts(ctx)
 	if err != nil {
@@ -164,10 +187,14 @@ func (m *Manager) List(ctx context.Context) (*Listing, error) {
 		u := User{Name: n, Complete: true}
 		for _, st := range storages {
 			src := m.Creds.CredentialSource(st, n)
-			state := StorageState{Storage: st, Configured: src != "", Source: src}
-			if state.Configured {
+			state := StorageState{Storage: st, Configured: src != "", Source: src, Mode: objstore.ModeMissing}
+			switch {
+			case state.Configured:
 				state.AccessKeyID = m.accessKeyID(st, n)
-			} else {
+				state.Mode = objstore.ModeOverride
+			case m.hasConnectionAccount(st):
+				state.Mode = objstore.ModeConnection
+			default:
 				u.Complete = false
 			}
 			u.Storages = append(u.Storages, state)
@@ -332,9 +359,6 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 	if err := m.requireDynamic(); err != nil {
 		return nil, err
 	}
-	if len(req.Credentials) == 0 {
-		return nil, fmt.Errorf("%w: credentials for the main storage %q are required", dom.ErrInvalidArg, m.Creds.MainStorage())
-	}
 	seen := map[string]struct{}{}
 	for _, c := range req.Credentials {
 		if err := m.checkS3Storage(c.Storage); err != nil {
@@ -348,8 +372,20 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 			return nil, fmt.Errorf("%w: storage %q: accessKeyId and secretAccessKey are required", dom.ErrInvalidArg, c.Storage)
 		}
 	}
-	if _, ok := seen[m.Creds.MainStorage()]; !ok {
-		return nil, fmt.Errorf("%w: credentials for the main storage %q are required", dom.ErrInvalidArg, m.Creds.MainStorage())
+	if _, ok := seen[m.Creds.MainStorage()]; !ok && !m.hasConnectionAccount(m.Creds.MainStorage()) {
+		return nil, fmt.Errorf("%w: credentials for the main storage %q are required (it has no connection account)", dom.ErrInvalidArg, m.Creds.MainStorage())
+	}
+	if len(req.Credentials) == 0 {
+		// a user without any storage credentials must resolve on every S3 storage through its connection account
+		var missing []string
+		for _, st := range m.storageNames() {
+			if m.Creds.Storages()[st] == dom.S3 && !m.hasConnectionAccount(st) {
+				missing = append(missing, st)
+			}
+		}
+		if len(missing) > 0 {
+			return nil, fmt.Errorf("%w: storage(s) %s have no connection account: give the user credentials for them or add a connection account to the storage", dom.ErrInvalidArg, strings.Join(missing, ", "))
+		}
 	}
 	if req.CreateAccessKey {
 		if err := m.Accounts.SealingAvailable(); err != nil {
@@ -362,6 +398,9 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 				return nil, fmt.Errorf("%w: s3 user %q already exists (storage %q)", dom.ErrAlreadyExists, req.Name, st)
 			}
 		}
+	}
+	if m.Creds.HasIdentity(req.Name) {
+		return nil, fmt.Errorf("%w: s3 user %q already exists", dom.ErrAlreadyExists, req.Name)
 	}
 	var pol *accesspolicy.Policy
 	if req.Policy != nil {
@@ -383,12 +422,21 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 	}
 
 	var setStorages []string
+	identityAdded := false
 	rollback := func() {
 		bg := context.WithoutCancel(ctx)
 		for _, st := range setStorages {
 			_ = m.Creds.DeleteUserCredentials(bg, st, req.Name)
 		}
+		if identityAdded {
+			_ = m.Creds.RemoveIdentity(bg, req.Name)
+		}
 	}
+	// the user record first: a user without storage credentials exists only as this record
+	if err := m.Creds.AddIdentity(ctx, req.Name); err != nil {
+		return nil, err
+	}
+	identityAdded = true
 	for _, c := range req.Credentials {
 		err := m.Creds.SetS3Credentials(ctx, c.Storage, req.Name, s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey})
 		if err != nil {
@@ -444,7 +492,7 @@ func (m *Manager) updateCredentialsLocked(ctx context.Context, user string, c Cr
 	if err := (s3.CredentialsV4{AccessKeyID: c.AccessKeyID, SecretAccessKey: c.SecretAccessKey}).Validate(); err != nil {
 		return fmt.Errorf("%w: accessKeyId and secretAccessKey are required", dom.ErrInvalidArg)
 	}
-	exists := false
+	exists := m.Creds.HasIdentity(user)
 	for _, st := range m.storageNames() {
 		if m.Creds.CredentialSource(st, user) != "" {
 			exists = true
@@ -497,7 +545,7 @@ func (m *Manager) deleteLocked(ctx context.Context, name string, force bool) (*D
 			dynamicStorages = append(dynamicStorages, st)
 		}
 	}
-	if len(configStorages)+len(dynamicStorages) == 0 {
+	if len(configStorages)+len(dynamicStorages) == 0 && !m.Creds.HasIdentity(name) {
 		return nil, fmt.Errorf("%w: s3 user %q", dom.ErrNotFound, name)
 	}
 	var reasons []string
@@ -551,6 +599,9 @@ func (m *Manager) deleteLocked(ctx context.Context, name string, force bool) (*D
 		}
 		res.DeletedStorages = append(res.DeletedStorages, st)
 	}
+	if err := m.Creds.RemoveIdentity(ctx, name); err != nil {
+		return res, err
+	}
 	return res, nil
 }
 
@@ -570,7 +621,7 @@ func (m *Manager) Test(ctx context.Context, user, storage string, cred *Credenti
 			return VerifyResult{}, fmt.Errorf("%w: user is required when no credentials are given", dom.ErrInvalidArg)
 		}
 		var err error
-		c, err = m.Creds.GetS3Credentials(storage, user)
+		c, _, err = m.Creds.ResolveS3Credentials(storage, user)
 		if err != nil {
 			return VerifyResult{}, fmt.Errorf("%w: user %q has no credentials on storage %q", dom.ErrNotFound, user, storage)
 		}

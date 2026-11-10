@@ -9,6 +9,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/storagetest"
 )
 
 type changingStorages interface {
@@ -43,7 +44,7 @@ func manageStorageHealth(ctx context.Context, creds changingStorages, clients ob
 			}
 			probeCtx, cancel := context.WithCancel(ctx)
 			probes[change.Name] = cancel
-			go reg.RunChecks(probeCtx, health.Target{Storage: change.Name, Interval: addr.HealthCheckInterval, Probe: storageProbe(clients, creds, change.Name)})
+			go reg.RunChecks(probeCtx, health.Target{Storage: change.Name, Interval: addr.HealthCheckInterval, Probe: storagetest.HealthProbe(clients, creds, change.Name)})
 		}
 	}
 	creds.Subscribe(reconcile)

@@ -53,6 +53,7 @@ type Collector struct {
 	eventRecordErr atomic.Uint64
 	sync           [3]atomic.Uint64 // quorum, belowQuorum, skipped
 	chunkedFailed  atomic.Uint64
+	noCredentials  atomic.Uint64
 
 	bytesIn  atomic.Uint64
 	bytesOut atomic.Uint64
@@ -126,6 +127,10 @@ func (c *Collector) SyncOutcome(outcome string) {
 	}
 }
 
+// NoCredentials counts a request answered 503 because the storage has neither an override nor a connection account
+// for the user.
+func (c *Collector) NoCredentials() { c.noCredentials.Add(1) }
+
 // ChunkedVerifyFailed counts an aws-chunked payload verification failure.
 func (c *Collector) ChunkedVerifyFailed() { c.chunkedFailed.Add(1) }
 
@@ -176,6 +181,8 @@ type Snapshot struct {
 	Sync SyncStats `json:"sync"`
 	// ChunkedVerifyFailed is the number of aws-chunked payload verification failures.
 	ChunkedVerifyFailed uint64 `json:"chunkedVerifyFailed"`
+	// NoCredentials is the number of requests failed with 503 because no credentials resolve for the user on the storage.
+	NoCredentials uint64 `json:"noCredentials"`
 	// BytesIn are bytes read from clients (request bodies), BytesOut bytes written to clients (response bodies).
 	BytesIn  uint64 `json:"bytesIn"`
 	BytesOut uint64 `json:"bytesOut"`
@@ -239,6 +246,7 @@ func (c *Collector) Snapshot() Snapshot {
 			QuorumReached: c.sync[0].Load(), BelowQuorum: c.sync[1].Load(), Skipped: c.sync[2].Load(),
 		},
 		ChunkedVerifyFailed: c.chunkedFailed.Load(),
+		NoCredentials:       c.noCredentials.Load(),
 		BytesIn:             c.bytesIn.Load(),
 		BytesOut:            c.bytesOut.Load(),
 		Latency: Latency{

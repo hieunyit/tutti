@@ -165,6 +165,99 @@ func local_request_Resilience_TestRuntimeStorage_0(ctx context.Context, marshale
 	return msg, metadata, err
 }
 
+func request_Resilience_GetRuntimeStorage_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RuntimeStorageName
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "name")
+	}
+	protoReq.Name, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "name", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.GetRuntimeStorage(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_GetRuntimeStorage_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RuntimeStorageName
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "name")
+	}
+	protoReq.Name, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "name", err)
+	}
+	msg, err := server.GetRuntimeStorage(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_Resilience_TestStorageConnection_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq TestStorageConnectionRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.TestStorageConnection(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_TestStorageConnection_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq TestStorageConnectionRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.TestStorageConnection(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_Resilience_RotateStorageConnectionAccount_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RotateStorageConnectionAccountRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.RotateStorageConnectionAccount(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_Resilience_RotateStorageConnectionAccount_0(ctx context.Context, marshaler runtime.Marshaler, server ResilienceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq RotateStorageConnectionAccountRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.RotateStorageConnectionAccount(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_Resilience_GetProxyStatus_0(ctx context.Context, marshaler runtime.Marshaler, client ResilienceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq emptypb.Empty
@@ -898,7 +991,7 @@ func RegisterResilienceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/TestRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/test"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/TestRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/test-credential"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -911,6 +1004,66 @@ func RegisterResilienceHandlerServer(ctx context.Context, mux *runtime.ServeMux,
 			return
 		}
 		forward_Resilience_TestRuntimeStorage_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_Resilience_GetRuntimeStorage_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/GetRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/{name}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_GetRuntimeStorage_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_GetRuntimeStorage_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_Resilience_TestStorageConnection_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/TestStorageConnection", runtime.WithHTTPPathPattern("/tutti/storages/test"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_TestStorageConnection_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_TestStorageConnection_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_RotateStorageConnectionAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/chorus.Resilience/RotateStorageConnectionAccount", runtime.WithHTTPPathPattern("/tutti/storages/connection-account"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_Resilience_RotateStorageConnectionAccount_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_RotateStorageConnectionAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_Resilience_GetProxyStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1524,7 +1677,7 @@ func RegisterResilienceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/TestRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/test"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/TestRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/test-credential"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1536,6 +1689,57 @@ func RegisterResilienceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 			return
 		}
 		forward_Resilience_TestRuntimeStorage_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_Resilience_GetRuntimeStorage_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/GetRuntimeStorage", runtime.WithHTTPPathPattern("/tutti/storages/{name}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_GetRuntimeStorage_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_GetRuntimeStorage_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_Resilience_TestStorageConnection_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/TestStorageConnection", runtime.WithHTTPPathPattern("/tutti/storages/test"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_TestStorageConnection_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_TestStorageConnection_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPut, pattern_Resilience_RotateStorageConnectionAccount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/chorus.Resilience/RotateStorageConnectionAccount", runtime.WithHTTPPathPattern("/tutti/storages/connection-account"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Resilience_RotateStorageConnectionAccount_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Resilience_RotateStorageConnectionAccount_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_Resilience_GetProxyStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1966,67 +2170,73 @@ func RegisterResilienceHandlerClient(ctx context.Context, mux *runtime.ServeMux,
 }
 
 var (
-	pattern_Resilience_ListRuntimeStorages_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
-	pattern_Resilience_CreateRuntimeStorage_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
-	pattern_Resilience_UpdateRuntimeStorage_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
-	pattern_Resilience_DeleteRuntimeStorage_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "delete"}, ""))
-	pattern_Resilience_TestRuntimeStorage_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "test"}, ""))
-	pattern_Resilience_GetProxyStatus_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxies"}, ""))
-	pattern_Resilience_GetStatsHistory_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "stats", "history"}, ""))
-	pattern_Resilience_ListFailoverPolicies_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
-	pattern_Resilience_SetFailoverPolicy_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
-	pattern_Resilience_DeleteFailoverPolicy_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "policies", "delete"}, ""))
-	pattern_Resilience_ListFailoverEvents_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "events"}, ""))
-	pattern_Resilience_DeleteFailoverEvent_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "events", "delete"}, ""))
-	pattern_Resilience_ListAccessPolicies_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
-	pattern_Resilience_SetAccessPolicy_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
-	pattern_Resilience_DeleteAccessPolicy_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "access-policies", "delete"}, ""))
-	pattern_Resilience_ListProxyAccounts_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
-	pattern_Resilience_CreateProxyAccount_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
-	pattern_Resilience_RotateProxyAccountSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "rotate"}, ""))
-	pattern_Resilience_SetProxyAccountStatus_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "status"}, ""))
-	pattern_Resilience_DeleteProxyAccount_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "delete"}, ""))
-	pattern_Resilience_ListS3Users_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "users"}, ""))
-	pattern_Resilience_CreateS3User_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "users"}, ""))
-	pattern_Resilience_UpdateS3UserCredentials_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "credentials"}, ""))
-	pattern_Resilience_DeleteS3User_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "delete"}, ""))
-	pattern_Resilience_TestS3UserCredentials_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "test"}, ""))
-	pattern_Resilience_ListConsoleUsers_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
-	pattern_Resilience_CreateConsoleUser_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
-	pattern_Resilience_UpdateConsoleUser_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
-	pattern_Resilience_ResetConsoleUserPassword_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "console-users", "password"}, ""))
-	pattern_Resilience_DeleteConsoleUser_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "console-users", "delete"}, ""))
+	pattern_Resilience_ListRuntimeStorages_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
+	pattern_Resilience_CreateRuntimeStorage_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
+	pattern_Resilience_UpdateRuntimeStorage_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "storages"}, ""))
+	pattern_Resilience_DeleteRuntimeStorage_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "delete"}, ""))
+	pattern_Resilience_TestRuntimeStorage_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "test-credential"}, ""))
+	pattern_Resilience_GetRuntimeStorage_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"tutti", "storages", "name"}, ""))
+	pattern_Resilience_TestStorageConnection_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "test"}, ""))
+	pattern_Resilience_RotateStorageConnectionAccount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "storages", "connection-account"}, ""))
+	pattern_Resilience_GetProxyStatus_0                 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxies"}, ""))
+	pattern_Resilience_GetStatsHistory_0                = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "stats", "history"}, ""))
+	pattern_Resilience_ListFailoverPolicies_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
+	pattern_Resilience_SetFailoverPolicy_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "policies"}, ""))
+	pattern_Resilience_DeleteFailoverPolicy_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "policies", "delete"}, ""))
+	pattern_Resilience_ListFailoverEvents_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "failover", "events"}, ""))
+	pattern_Resilience_DeleteFailoverEvent_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"tutti", "failover", "events", "delete"}, ""))
+	pattern_Resilience_ListAccessPolicies_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
+	pattern_Resilience_SetAccessPolicy_0                = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "access-policies"}, ""))
+	pattern_Resilience_DeleteAccessPolicy_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "access-policies", "delete"}, ""))
+	pattern_Resilience_ListProxyAccounts_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
+	pattern_Resilience_CreateProxyAccount_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "proxy-accounts"}, ""))
+	pattern_Resilience_RotateProxyAccountSecret_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "rotate"}, ""))
+	pattern_Resilience_SetProxyAccountStatus_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "status"}, ""))
+	pattern_Resilience_DeleteProxyAccount_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "proxy-accounts", "delete"}, ""))
+	pattern_Resilience_ListS3Users_0                    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "users"}, ""))
+	pattern_Resilience_CreateS3User_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "users"}, ""))
+	pattern_Resilience_UpdateS3UserCredentials_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "credentials"}, ""))
+	pattern_Resilience_DeleteS3User_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "delete"}, ""))
+	pattern_Resilience_TestS3UserCredentials_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "users", "test"}, ""))
+	pattern_Resilience_ListConsoleUsers_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
+	pattern_Resilience_CreateConsoleUser_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
+	pattern_Resilience_UpdateConsoleUser_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"tutti", "console-users"}, ""))
+	pattern_Resilience_ResetConsoleUserPassword_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "console-users", "password"}, ""))
+	pattern_Resilience_DeleteConsoleUser_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"tutti", "console-users", "delete"}, ""))
 )
 
 var (
-	forward_Resilience_ListRuntimeStorages_0      = runtime.ForwardResponseMessage
-	forward_Resilience_CreateRuntimeStorage_0     = runtime.ForwardResponseMessage
-	forward_Resilience_UpdateRuntimeStorage_0     = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteRuntimeStorage_0     = runtime.ForwardResponseMessage
-	forward_Resilience_TestRuntimeStorage_0       = runtime.ForwardResponseMessage
-	forward_Resilience_GetProxyStatus_0           = runtime.ForwardResponseMessage
-	forward_Resilience_GetStatsHistory_0          = runtime.ForwardResponseMessage
-	forward_Resilience_ListFailoverPolicies_0     = runtime.ForwardResponseMessage
-	forward_Resilience_SetFailoverPolicy_0        = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteFailoverPolicy_0     = runtime.ForwardResponseMessage
-	forward_Resilience_ListFailoverEvents_0       = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteFailoverEvent_0      = runtime.ForwardResponseMessage
-	forward_Resilience_ListAccessPolicies_0       = runtime.ForwardResponseMessage
-	forward_Resilience_SetAccessPolicy_0          = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteAccessPolicy_0       = runtime.ForwardResponseMessage
-	forward_Resilience_ListProxyAccounts_0        = runtime.ForwardResponseMessage
-	forward_Resilience_CreateProxyAccount_0       = runtime.ForwardResponseMessage
-	forward_Resilience_RotateProxyAccountSecret_0 = runtime.ForwardResponseMessage
-	forward_Resilience_SetProxyAccountStatus_0    = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteProxyAccount_0       = runtime.ForwardResponseMessage
-	forward_Resilience_ListS3Users_0              = runtime.ForwardResponseMessage
-	forward_Resilience_CreateS3User_0             = runtime.ForwardResponseMessage
-	forward_Resilience_UpdateS3UserCredentials_0  = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteS3User_0             = runtime.ForwardResponseMessage
-	forward_Resilience_TestS3UserCredentials_0    = runtime.ForwardResponseMessage
-	forward_Resilience_ListConsoleUsers_0         = runtime.ForwardResponseMessage
-	forward_Resilience_CreateConsoleUser_0        = runtime.ForwardResponseMessage
-	forward_Resilience_UpdateConsoleUser_0        = runtime.ForwardResponseMessage
-	forward_Resilience_ResetConsoleUserPassword_0 = runtime.ForwardResponseMessage
-	forward_Resilience_DeleteConsoleUser_0        = runtime.ForwardResponseMessage
+	forward_Resilience_ListRuntimeStorages_0            = runtime.ForwardResponseMessage
+	forward_Resilience_CreateRuntimeStorage_0           = runtime.ForwardResponseMessage
+	forward_Resilience_UpdateRuntimeStorage_0           = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteRuntimeStorage_0           = runtime.ForwardResponseMessage
+	forward_Resilience_TestRuntimeStorage_0             = runtime.ForwardResponseMessage
+	forward_Resilience_GetRuntimeStorage_0              = runtime.ForwardResponseMessage
+	forward_Resilience_TestStorageConnection_0          = runtime.ForwardResponseMessage
+	forward_Resilience_RotateStorageConnectionAccount_0 = runtime.ForwardResponseMessage
+	forward_Resilience_GetProxyStatus_0                 = runtime.ForwardResponseMessage
+	forward_Resilience_GetStatsHistory_0                = runtime.ForwardResponseMessage
+	forward_Resilience_ListFailoverPolicies_0           = runtime.ForwardResponseMessage
+	forward_Resilience_SetFailoverPolicy_0              = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteFailoverPolicy_0           = runtime.ForwardResponseMessage
+	forward_Resilience_ListFailoverEvents_0             = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteFailoverEvent_0            = runtime.ForwardResponseMessage
+	forward_Resilience_ListAccessPolicies_0             = runtime.ForwardResponseMessage
+	forward_Resilience_SetAccessPolicy_0                = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteAccessPolicy_0             = runtime.ForwardResponseMessage
+	forward_Resilience_ListProxyAccounts_0              = runtime.ForwardResponseMessage
+	forward_Resilience_CreateProxyAccount_0             = runtime.ForwardResponseMessage
+	forward_Resilience_RotateProxyAccountSecret_0       = runtime.ForwardResponseMessage
+	forward_Resilience_SetProxyAccountStatus_0          = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteProxyAccount_0             = runtime.ForwardResponseMessage
+	forward_Resilience_ListS3Users_0                    = runtime.ForwardResponseMessage
+	forward_Resilience_CreateS3User_0                   = runtime.ForwardResponseMessage
+	forward_Resilience_UpdateS3UserCredentials_0        = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteS3User_0                   = runtime.ForwardResponseMessage
+	forward_Resilience_TestS3UserCredentials_0          = runtime.ForwardResponseMessage
+	forward_Resilience_ListConsoleUsers_0               = runtime.ForwardResponseMessage
+	forward_Resilience_CreateConsoleUser_0              = runtime.ForwardResponseMessage
+	forward_Resilience_UpdateConsoleUser_0              = runtime.ForwardResponseMessage
+	forward_Resilience_ResetConsoleUserPassword_0       = runtime.ForwardResponseMessage
+	forward_Resilience_DeleteConsoleUser_0              = runtime.ForwardResponseMessage
 )
