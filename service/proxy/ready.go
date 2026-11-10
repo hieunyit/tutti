@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,12 +16,34 @@ const DefaultReadyMaxStaleness = 30 * time.Second
 // DefaultReadHeaderTimeout bounds how long a client may take to send request headers when the config leaves it unset.
 const DefaultReadHeaderTimeout = 10 * time.Second
 
+// DefaultWriterLease is the default protection group writer lease TTL when unset.
+const DefaultWriterLease = 30 * time.Second
+
 // readiness answers GET /ready for the load balancer.
 type readiness struct {
+	mu           sync.RWMutex
 	snapshot     func() policy.SnapshotStatus
 	storages     func() int
 	maxStaleness time.Duration
 	draining     atomic.Bool
+}
+
+func (r *readiness) setMaxStaleness(d time.Duration) {
+	if d <= 0 {
+		d = DefaultReadyMaxStaleness
+	}
+	r.mu.Lock()
+	r.maxStaleness = d
+	r.mu.Unlock()
+}
+
+func (r *readiness) getMaxStaleness() time.Duration {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.maxStaleness <= 0 {
+		return DefaultReadyMaxStaleness
+	}
+	return r.maxStaleness
 }
 
 type readyResponse struct {
@@ -40,6 +63,7 @@ type readyResponse struct {
 
 func (r *readiness) check() readyResponse {
 	st := r.snapshot()
+	maxStaleness := r.getMaxStaleness()
 	res := readyResponse{
 		SnapshotLoaded:  st.Loaded,
 		SnapshotVersion: st.Version,
@@ -47,7 +71,7 @@ func (r *readiness) check() readyResponse {
 		RedisReachable:  st.RedisReachable,
 		Storages:        r.storages(),
 		Draining:        r.draining.Load(),
-		MaxStalenessSec: r.maxStaleness.Seconds(),
+		MaxStalenessSec: maxStaleness.Seconds(),
 	}
 	if res.Draining {
 		res.Reasons = append(res.Reasons, "draining: shutdown in progress")
@@ -62,7 +86,7 @@ func (r *readiness) check() readyResponse {
 	case !st.Loaded:
 	case st.RedisReachable:
 		res.Mode = "ok"
-	case st.Age <= r.maxStaleness:
+	case st.Age <= maxStaleness:
 		res.Mode = "read-only"
 	default:
 		res.Reasons = append(res.Reasons, "redis unreachable and snapshot older than maxStaleness")

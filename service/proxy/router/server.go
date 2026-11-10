@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -175,15 +176,48 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func New(config Config) (http.Handler, error) {
+// Server is the proxy HTTP router with hot-reloadable replication and sync options.
+type Server struct {
+	http.Handler
+	replOpts atomic.Pointer[ReplicationOptions]
+	syncOpts atomic.Pointer[SyncOptions]
+}
+
+// SetReplicationOptions updates the replication event recording options at runtime.
+func (s *Server) SetReplicationOptions(opts ReplicationOptions) {
+	resolved := opts.withDefaults()
+	s.replOpts.Store(&resolved)
+}
+
+// SetSyncOptions updates the synchronous replication options at runtime.
+// If Syncer or Health are nil in opts, the existing Syncer and Health are preserved.
+func (s *Server) SetSyncOptions(opts SyncOptions) {
+	if cur := s.syncOpts.Load(); cur != nil {
+		if opts.Syncer == nil {
+			opts.Syncer = cur.Syncer
+		}
+		if opts.Health == nil {
+			opts.Health = cur.Health
+		}
+	}
+	s.syncOpts.Store(&opts)
+}
+
+func New(config Config) (*Server, error) {
 	// build proxy handlers. Middleware wraps request handler, so it is applied in reverse order
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
+	srv := &Server{}
+	initRepl := config.Replication.withDefaults()
+	initSync := config.Sync
+	srv.replOpts.Store(&initRepl)
+	srv.syncOpts.Store(&initSync)
+
 	handlers := make(map[dom.StorageType]http.Handler, len(config.Storages))
 	for storType, storProxy := range config.Storages {
 		// 9. main request handler. Forward request to storage backend and emit replication tasks
-		handler := serve(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil, config.Replication, config.Sync)
+		handler := serveAtomic(storProxy.Router, storProxy.Replicator, config.CorsMiddleware != nil, &srv.replOpts, &srv.syncOpts)
 		if config.TraceMiddleware != nil {
 			// 8. tracing
 			handler = config.TraceMiddleware(handler)
@@ -227,14 +261,24 @@ func New(config Config) (http.Handler, error) {
 	result = config.LogMiddleware(result)
 	// 0. built-in traffic statistics: outermost, so that every response, byte and the full duration is counted
 	result = trafficstats.Default.Middleware(result)
-	return result, nil
-
+	srv.Handler = result
+	return srv, nil
 }
 
 func serve(router Router, replSvc replication.Service, proxyCors bool, replOpts ReplicationOptions, syncOpts SyncOptions) http.Handler {
 	replOpts = replOpts.withDefaults()
+	var replPtr atomic.Pointer[ReplicationOptions]
+	var syncPtr atomic.Pointer[SyncOptions]
+	replPtr.Store(&replOpts)
+	syncPtr.Store(&syncOpts)
+	return serveAtomic(router, replSvc, proxyCors, &replPtr, &syncPtr)
+}
+
+func serveAtomic(router Router, replSvc replication.Service, proxyCors bool, replOptsPtr *atomic.Pointer[ReplicationOptions], syncOptsPtr *atomic.Pointer[SyncOptions]) http.Handler {
 	// Use a custom handler function instead of ServeMux to avoid automatic redirects
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		replOpts := *replOptsPtr.Load()
+		syncOpts := *syncOptsPtr.Load()
 		ctx, span := otel.Tracer("").Start(r.Context(), "Route")
 		defer span.End()
 		r = r.WithContext(ctx)

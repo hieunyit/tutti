@@ -78,8 +78,10 @@ type Controller struct {
 	log   zerolog.Logger
 	onDo  func(from, to string)
 
-	mu     sync.Mutex
-	warned map[string]struct{} // scope keys already reported in the current outage
+	mu       sync.Mutex
+	enabled  bool
+	reconfCh chan struct{}
+	warned   map[string]struct{} // scope keys already reported in the current outage
 }
 
 type Option func(*Controller)
@@ -87,23 +89,64 @@ type Option func(*Controller)
 func WithClock(f func() time.Time) Option           { return func(c *Controller) { c.now = f } }
 func WithUsers(f func() []string) Option            { return func(c *Controller) { c.users = f } }
 func WithOnFailover(f func(from, to string)) Option { return func(c *Controller) { c.onDo = f } }
+func WithEnabled(enabled bool) Option               { return func(c *Controller) { c.enabled = enabled } }
 
 func New(cfg Config, p Policy, h Health, l Locker, pol Policies, log zerolog.Logger, opts ...Option) *Controller {
-	c := &Controller{cfg: cfg, policy: p, health: h, locker: l, policies: pol, log: log, now: time.Now, warned: map[string]struct{}{}}
+	c := &Controller{
+		cfg:      cfg,
+		enabled:  true,
+		reconfCh: make(chan struct{}, 1),
+		policy:   p,
+		health:   h,
+		locker:   l,
+		policies: pol,
+		log:      log,
+		now:      time.Now,
+		warned:   map[string]struct{}{},
+	}
 	for _, o := range opts {
 		o(c)
 	}
 	return c
 }
 
+// SetConfig updates the failover controller configuration and enabled flag at runtime.
+func (c *Controller) SetConfig(cfg Config, enabled bool) {
+	c.mu.Lock()
+	if cfg.MainStorage == "" {
+		cfg.MainStorage = c.cfg.MainStorage
+	}
+	intervalChanged := c.cfg.CheckInterval != cfg.CheckInterval
+	c.cfg = cfg
+	c.enabled = enabled
+	c.mu.Unlock()
+	if intervalChanged {
+		select {
+		case c.reconfCh <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (c *Controller) checkInterval() time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cfg.CheckInterval <= 0 {
+		return 10 * time.Second
+	}
+	return c.cfg.CheckInterval
+}
+
 // Run evaluates the conditions every CheckInterval until ctx is done.
 func (c *Controller) Run(ctx context.Context) {
-	t := time.NewTicker(c.cfg.CheckInterval)
+	t := time.NewTicker(c.checkInterval())
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-c.reconfCh:
+			t.Reset(c.checkInterval())
 		case <-t.C:
 			if err := c.RunOnce(ctx); err != nil && ctx.Err() == nil {
 				c.log.Error().Err(err).Msg("failover: check failed")
@@ -131,6 +174,12 @@ func (s scope) key() string { return s.user + "/" + s.bucket }
 
 // RunOnce performs one evaluation. Errors of individual scopes are logged; the first is returned.
 func (c *Controller) RunOnce(ctx context.Context) error {
+	c.mu.Lock()
+	cfg, enabled := c.cfg, c.enabled
+	c.mu.Unlock()
+	if !enabled {
+		return nil
+	}
 	status := map[string]health.Status{}
 	for _, st := range c.health.Snapshot() {
 		status[st.Name] = st
@@ -162,14 +211,14 @@ func (c *Controller) RunOnce(ctx context.Context) error {
 		if !ok || !pol.Enabled || len(pol.Targets) == 0 {
 			continue // no policy: never fail over
 		}
-		after := c.cfg.DefaultAfter
+		after := cfg.DefaultAfter
 		if pol.After > 0 {
 			after = pol.After
 		}
 		if now.Sub(status[failed].LastChange) < after {
 			continue
 		}
-		maxLag := c.cfg.DefaultMaxEventLag
+		maxLag := cfg.DefaultMaxEventLag
 		if pol.MaxEventLag != nil {
 			maxLag = *pol.MaxEventLag
 		}
@@ -237,11 +286,14 @@ func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, err
 	if err != nil && !errors.Is(err, dom.ErrNotFound) {
 		return nil, fmt.Errorf("list user replications: %w", err)
 	}
+	c.mu.Lock()
+	mainStorage := c.cfg.MainStorage
+	c.mu.Unlock()
 	effective := func(user string) string {
 		if to, ok := userRoutes[user]; ok {
 			return to
 		}
-		return c.cfg.MainStorage
+		return mainStorage
 	}
 	users := map[string]struct{}{}
 	byUser := map[string]*scope{}

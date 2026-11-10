@@ -26,6 +26,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/health"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/swift"
 	"github.com/hieunyit/tutti/service/proxy/auth"
@@ -54,7 +55,9 @@ type Config struct {
 	Auth    *auth.Config `yaml:"auth,omitempty"`
 	Port    int          `yaml:"port"`
 	Address string       `yaml:"address"`
-	Cors    *cors.Config `yaml:"cors"`
+	// Group is the logical proxy group used to resolve per-group overrides from tutti:proxy-config. Defaults to "default".
+	Group string       `yaml:"group,omitempty"`
+	Cors  *cors.Config `yaml:"cors"`
 
 	Replication ReplicationConfig `yaml:"replication"`
 	// Health configures per-storage circuit breakers.
@@ -209,9 +212,22 @@ func (r *ReplicationConfig) Validate() error {
 	return r.Sync.Validate()
 }
 
+// EffectiveGroup returns the configured proxy group or "default" when unset.
+func (c *Config) EffectiveGroup() string {
+	if c == nil || c.Group == "" {
+		return proxystatus.DefaultGroup
+	}
+	return c.Group
+}
+
 func (c *Config) Validate() error {
 	if err := c.Common.Validate(); err != nil {
 		return err
+	}
+	if c.Group != "" {
+		if err := proxystatus.ValidateGroupName(c.Group); err != nil {
+			return fmt.Errorf("proxy config: %w", err)
+		}
 	}
 	if err := c.Storage.Validate(); err != nil {
 		return err

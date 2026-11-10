@@ -185,6 +185,13 @@ func NewRegistry(cfg Config, opts ...Option) *Registry {
 	return r
 }
 
+// SetConfig updates the circuit breaker configuration at runtime without resetting existing breaker health states.
+func (r *Registry) SetConfig(cfg Config) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cfg = cfg.WithDefaults()
+}
+
 // Register makes storages visible in Snapshot before any traffic.
 func (r *Registry) Register(storages ...string) {
 	r.mu.Lock()
@@ -286,7 +293,7 @@ func (r *Registry) Observe(storage string, err error) {
 			b.openUntil, b.trial = now.Add(r.cfg.OpenDuration), false
 		}
 	}
-	failures, lastErr := b.failures, b.lastErr
+	failures, lastErr, openDur := b.failures, b.lastErr, r.cfg.OpenDuration
 	r.mu.Unlock()
 
 	if !changed {
@@ -296,7 +303,7 @@ func (r *Registry) Observe(storage string, err error) {
 		r.logger.Info().Str("storage", storage).Msg("storage circuit breaker closed: storage is available again")
 	} else {
 		r.logger.Warn().Str("storage", storage).Int("consecutive_failures", failures).
-			Dur("open_for", r.cfg.OpenDuration).Str("last_error", lastErr).
+			Dur("open_for", openDur).Str("last_error", lastErr).
 			Msg("storage circuit breaker opened: requests fail fast until the storage recovers")
 	}
 	if r.onChange != nil {

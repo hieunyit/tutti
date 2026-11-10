@@ -86,3 +86,40 @@ describe('ProxiesHelper.uptime', () => {
     expect(ProxiesHelper.uptime(undefined, NOW)).toBeNull();
   });
 });
+
+describe('ProxiesHelper.effectiveGroup & configSyncStatus', () => {
+  it('defaults empty group to default', () => {
+    expect(ProxiesHelper.effectiveGroup(proxy('a'))).toBe('default');
+    expect(ProxiesHelper.effectiveGroup(proxy('b', { group: 'canary' }))).toBe(
+      'canary',
+    );
+  });
+
+  it('computes configSyncStatus', () => {
+    expect(ProxiesHelper.configSyncStatus(proxy('a'), 0)).toEqual({
+      state: 'unconfigured',
+      targetVersion: 0,
+      appliedVersion: 0,
+    });
+    expect(
+      ProxiesHelper.configSyncStatus(
+        proxy('a', { appliedConfigVersion: 2 }),
+        2,
+      ),
+    ).toEqual({
+      state: 'applied',
+      targetVersion: 2,
+      appliedVersion: 2,
+    });
+    expect(
+      ProxiesHelper.configSyncStatus(
+        proxy('a', { appliedConfigVersion: 1 }),
+        2,
+      ),
+    ).toEqual({
+      state: 'applying',
+      targetVersion: 2,
+      appliedVersion: 1,
+    });
+  });
+});

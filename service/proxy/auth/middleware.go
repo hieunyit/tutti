@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/xml"
 	"net/http"
+	"sync"
 	"time"
 
 	mclient "github.com/minio/minio-go/v7"
@@ -78,6 +79,7 @@ type credMeta struct {
 }
 
 type middleware struct {
+	mu          sync.RWMutex
 	allowV2     bool
 	signedHdrs  s3.SignedHeaderOpts
 	custom      map[string]credMeta
@@ -85,6 +87,19 @@ type middleware struct {
 	credsSvc    objstore.CredsService
 	endpoint    string
 	accounts    AccountLookup
+}
+
+// SetRequireSignedContentType updates whether SignedHeaders must include Content-Type at runtime.
+func (m *middleware) SetRequireSignedContentType(v bool) {
+	m.mu.Lock()
+	m.signedHdrs.RequireSignedContentType = v
+	m.mu.Unlock()
+}
+
+func (m *middleware) signedHeaderOpts() s3.SignedHeaderOpts {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.signedHdrs
 }
 
 func (m *middleware) Wrap(next http.Handler) http.Handler {

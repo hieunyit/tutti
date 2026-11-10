@@ -1,5 +1,6 @@
 address: "http://localhost:9669" # Chorus proxy s3 api address
 port: 9669
+group: default # logical proxy group for centralized fleet config overrides (tutti:proxy-config)
 replication:
   # What to do when a write succeeded on the main storage but its replication event could not be recorded
   # (e.g. Redis is out of memory, read-only after failover):

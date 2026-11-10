@@ -69,6 +69,10 @@ type Settings struct {
 	Health                   HealthSettings      `json:"health"`
 	Failover                 FailoverSettings    `json:"failover"`
 	RequireSignedContentType bool                `json:"requireSignedContentType"`
+	ReadHeaderTimeout        time.Duration       `json:"readHeaderTimeout,omitempty"`
+	WriterLease              time.Duration       `json:"writerLease,omitempty"`
+	DrainDelay               time.Duration       `json:"drainDelay,omitempty"`
+	ReadyMaxStaleness        time.Duration       `json:"readyMaxStaleness,omitempty"`
 }
 
 // Account is a proxy account: a user and one of its access key ids.
@@ -83,12 +87,16 @@ type Account struct {
 type Status struct {
 	AppID     string          `json:"appId"`
 	Address   string          `json:"address"`
+	Group     string          `json:"group,omitempty"`
 	StartedAt time.Time       `json:"startedAt"`
 	UpdatedAt time.Time       `json:"updatedAt"`
 	Storages  []StorageHealth `json:"storages"`
 	// Accounts are the accounts able to authenticate against this proxy (no secrets).
-	Accounts []Account `json:"accounts,omitempty"`
-	Settings Settings  `json:"settings"`
+	Accounts              []Account `json:"accounts,omitempty"`
+	Settings              Settings  `json:"settings"`
+	AppliedConfigVersion  int64     `json:"appliedConfigVersion"`
+	PendingRestart        bool      `json:"pendingRestart,omitempty"`
+	PendingRestartReasons []string  `json:"pendingRestartReasons,omitempty"`
 	// Stats are cumulative traffic counters since StartedAt (nil for old documents).
 	Stats *trafficstats.Snapshot `json:"stats,omitempty"`
 	// Rates are the current traffic rates computed by the proxy over a short sliding window (nil for old documents).

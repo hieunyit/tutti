@@ -20,8 +20,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -132,6 +135,22 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 	storagesKnown := func() int { return len(conf.Storage.Storages) }
 
+	startupSettings := buildProxySettings(conf)
+	group := conf.EffectiveGroup()
+	fleetStore := proxystatus.NewFleetConfigStore(confRedis)
+	initialFC, err := fleetStore.Get(ctx)
+	if err != nil {
+		logger.Warn().Err(err).Msg("unable to load initial proxy fleet config, using startup settings")
+		initialFC = &proxystatus.FleetConfig{Version: 0, Groups: map[string]proxystatus.SettingsOverride{}}
+	}
+	initEff, initPending, initReasons := proxystatus.Resolve(startupSettings, group, initialFC)
+	cfgState := &fleetConfigState{
+		settings:       initEff,
+		version:        initialFC.Version,
+		pendingRestart: initPending,
+		reasons:        initReasons,
+	}
+
 	// configure object storage proxies:
 	proxyConfig := router.Config{
 		Storages:          map[dom.StorageType]router.StorageProxy{},
@@ -140,8 +159,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		MetricsMiddleware: nil,
 		PolicyMiddleware:  router.PolicyMiddleware(policySvc),
 		Replication: router.ReplicationOptions{
-			OnEventError:     conf.Replication.OnEventError,
-			EventRetryBudget: conf.Replication.EventRetryBudget,
+			OnEventError:     initEff.Replication.OnEventError,
+			EventRetryBudget: initEff.Replication.EventRetryBudget,
 		},
 	}
 	if conf.Metrics.Enabled {
@@ -153,6 +172,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if conf.Cors.Enabled {
 		proxyConfig.CorsMiddleware = cors.HttpMiddleware(conf.Cors)
 	}
+	var (
+		healthReg    *health.Registry
+		failoverCtrl *failovercontroller.Controller
+		statusPub    *proxystatus.Publisher
+		updateAuth   func(bool)
+	)
 	if s3Conf := conf.Storage.S3Storages(); len(s3Conf) != 0 {
 		metricsSvc := metrics.NewS3Service(conf.Metrics.Enabled)
 		credsConf, err := ProxyToCredsConf(conf.Storage)
@@ -163,7 +188,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
-		healthReg := health.NewRegistry(conf.Health, health.WithLogger(logger), health.WithOnChange(func(storage string, available bool) {
+		healthReg = health.NewRegistry(health.Config{
+			FailureThreshold: initEff.Health.FailureThreshold,
+			OpenDuration:     initEff.Health.OpenDuration,
+		}, health.WithLogger(logger), health.WithOnChange(func(storage string, available bool) {
 			if conf.Metrics.Enabled {
 				metrics.SetStorageAvailable(storage, available)
 				metrics.CountBreakerTransition(storage, available)
@@ -195,8 +223,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				}
 			}
 		}()
-		statusPub := proxystatus.NewPublisher(confRedis, app.AppID, conf.Status.Interval, func() proxystatus.Status {
-			st := proxyStatus(conf, healthReg, startedAt, proxyAccounts(conf.Auth, credsSvc))
+		statusPub = proxystatus.NewPublisher(confRedis, app.AppID, conf.Status.Interval, func() proxystatus.Status {
+			st := proxyStatus(conf, group, cfgState, healthReg, startedAt, proxyAccounts(conf.Auth, credsSvc))
 			rateWindow.Add(*st.Stats)
 			rates := rateWindow.Rates()
 			st.Rates = &rates
@@ -204,46 +232,48 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}, logger)
 		go statusPub.Run(ctx)
 		go proxystatus.RunHistory(ctx, confRedis, app.AppID, rateWindow.Rates, logger)
-		if conf.Failover.Enabled {
-			failoverLock := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
-			defer failoverLock.Close()
-			failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok })
-			ctrl := failovercontroller.New(failovercontroller.Config{
-				DefaultAfter:       conf.Failover.After,
-				DefaultMaxEventLag: conf.Failover.MaxEventLag,
-				CheckInterval:      conf.Failover.CheckInterval,
-				MainStorage:        conf.Storage.Main,
-			}, policySvc, healthReg, failovercontroller.RedisLocker{Client: failoverLock}, failoverStore, logger,
-				failovercontroller.WithUsers(func() []string {
-					var users []string
-					for name := range credsSvc.Storages() {
-						users = append(users, credsSvc.ListUsers(name)...)
-					}
-					return users
-				}),
-				failovercontroller.WithOnFailover(func(from, to string) {
-					if conf.Metrics.Enabled {
-						metrics.CountFailover(from, to)
-					}
-				}))
-			go ctrl.Run(ctx)
-			logger.Warn().Dur("check_interval", conf.Failover.CheckInterval).Msg("automatic failover controller enabled; only storages with an enabled failover policy can fail over")
+
+		lockRedis := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
+		defer lockRedis.Close()
+
+		failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok })
+		failoverCtrl = failovercontroller.New(failovercontroller.Config{
+			DefaultAfter:       initEff.Failover.After,
+			DefaultMaxEventLag: initEff.Failover.MaxEventLag,
+			CheckInterval:      initEff.Failover.CheckInterval,
+			MainStorage:        conf.Storage.Main,
+		}, policySvc, healthReg, failovercontroller.RedisLocker{Client: lockRedis}, failoverStore, logger,
+			failovercontroller.WithEnabled(initEff.Failover.Enabled),
+			failovercontroller.WithUsers(func() []string {
+				var users []string
+				for name := range credsSvc.Storages() {
+					users = append(users, credsSvc.ListUsers(name)...)
+				}
+				return users
+			}),
+			failovercontroller.WithOnFailover(func(from, to string) {
+				if conf.Metrics.Enabled {
+					metrics.CountFailover(from, to)
+				}
+			}))
+		go failoverCtrl.Run(ctx)
+		if initEff.Failover.Enabled {
+			logger.Warn().Dur("check_interval", initEff.Failover.CheckInterval).Msg("automatic failover controller enabled; only storages with an enabled failover policy can fail over")
 		}
-		if conf.Replication.Sync.Enabled {
-			lockRedis := util.NewRedisRole(conf.Redis, config.RedisRoleLock)
-			defer lockRedis.Close()
-			objectLocker := store.NewObjectLocker(lockRedis, syncLockOverlap)
-			// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
-			copySvc := copy.NewS3CopySvc(credsSvc, clientRegistry, metricsSvc)
-			proxyConfig.Sync = router.SyncOptions{
-				Health:          healthReg,
-				Enabled:         true,
-				Syncer:          syncer.New(verSvc, objectLocker, copySvc, clientRegistry),
-				WriteQuorum:     conf.Replication.Sync.WriteQuorum,
-				Timeout:         conf.Replication.Sync.Timeout,
-				OnQuorumFailure: conf.Replication.Sync.OnQuorumFailure,
-			}
-			logger.Info().Int("write_quorum", conf.Replication.Sync.WriteQuorum).Dur("timeout", conf.Replication.Sync.Timeout).Msg("synchronous replication enabled")
+
+		objectLocker := store.NewObjectLocker(lockRedis, syncLockOverlap)
+		// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
+		copySvc := copy.NewS3CopySvc(credsSvc, clientRegistry, metricsSvc)
+		proxyConfig.Sync = router.SyncOptions{
+			Health:          healthReg,
+			Enabled:         initEff.Replication.Sync.Enabled,
+			Syncer:          syncer.New(verSvc, objectLocker, copySvc, clientRegistry),
+			WriteQuorum:     initEff.Replication.Sync.WriteQuorum,
+			Timeout:         initEff.Replication.Sync.Timeout,
+			OnQuorumFailure: initEff.Replication.Sync.OnQuorumFailure,
+		}
+		if initEff.Replication.Sync.Enabled {
+			logger.Info().Int("write_quorum", initEff.Replication.Sync.WriteQuorum).Dur("timeout", initEff.Replication.Sync.Timeout).Msg("synchronous replication enabled")
 		}
 		routeSvc := router.NewS3Router(clientRegistry, verSvc, uploadSvc, limiter)
 		replSvc := replication.NewS3(queueSvc, verSvc, policySvc)
@@ -278,6 +308,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return credsSvc, nil
 		}), proxyaccount.DefaultTTL)
 		authCheck := auth.Middleware(conf.Auth, credsSvc, conf.Address, auth.WithAccounts(accountCache.Lookup))
+		authCheck.SetRequireSignedContentType(initEff.RequireSignedContentType)
+		updateAuth = authCheck.SetRequireSignedContentType
 		proxyConfig.Storages[dom.S3] = router.StorageProxy{
 			Router:             routeSvc,
 			Replicator:         replSvc,
@@ -304,7 +336,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	ready := &readiness{
 		snapshot:     policySvc.SnapshotStatus,
 		storages:     storagesKnown,
-		maxStaleness: conf.Ready.MaxStaleness,
+		maxStaleness: initEff.ReadyMaxStaleness,
 	}
 	if ready.maxStaleness <= 0 {
 		ready.maxStaleness = DefaultReadyMaxStaleness
@@ -315,7 +347,57 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 	// 0 = no drain wait (programmatic configs such as the standalone binary and tests); the embedded
 	// config.yaml sets drainDelay: 5s for the proxy binary
-	drainDelay := conf.DrainDelay
+	var drainDelayNs atomic.Int64
+	drainDelayNs.Store(int64(initEff.DrainDelay))
+
+	reloadFleetConfig := func() {
+		fc, err := fleetStore.Get(ctx)
+		if err != nil {
+			if ctx.Err() == nil {
+				logger.Warn().Err(err).Msg("unable to reload proxy fleet config")
+			}
+			return
+		}
+		eff, pending, reasons := proxystatus.Resolve(startupSettings, group, fc)
+		proxyMux.SetReplicationOptions(router.ReplicationOptions{
+			OnEventError:     eff.Replication.OnEventError,
+			EventRetryBudget: eff.Replication.EventRetryBudget,
+		})
+		proxyMux.SetSyncOptions(router.SyncOptions{
+			Enabled:         eff.Replication.Sync.Enabled,
+			WriteQuorum:     eff.Replication.Sync.WriteQuorum,
+			Timeout:         eff.Replication.Sync.Timeout,
+			OnQuorumFailure: eff.Replication.Sync.OnQuorumFailure,
+		})
+		if healthReg != nil {
+			healthReg.SetConfig(health.Config{
+				FailureThreshold: eff.Health.FailureThreshold,
+				OpenDuration:     eff.Health.OpenDuration,
+			})
+		}
+		if failoverCtrl != nil {
+			failoverCtrl.SetConfig(failovercontroller.Config{
+				DefaultAfter:       eff.Failover.After,
+				DefaultMaxEventLag: eff.Failover.MaxEventLag,
+				CheckInterval:      eff.Failover.CheckInterval,
+				MainStorage:        conf.Storage.Main,
+			}, eff.Failover.Enabled)
+		}
+		if updateAuth != nil {
+			updateAuth(eff.RequireSignedContentType)
+		}
+		ready.setMaxStaleness(eff.ReadyMaxStaleness)
+		drainDelayNs.Store(int64(eff.DrainDelay))
+
+		changed := cfgState.update(eff, fc.Version, pending, reasons)
+		if changed && statusPub != nil {
+			if err := statusPub.PublishOnce(ctx); err != nil && ctx.Err() == nil {
+				logger.Warn().Err(err).Msg("unable to publish updated proxy status after fleet config reload")
+			}
+		}
+	}
+	go watchFleetConfig(ctx, confRedis, reloadFleetConfig)
+
 	// no WriteTimeout: large uploads and downloads stream for a long time
 	readHeaderTimeout := conf.ReadHeaderTimeout
 	if readHeaderTimeout <= 0 {
@@ -335,6 +417,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		// graceful drain: report not-ready first so the load balancer stops sending new requests,
 		// then stop the listener and wait for in-flight requests
 		ready.draining.Store(true)
+		drainDelay := time.Duration(drainDelayNs.Load())
 		logger.Info().Dur("drain_delay", drainDelay).Msg("shutdown: reporting not ready, draining")
 		if drainDelay > 0 {
 			select {
@@ -419,8 +502,126 @@ func storageProbe(clients objstore.Clients, creds objstore.CredsService, storage
 	}
 }
 
+type fleetConfigState struct {
+	mu             sync.RWMutex
+	settings       proxystatus.Settings
+	version        int64
+	pendingRestart bool
+	reasons        []string
+}
+
+func (s *fleetConfigState) update(eff proxystatus.Settings, ver int64, pending bool, reasons []string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	changed := s.version != ver || s.pendingRestart != pending ||
+		!slices.Equal(s.reasons, reasons) || !reflect.DeepEqual(s.settings, eff)
+	s.settings = eff
+	s.version = ver
+	s.pendingRestart = pending
+	s.reasons = slices.Clone(reasons)
+	return changed
+}
+
+func (s *fleetConfigState) get() (proxystatus.Settings, int64, bool, []string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.settings, s.version, s.pendingRestart, slices.Clone(s.reasons)
+}
+
+func buildProxySettings(conf *Config) proxystatus.Settings {
+	hc := conf.Health.WithDefaults()
+	readHeaderTimeout := conf.ReadHeaderTimeout
+	if readHeaderTimeout <= 0 {
+		readHeaderTimeout = DefaultReadHeaderTimeout
+	}
+	writerLease := conf.ProtectionGroups.WriterLease
+	if writerLease <= 0 {
+		writerLease = DefaultWriterLease
+	}
+	readyMaxStaleness := conf.Ready.MaxStaleness
+	if readyMaxStaleness <= 0 {
+		readyMaxStaleness = DefaultReadyMaxStaleness
+	}
+	onEventError := conf.Replication.OnEventError
+	if onEventError == "" {
+		onEventError = router.OnEventErrorFail
+	}
+	eventRetryBudget := conf.Replication.EventRetryBudget
+	if eventRetryBudget <= 0 {
+		eventRetryBudget = router.DefaultEventRetryBudget
+	}
+	onQuorumFailure := conf.Replication.Sync.OnQuorumFailure
+	if onQuorumFailure == "" {
+		onQuorumFailure = router.OnQuorumFailureFail
+	}
+	syncTimeout := conf.Replication.Sync.Timeout
+	if syncTimeout <= 0 {
+		syncTimeout = 30 * time.Second
+	}
+	checkInterval := conf.Failover.CheckInterval
+	if checkInterval <= 0 {
+		checkInterval = 10 * time.Second
+	}
+	after := conf.Failover.After
+	if after <= 0 {
+		after = 60 * time.Second
+	}
+	settings := proxystatus.Settings{
+		Replication: proxystatus.ReplicationSettings{
+			OnEventError:     onEventError,
+			EventRetryBudget: eventRetryBudget,
+			Sync: proxystatus.SyncSettings{
+				Enabled:         conf.Replication.Sync.Enabled,
+				WriteQuorum:     conf.Replication.Sync.WriteQuorum,
+				Timeout:         syncTimeout,
+				OnQuorumFailure: onQuorumFailure,
+			},
+		},
+		Health: proxystatus.HealthSettings{
+			FailureThreshold: hc.FailureThreshold,
+			OpenDuration:     hc.OpenDuration,
+		},
+		Failover: proxystatus.FailoverSettings{
+			Enabled:       conf.Failover.Enabled,
+			CheckInterval: checkInterval,
+			After:         after,
+			MaxEventLag:   conf.Failover.MaxEventLag,
+		},
+		ReadHeaderTimeout: readHeaderTimeout,
+		WriterLease:       writerLease,
+		DrainDelay:        conf.DrainDelay,
+		ReadyMaxStaleness: readyMaxStaleness,
+	}
+	if conf.Auth != nil {
+		settings.RequireSignedContentType = conf.Auth.RequireSignedContentType
+	}
+	return settings
+}
+
+func watchFleetConfig(ctx context.Context, rc redis.UniversalClient, reload func()) {
+	sub := rc.Subscribe(ctx, proxystatus.ConfigChangedChannel)
+	defer func() { _ = sub.Close() }()
+	ch := sub.Channel()
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, ok := <-ch:
+			if !ok {
+				ch = nil
+				continue
+			}
+			reload()
+		case <-ticker.C:
+			reload()
+		}
+	}
+}
+
 // proxyStatus builds the status document published to Redis (config DB, tutti:proxy-status:<app_id>).
-func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time, accounts []proxystatus.Account) proxystatus.Status {
+func proxyStatus(conf *Config, group string, cfgState *fleetConfigState, reg *health.Registry, startedAt time.Time, accounts []proxystatus.Account) proxystatus.Status {
 	snap := reg.Snapshot()
 	storages := make([]proxystatus.StorageHealth, 0, len(snap))
 	for _, s := range snap {
@@ -429,35 +630,20 @@ func proxyStatus(conf *Config, reg *health.Registry, startedAt time.Time, accoun
 			LastError: s.LastError, LastChange: s.LastChange,
 		})
 	}
-	hc := conf.Health.WithDefaults()
+	effSettings, version, pending, reasons := cfgState.get()
 	st := proxystatus.Status{
-		Address:   conf.Address,
-		StartedAt: startedAt,
-		Storages:  storages,
-		Accounts:  accounts,
-		Settings: proxystatus.Settings{
-			Replication: proxystatus.ReplicationSettings{
-				OnEventError:     conf.Replication.OnEventError,
-				EventRetryBudget: conf.Replication.EventRetryBudget,
-				Sync: proxystatus.SyncSettings{
-					Enabled:         conf.Replication.Sync.Enabled,
-					WriteQuorum:     conf.Replication.Sync.WriteQuorum,
-					Timeout:         conf.Replication.Sync.Timeout,
-					OnQuorumFailure: conf.Replication.Sync.OnQuorumFailure,
-				},
-			},
-			Health: proxystatus.HealthSettings{FailureThreshold: hc.FailureThreshold, OpenDuration: hc.OpenDuration},
-			Failover: proxystatus.FailoverSettings{
-				Enabled: conf.Failover.Enabled, CheckInterval: conf.Failover.CheckInterval,
-				After: conf.Failover.After, MaxEventLag: conf.Failover.MaxEventLag,
-			},
-		},
+		Address:               conf.Address,
+		Group:                 group,
+		StartedAt:             startedAt,
+		Storages:              storages,
+		Accounts:              accounts,
+		Settings:              effSettings,
+		AppliedConfigVersion:  version,
+		PendingRestart:        pending,
+		PendingRestartReasons: reasons,
 	}
 	snapStats := trafficstats.Default.Snapshot()
 	st.Stats = &snapStats
-	if conf.Auth != nil {
-		st.Settings.RequireSignedContentType = conf.Auth.RequireSignedContentType
-	}
 	return st
 }
 

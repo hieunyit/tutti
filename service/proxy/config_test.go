@@ -156,3 +156,15 @@ func TestStatusConfig_Validate(t *testing.T) {
 	r.Error((&StatusConfig{}).Validate())
 	r.Error((&StatusConfig{Interval: -time.Second}).Validate())
 }
+
+func TestConfig_Group(t *testing.T) {
+	r := require.New(t)
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.Equal("default", conf.EffectiveGroup())
+
+	var empty Config
+	r.Equal("default", empty.EffectiveGroup())
+	empty.Group = "eu-west-1"
+	r.Equal("eu-west-1", empty.EffectiveGroup())
+}

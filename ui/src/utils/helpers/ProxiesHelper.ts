@@ -15,7 +15,13 @@
  */
 
 import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
-import type { TuttiProxyStatus } from '@/utils/types/tutti';
+import type { TuttiInt64, TuttiProxyStatus } from '@/utils/types/tutti';
+
+export interface ConfigSyncStatus {
+  state: 'unconfigured' | 'applied' | 'applying';
+  targetVersion: number;
+  appliedVersion: number;
+}
 
 export type DriftField =
   | 'failoverEnabled'
@@ -163,5 +169,29 @@ export abstract class ProxiesHelper {
       available: list.filter((s) => s.available !== false).length,
       total: list.length,
     };
+  }
+
+  /** Effective proxy group ("default" when unset). */
+  static effectiveGroup(proxy: TuttiProxyStatus): string {
+    return proxy.group && proxy.group.trim() ? proxy.group.trim() : 'default';
+  }
+
+  /** Evaluates whether a proxy has applied the current cluster fleet config version. */
+  static configSyncStatus(
+    proxy: TuttiProxyStatus,
+    clusterConfigVersion?: TuttiInt64,
+  ): ConfigSyncStatus {
+    const targetVersion = Number(clusterConfigVersion ?? 0) || 0;
+    const appliedVersion = Number(proxy.appliedConfigVersion ?? 0) || 0;
+
+    if (targetVersion <= 0 && appliedVersion <= 0) {
+      return { state: 'unconfigured', targetVersion: 0, appliedVersion: 0 };
+    }
+
+    if (appliedVersion >= targetVersion) {
+      return { state: 'applied', targetVersion, appliedVersion };
+    }
+
+    return { state: 'applying', targetVersion, appliedVersion };
   }
 }
