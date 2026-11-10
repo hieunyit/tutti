@@ -17,8 +17,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 import { RouteName } from '@/utils/types/router';
-const ChorusHomePage = () =>
-  import('@/pages/TuttiHomePage/TuttiHomePage.vue');
+const ChorusHomePage = () => import('@/pages/TuttiHomePage/TuttiHomePage.vue');
 const DashboardView = () =>
   import('@/components/dashboard/DashboardView/DashboardView.vue');
 const TuttiStoragesPage = () =>

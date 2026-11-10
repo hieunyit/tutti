@@ -17,6 +17,9 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
+    legacyBannerTitle: 'Legacy failover policies',
+    legacyBannerText:
+      'Failover policies are per source storage and act on every user and bucket replicated from it. Protection groups are per user and are the recommended mechanism. A storage cannot have both: a policy cannot be enabled for a storage that is a protection group member, and a group cannot be created over a storage with an enabled policy. Such conflicts are reported when you save.',
     pageDescription:
       'Move routing to a replica when a storage stays unavailable. Failback is always manual.',
     bannerTitle:
@@ -134,6 +137,9 @@ export default <I18nMessages>{
       'After repairing the source, perform the manual failback and then acknowledge the event. See docs/failover.md.',
   },
   [I18nLocale.DE]: {
+    legacyBannerTitle: 'Legacy-Failover-Richtlinien',
+    legacyBannerText:
+      'Failover-Richtlinien gelten pro Quellspeicher für alle daraus replizierten Benutzer und Buckets. Schutzgruppen gelten pro Benutzer und sind der empfohlene Mechanismus. Ein Speicher kann nicht beides haben: Konflikte werden beim Speichern gemeldet.',
     pageDescription:
       'Routing auf ein Replikat umstellen, wenn ein Speicher dauerhaft ausfällt. Failback erfolgt immer manuell.',
     bannerTitle:

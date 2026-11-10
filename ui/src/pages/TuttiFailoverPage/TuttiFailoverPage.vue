@@ -109,6 +109,18 @@
       class="tutti-failover-page__content"
     >
       <Callout
+        tone="info"
+        :title="t('legacyBannerTitle')"
+      >
+        <p class="tutti-failover-page__banner-text">
+          {{ t('legacyBannerText') }}
+        </p>
+        <RouterLink :to="{ name: RouteName.TUTTI_PROTECTION_GROUPS }">{{
+          t('title')
+        }}</RouterLink>
+      </Callout>
+
+      <Callout
         v-if="readiness.willNotTrigger"
         tone="danger"
         :title="
