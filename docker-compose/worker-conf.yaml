@@ -27,6 +27,15 @@ trace:
   endpoint: # url to Jaeger or other open trace provider
 redis:
   address: "redis:6379"
+# Control-plane database (Phase 6): PostgreSQL holds durable configuration and audit logs,
+# and projects changes into Redis via the transactional outbox so proxies need no PostgreSQL connection.
+controlPlane:
+  backend: postgres # redis | postgres
+  readOnly: false
+  postgres:
+    dsn: "postgres://tutti:tutti@postgres:5432/tutti?sslmode=disable"
+    maxConns: 10
+    autoMigrate: true
 features:
   tagging: false # sync object/bucket tags
   acl: false # sync object/bucket ACLs

@@ -1,13 +1,43 @@
 volumes:
   # Volume to preserve chorus data between restarts
   redis-data:
+  # Volume to preserve PostgreSQL control-plane data between restarts
+  postgres-data:
 services:
+  # PostgreSQL - control-plane database (Phase 6) for durable config, multi-object transactions, and audit log
+  postgres:
+    image: "${POSTGRES_IMAGE:-postgres:16-alpine}"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-tutti}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-tutti}
+      - POSTGRES_DB=${POSTGRES_DB:-tutti}
+    expose:
+      - 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-tutti} -d $${POSTGRES_DB:-tutti}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
   # Redis - required component to run chorus
   # Redis is used by all chorus components to store metadata
   # and coordinate work between them
   redis:
-    image: "redis"
-    command: ["redis-server", "--appendonly", "yes"]
+    # Pinned to the version validated by the restore drill; override deliberately.
+    image: "${REDIS_IMAGE:-redis@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53}"
+    # Demo guardrail; size production Redis for metadata/queue growth and AOF overhead.
+    # With noeviction, reaching this limit rejects writes instead of losing state.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-512mb}
+      - --maxmemory-policy
+      - noeviction
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_PORT_NUMBER=6379
@@ -19,7 +49,10 @@ services:
   # Chorus worker - main component that processes data
   worker:
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     build:
       context: ../
       args:

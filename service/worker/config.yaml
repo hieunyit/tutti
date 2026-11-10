@@ -94,3 +94,23 @@ storage:
 #   # optional: config, queue, lock, meta on separate instances, each may use DB 0
 #   queue: {addresses: ["queue-redis:6379"], db: 0}
 #   config: {addresses: ["cfg-redis:6379"], db: 0}
+
+# Control-plane database: see docs/tutti/control-plane-db.md.
+# controlPlane:
+#   backend: redis            # redis (default) | postgres
+#   readOnly: false           # postgres only: reject all mutations with 503 Unavailable
+#   postgres:
+#     dsn: "postgres://tutti:secret@db:5432/tutti?sslmode=verify-full"
+#     maxConns: 10
+#     minConns: 0
+#     connMaxLifetime: 30m
+#     connMaxIdleTime: 5m
+#     connectTimeout: 5s
+#     statementTimeout: 10s
+#     autoMigrate: false      # true in dev/docker-compose; in prod run `tutti-migrate-pg schema`
+#   outbox:
+#     pollInterval: 500ms
+#     batchSize: 200
+#     retryBackoff: 1s
+#     maxBackoff: 1m
+#     retention: 24h

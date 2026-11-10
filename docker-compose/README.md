@@ -103,6 +103,10 @@ The demo config enables the features below. Everything here is for local demos o
 - **Failover:** the proxy runs the automatic failover controller (`failover.enabled: true` in [proxy-conf.yaml](./proxy-conf.yaml)).
   A storage only fails over if it has an enabled failover policy with targets, set through the Resilience API, `chorctl`, or the UI `/failover` page.
   See [docs/tutti/operations.md](../docs/tutti/operations.md#automatic-failover).
+- **Control-plane PostgreSQL & Audit log:** [docker-compose.yml](./docker-compose.yml) starts a `postgres` (PostgreSQL 16)
+  service and [worker-conf.yaml](./worker-conf.yaml) enables `controlPlane.backend: postgres` with `autoMigrate: true`.
+  All control-plane configuration and audit history (`/audit-log` in the UI) are persisted in PostgreSQL (`postgres-data` volume)
+  and projected to Redis via the transactional outbox so `proxy` continues reading Redis without a direct PostgreSQL connection.
 - **Proxy accounts:** creating proxy accounts requires a master password. [s3-credentials.yaml](./s3-credentials.yaml) sets a demo
   `storage.dynamicCredentials.masterPassword` (at least 12 characters), shared by worker and proxy. Config values are not env-expanded,
   so to keep the password out of the file, set `CFG_STORAGE_DYNAMICCREDENTIALS_MASTERPASSWORD` in the environment of both services
