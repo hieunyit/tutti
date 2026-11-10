@@ -19,7 +19,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     pageDescription:
-      'S3 access keys that clients use against the proxy, and what each storage user may do.',
+      'Manage the S3 access keys that clients use to connect to the proxy.',
     refresh: 'Refresh',
     keysCount: 'No keys | 1 key | {count} keys',
     keysDynamic: '{count} dynamic',
@@ -33,9 +33,8 @@ export default <I18nMessages>{
     columnRotated: 'Last rotated',
     columnPreviousValid: 'Previous secret valid until',
     noKeys: 'This user has no access keys.',
-    emptyTitle: 'No proxy accounts yet',
-    emptyText:
-      'Create an account to give a storage user an access key for the proxy.',
+    emptyTitle: 'No access keys yet',
+    emptyText: 'Create an access key to connect a storage user to the proxy.',
     createAccount: 'Create access key',
     createAccountTitle: 'Create access key',
     createAccountHint:
@@ -80,7 +79,7 @@ export default <I18nMessages>{
       'Dynamic credentials are not available. Enable them by setting a masterPassword in the worker and all proxies.',
     actionUnknownError: 'The action failed.',
     actionDone: 'Done',
-    title: 'Proxy accounts',
+    title: 'Access keys',
     expandColumn: 'Expand',
     noResultsAction: 'Clear filter',
     unavailableTitle: 'Creating access keys is unavailable',
@@ -158,7 +157,7 @@ export default <I18nMessages>{
   },
   [I18nLocale.DE]: {
     pageDescription:
-      'S3-Zugriffsschlüssel, die Clients am Proxy verwenden, und was jeder Speicherbenutzer darf.',
+      'Verwalten Sie die S3-Zugriffsschlüssel, mit denen Clients sich am Proxy anmelden.',
     refresh: 'Aktualisieren',
     keysCount: 'Keine Schlüssel | 1 Schlüssel | {count} Schlüssel',
     keysDynamic: '{count} dynamisch',
@@ -172,7 +171,7 @@ export default <I18nMessages>{
     columnRotated: 'Zuletzt rotiert',
     columnPreviousValid: 'Vorheriges Secret gültig bis',
     noKeys: 'Dieser Benutzer hat keine Zugriffsschlüssel.',
-    emptyTitle: 'Noch keine Proxy-Konten',
+    emptyTitle: 'Noch keine Zugriffsschlüssel',
     emptyText:
       'Erstellen Sie ein Konto, um einem Speicherbenutzer einen Zugriffsschlüssel für den Proxy zu geben.',
     createAccount: 'Zugriffsschlüssel erstellen',
@@ -219,7 +218,7 @@ export default <I18nMessages>{
       'Dynamische Zugangsdaten sind nicht verfügbar. Aktivieren Sie sie, indem Sie ein masterPassword im Worker und in allen Proxys setzen.',
     actionUnknownError: 'Die Aktion ist fehlgeschlagen.',
     actionDone: 'Erledigt',
-    title: 'Proxy-Konten',
+    title: 'Zugriffsschlüssel',
     expandColumn: 'Aufklappen',
     noResultsAction: 'Filter zurücksetzen',
     unavailableTitle: 'Zugriffsschlüssel können nicht erstellt werden',

@@ -313,6 +313,7 @@
           >{{ t('username')
           }}<NInput
             v-model:value="username"
+            :input-props="{ 'aria-label': t('username'), autocomplete: 'off' }"
             :disabled="!!edited || busy"
             autocomplete="off" /></label
         ><label class="phase-d__field"
@@ -333,7 +334,10 @@
             }}<NInput
               v-model:value="password"
               type="password"
-              autocomplete="new-password"
+              :input-props="{
+                'aria-label': t('password'),
+                autocomplete: 'new-password',
+              }"
               :disabled="busy" /></label></template
         ><NButton
           type="primary"

@@ -79,16 +79,22 @@
       >{{ t('currentPassword')
       }}<NInput
         v-model:value="current"
+        :input-props="{
+          'aria-label': t('currentPassword'),
+          autocomplete: 'current-password',
+        }"
         type="password"
-        autocomplete="current-password"
         :disabled="busy" /></label
     ><label class="phase-d__field"
       >{{ t('newPassword')
       }}<NInput
         v-model:value="password"
+        :input-props="{
+          'aria-label': t('newPassword'),
+          autocomplete: 'new-password',
+        }"
         type="password"
         show-password-on="click"
-        autocomplete="new-password"
         :disabled="busy"
     /></label>
     <p
@@ -101,8 +107,11 @@
       >{{ t('repeatPassword')
       }}<NInput
         v-model:value="repeat"
+        :input-props="{
+          'aria-label': t('repeatPassword'),
+          autocomplete: 'new-password',
+        }"
         type="password"
-        autocomplete="new-password"
         :disabled="busy" /></label
     ><NButton
       type="primary"

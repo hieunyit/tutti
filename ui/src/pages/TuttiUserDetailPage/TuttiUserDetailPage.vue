@@ -368,13 +368,19 @@
             >{{ t('accessKeyId')
             }}<NInput
               v-model:value="accessKey"
-              autocomplete="off" /></label
+              :input-props="{
+                'aria-label': t('accessKeyId'),
+                autocomplete: 'off',
+              }" /></label
           ><label class="phase-d__field"
             >{{ t('secret')
             }}<NInput
               v-model:value="secretKey"
               type="password"
-              autocomplete="new-password" /></label
+              :input-props="{
+                'aria-label': t('secret'),
+                autocomplete: 'new-password',
+              }" /></label
           ><NButton
             type="primary"
             attr-type="submit"

@@ -31,6 +31,8 @@
   const buckets = ref('*');
   const description = ref('');
   const secret = ref<TuttiProxyAccountSecret | null>(null);
+  const verticalSteps = ref(false);
+  let mobileQuery: MediaQueryList | undefined;
   const permissionOptions = computed(() => [
     { label: t('readWrite'), value: 'read-write' },
     { label: t('readOnly'), value: 'read-only' },
@@ -38,6 +40,9 @@
   ]);
 
   onMounted(async () => {
+    mobileQuery = window.matchMedia('(max-width: 600px)');
+    verticalSteps.value = mobileQuery.matches;
+    mobileQuery.addEventListener('change', updateMobileSteps);
     await store.load();
     rows.value = UserHelper.newCredentialRows(
       [
@@ -47,9 +52,14 @@
     );
   });
   onBeforeUnmount(() => {
+    mobileQuery?.removeEventListener('change', updateMobileSteps);
     rows.value = [];
     secret.value = null;
   });
+
+  function updateMobileSteps() {
+    if (mobileQuery) verticalSteps.value = mobileQuery.matches;
+  }
 
   async function verify(row: CredentialRow) {
     const key = row.accessKeyId;
@@ -178,6 +188,7 @@
     <NSteps
       :current="step"
       size="small"
+      :vertical="verticalSteps"
       ><NStep :title="t('identity')" /><NStep :title="t('credentials')" /><NStep
         :title="t('keys')"
     /></NSteps>
@@ -195,7 +206,7 @@
             }}<NInput
               v-model:value="name"
               :maxlength="64"
-              autocomplete="off"
+              :input-props="{ 'aria-label': t('name'), autocomplete: 'off' }"
           /></label>
           <p class="phase-d__muted">{{ t('nameHint') }}</p></template
         >
@@ -219,7 +230,10 @@
                 >{{ t('accessKeyId')
                 }}<NInput
                   v-model:value="row.accessKeyId"
-                  autocomplete="off"
+                  :input-props="{
+                    'aria-label': `${row.storage} ${t('accessKeyId')}`,
+                    autocomplete: 'off',
+                  }"
                   @update:value="row.result = null" /></label
               ><label class="phase-d__field"
                 >{{ t('secret')
@@ -227,7 +241,10 @@
                   v-model:value="row.secretAccessKey"
                   type="password"
                   show-password-on="click"
-                  autocomplete="new-password"
+                  :input-props="{
+                    'aria-label': `${row.storage} ${t('secret')}`,
+                    autocomplete: 'new-password',
+                  }"
                   @update:value="row.result = null"
               /></label>
             </div>
@@ -256,14 +273,20 @@
         <template v-if="step === 3"
           ><NCheckbox v-model:checked="createKey">{{ t('firstKey') }}</NCheckbox
           ><label class="phase-d__field"
-            >{{ t('description') }}<NInput v-model:value="description" /></label
+            >{{ t('description')
+            }}<NInput
+              v-model:value="description"
+              :input-props="{ 'aria-label': t('description') }" /></label
           ><label class="phase-d__field"
             >{{ t('permission')
             }}<NSelect
               v-model:value="permission"
               :options="permissionOptions" /></label
           ><label class="phase-d__field"
-            >{{ t('buckets') }}<NInput v-model:value="buckets"
+            >{{ t('buckets')
+            }}<NInput
+              v-model:value="buckets"
+              :input-props="{ 'aria-label': t('buckets') }"
           /></label>
           <p class="phase-d__muted">{{ t('bucketsHint') }}</p>
           <Callout
