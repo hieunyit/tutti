@@ -326,6 +326,22 @@ func TestPolicyListErrorReturned(t *testing.T) {
 	require.Error(t, e.ctrl.RunOnce(t.Context()))
 }
 
+func TestProtectedScopesSkipped(t *testing.T) {
+	e := newEnv(t, enabled("f1"))
+	e.ctrl.isProtected = func(ctx context.Context, user, bucket string) bool {
+		return user == "u-protected" || (user == "u-other" && bucket == "b-protected")
+	}
+	e.userRepl("u-protected", "f1", status(0))
+	e.userRepl("u-normal", "f1", status(0))
+
+	e.run(t)
+
+	// Only u-normal should have failed over; protected scopes are skipped for Protection Groups
+	require.Equal(t, []entity.UniversalReplicationID{
+		entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("u-normal", "main", "f1")),
+	}, e.pol.failedOver)
+}
+
 // ---- integration with the real policy service (miniredis) ----
 
 func TestIntegration_RealPolicyService(t *testing.T) {

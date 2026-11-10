@@ -258,6 +258,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				}
 				return users
 			}),
+			failovercontroller.WithIsProtected(func(ctx context.Context, user, bucket string) bool {
+				group, ok := policySvc.ProtectionScope(ctx, user, bucket)
+				return ok && group != ""
+			}),
 			failovercontroller.WithOnFailover(func(from, to string) {
 				if conf.Metrics.Enabled {
 					metrics.CountFailover(from, to)

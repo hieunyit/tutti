@@ -73,8 +73,9 @@ type Controller struct {
 	locker   Locker
 	policies Policies
 	// Users returns users to inspect for bucket-level policies (in addition to users of user-level policies/routings).
-	users func() []string
-	now   func() time.Time
+	users       func() []string
+	isProtected func(ctx context.Context, user, bucket string) bool
+	now         func() time.Time
 	log   zerolog.Logger
 	onDo  func(from, to string)
 
@@ -88,6 +89,9 @@ type Option func(*Controller)
 
 func WithClock(f func() time.Time) Option           { return func(c *Controller) { c.now = f } }
 func WithUsers(f func() []string) Option            { return func(c *Controller) { c.users = f } }
+func WithIsProtected(f func(ctx context.Context, user, bucket string) bool) Option {
+	return func(c *Controller) { c.isProtected = f }
+}
 func WithOnFailover(f func(from, to string)) Option { return func(c *Controller) { c.onDo = f } }
 func WithEnabled(enabled bool) Option               { return func(c *Controller) { c.enabled = enabled } }
 
@@ -302,6 +306,9 @@ func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, err
 		if pol.FromStorage != storage || effective(pol.User) != storage {
 			continue
 		}
+		if c.isProtected != nil && c.isProtected(ctx, pol.User, "") {
+			continue
+		}
 		s := byUser[pol.User]
 		if s == nil {
 			s = &scope{user: pol.User, from: storage}
@@ -343,6 +350,9 @@ func (c *Controller) scopesOf(ctx context.Context, storage string) ([]scope, err
 				routed = to
 			}
 			if pol.FromStorage != storage || routed != storage {
+				continue
+			}
+			if c.isProtected != nil && c.isProtected(ctx, user, pol.FromBucket) {
 				continue
 			}
 			s := byBucket[pol.FromBucket]
