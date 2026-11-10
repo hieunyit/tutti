@@ -165,7 +165,16 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request, _ map[stri
 			Role      string `json:"role"`
 		}{res.Token, res.ExpiresAt.Format(time.RFC3339), res.Username, res.Role})
 	case errors.Is(err, ErrInvalidCredentials):
-		writeErr(w, http.StatusUnauthorized, ErrInvalidCredentials.Error())
+		var credentialErr *InvalidCredentialsError
+		remaining := 0
+		if errors.As(err, &credentialErr) {
+			remaining = credentialErr.RemainingAttempts
+		}
+		writeJSON(w, http.StatusUnauthorized, map[string]any{
+			"code":              http.StatusUnauthorized,
+			"message":           ErrInvalidCredentials.Error(),
+			"remainingAttempts": remaining,
+		})
 	case errors.Is(err, ErrTooManyAttempts):
 		w.Header().Set("Retry-After", "900")
 		writeErr(w, http.StatusTooManyRequests, ErrTooManyAttempts.Error())

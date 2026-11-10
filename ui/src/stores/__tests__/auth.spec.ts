@@ -30,11 +30,15 @@ type MockFn = ReturnType<typeof vi.fn>;
 
 const svc = AuthService as unknown as Record<'login' | 'logout' | 'me', MockFn>;
 
-function httpError(status: number, headers: Record<string, string> = {}) {
+function httpError(
+  status: number,
+  headers: Record<string, string> = {},
+  data: unknown = {},
+) {
   return new AxiosError('x', String(status), undefined, undefined, {
     status,
     statusText: '',
-    data: {},
+    data,
     headers,
     config: { headers: new AxiosHeaders() },
   });
@@ -136,6 +140,26 @@ describe('authStore', () => {
       expect(store.loginError).toBe('invalidCredentials');
       expect(store.token).toBeNull();
       expect(store.isLoggingIn).toBe(false);
+    });
+
+    it('uses the remaining attempt count from the login response', async () => {
+      svc.login.mockRejectedValue(
+        httpError(
+          401,
+          {},
+          {
+            code: 401,
+            message: 'invalid username or password',
+            remainingAttempts: 7,
+          },
+        ),
+      );
+      const store = useAuthStore();
+
+      await store.login('unknown-or-known', 'wrong', false);
+
+      expect(store.loginError).toBe('invalidCredentials');
+      expect(store.remainingAttempts).toBe(7);
     });
 
     it('reports rate limiting with Retry-After (429)', async () => {

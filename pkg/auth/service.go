@@ -37,6 +37,16 @@ var (
 	ErrInvalidSession     = errors.New("invalid or expired session")
 )
 
+// InvalidCredentialsError wraps the generic credential error while carrying
+// the retry budget for this username and client IP. It is identical for known
+// and unknown users.
+type InvalidCredentialsError struct {
+	RemainingAttempts int
+}
+
+func (e *InvalidCredentialsError) Error() string { return ErrInvalidCredentials.Error() }
+func (e *InvalidCredentialsError) Unwrap() error { return ErrInvalidCredentials }
+
 // Session is the data stored in Redis for a login token.
 type Session struct {
 	Username  string    `json:"username"`
@@ -176,17 +186,22 @@ func (s *Service) throttled(ctx context.Context, username, ip string) error {
 	return nil
 }
 
-func (s *Service) recordFailure(ctx context.Context, username, ip string) error {
+func (s *Service) recordFailureCounts(ctx context.Context, username, ip string) (int, int, error) {
 	fk, uk := failKey(username, ip), userFailKey(username)
 	pipe := s.rdb.TxPipeline()
-	pipe.Incr(ctx, fk)
+	pairCount := pipe.Incr(ctx, fk)
 	pipe.Expire(ctx, fk, failWindow)
-	pipe.Incr(ctx, uk)
+	userCount := pipe.Incr(ctx, uk)
 	pipe.Expire(ctx, uk, failWindow)
 	if _, err := pipe.Exec(ctx); err != nil {
-		return fmt.Errorf("auth: record failure: %w", err)
+		return 0, 0, fmt.Errorf("auth: record failure: %w", err)
 	}
-	return nil
+	return int(pairCount.Val()), int(userCount.Val()), nil
+}
+
+func (s *Service) recordFailure(ctx context.Context, username, ip string) error {
+	_, _, err := s.recordFailureCounts(ctx, username, ip)
+	return err
 }
 
 // Login verifies credentials and creates a session. ip is used only for
@@ -206,11 +221,19 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 	}
 	cmpErr := bcrypt.CompareHashAndPassword(hash, []byte(password))
 	if !found || cmpErr != nil || u.Disabled {
-		if err := s.recordFailure(ctx, username, ip); err != nil {
+		pairFailures, userFailures, err := s.recordFailureCounts(ctx, username, ip)
+		if err != nil {
 			return nil, err
 		}
 		log.Warn().Str("username", username).Str("client_ip", ip).Bool("known_user", found).Bool("disabled", u.Disabled).Msg("failed login")
-		return nil, ErrInvalidCredentials
+		remaining := maxFailures - pairFailures
+		if userRemaining := maxUserFailures - userFailures; userRemaining < remaining {
+			remaining = userRemaining
+		}
+		if remaining < 0 {
+			remaining = 0
+		}
+		return nil, &InvalidCredentialsError{RemainingAttempts: remaining}
 	}
 
 	buf := make([]byte, 32)

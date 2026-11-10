@@ -209,15 +209,30 @@ func TestHTTPLogin(t *testing.T) {
 	_, err := time.Parse(time.RFC3339, res["expiresAt"])
 	require.NoError(t, err)
 
-	require.Equal(t, 401, do(h, "POST", "/auth/login", `{"username":"admin","password":"nope"}`, "").Code)
-	require.Equal(t, 401, do(h, "POST", "/auth/login", `{"username":"ghost","password":"nope"}`, "").Code)
+	knownFailure := do(h, "POST", "/auth/login", `{"username":"admin","password":"nope"}`, "")
+	unknownFailure := do(h, "POST", "/auth/login", `{"username":"ghost","password":"nope"}`, "")
+	require.Equal(t, 401, knownFailure.Code)
+	require.Equal(t, 401, unknownFailure.Code)
+	var knownErr, unknownErr struct {
+		Code              int    `json:"code"`
+		Message           string `json:"message"`
+		RemainingAttempts int    `json:"remainingAttempts"`
+	}
+	require.NoError(t, json.Unmarshal(knownFailure.Body.Bytes(), &knownErr))
+	require.NoError(t, json.Unmarshal(unknownFailure.Body.Bytes(), &unknownErr))
+	require.Equal(t, knownErr, unknownErr, "attempt feedback must not reveal whether the username exists")
+	require.Equal(t, maxFailures-1, knownErr.RemainingAttempts)
 	require.Equal(t, 400, do(h, "POST", "/auth/login", `{}`, "").Code)
 }
 
 func TestHTTPRateLimit(t *testing.T) {
 	_, h := newHTTP(t, true)
 	for i := 0; i < maxFailures; i++ {
-		require.Equal(t, 401, do(h, "POST", "/auth/login", `{"username":"admin","password":"bad"}`, "").Code)
+		rec := do(h, "POST", "/auth/login", `{"username":"admin","password":"bad"}`, "")
+		require.Equal(t, 401, rec.Code)
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		require.Equal(t, float64(maxFailures-i-1), body["remainingAttempts"])
 	}
 	// even the right password is now rejected
 	require.Equal(t, 429, do(h, "POST", "/auth/login", `{"username":"admin","password":"adminpw"}`, "").Code)
@@ -328,4 +343,24 @@ func TestGlobalUserThrottle(t *testing.T) {
 	require.ErrorIs(t, err, ErrTooManyAttempts)
 	_, err = e.svc.Login(ctx, "view", "viewpw", "203.0.113.50")
 	require.NoError(t, err)
+}
+
+func TestRemainingAttemptsUsesTighterUsernameWideBudget(t *testing.T) {
+	e := setup(t, true)
+	ctx := context.Background()
+	for _, username := range []string{"admin", "ghost"} {
+		for i := 0; i < maxUserFailures-2; i++ {
+			ip := net.IPv4(10, 2, byte(i/250), byte(i%250)).String()
+			require.NoError(t, e.svc.recordFailure(ctx, username, ip))
+		}
+
+		_, err := e.svc.Login(ctx, username, "bad", "198.51.100.40")
+		var credentialErr *InvalidCredentialsError
+		require.ErrorAs(t, err, &credentialErr)
+		require.Equal(t, 1, credentialErr.RemainingAttempts)
+
+		_, err = e.svc.Login(ctx, username, "bad", "198.51.100.41")
+		require.ErrorAs(t, err, &credentialErr)
+		require.Equal(t, 0, credentialErr.RemainingAttempts)
+	}
 }
