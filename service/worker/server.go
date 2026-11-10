@@ -170,6 +170,17 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	groupService := &protectiongroups.Service{Store: groupStore, Backend: policySvc.ProtectionBackend(),
 		Resyncer:            protectiongroups.NewS3Resyncer(clientRegistry, bucketScope),
 		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accessPolicyStore),
+		DefaultUser: func(ctx context.Context, g protectiongroups.Group) string {
+			if ids := credsSvc.Identities(); len(ids) > 0 {
+				return ids[0]
+			}
+			for _, m := range g.Members {
+				if users := credsSvc.ListOverrideUsers(m); len(users) > 0 {
+					return users[0]
+				}
+			}
+			return "default"
+		},
 		Reports:             func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 

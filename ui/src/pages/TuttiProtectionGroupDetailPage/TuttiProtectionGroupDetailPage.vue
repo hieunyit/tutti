@@ -109,10 +109,7 @@
     const buckets = group.value.buckets ?? [];
     const scope = buckets.length ? buckets.join(', ') : t('scopeAllBuckets');
 
-    return t('scopeLine', {
-      user: group.value.user || EMPTY_VALUE,
-      scope,
-    });
+    return t('scopeLine', { scope });
   });
 
   const memberRows = computed(() =>

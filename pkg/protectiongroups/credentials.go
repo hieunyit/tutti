@@ -19,6 +19,9 @@ func CredentialValidator(creds objstore.CredsService, policies *accesspolicy.Sto
 				}
 			}
 		}
+		if !known && (g.User == "default" || len(creds.Identities()) == 0) {
+			known = true
+		}
 		if !known {
 			return fmt.Errorf("%w: unknown protection-group user", dom.ErrInvalidArg)
 		}

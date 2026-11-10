@@ -350,9 +350,6 @@ describe('ProtectionGroupHelper.validate', () => {
       ProtectionGroupHelper.validate(baseForm({ id: 'bad/id' }), false),
     ).toContain('ID_INVALID');
     expect(
-      ProtectionGroupHelper.validate(baseForm({ user: null }), false),
-    ).toContain('USER_REQUIRED');
-    expect(
       ProtectionGroupHelper.validate(baseForm({ members: ['s1'] }), false),
     ).toContain('MEMBERS_MIN');
     expect(
@@ -442,6 +439,16 @@ describe('ProtectionGroupHelper.buildCreateRequest & buildUpdateRequest', () => 
       },
       adoptExisting: true,
     });
+  });
+
+  it('defaults user to "default" in buildCreateRequest when user is not provided', () => {
+    const req = ProtectionGroupHelper.buildCreateRequest(
+      baseForm({
+        id: 'pg-1',
+        user: null,
+      }),
+    );
+    expect(req.group.user).toBe('default');
   });
 
   it('builds update request preserving stored scope, members and revision', () => {

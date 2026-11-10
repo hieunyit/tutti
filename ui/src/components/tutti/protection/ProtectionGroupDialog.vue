@@ -96,10 +96,6 @@
     return found ? t(found) : undefined;
   }
 
-  const userOptions = computed(() =>
-    userNames.value.map((name) => ({ label: name, value: name })),
-  );
-
   const availableStorageOptions = computed(() =>
     storageNames.value
       .filter((name) => !form.value.members.includes(name))
@@ -161,6 +157,10 @@
       addBucket();
     }
 
+    if (!isEdit.value && !form.value.user) {
+      form.value.user = userNames.value[0] || 'default';
+    }
+
     showErrors.value = true;
     backendError.value = null;
 
@@ -219,21 +219,6 @@
           <NInput
             v-model:value="form.id"
             :disabled="isSaving"
-          />
-        </NFormItem>
-
-        <NFormItem
-          :label="t('fieldUser')"
-          :validation-status="errorText('USER_REQUIRED') ? 'error' : undefined"
-          :feedback="errorText('USER_REQUIRED')"
-        >
-          <NSelect
-            v-model:value="form.user"
-            :options="userOptions"
-            :placeholder="t('fieldUserPlaceholder')"
-            :disabled="isSaving"
-            filterable
-            tag
           />
         </NFormItem>
 

@@ -333,8 +333,6 @@ export abstract class ProtectionGroupHelper {
       if (!form.id.trim()) errors.push('ID_REQUIRED');
       else if (ID_FORBIDDEN.test(form.id.trim())) errors.push('ID_INVALID');
 
-      if (!form.user) errors.push('USER_REQUIRED');
-
       if (form.members.length < 2) errors.push('MEMBERS_MIN');
 
       if (
@@ -395,7 +393,7 @@ export abstract class ProtectionGroupHelper {
     return {
       group: {
         id: form.id.trim(),
-        user: form.user ?? '',
+        user: (form.user && form.user.trim()) || 'default',
         buckets: [...form.buckets],
         members: [...form.members],
         ...ProtectionGroupHelper.mutable(form),

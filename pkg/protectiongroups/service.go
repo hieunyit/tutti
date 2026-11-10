@@ -38,6 +38,7 @@ type Service struct {
 	Resyncer            Resyncer
 	Reports             func(context.Context) ([]proxystatus.Status, error)
 	ValidateCredentials func(context.Context, Group) error
+	DefaultUser         func(context.Context, Group) string
 	Now                 func() time.Time
 }
 
@@ -60,6 +61,12 @@ func (s *Service) WithGroup(ctx context.Context, id string, fn func(context.Cont
 	return lock.DoCtx(ctx, 10*time.Second, fn)
 }
 func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error) {
+	if g.User == "" && s.DefaultUser != nil {
+		g.User = s.DefaultUser(ctx, g)
+	}
+	if g.User == "" {
+		g.User = "default"
+	}
 	if err := g.Validate(); err != nil {
 		return Group{}, err
 	}

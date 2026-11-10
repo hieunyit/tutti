@@ -60,11 +60,9 @@
   onBeforeUnmount(() => store.stopPolling());
 
   function scopeText(group: ProtectionGroup): string {
-    const kind = ProtectionGroupHelper.scopeKind(group);
-
-    if (kind === 'user') return t('scopeUser');
-
     const count = (group.buckets ?? []).length;
+
+    if (count === 0) return t('scopeAllBuckets');
 
     return count === 1 ? t('scopeBucketsOne') : t('scopeBuckets', { count });
   }
@@ -300,10 +298,7 @@
                   </RouterLink>
                 </td>
                 <td>
-                  <div>{{ group.user || EMPTY_VALUE }}</div>
-                  <small class="tutti-protection-groups-page__sub">{{
-                    scopeText(group)
-                  }}</small>
+                  <div>{{ scopeText(group) }}</div>
                 </td>
                 <td>
                   <span class="tutti-protection-groups-page__chips">

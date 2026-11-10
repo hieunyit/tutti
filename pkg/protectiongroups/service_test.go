@@ -258,3 +258,20 @@ func TestAutomaticFailoverKeepsReplicatingToRemainingMember(t *testing.T) {
 	require.Equal(t, []string{"c"}, resync.calls, "unavailable old primary is skipped")
 	require.Len(t, g.History, 1)
 }
+
+func TestService_Create_DefaultsUserWhenEmpty(t *testing.T) {
+	svc, _, _, _, _ := newService(t)
+	svc.DefaultUser = func(ctx context.Context, g Group) string {
+		return "auto-user"
+	}
+	ctx := t.Context()
+	g, err := svc.Create(ctx, Group{ID: "no-user", Members: []string{"a", "b", "c"}, Copies: 2}, false)
+	require.NoError(t, err)
+	require.Equal(t, "auto-user", g.User)
+
+	// When DefaultUser is nil, fall back to "default"
+	svc2, _, _, _, _ := newService(t)
+	g2, err := svc2.Create(ctx, Group{ID: "no-user-fallback", Members: []string{"a", "b", "c"}, Copies: 2}, false)
+	require.NoError(t, err)
+	require.Equal(t, "default", g2.User)
+}

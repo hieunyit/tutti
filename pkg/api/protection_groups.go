@@ -68,6 +68,12 @@ func (h *protectionHandlers) Create(ctx context.Context, r *pb.CreateProtectionG
 	if err != nil {
 		return nil, err
 	}
+	if g.User == "" && h.service.DefaultUser != nil {
+		g.User = h.service.DefaultUser(ctx, g)
+	}
+	if g.User == "" {
+		g.User = "default"
+	}
 	var result pg.Group
 	work := func(ctx context.Context) error {
 		return h.storageLocks.With(ctx, g.Members, func(ctx context.Context) error {
