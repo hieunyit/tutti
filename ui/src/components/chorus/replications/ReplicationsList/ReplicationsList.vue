@@ -27,7 +27,7 @@
   import ReplicationBucketCell from '../ReplicationBucketCell/ReplicationBucketCell.vue';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import type { ChorusReplication } from '@/utils/types/chorus';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
   import type { AddId } from '@/utils/types/helper';
   import ReplicationStatusCell from '@/components/chorus/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
@@ -50,8 +50,8 @@
     pageSize,
     pagination,
     selectedReplicationIds,
-  } = storeToRefs(useChorusReplicationsStore());
-  const { initReplicationsPage } = useChorusReplicationsStore();
+  } = storeToRefs(useTuttiReplicationsStore());
+  const { initReplicationsPage } = useTuttiReplicationsStore();
 
   const columns = computed<
     (DataTableBaseColumn<AddId<ChorusReplication>> | DataTableSelectionColumn)[]

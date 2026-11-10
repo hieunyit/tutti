@@ -17,13 +17,13 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import ChorusUserCardList from '@/components/chorus/common/ChorusUserCardList/ChorusUserCardList.vue';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
   import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 
   const { selectedUser, users, validator } = storeToRefs(
-    useChorusAddDiffReportStore(),
+    useTuttiAddDiffReportStore(),
   );
 
   const { t } = useI18n({ messages: i18nAddDiffReport });

@@ -32,7 +32,7 @@
   import StatusTag from '@/components/ui/StatusTag.vue';
   import { EMPTY_VALUE } from '@/components/ui/status';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { formatDateTime, formatTime } from '@/utils/helpers/DateTimeHelper';
   import {
     ProxyAccountHelper,
@@ -52,7 +52,7 @@
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const rows = computed(() =>
     (props.accounts ?? (props.account ? [props.account] : [])).flatMap(

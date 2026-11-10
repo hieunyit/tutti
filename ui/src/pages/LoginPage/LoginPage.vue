@@ -103,7 +103,7 @@
   <div class="login-page">
     <section
       class="login-page__brand"
-      :aria-label="t('aboutTutti')"
+      aria-label="Tutti"
     >
       <div class="login-page__logo-row">
         <span

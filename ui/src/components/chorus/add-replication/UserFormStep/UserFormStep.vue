@@ -20,10 +20,10 @@
   import { useI18n } from 'vue-i18n';
   import { CAlert, CResult } from '@clyso/clyso-ui-kit';
   import ChorusUserCard from '../../common/ChorusUserCard/ChorusUserCard.vue';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
 
-  const store = useChorusAddReplicationStore();
+  const store = useTuttiAddReplicationStore();
   const {
     users,
     hasUsersError,

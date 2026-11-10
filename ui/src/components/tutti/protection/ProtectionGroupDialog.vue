@@ -55,7 +55,7 @@
 
   const { t } = useI18n({ messages: i18nProtection });
   const store = useTuttiProtectionStore();
-  const { userNames, storageNames, proxyIds } = storeToRefs(store);
+  const { storageNames, proxyIds } = storeToRefs(store);
 
   const form = ref<ProtectionGroupForm>(ProtectionGroupHelper.emptyForm());
   const bucketInput = ref('');
@@ -95,10 +95,6 @@
 
     return found ? t(found) : undefined;
   }
-
-  const userOptions = computed(() =>
-    userNames.value.map((name) => ({ label: name, value: name })),
-  );
 
   const availableStorageOptions = computed(() =>
     storageNames.value
@@ -221,20 +217,6 @@
           <NInput
             v-model:value="form.id"
             :disabled="isSaving"
-          />
-        </NFormItem>
-
-        <NFormItem
-          :label="t('fieldUser')"
-          :validation-status="errorText('USER_REQUIRED') ? 'error' : undefined"
-          :feedback="errorText('USER_REQUIRED')"
-        >
-          <NSelect
-            v-model:value="form.user"
-            :options="userOptions"
-            :placeholder="t('fieldUserPlaceholder')"
-            :disabled="isSaving"
-            filterable
           />
         </NFormItem>
 

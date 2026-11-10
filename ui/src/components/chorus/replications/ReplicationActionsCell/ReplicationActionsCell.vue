@@ -24,11 +24,11 @@
     type ChorusReplication,
   } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { IconName } from '@/utils/types/icon';
   import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
@@ -43,13 +43,13 @@
   const isDeleteLoading = ref(false);
 
   const { setReplicationPaused, deleteReplication: callDeleteReplication } =
-    useChorusReplicationsStore();
+    useTuttiReplicationsStore();
 
   const { page, pagination, selectedReplicationIds } = storeToRefs(
-    useChorusReplicationsStore(),
+    useTuttiReplicationsStore(),
   );
 
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const replicationMetadata = computed(() => ({
     [ReplicationType.BUCKET]: {

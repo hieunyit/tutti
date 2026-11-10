@@ -192,7 +192,7 @@ func TestAdmitScopeIndex(t *testing.T) {
 	require.Empty(t, a.Group)
 	idx, err := s.Redis.HGetAll(ctx, ScopeIndexKey).Result()
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{indexVersionField: indexVersion, "u:tenant": "whole", "o:whole": "tenant"}, idx)
+	require.Equal(t, map[string]string{indexVersionField: indexVersion, "u:tenant": "whole", "o:whole": "tenant", "p:whole": "a"}, idx)
 }
 
 func frozenGroup(t *testing.T, s *Store) Group {
@@ -333,4 +333,49 @@ func TestParseWriter(t *testing.T) {
 		require.False(t, ok, bad)
 	}
 	require.True(t, strings.HasPrefix(LeaseKey(kindWorker, "w"), "tutti:protection:lease:worker:"))
+}
+
+func TestAdmitInfrastructureGroupWithoutUser(t *testing.T) {
+	s, _, _ := newFenceStore(t)
+	ctx := t.Context()
+	// Create infrastructure group protecting bucket "invoices" across dc1 and dc2 with no User assigned
+	g := saveGroup(t, s, Group{
+		ID:      "pg-invoices",
+		Buckets: []string{"invoices"},
+		Members: []string{"dc1", "dc2"},
+		Primary: "dc1",
+		Copies:  2,
+	})
+	require.Empty(t, g.User)
+
+	lease := s.NewLease("p1", false, time.Minute)
+
+	// User "bob" writes to "invoices" on dc1 -> admitted!
+	aBob, err := lease.Admit(ctx, "bob", "invoices", "dc1")
+	require.NoError(t, err)
+	require.Equal(t, "pg-invoices", aBob.Group)
+	lease.release(ctx, aBob)
+
+	// User "carol" writes to "invoices" on dc1 -> admitted without 403!
+	aCarol, err := lease.Admit(ctx, "carol", "invoices", "dc1")
+	require.NoError(t, err)
+	require.Equal(t, "pg-invoices", aCarol.Group)
+	lease.release(ctx, aCarol)
+
+	// Scope index checks
+	idx, err := s.Redis.HGetAll(ctx, ScopeIndexKey).Result()
+	require.NoError(t, err)
+	require.Equal(t, "pg-invoices", idx["b:invoices"])
+	require.Equal(t, "dc1", idx["p:pg-invoices"])
+	require.Empty(t, idx["o:pg-invoices"])
+
+	// LookupSharedGroup confirms it is not treated as another identity's exclusive group
+	group, ok, err := LookupSharedGroup(idx, "dc1", "bob", "invoices")
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Empty(t, group, "infrastructure group without user is not reported as another identity")
+
+	// Routing to wrong storage is rejected as stale
+	_, err = lease.Admit(ctx, "carol", "invoices", "dc2")
+	require.ErrorIs(t, err, dom.ErrUnavailable)
 }

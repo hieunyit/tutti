@@ -17,7 +17,7 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
   import { CSkeleton } from '@clyso/clyso-ui-kit';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import ReplicationsFilterByUser from '@/components/chorus/replications/ReplicationsFilterByUser/ReplicationsFilterByUser.vue';
   import ReplicationsFilterByBucket from '@/components/chorus/replications/ReplicationsFilterByBucket/ReplicationsFilterByBucket.vue';
   import ReplicationsFilterByStatus from '@/components/chorus/replications/ReplicationsFilterByStatus/ReplicationsFilterByStatus.vue';
@@ -25,7 +25,7 @@
   import ReplicationsFilterByType from '@/components/chorus/replications/ReplicationsFilterByType/ReplicationsFilterByType.vue';
   import ReplicationsFilterByDirection from '@/components/chorus/replications/ReplicationsFilterByDirection/ReplicationsFilterByDirection.vue';
 
-  const { isLoading } = storeToRefs(useChorusReplicationsStore());
+  const { isLoading } = storeToRefs(useTuttiReplicationsStore());
 </script>
 
 <template>

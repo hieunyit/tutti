@@ -16,13 +16,13 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import ChorusListTags from '@/components/chorus/common/ChorusListTags/ChorusListTags.vue';
 
   const { selectedReplicationIds, selectedReplicationsCount, isFiltered } =
-    storeToRefs(useChorusReplicationsStore());
+    storeToRefs(useTuttiReplicationsStore());
 
-  const { clearFilters } = useChorusReplicationsStore();
+  const { clearFilters } = useTuttiReplicationsStore();
 </script>
 
 <template>

@@ -23,8 +23,8 @@
     CTag,
   } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
-  import { useChorusDiffReportEntriesStore } from '@/stores/chorusDiffReportEntriesStore';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
+  import { useTuttiDiffReportEntriesStore } from '@/stores/tuttiDiffReportEntriesStore';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
   import ChorusDiffReportsProgress from '@/components/chorus/common/ChorusDiffReportProgress/ChorusDiffReportsProgress.vue';
 
@@ -32,8 +32,8 @@
     type: 'diff' | 'fix';
   }>();
 
-  const detailStore = useChorusDiffReportDetailStore();
-  const entriesStore = useChorusDiffReportEntriesStore();
+  const detailStore = useTuttiDiffReportDetailStore();
+  const entriesStore = useTuttiDiffReportEntriesStore();
   const { report } = storeToRefs(detailStore);
   const {
     inconsistentObjectsCount,

@@ -19,14 +19,14 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import ChorusWizard from '@/components/chorus/common/ChorusWizard/ChorusWizard.vue';
 
   const { t } = useI18n({
     messages: i18nAddDiffReport,
   });
 
-  const store = useChorusAddDiffReportStore();
+  const store = useTuttiAddDiffReportStore();
   const {
     currentStep,
     stepsCount,

@@ -19,8 +19,8 @@
   import { CButton, CIcon, CTag, useDialog } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { IconName } from '@/utils/types/icon';
   import { RouteName } from '@/utils/types/router';
   import PageHeader from '@/components/layout/PageHeader.vue';
@@ -29,9 +29,9 @@
   import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({ messages: i18nDiffReportDetail });
-  const store = useChorusDiffReportDetailStore();
+  const store = useTuttiDiffReportDetailStore();
   const { createNotification, createRetryNotification } =
-    useChorusNotification();
+    useTuttiNotification();
   const { createDialog } = useDialog();
   const { locations, isRestartLoading, hasError, isNotFound } =
     storeToRefs(store);

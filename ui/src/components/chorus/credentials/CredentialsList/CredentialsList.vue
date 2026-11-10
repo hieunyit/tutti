@@ -27,7 +27,7 @@
   import i18nCredentials from '../i18nCredentials';
   import CredentialsActionsCell from '../CredentialsActionsCell/CredentialsActionsCell.vue';
   import type { ChorusCredential } from '@/utils/types/chorus';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
   import { IconName } from '@/utils/types/icon';
   import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -46,8 +46,8 @@
     credentialsPagination,
     computedCredentials,
     credentialsFilterAliases,
-  } = storeToRefs(useChorusStorageDetailsStore());
-  const { initStorageDetails } = useChorusStorageDetailsStore();
+  } = storeToRefs(useTuttiStorageDetailsStore());
+  const { initStorageDetails } = useTuttiStorageDetailsStore();
 
   const columns = computed<DataTableBaseColumn<ChorusCredential>[]>(() => [
     {

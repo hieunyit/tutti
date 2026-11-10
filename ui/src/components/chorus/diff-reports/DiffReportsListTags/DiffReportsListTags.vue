@@ -17,13 +17,13 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
   import ChorusListTags from '@/components/chorus/common/ChorusListTags/ChorusListTags.vue';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
 
   const { selectedReportIds, selectedReportsCount, isFiltered } = storeToRefs(
-    useChorusDiffReportsStore(),
+    useTuttiDiffReportsStore(),
   );
 
-  const { clearFilters } = useChorusDiffReportsStore();
+  const { clearFilters } = useTuttiDiffReportsStore();
 </script>
 
 <template>

@@ -28,13 +28,13 @@
   import { storeToRefs } from 'pinia';
   import { inject, readonly, ref } from 'vue';
   import i18nStorages from '@/components/chorus/storages/i18nStorages';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
 
   const { t } = useI18n({
     messages: i18nStorages,
   });
 
-  const { isLoading, storage } = storeToRefs(useChorusStorageDetailsStore());
+  const { isLoading, storage } = storeToRefs(useTuttiStorageDetailsStore());
 
   const navMeta = inject(
     DASHBOARD_NAV_META_INJECT_KEY,

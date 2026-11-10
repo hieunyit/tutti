@@ -21,8 +21,8 @@
   import { useRouter } from 'vue-router';
   import DiffReportsShortList from '@/components/chorus/diff-reports/DiffReportsShortList/DiffReportsShortList.vue';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
   import type { DiffReport } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
@@ -36,8 +36,8 @@
     report: AddId<DiffReport>;
   }>();
 
-  const { deleteDiffReports, restartDiffReports } = useChorusDiffReportsStore();
-  const { createNotification } = useChorusNotification();
+  const { deleteDiffReports, restartDiffReports } = useTuttiDiffReportsStore();
+  const { createNotification } = useTuttiNotification();
   const { createDialog } = useDialog();
   const router = useRouter();
   const isDeleteLoading = ref(false);

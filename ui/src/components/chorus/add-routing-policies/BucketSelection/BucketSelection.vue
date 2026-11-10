@@ -25,10 +25,10 @@
   } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
 
   const { isForAllBuckets, bucketName, validator } = storeToRefs(
-    useChorusAddRoutingPolicyStore(),
+    useTuttiAddRoutingPolicyStore(),
   );
 
   const { t } = useI18n({

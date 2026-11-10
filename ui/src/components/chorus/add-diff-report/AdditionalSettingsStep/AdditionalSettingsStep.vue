@@ -19,11 +19,11 @@
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
   import { CSwitch } from '@clyso/clyso-ui-kit';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
 
   const { checkOnlyLastVersions, ignoreEtags, ignoreSizes } = storeToRefs(
-    useChorusAddDiffReportStore(),
+    useTuttiAddDiffReportStore(),
   );
 
   const { t } = useI18n({ messages: i18nAddDiffReport });

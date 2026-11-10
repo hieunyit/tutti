@@ -355,7 +355,7 @@ describe('ProtectionGroupHelper.validate', () => {
     ).toContain('ID_INVALID');
     expect(
       ProtectionGroupHelper.validate(baseForm({ user: null }), false),
-    ).toContain('USER_REQUIRED');
+    ).not.toContain('USER_REQUIRED');
     expect(
       ProtectionGroupHelper.validate(baseForm({ members: ['s1'] }), false),
     ).toContain('MEMBERS_MIN');

@@ -356,8 +356,6 @@ export abstract class ProtectionGroupHelper {
       else if (hasForbidden(form.id.trim(), ID_FORBIDDEN))
         errors.push('ID_INVALID');
 
-      if (!form.user) errors.push('USER_REQUIRED');
-
       if (form.members.length < 2) errors.push('MEMBERS_MIN');
 
       if (

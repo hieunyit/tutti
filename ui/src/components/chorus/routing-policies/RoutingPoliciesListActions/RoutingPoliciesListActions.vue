@@ -28,8 +28,8 @@
   import RoutingPoliciesShortList from '../RoutingPoliciesShortList/RoutingPoliciesShortList.vue';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import type { RoutingPolicy } from '@/utils/types/chorus';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -39,14 +39,14 @@
     selectedRoutingPolicies,
     isAnyRoutingPolicySelected,
     isDeleteSelectedProcessing,
-  } = storeToRefs(useChorusRoutingPoliciesStore());
+  } = storeToRefs(useTuttiRoutingPoliciesStore());
 
   const {
     deleteRoutingPolicies: deleteRoutingPoliciesStore,
     setRoutingPoliciesBlock,
-  } = useChorusRoutingPoliciesStore();
+  } = useTuttiRoutingPoliciesStore();
 
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const { t } = useI18n({
     messages: i18nRoutingPolicies,

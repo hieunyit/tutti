@@ -23,7 +23,6 @@
   import i18nLayout from './i18nLayout';
   import { i18n } from '@/i18n';
   import { NAV_GROUPS, type NavItem } from '@/utils/constants/navigation';
-  import { useAboutDialog } from '@/utils/composables/useAboutDialog';
   import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
@@ -60,7 +59,6 @@
 
   const { t } = useI18n({ messages: i18nLayout });
   const route = useRoute();
-  const { openAbout } = useAboutDialog();
   const badges = useNavBadges();
   const { isAdmin } = storeToRefs(useAuthStore());
   const groups = computed(() =>
@@ -92,11 +90,6 @@
   const activeItem = computed<string | undefined>(() =>
     String(route.meta.navSection ?? route.name ?? ''),
   );
-
-  function handleAbout() {
-    openAbout();
-    emit('navigate');
-  }
 </script>
 
 <template>
@@ -201,39 +194,6 @@
     </nav>
 
     <div class="app-sidebar__footer">
-      <NTooltip
-        placement="right"
-        :disabled="!isRail"
-      >
-        <template #trigger>
-          <button
-            type="button"
-            class="app-sidebar__about"
-            @click="handleAbout"
-          >
-            <svg
-              class="app-sidebar__icon"
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-              />
-              <path d="M12 8h.01M11 12h1v5h1" />
-            </svg>
-            <span v-if="!isRail">{{ t('aboutTutti') }}</span>
-          </button>
-        </template>
-        {{ t('aboutTutti') }}
-      </NTooltip>
-
       <div class="app-sidebar__meta">
         <span
           class="app-sidebar__version"

@@ -25,7 +25,7 @@
   } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { IconName } from '@/utils/types/icon';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import ChorusUserCard from '@/components/chorus/common/ChorusUserCard/ChorusUserCard.vue';
@@ -41,7 +41,7 @@
     selectedToStorage,
     selectedBuckets,
     isForAllBuckets,
-  } = storeToRefs(useChorusAddReplicationStore());
+  } = storeToRefs(useTuttiAddReplicationStore());
 
   const orderedSelectedBuckets = computed<string[]>(() =>
     [...selectedBuckets.value].sort(),

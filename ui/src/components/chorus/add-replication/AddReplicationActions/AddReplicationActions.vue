@@ -19,7 +19,7 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { AddReplicationStepName } from '@/utils/types/chorus';
   import ChorusWizard from '@/components/chorus/common/ChorusWizard/ChorusWizard.vue';
 
@@ -38,7 +38,7 @@
     selectedToStorage,
     selectedUser,
     isSelectedUserUsable,
-  } = storeToRefs(useChorusAddReplicationStore());
+  } = storeToRefs(useTuttiAddReplicationStore());
 
   const isNextDisabled = computed<boolean>(() => {
     if (isLoading.value || currentStep.value === stepsCount.value) {

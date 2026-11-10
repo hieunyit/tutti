@@ -21,13 +21,13 @@
   import { storeToRefs } from 'pinia';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
   import { RoutingPolicyStatusFilter } from '@/utils/types/chorus';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
 
   const { t } = useI18n({
     messages: i18nRoutingPolicies,
   });
 
-  const { filterStatus, page } = storeToRefs(useChorusRoutingPoliciesStore());
+  const { filterStatus, page } = storeToRefs(useTuttiRoutingPoliciesStore());
 
   const statusOptions = computed<
     {

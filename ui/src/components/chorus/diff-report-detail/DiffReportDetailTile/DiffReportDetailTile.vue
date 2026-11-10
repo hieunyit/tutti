@@ -20,7 +20,7 @@
   import { computed } from 'vue';
   import { CResult, CTile } from '@clyso/clyso-ui-kit';
   import { useRouter } from 'vue-router';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
   import { RouteName } from '@/utils/types/router';
   import DiffReportDetailHeader from '@/components/chorus/diff-report-detail/DiffReportDetailHeader/DiffReportDetailHeader.vue';
@@ -28,7 +28,7 @@
   import DiffReportDetailProgress from '@/components/chorus/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue';
   import DiffReportDetailEntries from '@/components/chorus/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue';
 
-  const store = useChorusDiffReportDetailStore();
+  const store = useTuttiDiffReportDetailStore();
   const { initDiffReportDetailsPage } = store;
   const { hasError, isNotFound, locations, hasFixActivity } =
     storeToRefs(store);

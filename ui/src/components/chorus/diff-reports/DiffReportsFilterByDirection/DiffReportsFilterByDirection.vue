@@ -19,7 +19,7 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import ChorusStorageFilter from '@/components/chorus/common/ChorusStorageFilter/ChorusStorageFilter.vue';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
 
@@ -28,7 +28,7 @@
   });
 
   const { reports, filterDirections, page } = storeToRefs(
-    useChorusDiffReportsStore(),
+    useTuttiDiffReportsStore(),
   );
 
   const storagePairOptions = computed(() =>

@@ -16,13 +16,13 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import ChorusListTags from '@/components/chorus/common/ChorusListTags/ChorusListTags.vue';
 
   const { selectedRoutingPolicyIds, selectedRoutingPoliciesCount, isFiltered } =
-    storeToRefs(useChorusRoutingPoliciesStore());
+    storeToRefs(useTuttiRoutingPoliciesStore());
 
-  const { clearFilters } = useChorusRoutingPoliciesStore();
+  const { clearFilters } = useTuttiRoutingPoliciesStore();
 </script>
 
 <template>

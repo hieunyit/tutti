@@ -47,7 +47,7 @@ func ProtectionGroupHandlers(s *pg.Service, storageLocks *StorageLocker, userLoc
 					return e
 				})
 			}
-			if h.userLocks != nil {
+			if g.User != "" && h.userLocks != nil {
 				lock, e := h.userLocks.Lock(ctx, g.User, store.WithDuration(30*time.Second))
 				if e != nil {
 					return pg.Group{}, e
@@ -108,10 +108,6 @@ func (h *protectionHandlers) Create(ctx context.Context, r *pb.CreateProtectionG
 	if err != nil {
 		return nil, err
 	}
-	// No silent default: the group manages the routing and replications of exactly this (existing) user.
-	if g.User == "" {
-		return nil, fmt.Errorf("%w: protection group: user is required", dom.ErrInvalidArg)
-	}
 	var result pg.Group
 	work := func(ctx context.Context) error {
 		return h.storageLocks.With(ctx, g.Members, func(ctx context.Context) error {
@@ -120,7 +116,7 @@ func (h *protectionHandlers) Create(ctx context.Context, r *pb.CreateProtectionG
 			return e
 		})
 	}
-	if h.userLocks != nil {
+	if g.User != "" && h.userLocks != nil {
 		lock, e := h.userLocks.Lock(ctx, g.User, store.WithDuration(30*time.Second))
 		if e != nil {
 			return nil, e

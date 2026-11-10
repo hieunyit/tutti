@@ -18,7 +18,7 @@
   import { CTile, CButton } from '@clyso/clyso-ui-kit';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
-  import { useChorusSetCredentialStore } from '@/stores/chorusSetCredentialStore';
+  import { useTuttiSetCredentialStore } from '@/stores/tuttiSetCredentialStore';
   import SetCredentialConfirmDialog from '@/components/chorus/set-credential/SetCredentialConfirmDialog/SetCredentialConfirmDialog.vue';
   import i18nSetCredential from '@/components/chorus/set-credential/i18nSetCredential';
   import CredentialFormField from '@/components/chorus/set-credential/CredentialFormField/CredentialFormField.vue';
@@ -36,7 +36,7 @@
     isSubmitting,
     isConfirmDialogOpen,
     validator,
-  } = storeToRefs(useChorusSetCredentialStore());
+  } = storeToRefs(useTuttiSetCredentialStore());
 
   async function openConfirmDialog() {
     validator.value.$touch();

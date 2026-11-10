@@ -22,7 +22,7 @@
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
   import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -30,8 +30,8 @@
     messages: i18nRoutingPolicies,
   });
 
-  const { isFiltered } = storeToRefs(useChorusRoutingPoliciesStore());
-  const { clearFilters } = useChorusRoutingPoliciesStore();
+  const { isFiltered } = storeToRefs(useTuttiRoutingPoliciesStore());
+  const { clearFilters } = useTuttiRoutingPoliciesStore();
   const router = useRouter();
 
   function handleAction() {

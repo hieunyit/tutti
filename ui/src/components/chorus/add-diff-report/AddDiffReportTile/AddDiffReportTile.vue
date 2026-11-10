@@ -25,7 +25,7 @@
     getDefaultNavMeta,
   } from '@clyso/clyso-ui-kit';
   import { inject, readonly, ref } from 'vue';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
   import AddDiffReportWizard from '@/components/chorus/add-diff-report/AddDiffReportWizard/AddDiffReportWizard.vue';
   import FromStep from '@/components/chorus/add-diff-report/FromStep/FromStep.vue';
@@ -35,7 +35,7 @@
   import AdditionalSettingsStep from '@/components/chorus/add-diff-report/AdditionalSettingsStep/AdditionalSettingsStep.vue';
   import AddDiffReportConfirmDialog from '@/components/chorus/add-diff-report/AddDiffReportConfirmDialog/AddDiffReportConfirmDialog.vue';
 
-  const store = useChorusAddDiffReportStore();
+  const store = useTuttiAddDiffReportStore();
   const { isLoading, hasError, hasEnoughStorages, currentStep, steps } =
     storeToRefs(store);
 

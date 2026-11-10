@@ -21,9 +21,9 @@
   import RoutingPoliciesFilterByBucket from '../RoutingPoliciesFilterByBucket/RoutingPoliciesFilterByBucket.vue';
   import RoutingPoliciesFilterByStorage from '../RoutingPoliciesFilterByStorage/RoutingPoliciesFilterByStorage.vue';
   import RoutingPoliciesFilterByStatus from '../RoutingPoliciesFilterByStatus/RoutingPoliciesFilterByStatus.vue';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
 
-  const { isLoading } = storeToRefs(useChorusRoutingPoliciesStore());
+  const { isLoading } = storeToRefs(useTuttiRoutingPoliciesStore());
 </script>
 
 <template>

@@ -18,29 +18,29 @@ import type { RouteRecordRaw } from 'vue-router';
 import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 import { RouteName } from '@/utils/types/router';
 const ChorusHomePage = () =>
-  import('@/pages/ChorusHomePage/ChorusHomePage.vue');
+  import('@/pages/TuttiHomePage/TuttiHomePage.vue');
 const DashboardView = () =>
   import('@/components/dashboard/DashboardView/DashboardView.vue');
 const TuttiStoragesPage = () =>
-  import('@/pages/ChorusStoragesPage/ChorusStoragesPage.vue');
+  import('@/pages/TuttiStoragesPage/TuttiStoragesPage.vue');
 const ChorusMonitoringPage = () =>
-  import('@/pages/ChorusMonitoringPage/ChorusMonitoringPage.vue');
+  import('@/pages/TuttiMonitoringPage/TuttiMonitoringPage.vue');
 const ChorusReplicationPage = () =>
-  import('@/pages/ChorusReplicationPage/ChorusReplicationPage.vue');
+  import('@/pages/TuttiReplicationPage/TuttiReplicationPage.vue');
 const ChorusAddReplicationPage = () =>
-  import('@/pages/ChorusAddReplicationPage/ChorusAddReplicationPage.vue');
+  import('@/pages/TuttiAddReplicationPage/TuttiAddReplicationPage.vue');
 const TuttiStorageDetailPage = () =>
-  import('@/pages/ChorusStorageDetailsPage/ChorusStorageDetailsPage.vue');
+  import('@/pages/TuttiStorageDetailsPage/TuttiStorageDetailsPage.vue');
 const ChorusRoutingPoliciesPage = () =>
-  import('@/pages/ChorusRoutingPoliciesPage/ChorusRoutingPoliciesPage.vue');
+  import('@/pages/TuttiRoutingPoliciesPage/TuttiRoutingPoliciesPage.vue');
 const ChorusAddRoutingPolicyPage = () =>
-  import('@/pages/ChorusAddRoutingPolicyPage/ChorusAddRoutingPolicyPage.vue');
+  import('@/pages/TuttiAddRoutingPolicyPage/TuttiAddRoutingPolicyPage.vue');
 const ChorusDiffReportsPage = () =>
-  import('@/pages/ChorusDiffReportsPage/ChorusDiffReportsPage.vue');
+  import('@/pages/TuttiDiffReportsPage/TuttiDiffReportsPage.vue');
 const ChorusAddDiffReportPage = () =>
-  import('@/pages/ChorusAddDiffReportPage/ChorusAddDiffReportPage.vue');
+  import('@/pages/TuttiAddDiffReportPage/TuttiAddDiffReportPage.vue');
 const ChorusDiffReportDetailPage = () =>
-  import('@/pages/ChorusDiffReportDetailPage/ChorusDiffReportDetailPage.vue');
+  import('@/pages/TuttiDiffReportDetailPage/TuttiDiffReportDetailPage.vue');
 const TuttiProxiesPage = () =>
   import('@/pages/TuttiProxiesPage/TuttiProxiesPage.vue');
 const TuttiUsersPage = () =>

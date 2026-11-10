@@ -31,7 +31,7 @@
   import FromStorageFormStep from '@/components/chorus/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
   import ToStorageFormStep from '@/components/chorus/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
   import { AddReplicationStepName } from '@/utils/types/chorus';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import AddReplicationActions from '@/components/chorus/add-replication/AddReplicationActions/AddReplicationActions.vue';
   import AddReplicationConfirmDialog from '@/components/chorus/add-replication/AddReplicationConfirmDialog/AddReplicationConfirmDialog.vue';
 
@@ -45,9 +45,9 @@
   );
 
   const { hasError, currentStep, steps } = storeToRefs(
-    useChorusAddReplicationStore(),
+    useTuttiAddReplicationStore(),
   );
-  const { initAddReplicationPage } = useChorusAddReplicationStore();
+  const { initAddReplicationPage } = useTuttiAddReplicationStore();
 </script>
 
 <template>

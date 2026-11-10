@@ -18,9 +18,9 @@
   import { storeToRefs } from 'pinia';
   import { CSkeleton } from '@clyso/clyso-ui-kit';
   import CredentialsFilterByUserAlias from '../CredentialsFilterByUserAlias/CredentialsFilterByUserAlias.vue';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
 
-  const { isLoading } = storeToRefs(useChorusStorageDetailsStore());
+  const { isLoading } = storeToRefs(useTuttiStorageDetailsStore());
 </script>
 
 <template>

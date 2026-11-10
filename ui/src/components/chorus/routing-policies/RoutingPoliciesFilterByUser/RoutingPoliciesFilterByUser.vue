@@ -19,7 +19,7 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import ChorusUserFilter from '@/components/chorus/common/ChorusUserFilter/ChorusUserFilter.vue';
 
   const { t } = useI18n({
@@ -27,7 +27,7 @@
   });
 
   const { routingPolicies, filterUsers, page } = storeToRefs(
-    useChorusRoutingPoliciesStore(),
+    useTuttiRoutingPoliciesStore(),
   );
 
   const users = computed(() =>

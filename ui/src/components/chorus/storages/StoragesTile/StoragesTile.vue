@@ -20,7 +20,7 @@
   import { storeToRefs } from 'pinia';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import i18nStorages from '@/components/chorus/storages/i18nStorages';
-  import { useChorusStoragesStore } from '@/stores/chorusStoragesStore';
+  import { useTuttiLegacyStoragesStore } from '@/stores/tuttiLegacyStoragesStore';
   import { RouteName } from '@/utils/types/router';
   import { IconName } from '@/utils/types/icon';
 
@@ -29,7 +29,7 @@
   });
 
   const { isLoading, mainStorage, followerStorages } = storeToRefs(
-    useChorusStoragesStore(),
+    useTuttiLegacyStoragesStore(),
   );
 </script>
 

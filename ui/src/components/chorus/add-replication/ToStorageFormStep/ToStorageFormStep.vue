@@ -18,13 +18,13 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
 
   const { storages, selectedToStorage } = storeToRefs(
-    useChorusAddReplicationStore(),
+    useTuttiAddReplicationStore(),
   );
   const { t } = useI18n({
     messages: i18nAddReplication,

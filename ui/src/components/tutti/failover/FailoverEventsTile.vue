@@ -27,14 +27,14 @@
   import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import type { TuttiFailoverEvent } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nFailover });
   const store = useTuttiFailoverStore();
   const { events } = storeToRefs(store);
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const acknowledging = ref<TuttiFailoverEvent | null>(null);
   const isSaving = ref(false);

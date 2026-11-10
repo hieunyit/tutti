@@ -19,15 +19,15 @@
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import AddReplicationSummary from '@/components/chorus/add-replication/AddReplicationSummary/AddReplicationSummary.vue';
 
   const { t } = useI18n({
     messages: i18nAddReplication,
   });
 
-  const { isConfirmDialogOpen } = storeToRefs(useChorusAddReplicationStore());
-  const { createReplication } = useChorusAddReplicationStore();
+  const { isConfirmDialogOpen } = storeToRefs(useTuttiAddReplicationStore());
+  const { createReplication } = useTuttiAddReplicationStore();
 </script>
 
 <template>

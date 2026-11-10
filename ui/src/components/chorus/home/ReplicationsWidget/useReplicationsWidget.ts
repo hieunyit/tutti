@@ -17,11 +17,11 @@
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { RouteName } from '@/utils/types/router';
-import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
 import { ReplicationStatusFilter } from '@/utils/types/chorus';
 
 export const useReplicationsWidget = () => {
-  const { filterStatuses } = storeToRefs(useChorusReplicationsStore());
+  const { filterStatuses } = storeToRefs(useTuttiReplicationsStore());
   const router = useRouter();
 
   const goToReplicationsPage = () => {

@@ -23,8 +23,8 @@
   import RoutingPolicyEditModal from '../RoutingPolicyEditModal/RoutingPolicyEditModal.vue';
   import RoutingPoliciesShortList from '../RoutingPoliciesShortList/RoutingPoliciesShortList.vue';
   import type { RoutingPolicy } from '@/utils/types/chorus';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { IconName } from '@/utils/types/icon';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -39,13 +39,13 @@
   const {
     deleteRoutingPolicy: storeDeleteRoutingPolicy,
     setRoutingPolicyBlock: storeSetRoutingPolicyBlock,
-  } = useChorusRoutingPoliciesStore();
+  } = useTuttiRoutingPoliciesStore();
 
   const { page, pagination, selectedRoutingPolicyIds } = storeToRefs(
-    useChorusRoutingPoliciesStore(),
+    useTuttiRoutingPoliciesStore(),
   );
 
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const { createDialog } = useDialog();
 

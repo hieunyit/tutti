@@ -27,7 +27,7 @@
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import type { DiffReport, DiffReportLocation } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
   import DiffReportsEmpty from '@/components/chorus/diff-reports/DiffReportsEmpty/DiffReportsEmpty.vue';
   import DiffReportsBucketCell from '@/components/chorus/diff-reports/DiffReportsBucketCell/DiffReportsBucketCell.vue';
@@ -52,9 +52,9 @@
     pageSize,
     pagination,
     selectedReportIds,
-  } = storeToRefs(useChorusDiffReportsStore());
+  } = storeToRefs(useTuttiDiffReportsStore());
 
-  const { initDiffReportPage } = useChorusDiffReportsStore();
+  const { initDiffReportPage } = useTuttiDiffReportsStore();
 
   const columns = computed<
     (DataTableBaseColumn<AddId<DiffReport>> | DataTableSelectionColumn)[]

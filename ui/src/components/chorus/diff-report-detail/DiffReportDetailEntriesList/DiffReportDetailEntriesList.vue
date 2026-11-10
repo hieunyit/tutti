@@ -25,11 +25,11 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
-  import { useChorusDiffReportEntriesStore } from '@/stores/chorusDiffReportEntriesStore';
+  import { useTuttiDiffReportEntriesStore } from '@/stores/tuttiDiffReportEntriesStore';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
   import type { DiffReportEntry } from '@/utils/types/chorus';
   import DiffReportDetailEntriesStorageCell from '@/components/chorus/diff-report-detail/DiffReportDetailEntriesStorageCell/DiffReportDetailEntriesStorageCell.vue';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
 
   const { t } = useI18n({ messages: i18nDiffReportDetail });
 
@@ -41,11 +41,11 @@
     sorter,
     page,
     pageSize,
-  } = storeToRefs(useChorusDiffReportEntriesStore());
+  } = storeToRefs(useTuttiDiffReportEntriesStore());
 
-  const { getReportEntries } = useChorusDiffReportEntriesStore();
+  const { getReportEntries } = useTuttiDiffReportEntriesStore();
 
-  const { report } = storeToRefs(useChorusDiffReportDetailStore());
+  const { report } = storeToRefs(useTuttiDiffReportDetailStore());
 
   const columns = computed<DataTableBaseColumn<DiffReportEntry>[]>(() => [
     {

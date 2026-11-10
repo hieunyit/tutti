@@ -68,11 +68,6 @@ func (s *Service) Create(ctx context.Context, g Group, adopt bool) (Group, error
 
 // create implements Create; skipLegacy omits the enabled-legacy-policy check (see CreateForMigration).
 func (s *Service) create(ctx context.Context, g Group, adopt, skipLegacy bool) (Group, error) {
-	// The group's user is the identity whose routing and replications the group manages: it must be explicit,
-	// never picked silently.
-	if g.User == "" {
-		return Group{}, fmt.Errorf("%w: protection group: user is required", dom.ErrInvalidArg)
-	}
 	if err := g.Validate(); err != nil {
 		return Group{}, err
 	}

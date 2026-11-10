@@ -19,12 +19,12 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
   import type { ChorusStorage } from '@/utils/types/chorus';
 
-  const store = useChorusAddRoutingPolicyStore();
+  const store = useTuttiAddRoutingPolicyStore();
   const { selectedToStorage, storages, isBlockOnly, validator } =
     storeToRefs(store);
 

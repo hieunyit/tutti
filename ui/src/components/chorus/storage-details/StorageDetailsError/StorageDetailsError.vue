@@ -19,7 +19,7 @@
   import { CResult } from '@clyso/clyso-ui-kit';
   import { useRoute, useRouter } from 'vue-router';
   import i18nStorages from '@/components/chorus/storages/i18nStorages';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({
@@ -29,7 +29,7 @@
   const route = useRoute();
   const router = useRouter();
 
-  const { initStorageDetails } = useChorusStorageDetailsStore();
+  const { initStorageDetails } = useTuttiStorageDetailsStore();
 
   function retryStorageDetails() {
     const { storageName } = route.params;

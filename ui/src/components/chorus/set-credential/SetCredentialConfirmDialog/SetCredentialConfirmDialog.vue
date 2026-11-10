@@ -20,14 +20,14 @@
   import { useI18n } from 'vue-i18n';
   import { h } from 'vue';
   import { useRouter } from 'vue-router';
-  import { useChorusSetCredentialStore } from '@/stores/chorusSetCredentialStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiSetCredentialStore } from '@/stores/tuttiSetCredentialStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { RouteName } from '@/utils/types/router';
   import i18nSetCredential from '@/components/chorus/set-credential/i18nSetCredential';
 
-  const store = useChorusSetCredentialStore();
+  const store = useTuttiSetCredentialStore();
   const { isConfirmDialogOpen, storage } = storeToRefs(store);
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const { t } = useI18n({
     messages: i18nSetCredential,

@@ -19,7 +19,7 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import ChorusUserFilter from '@/components/chorus/common/ChorusUserFilter/ChorusUserFilter.vue';
 
   const { t } = useI18n({
@@ -27,7 +27,7 @@
   });
 
   const { replications, filterUsers, page } = storeToRefs(
-    useChorusReplicationsStore(),
+    useTuttiReplicationsStore(),
   );
 
   const users = computed(() =>

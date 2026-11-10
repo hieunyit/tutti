@@ -27,7 +27,7 @@
   import { storeToRefs } from 'pinia';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -44,9 +44,9 @@
     isResumeSelectedProcessing,
     isPauseSelectedProcessing,
     isDeleteSelectedProcessing,
-  } = storeToRefs(useChorusReplicationsStore());
+  } = storeToRefs(useTuttiReplicationsStore());
   const { resumeReplications, pauseReplications, deleteReplications } =
-    useChorusReplicationsStore();
+    useTuttiReplicationsStore();
 
   const selectedReplicationsForResume = computed(() =>
     selectedReplications.value.filter((replication) => replication.isPaused),

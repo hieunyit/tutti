@@ -24,7 +24,7 @@
     CIcon,
     CTag,
   } from '@clyso/clyso-ui-kit';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import ChorusStorageCard from '@/components/chorus/common/ChorusStorageCard/ChorusStorageCard.vue';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
   import { IconName } from '@/utils/types/icon';
@@ -38,7 +38,7 @@
     checkOnlyLastVersions,
     ignoreEtags,
     ignoreSizes,
-  } = storeToRefs(useChorusAddDiffReportStore());
+  } = storeToRefs(useTuttiAddDiffReportStore());
 
   const { t } = useI18n({ messages: i18nAddDiffReport });
 

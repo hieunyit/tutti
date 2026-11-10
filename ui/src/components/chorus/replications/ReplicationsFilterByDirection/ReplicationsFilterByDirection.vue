@@ -19,7 +19,7 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import ChorusStorageFilter from '@/components/chorus/common/ChorusStorageFilter/ChorusStorageFilter.vue';
   import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
 
@@ -28,7 +28,7 @@
   });
 
   const { replications, filterDirections, page } = storeToRefs(
-    useChorusReplicationsStore(),
+    useTuttiReplicationsStore(),
   );
 
   const storages = computed(() =>

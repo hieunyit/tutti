@@ -20,7 +20,7 @@ const FreezeKey = "tutti:protection:automatic-frozen"
 // When controlPlane.backend is "postgres", PostgreSQL is the source of truth for GroupSpec.
 type GroupSpec struct {
 	ID   string `json:"id"`
-	User string `json:"user"`
+	User string `json:"user,omitempty"`
 	// Empty means all buckets of this user. Bucket lists contain exact names, not globs.
 	Buckets     []string      `json:"buckets,omitempty"`
 	Members     []string      `json:"members"`
@@ -52,7 +52,7 @@ type PromotionState struct {
 
 type Group struct {
 	ID   string `json:"id"`
-	User string `json:"user"`
+	User string `json:"user,omitempty"`
 	// Empty means all buckets of this user. Bucket lists contain exact names, not globs.
 	Buckets     []string      `json:"buckets,omitempty"`
 	Members     []string      `json:"members"`
@@ -212,7 +212,13 @@ type Status struct {
 
 func (g *Group) Validate() error {
 	bad := func(s string) error { return fmt.Errorf("%w: protection group: %s", dom.ErrInvalidArg, s) }
-	for _, s := range append([]string{g.ID, g.User}, g.Members...) {
+	if g.ID == "" || strings.ContainsAny(g.ID, ":/\x00 \t\r\n") {
+		return bad("invalid or empty identifier")
+	}
+	if g.User != "" && strings.ContainsAny(g.User, ":/\x00 \t\r\n") {
+		return bad("invalid user identifier")
+	}
+	for _, s := range g.Members {
 		if s == "" || strings.ContainsAny(s, ":/\x00 \t\r\n") {
 			return bad("invalid or empty identifier")
 		}
@@ -278,17 +284,32 @@ func (g *Group) Validate() error {
 }
 
 func (g Group) Covers(user, bucket string) bool {
-	return g.User == user && (len(g.Buckets) == 0 || slices.Contains(g.Buckets, bucket))
+	if g.User != "" && user != "" && g.User != user {
+		return false
+	}
+	return len(g.Buckets) == 0 || (bucket != "" && slices.Contains(g.Buckets, bucket))
 }
 func (g Group) Overlaps(other Group) bool {
 	// S3 bucket names identify physical data independent of the Tutti identity. Conservatively
 	// reject overlapping scopes on a common member even for different users; account-specific
 	// namespaces cannot safely be inferred from access keys or bucket-glob expressions.
-	if g.User != other.User {
+	if g.User != "" && other.User != "" && g.User != other.User {
 		shared := false
 		for _, m := range g.Members {
 			if slices.Contains(other.Members, m) {
 				shared = true
+				break
+			}
+		}
+		if !shared {
+			return false
+		}
+	} else {
+		shared := false
+		for _, m := range g.Members {
+			if slices.Contains(other.Members, m) {
+				shared = true
+				break
 			}
 		}
 		if !shared {
@@ -307,16 +328,20 @@ func (g Group) Overlaps(other Group) bool {
 }
 func (g Group) Replications(primary string) []entity.UniversalReplicationID {
 	var out []entity.UniversalReplicationID
+	user := g.User
+	if user == "" {
+		user = primary
+	}
 	for _, member := range g.Members {
 		if member == primary {
 			continue
 		}
 		if len(g.Buckets) == 0 {
-			out = append(out, entity.UniversalFromUserReplication(entity.UserReplicationPolicy{User: g.User, FromStorage: primary, ToStorage: member}))
+			out = append(out, entity.UniversalFromUserReplication(entity.UserReplicationPolicy{User: user, FromStorage: primary, ToStorage: member}))
 			continue
 		}
 		for _, b := range g.Buckets {
-			out = append(out, entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{User: g.User, FromStorage: primary, ToStorage: member, FromBucket: b, ToBucket: b}))
+			out = append(out, entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{User: user, FromStorage: primary, ToStorage: member, FromBucket: b, ToBucket: b}))
 		}
 	}
 	return out

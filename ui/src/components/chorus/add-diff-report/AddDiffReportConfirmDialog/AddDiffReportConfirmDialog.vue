@@ -21,8 +21,8 @@
   import { nextTick } from 'vue';
   import { useRouter } from 'vue-router';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { RouteName } from '@/utils/types/router';
   import AddDiffReportSummary from '@/components/chorus/add-diff-report/AddDiffReportSummary/AddDiffReportSummary.vue';
 
@@ -31,11 +31,11 @@
   });
 
   const router = useRouter();
-  const { isConfirmDialogOpen } = storeToRefs(useChorusAddDiffReportStore());
+  const { isConfirmDialogOpen } = storeToRefs(useTuttiAddDiffReportStore());
   const { createDiffReport: callCreateDiffReport } =
-    useChorusAddDiffReportStore();
+    useTuttiAddDiffReportStore();
   const { createNotification, createRetryNotification } =
-    useChorusNotification();
+    useTuttiNotification();
 
   async function createDiffReport() {
     try {

@@ -580,12 +580,19 @@ func scopeIndex(docs map[string]string, next *Group, without string) (map[string
 	index := map[string]string{indexVersionField: indexVersion}
 	add := func(g Group) {
 		index["o:"+g.ID] = g.User
+		index["p:"+g.ID] = g.Primary
 		if len(g.Buckets) == 0 {
-			index["u:"+g.User] = g.ID
+			if g.User != "" {
+				index["u:"+g.User] = g.ID
+			}
 			return
 		}
 		for _, b := range g.Buckets {
-			index["b:"+g.User+"/"+b] = g.ID
+			if g.User != "" {
+				index["b:"+g.User+"/"+b] = g.ID
+			} else {
+				index["b:"+b] = g.ID
+			}
 			for _, m := range g.Members {
 				k := "s:" + m + "/" + b
 				if cur, ok := index[k]; ok && cur != g.ID {
@@ -635,16 +642,34 @@ func writeIndex(ctx context.Context, p redis.Pipeliner, current, index map[strin
 // IndexComplete reports whether a cached copy of the scope index is complete and of the current format.
 func IndexComplete(index map[string]string) bool { return index[indexVersionField] == indexVersion }
 
+// PrimaryOfGroup returns the primary storage of groupID from a cached scope index, or "".
+func PrimaryOfGroup(index map[string]string, groupID string) string {
+	if groupID == "" {
+		return ""
+	}
+	return index["p:"+groupID]
+}
+
 // LookupScope resolves a (user, bucket) against a cached copy of the scope index. ok is false when the copy
 // is not a complete index (marker missing): the caller must then use the Redis admission path.
 func LookupScope(index map[string]string, user, bucket string) (group string, ok bool) {
 	if index[indexVersionField] == "" {
 		return "", false
 	}
-	if id := index["u:"+user]; id != "" {
-		return id, true
+	if user != "" {
+		if id := index["u:"+user]; id != "" {
+			return id, true
+		}
+		if id := index["b:"+user+"/"+bucket]; id != "" {
+			return id, true
+		}
 	}
-	return index["b:"+user+"/"+bucket], true
+	if bucket != "" {
+		if id := index["b:"+bucket]; id != "" {
+			return id, true
+		}
+	}
+	return "", true
 }
 
 // LookupSharedGroup resolves the protection group of ANOTHER identity that manages bucket on storage, for a user
@@ -666,7 +691,8 @@ func LookupSharedGroup(index map[string]string, storage, user, bucket string) (g
 		return "", true, nil
 	case id == conflictMarker:
 		return "", true, fmt.Errorf("%w: bucket %s on storage %s is claimed by several protection groups", dom.ErrFailedPrecondition, bucket, storage)
-	case index["o:"+id] == user:
+	case index["o:"+id] == "" || index["o:"+id] == user:
+		// Infrastructure groups (no user owner) or the user's own group are not "another identity".
 		return "", true, nil
 	}
 	return id, true, nil
@@ -674,7 +700,13 @@ func LookupSharedGroup(index map[string]string, storage, user, bucket string) (g
 
 // ScopeFields reads the scope index fields LookupScope needs for (user, bucket): a partial index for that lookup.
 func ScopeFields(ctx context.Context, r redis.Cmdable, user, bucket string) (map[string]string, error) {
-	keys := []string{indexVersionField, "u:" + user, "b:" + user + "/" + bucket}
+	keys := []string{indexVersionField}
+	if user != "" {
+		keys = append(keys, "u:"+user, "b:"+user+"/"+bucket)
+	}
+	if bucket != "" {
+		keys = append(keys, "b:"+bucket)
+	}
 	vals, err := r.HMGet(ctx, ScopeIndexKey, keys...).Result()
 	if err != nil {
 		return nil, err

@@ -17,12 +17,12 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
   import { CSkeleton } from '@clyso/clyso-ui-kit';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import DiffReportsFilterByDirection from '@/components/chorus/diff-reports/DiffReportsFilterByDirection/DiffReportsFilterByDirection.vue';
   import DiffReportsFilterByBucket from '@/components/chorus/diff-reports/DiffReportsFilterByBucket/DiffReportsFilterByBucket.vue';
   import DiffReportsFilterByStatus from '@/components/chorus/diff-reports/DiffReportsFilterByStatus/DiffReportsFilterByStatus.vue';
 
-  const { isLoading } = storeToRefs(useChorusDiffReportsStore());
+  const { isLoading } = storeToRefs(useTuttiDiffReportsStore());
 </script>
 
 <template>

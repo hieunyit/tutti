@@ -31,7 +31,7 @@
   import RoutingPolicyBucketCell from '../RoutingPolicyBucketCell/RoutingPolicyBucketCell.vue';
   import RoutingPoliciesEmpty from '../RoutingPoliciesEmpty/RoutingPoliciesEmpty.vue';
   import type { RoutingPolicy } from '@/utils/types/chorus';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
 
   const { t } = useI18n({
     messages: i18nRoutingPolicies,
@@ -46,9 +46,9 @@
     page,
     pageSize,
     pagination,
-  } = storeToRefs(useChorusRoutingPoliciesStore());
+  } = storeToRefs(useTuttiRoutingPoliciesStore());
 
-  const { initRoutingPoliciesPage } = useChorusRoutingPoliciesStore();
+  const { initRoutingPoliciesPage } = useTuttiRoutingPoliciesStore();
 
   const columns = computed<
     (DataTableBaseColumn<RoutingPolicy> | DataTableSelectionColumn)[]

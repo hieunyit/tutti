@@ -22,7 +22,7 @@
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
   import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -30,8 +30,8 @@
     messages: i18nReplications,
   });
 
-  const { isFiltered } = storeToRefs(useChorusReplicationsStore());
-  const { clearFilters } = useChorusReplicationsStore();
+  const { isFiltered } = storeToRefs(useTuttiReplicationsStore());
+  const { clearFilters } = useTuttiReplicationsStore();
   const router = useRouter();
 
   function handleAction() {

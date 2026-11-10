@@ -19,9 +19,9 @@
   import { storeToRefs } from 'pinia';
   import { CSwitch } from '@clyso/clyso-ui-kit';
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
 
-  const { isBlocked } = storeToRefs(useChorusAddRoutingPolicyStore());
+  const { isBlocked } = storeToRefs(useTuttiAddRoutingPolicyStore());
 
   const { t } = useI18n({
     messages: i18nAddRoutingPolicy,

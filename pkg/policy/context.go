@@ -204,6 +204,13 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	if err != nil {
 		return nil, err
 	}
+	if bucket != "" {
+		if _, bErr := bucketRoutingResult.Get(); errors.Is(bErr, dom.ErrNotFound) {
+			if p := r.resolveGroupPrimary(ctx, user, bucket); p != "" {
+				routeTo = p
+			}
+		}
+	}
 	data := &proxyData{routeTo: routeTo}
 
 	// check in_progress zero downtime switch if present
@@ -420,4 +427,28 @@ func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) 
 	}
 
 	return setReplicationGenerations(ctx, userGenerations, bucketGenerations, relications, nil)
+}
+
+func (r *policySvc) resolveGroupPrimary(ctx context.Context, user, bucket string) string {
+	if bucket == "" {
+		return ""
+	}
+	if r.snap != nil {
+		if idx, err := r.snap.protectionScope(ctx); err == nil {
+			if groupID, ok := protectiongroups.LookupScope(idx, user, bucket); ok && groupID != "" {
+				return protectiongroups.PrimaryOfGroup(idx, groupID)
+			}
+		}
+		return ""
+	}
+	if r.client != nil {
+		idx, err := protectiongroups.ScopeFields(ctx, r.client, user, bucket)
+		if err == nil {
+			if groupID, ok := protectiongroups.LookupScope(idx, user, bucket); ok && groupID != "" {
+				p, _ := r.client.HGet(ctx, protectiongroups.ScopeIndexKey, "p:"+groupID).Result()
+				return p
+			}
+		}
+	}
+	return ""
 }

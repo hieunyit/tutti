@@ -29,7 +29,7 @@
   import { EMPTY_VALUE } from '@/components/ui/status';
   import { IconName } from '@/utils/types/icon';
   import { useTuttiFailoverStore } from '@/stores/tuttiFailoverStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import {
     FailoverHelper,
     type FailoverTrigger,
@@ -39,7 +39,7 @@
   const { t } = useI18n({ messages: i18nFailover });
   const store = useTuttiFailoverStore();
   const { policies, proxies, replications } = storeToRefs(store);
-  const { createNotification } = useChorusNotification();
+  const { createNotification } = useTuttiNotification();
 
   const showDrawer = ref(false);
   const editedPolicy = ref<TuttiFailoverPolicy | null>(null);

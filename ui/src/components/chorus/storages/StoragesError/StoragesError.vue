@@ -18,13 +18,13 @@
   import { useI18n } from 'vue-i18n';
   import { CResult } from '@clyso/clyso-ui-kit';
   import i18nStorages from '@/components/chorus/storages/i18nStorages';
-  import { useChorusStoragesStore } from '@/stores/chorusStoragesStore';
+  import { useTuttiLegacyStoragesStore } from '@/stores/tuttiLegacyStoragesStore';
 
   const { t } = useI18n({
     messages: i18nStorages,
   });
 
-  const { initStorages } = useChorusStoragesStore();
+  const { initStorages } = useTuttiLegacyStoragesStore();
 </script>
 
 <template>

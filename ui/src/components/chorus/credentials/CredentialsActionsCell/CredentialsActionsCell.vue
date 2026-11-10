@@ -22,14 +22,14 @@
   import { RouteName } from '@/utils/types/router';
   import { IconName } from '@/utils/types/icon';
   import type { ChorusCredential } from '@/utils/types/chorus';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
   const { t } = useI18n({
     messages: i18nCredentials,
   });
 
-  const { storage } = storeToRefs(useChorusStorageDetailsStore());
+  const { storage } = storeToRefs(useTuttiStorageDetailsStore());
 
   const props = defineProps<{
     credential: ChorusCredential;

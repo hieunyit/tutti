@@ -20,14 +20,14 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import i18nReplications from '../i18nReplications';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { ReplicationType } from '@/utils/types/chorus';
 
   const { t } = useI18n({
     messages: i18nReplications,
   });
 
-  const { filterType, page } = storeToRefs(useChorusReplicationsStore());
+  const { filterType, page } = storeToRefs(useTuttiReplicationsStore());
 
   const typeOptions = computed<
     {

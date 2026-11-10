@@ -20,14 +20,14 @@
   import { computed } from 'vue';
   import i18nCredentials from '../i18nCredentials';
   import ChorusUserFilter from '../../common/ChorusUserFilter/ChorusUserFilter.vue';
-  import { useChorusStorageDetailsStore } from '@/stores/chorusStorageDetailsStore';
+  import { useTuttiStorageDetailsStore } from '@/stores/tuttiStorageDetailsStore';
 
   const { t } = useI18n({
     messages: i18nCredentials,
   });
 
   const { credentialsList, credentialsFilterAliases, credentialsPage } =
-    storeToRefs(useChorusStorageDetailsStore());
+    storeToRefs(useTuttiStorageDetailsStore());
 
   const credentials = computed(() =>
     credentialsList.value.map((credential) => credential.alias),

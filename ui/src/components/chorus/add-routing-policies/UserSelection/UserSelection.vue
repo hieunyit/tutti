@@ -20,10 +20,10 @@
   import { computed } from 'vue';
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
   import ChorusUserCardList from '../../common/ChorusUserCardList/ChorusUserCardList.vue';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
 
   const { selectedUser, users, validator } = storeToRefs(
-    useChorusAddRoutingPolicyStore(),
+    useTuttiAddRoutingPolicyStore(),
   );
 
   const { t } = useI18n({

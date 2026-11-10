@@ -17,13 +17,13 @@
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
-  import { useChorusDiffReportEntriesStore } from '@/stores/chorusDiffReportEntriesStore';
+  import { useTuttiDiffReportEntriesStore } from '@/stores/tuttiDiffReportEntriesStore';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
   import DiffReportDetailEntriesList from '@/components/chorus/diff-report-detail/DiffReportDetailEntriesList/DiffReportDetailEntriesList.vue';
   import DiffReportDetailEntriesFilters from '@/components/chorus/diff-report-detail/DiffReportDetailEntriesFilters/DiffReportDetailEntriesFilters.vue';
 
   const { t } = useI18n({ messages: i18nDiffReportDetail });
-  const entriesStore = useChorusDiffReportEntriesStore();
+  const entriesStore = useTuttiDiffReportEntriesStore();
   const { inconsistentObjectsCount, hasError, isLoading } =
     storeToRefs(entriesStore);
 </script>

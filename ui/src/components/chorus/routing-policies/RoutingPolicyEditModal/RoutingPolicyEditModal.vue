@@ -20,8 +20,8 @@
   import { useI18n } from 'vue-i18n';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
   import { ChorusService } from '@/services/ChorusService';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import type { RoutingPolicy } from '@/utils/types/chorus';
 
@@ -35,8 +35,8 @@
   }>();
 
   const { t } = useI18n({ messages: i18nRoutingPolicies });
-  const { updateRoutingPolicyTarget } = useChorusRoutingPoliciesStore();
-  const { createNotification } = useChorusNotification();
+  const { updateRoutingPolicyTarget } = useTuttiRoutingPoliciesStore();
+  const { createNotification } = useTuttiNotification();
 
   const storageNames = ref<string[]>([]);
   const selected = ref<string | null>(null);

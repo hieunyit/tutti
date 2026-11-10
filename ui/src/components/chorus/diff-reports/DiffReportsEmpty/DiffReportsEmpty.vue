@@ -22,7 +22,7 @@
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import EmptyState from '@/components/ui/EmptyState.vue';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
 
@@ -30,8 +30,8 @@
     messages: i18nDiffReports,
   });
 
-  const { isFiltered } = storeToRefs(useChorusDiffReportsStore());
-  const { clearFilters } = useChorusDiffReportsStore();
+  const { isFiltered } = storeToRefs(useTuttiDiffReportsStore());
+  const { clearFilters } = useTuttiDiffReportsStore();
   const router = useRouter();
 
   function handleAction() {

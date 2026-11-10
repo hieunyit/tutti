@@ -18,15 +18,15 @@
   import { CInput, CSkeleton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
-  import { useChorusDiffReportEntriesStore } from '@/stores/chorusDiffReportEntriesStore';
+  import { useTuttiDiffReportEntriesStore } from '@/stores/tuttiDiffReportEntriesStore';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
 
   const { t } = useI18n({ messages: i18nDiffReportDetail });
   const { filterObjectName, isLoading } = storeToRefs(
-    useChorusDiffReportEntriesStore(),
+    useTuttiDiffReportEntriesStore(),
   );
-  const { report } = storeToRefs(useChorusDiffReportDetailStore());
+  const { report } = storeToRefs(useTuttiDiffReportDetailStore());
 </script>
 
 <template>

@@ -19,7 +19,7 @@
   import { CAlert, CCollapseTransition, CRadio } from '@clyso/clyso-ui-kit';
   import { onBeforeMount } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useChorusAddReplicationStore } from '@/stores/chorusAddReplicationStore';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
   import BucketsSelectionList from '@/components/chorus/add-replication/BucketsSelectionList/BucketsSelectionList.vue';
 
@@ -28,8 +28,8 @@
     isBucketsAlreadyRequested,
     selectedUser,
     validator,
-  } = storeToRefs(useChorusAddReplicationStore());
-  const { initBucketsList, getBucketsList } = useChorusAddReplicationStore();
+  } = storeToRefs(useTuttiAddReplicationStore());
+  const { initBucketsList, getBucketsList } = useTuttiAddReplicationStore();
 
   const { t } = useI18n({
     messages: i18nAddReplication,

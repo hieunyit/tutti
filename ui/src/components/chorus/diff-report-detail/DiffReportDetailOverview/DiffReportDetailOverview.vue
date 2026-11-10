@@ -26,10 +26,10 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusDiffReportDetailStore } from '@/stores/chorusDiffReportDetailStore';
+  import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
   import i18nDiffReportDetail from '@/components/chorus/diff-report-detail/i18nDiffReportDetail';
 
-  const store = useChorusDiffReportDetailStore();
+  const store = useTuttiDiffReportDetailStore();
   const { report } = storeToRefs(store);
   const { t } = useI18n({ messages: i18nDiffReportDetail });
 

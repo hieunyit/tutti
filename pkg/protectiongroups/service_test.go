@@ -261,11 +261,12 @@ func TestAutomaticFailoverKeepsReplicatingToRemainingMember(t *testing.T) {
 	require.Len(t, g.History, 1)
 }
 
-// A group always manages an explicit user: no silent default.
-func TestService_Create_RequiresUser(t *testing.T) {
+// A group does not require an explicit user (infrastructure level resilience).
+func TestService_Create_AllowsEmptyUser(t *testing.T) {
 	svc, _, _, _, _ := newService(t)
-	_, err := svc.Create(t.Context(), Group{ID: "no-user", Members: []string{"a", "b", "c"}, Copies: 2}, false)
-	require.ErrorIs(t, err, dom.ErrInvalidArg)
+	g, err := svc.Create(t.Context(), Group{ID: "no-user", Buckets: []string{"b1"}, Members: []string{"a", "b", "c"}, Copies: 2}, false)
+	require.NoError(t, err)
+	require.Empty(t, g.User)
 }
 
 func TestService_Create_RejectsLegacyFailoverOverlap(t *testing.T) {

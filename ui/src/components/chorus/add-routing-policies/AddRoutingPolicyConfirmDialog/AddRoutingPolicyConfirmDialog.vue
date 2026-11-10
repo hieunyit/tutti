@@ -21,15 +21,15 @@
   import { useRouter } from 'vue-router';
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
   import AddRoutingPolicySummary from '../AddRoutingPolicySummary/AddRoutingPolicySummary.vue';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { RouteName } from '@/utils/types/router';
 
-  const { isConfirmDialogOpen } = storeToRefs(useChorusAddRoutingPolicyStore());
+  const { isConfirmDialogOpen } = storeToRefs(useTuttiAddRoutingPolicyStore());
   const { addRoutingPolicy: callAddRoutingPolicyStore } =
-    useChorusAddRoutingPolicyStore();
+    useTuttiAddRoutingPolicyStore();
   const { createNotification, createRetryNotification } =
-    useChorusNotification();
+    useTuttiNotification();
 
   const { t } = useI18n({
     messages: i18nAddRoutingPolicy,

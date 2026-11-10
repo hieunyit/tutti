@@ -25,10 +25,10 @@
     CBadge,
     useDialog,
   } from '@clyso/clyso-ui-kit';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
   import { IconName } from '@/utils/types/icon';
-  import { useChorusNotification } from '@/utils/composables/useChorusNotification';
+  import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import DiffReportsShortList from '@/components/chorus/diff-reports/DiffReportsShortList/DiffReportsShortList.vue';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
   import type { DiffReport } from '@/utils/types/chorus';
@@ -42,13 +42,13 @@
     selectedReports,
     isDeleteSelectedProcessing,
     isRestartSelectedProcessing,
-  } = storeToRefs(useChorusDiffReportsStore());
+  } = storeToRefs(useTuttiDiffReportsStore());
 
   const {
     deleteDiffReports: storeDeleteDiffReports,
     restartDiffReports: storeRestartDiffReports,
-  } = useChorusDiffReportsStore();
-  const { createNotification } = useChorusNotification();
+  } = useTuttiDiffReportsStore();
+  const { createNotification } = useTuttiNotification();
   const { createDialog } = useDialog();
 
   /**

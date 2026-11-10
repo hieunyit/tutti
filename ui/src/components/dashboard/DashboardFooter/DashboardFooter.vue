@@ -15,26 +15,12 @@
   -->
 
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n';
-  import i18nLayout from '@/components/layout/i18nLayout';
-  import { useAboutDialog } from '@/utils/composables/useAboutDialog';
   import { APP_VERSION } from '@/utils/constants/env';
-
-  const { t } = useI18n({ messages: i18nLayout });
-  const { openAbout } = useAboutDialog();
 </script>
 
 <template>
   <footer class="dashboard-footer">
     <span>Tutti v{{ APP_VERSION }}</span>
-    <span aria-hidden="true">·</span>
-    <button
-      type="button"
-      class="dashboard-footer__about"
-      @click="openAbout"
-    >
-      {{ t('about') }}
-    </button>
   </footer>
 </template>
 
@@ -50,21 +36,6 @@
 
     @media screen and (max-width: 639px) {
       padding: 12px 16px;
-    }
-
-    &__about {
-      padding: 0;
-      border: 0;
-      background: none;
-      font: inherit;
-      color: inherit;
-      text-decoration: underline;
-      text-underline-offset: 2px;
-      cursor: pointer;
-
-      &:hover {
-        color: var(--tt-text);
-      }
     }
   }
 </style>

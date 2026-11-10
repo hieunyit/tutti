@@ -29,7 +29,6 @@
   import AppQuickSearch from '@/components/layout/AppQuickSearch.vue';
   import AppThemeToggle from '@/components/layout/AppThemeToggle.vue';
   import Callout from '@/components/ui/Callout.vue';
-  import AboutDialog from '@/components/layout/AboutDialog.vue';
   import i18nLayout from '@/components/layout/i18nLayout';
   import DashboardFooter from '@/components/dashboard/DashboardFooter/DashboardFooter.vue';
   import { ENV_LABEL, HAS_LANG_SELECT } from '@/utils/constants/env';
@@ -174,8 +173,6 @@
 
       <DashboardFooter />
     </div>
-
-    <AboutDialog />
   </div>
 </template>
 

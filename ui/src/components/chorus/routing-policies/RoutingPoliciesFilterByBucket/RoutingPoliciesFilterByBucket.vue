@@ -19,7 +19,7 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nRoutingPolicies from '../i18nRoutingPolicies';
-  import { useChorusRoutingPoliciesStore } from '@/stores/chorusRoutingPoliciesStore';
+  import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import ChorusBucketFilter from '@/components/chorus/common/ChorusBucketFilter/ChorusBucketFilter.vue';
 
   const { t } = useI18n({
@@ -27,7 +27,7 @@
   });
 
   const { routingPolicies, filterBuckets, page } = storeToRefs(
-    useChorusRoutingPoliciesStore(),
+    useTuttiRoutingPoliciesStore(),
   );
 
   const bucketOptions = computed(() =>

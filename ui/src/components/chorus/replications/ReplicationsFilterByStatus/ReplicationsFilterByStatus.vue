@@ -20,14 +20,14 @@
   import { CSelect } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import i18nReplications from '@/components/chorus/replications/i18nReplications';
-  import { useChorusReplicationsStore } from '@/stores/chorusReplicationsStore';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { ReplicationStatusFilter } from '@/utils/types/chorus';
 
   const { t } = useI18n({
     messages: i18nReplications,
   });
 
-  const { filterStatuses, page } = storeToRefs(useChorusReplicationsStore());
+  const { filterStatuses, page } = storeToRefs(useTuttiReplicationsStore());
 
   const statusOptions = computed<
     {

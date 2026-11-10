@@ -69,9 +69,9 @@ mkdir-build:
 %-bin: pretty mkdir-build
 	:
 
-.PHONY: chorus
-chorus: chorus-bin
-	go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o build/chorus cmd/chorus/main.go
+.PHONY: tutti
+tutti: tutti-bin
+	go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o build/tutti cmd/tutti/main.go
 
 .PHONY: proxy
 proxy: proxy-bin

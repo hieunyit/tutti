@@ -26,7 +26,7 @@
   import i18nAddRoutingPolicy from '../i18nAddRoutingPolicy';
   import ChorusUserCard from '../../common/ChorusUserCard/ChorusUserCard.vue';
   import ChorusStorageCard from '../../common/ChorusStorageCard/ChorusStorageCard.vue';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
   import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({
@@ -39,7 +39,7 @@
     bucketName,
     isForAllBuckets,
     isBlocked,
-  } = storeToRefs(useChorusAddRoutingPolicyStore());
+  } = storeToRefs(useTuttiAddRoutingPolicyStore());
 </script>
 
 <template>

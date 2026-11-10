@@ -20,11 +20,11 @@
   import AddDiffReportBucket from '@/components/chorus/add-diff-report/AddDiffReportBucket/AddDiffReportBucket.vue';
   import AddDiffReportStorage from '@/components/chorus/add-diff-report/AddDiffReportStorage/AddDiffReportStorage.vue';
   import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
-  import { useChorusAddDiffReportStore } from '@/stores/chorusAddDiffReportStore';
+  import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 
   const { storages, fromStorage, toStorage, toBucketName, validator } =
-    storeToRefs(useChorusAddDiffReportStore());
+    storeToRefs(useTuttiAddDiffReportStore());
 
   const { t } = useI18n({
     messages: i18nAddDiffReport,

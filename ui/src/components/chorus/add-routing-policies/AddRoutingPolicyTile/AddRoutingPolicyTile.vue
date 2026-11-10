@@ -24,10 +24,10 @@
   import StorageSelection from '../StorageSelection/StorageSelection.vue';
   import StatusSelection from '../StatusSelection/StatusSelection.vue';
   import AddRoutingPolicyConfirmDialog from '../AddRoutingPolicyConfirmDialog/AddRoutingPolicyConfirmDialog.vue';
-  import { useChorusAddRoutingPolicyStore } from '@/stores/chorusAddRoutingPolicyStore';
+  import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
 
   const { isConfirmDialogOpen, validator } = storeToRefs(
-    useChorusAddRoutingPolicyStore(),
+    useTuttiAddRoutingPolicyStore(),
   );
 
   const { t } = useI18n({

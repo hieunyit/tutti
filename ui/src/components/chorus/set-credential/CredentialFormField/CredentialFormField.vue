@@ -20,9 +20,9 @@
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import {
-    useChorusSetCredentialStore,
+    useTuttiSetCredentialStore,
     type CredentialFieldName,
-  } from '@/stores/chorusSetCredentialStore';
+  } from '@/stores/tuttiSetCredentialStore';
   import i18nSetCredential from '@/components/chorus/set-credential/i18nSetCredential';
 
   type CInputProps = InstanceType<typeof CInput>['$props'];
@@ -51,7 +51,7 @@
 
   const { t } = useI18n({ messages: i18nSetCredential });
 
-  const storeRefs = storeToRefs(useChorusSetCredentialStore());
+  const storeRefs = storeToRefs(useTuttiSetCredentialStore());
 
   const fieldValue = computed({
     get: () => storeRefs[props.fieldName].value,

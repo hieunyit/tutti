@@ -50,13 +50,14 @@ func LeaseKey(kind, owner string) string { return "tutti:protection:lease:" + ki
 // KEYS[1]=groups KEYS[2]=scope index
 // ARGV: 1 user, 2 bucket, 3 route, 4 token, 5 owner, 6 kind, 7 instance, 8 leaseMs, 9 nowMs
 var admitScript = redis.NewScript(`
-local ids=redis.call('hmget',KEYS[2],'_v','u:'..ARGV[1],'b:'..ARGV[1]..'/'..ARGV[2])
+local ids=redis.call('hmget',KEYS[2],'_v','u:'..ARGV[1],'b:'..ARGV[1]..'/'..ARGV[2],'b:'..ARGV[2])
 if not ids[1] then
  if redis.call('hlen',KEYS[1])==0 then return {'ok','','0'} end
  return {'noindex',''}
 end
 local id=ids[2]
 if not id then id=ids[3] end
+if not id then id=ids[4] end
 if not id then return {'ok','','0'} end
 local raw=redis.call('hget',KEYS[1],id)
 if not raw then return {'blocked',id} end

@@ -20,14 +20,14 @@
   import { CSelect } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import i18nDiffReports from '@/components/chorus/diff-reports/i18nDiffReports';
-  import { useChorusDiffReportsStore } from '@/stores/chorusDiffReportsStore';
+  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import { DiffReportStatusFilter } from '@/utils/types/chorus';
 
   const { t } = useI18n({
     messages: i18nDiffReports,
   });
 
-  const { filterStatuses, page } = storeToRefs(useChorusDiffReportsStore());
+  const { filterStatuses, page } = storeToRefs(useTuttiDiffReportsStore());
 
   const statusOptions = computed<
     {
