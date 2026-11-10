@@ -212,7 +212,11 @@
             :loading="busy"
             :disabled="!user || !store.dynamicEnabled"
             @click="createKey"
-            >{{ t('firstKey') }}</NButton
+            >{{
+              user && user.accessKeys?.dynamicActive
+                ? t('newKey')
+                : t('firstKey')
+            }}</NButton
           ></WriteGate
         ></template
       ></PageHeader

@@ -159,6 +159,25 @@
 
     td {
       overflow-wrap: anywhere;
+      white-space: normal;
+      vertical-align: top;
+    }
+
+    td:nth-child(1) {
+      white-space: nowrap;
+    }
+
+    td:nth-child(2) {
+      min-width: 120px;
+      overflow-wrap: normal;
+    }
+
+    td:nth-child(4) {
+      min-width: 160px;
+    }
+
+    td:nth-child(6) {
+      min-width: 220px;
     }
 
     &__row--fail td:nth-child(2) {

@@ -226,9 +226,9 @@
       tone="warning"
       >{{ t('notConfigured') }}</Callout
     ><Callout
-      v-if="store.hasError || error"
+      v-if="store.hasError && !error"
       tone="danger"
-      >{{ error || t('error') }}</Callout
+      >{{ t('error') }}</Callout
     >
     <NSteps
       :current="step"
@@ -357,6 +357,11 @@
             </NCollapseItem>
           </NCollapse>
         </template>
+        <Callout
+          v-if="error"
+          tone="danger"
+          >{{ error }}</Callout
+        >
         <div class="phase-d__actions">
           <NButton
             v-if="step > 1"
