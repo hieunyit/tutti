@@ -23,6 +23,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/objstore"
@@ -30,14 +31,25 @@ import (
 	"github.com/hieunyit/tutti/service/worker/handler"
 )
 
+type DiffOption func(*diffHandlers)
+
+func WithDiffControlPlaneStore(cp controlplane.Store) DiffOption {
+	return func(h *diffHandlers) { h.cpStore = cp }
+}
+
 func DiffHandlers(
 	credsSvc objstore.CredsService,
 	diffSvc *handler.DiffSvc,
+	opts ...DiffOption,
 ) pb.DiffServer {
-	return &diffHandlers{
+	h := &diffHandlers{
 		credsSvc: credsSvc,
 		diffSvc:  diffSvc,
 	}
+	for _, o := range opts {
+		o(h)
+	}
+	return h
 }
 
 var _ pb.DiffServer = &diffHandlers{}
@@ -45,6 +57,7 @@ var _ pb.DiffServer = &diffHandlers{}
 type diffHandlers struct {
 	diffSvc  *handler.DiffSvc
 	credsSvc objstore.CredsService
+	cpStore  controlplane.Store
 }
 
 func (h *diffHandlers) Start(ctx context.Context, req *pb.StartDiffCheckRequest) (*emptypb.Empty, error) {
@@ -66,6 +79,10 @@ func (h *diffHandlers) Start(ctx context.Context, req *pb.StartDiffCheckRequest)
 
 	if err := h.diffSvc.StartDiff(ctx, diffID, settings); err != nil {
 		return nil, fmt.Errorf("unable to start diff check: %w", err)
+	}
+
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "START", "diff", diffID.String(), req)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -149,6 +166,10 @@ func (h *diffHandlers) DeleteReport(ctx context.Context, req *pb.DiffCheckReques
 		return nil, fmt.Errorf("unable to delete diff check: %w", err)
 	}
 
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "DELETE", "diff_report", diffID.String(), req)
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -169,6 +190,10 @@ func (h *diffHandlers) Fix(ctx context.Context, req *pb.StartDiffFixRequest) (*e
 		return nil, fmt.Errorf("unable to fix diff: %w", err)
 	}
 
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "FIX", "diff", diffID.String(), req)
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
@@ -180,6 +205,10 @@ func (h *diffHandlers) Restart(ctx context.Context, req *pb.DiffCheckRequest) (*
 	diffID := pbToDiffID(req.Locations)
 	if err := h.diffSvc.RestartDiff(ctx, diffID); err != nil {
 		return nil, fmt.Errorf("unable to restart diff check: %w", err)
+	}
+
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "RESTART", "diff", diffID.String(), req)
 	}
 
 	return &emptypb.Empty{}, nil

@@ -164,9 +164,10 @@ type Replications interface {
 	ListGenerations(ctx context.Context) (map[ReplicationID]int64, error)
 }
 
-// Audit reads the audit log. Rows are written by the repositories, never directly.
+// Audit reads the audit log. Rows are written by the repositories, or via Record for runtime operations.
 type Audit interface {
 	List(ctx context.Context, f AuditFilter) ([]AuditEntry, error)
+	Record(ctx context.Context, action, objectType, objectID string, details any) error
 }
 
 // Repos groups all repositories. Inside Store.Tx they share one transaction.

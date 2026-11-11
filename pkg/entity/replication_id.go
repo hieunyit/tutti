@@ -167,6 +167,10 @@ func (r *UniversalReplicationID) AsString() string {
 	return strings.Join([]string{r.user, r.fromStorage, r.toStorage, r.fromBucket, r.toBucket}, ":")
 }
 
+func (r UniversalReplicationID) String() string {
+	return r.AsString()
+}
+
 func UniversalIDFromString(s string) (UniversalReplicationID, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) != 3 && len(parts) != 5 {

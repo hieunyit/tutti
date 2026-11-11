@@ -15,6 +15,7 @@
 package entity
 
 import (
+	"encoding/json"
 	"sort"
 )
 
@@ -51,6 +52,11 @@ func NewDiffLocation(storage string, bucket string) DiffLocation {
 
 type DiffID struct {
 	Locations []DiffLocation
+}
+
+func (d DiffID) String() string {
+	b, _ := json.Marshal(d)
+	return string(b)
 }
 
 func NewDiffID(locations ...DiffLocation) DiffID {

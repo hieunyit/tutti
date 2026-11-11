@@ -581,3 +581,33 @@ func TestPublisher_MaxConnsOneWithStats(t *testing.T) {
 	require.Equal(t, 1, res.Published)
 	require.True(t, statsCalled)
 }
+
+func TestAuditRecordRuntimeAction(t *testing.T) {
+	s := newStore(t)
+	ctx := actorCtx("operator@console")
+	r := s.Repos()
+
+	type runtimePayload struct {
+		Reason string `json:"reason"`
+		Secret string `json:"secret"`
+	}
+
+	err := r.Audit.Record(ctx, "PAUSE", "replication", "alice:s1:s2", runtimePayload{
+		Reason: "maintenance",
+		Secret: "super-secret-token",
+	})
+	require.NoError(t, err)
+
+	es, err := r.Audit.List(ctx, controlplane.AuditFilter{ObjectType: "replication", ObjectID: "alice:s1:s2"})
+	require.NoError(t, err)
+	require.Len(t, es, 1)
+	require.Equal(t, "PAUSE", es[0].Action)
+	require.Equal(t, "operator@console", es[0].Actor)
+	require.Equal(t, "req-1", es[0].RequestID)
+	require.Nil(t, es[0].Before)
+
+	var after map[string]any
+	require.NoError(t, json.Unmarshal(es[0].After, &after))
+	require.Equal(t, "maintenance", after["reason"])
+	require.Equal(t, pg.Redacted, after["secret"])
+}

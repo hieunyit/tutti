@@ -193,3 +193,22 @@ func (a *auditRepo) List(ctx context.Context, f controlplane.AuditFilter) ([]con
 	}
 	return res, rows.Err()
 }
+
+func (a *auditRepo) Record(ctx context.Context, action, objectType, objectID string, details any) error {
+	act := controlplane.ActorFrom(ctx)
+	var ra any
+	if details != nil {
+		b, err := marshalOrNil(details)
+		if err == nil {
+			ra = json.RawMessage(Redact(b))
+		}
+	}
+	return a.rt.write(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO audit_log (actor, request_id, action, object_type, object_id, before, after)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)`, act.Name, act.RequestID, action, objectType, objectID, nil, ra)
+		if err != nil {
+			return fmt.Errorf("controlplane: record audit: %w", err)
+		}
+		return nil
+	})
+}

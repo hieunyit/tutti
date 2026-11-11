@@ -432,12 +432,21 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return fmt.Errorf("api.secure is unsupported by the embedded API listeners")
 		}
 		chorusHandler := api.ChorusHandlers(credsSvc, rpc.NewProxyClient(appRedis), &app)
-		diffHandler := api.DiffHandlers(credsSvc, checkSvc)
+		diffOpts := []api.DiffOption{}
+		policyOpts := []api.PolicyOption{
+			api.WithPolicyStorageLocker(storageLocker),
+			api.WithPolicyScope(bucketScope),
+		}
+		if cpStore != nil {
+			diffOpts = append(diffOpts, api.WithDiffControlPlaneStore(cpStore))
+			policyOpts = append(policyOpts, api.WithPolicyControlPlaneStore(cpStore))
+		}
+		diffHandler := api.DiffHandlers(credsSvc, checkSvc, diffOpts...)
 		var webhookConf *api.WebhookConfig
 		if conf.Api.Webhook.Enabled {
 			webhookConf = &conf.Api.Webhook
 		}
-		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, api.WithPolicyStorageLocker(storageLocker), api.WithPolicyScope(bucketScope))
+		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, policyOpts...)
 
 		webhookSharesMainPort := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort <= 0
 		var authOpts []auth.Option

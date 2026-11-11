@@ -32,6 +32,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/meta"
@@ -96,6 +97,11 @@ func WithPolicyStorageLocker(l *StorageLocker) PolicyOption {
 	return func(h *policyHandlers) { h.storageLocker = l }
 }
 
+// WithPolicyControlPlaneStore provides controlplane store for recording audit trail of runtime operations.
+func WithPolicyControlPlaneStore(cp controlplane.Store) PolicyOption {
+	return func(h *policyHandlers) { h.cpStore = cp }
+}
+
 var _ pb.PolicyServer = &policyHandlers{}
 
 type policyHandlers struct {
@@ -112,6 +118,7 @@ type policyHandlers struct {
 	webhookConf             *WebhookConfig
 	storageLocker           *StorageLocker
 	scope                   *accesspolicy.Scope
+	cpStore                 controlplane.Store
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
@@ -635,6 +642,9 @@ func (h *policyHandlers) PauseReplication(ctx context.Context, req *pb.Replicati
 	if err != nil {
 		return nil, err
 	}
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "PAUSE", "replication", uid.String(), req)
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -648,6 +658,9 @@ func (h *policyHandlers) ResumeReplication(ctx context.Context, req *pb.Replicat
 	})
 	if err != nil {
 		return nil, err
+	}
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "RESUME", "replication", uid.String(), req)
 	}
 	return &emptypb.Empty{}, nil
 }
