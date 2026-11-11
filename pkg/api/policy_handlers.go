@@ -636,6 +636,11 @@ func (h *policyHandlers) PauseReplication(ctx context.Context, req *pb.Replicati
 	if err != nil {
 		return nil, err
 	}
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "PAUSE_INTENT", "replication", uid.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record pause intent: %w", err)
+		}
+	}
 	err = h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.policySvc.PauseReplication(ctx, uid)
 	})
@@ -652,6 +657,11 @@ func (h *policyHandlers) ResumeReplication(ctx context.Context, req *pb.Replicat
 	uid, err := pbToReplicationID(req)
 	if err != nil {
 		return nil, err
+	}
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "RESUME_INTENT", "replication", uid.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record resume intent: %w", err)
+		}
 	}
 	err = h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.policySvc.ResumeReplication(ctx, uid)

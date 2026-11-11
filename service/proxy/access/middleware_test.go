@@ -17,6 +17,7 @@
 package access
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"net/http"
@@ -244,4 +245,47 @@ func TestSharedAccountPolicyIsolation(t *testing.T) {
 	require.Equal(t, 200, rec.Code)
 	require.NotContains(t, rec.Body.String(), "secret")
 	require.NotContains(t, rec.Body.String(), "bob")
+}
+
+func TestListBucketsBufferOverflowFailClosed(t *testing.T) {
+	pols := map[string]accesspolicy.Policy{
+		"scoped": {User: "scoped", Permission: accesspolicy.ReadOnly, Buckets: []string{"photos-*"}},
+	}
+	lookup := func(_ context.Context, u string) (accesspolicy.Policy, bool) { p, ok := pols[u]; return p, ok }
+
+	t.Run("uncompressed payload exceeds buffer limit", func(t *testing.T) {
+		h := Middleware(lookup)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/xml")
+			chunk := bytes.Repeat([]byte("a"), 1<<20) // 1 MiB chunk
+			for i := 0; i < 11; i++ {
+				_, _ = w.Write(chunk)
+			}
+		}))
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := log.WithMethod(log.WithUser(req.Context(), "scoped"), s3.ListBuckets)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req.WithContext(ctx))
+
+		require.Equal(t, http.StatusInternalServerError, rec.Code)
+		require.Empty(t, rec.Body.Bytes())
+	})
+
+	t.Run("compressed payload decompresses beyond buffer limit", func(t *testing.T) {
+		h := Middleware(lookup)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Encoding", "gzip")
+			zw := gzip.NewWriter(w)
+			chunk := make([]byte, 1<<20)
+			for i := 0; i < 11; i++ {
+				_, _ = zw.Write(chunk)
+			}
+			_ = zw.Close()
+		}))
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := log.WithMethod(log.WithUser(req.Context(), "scoped"), s3.ListBuckets)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req.WithContext(ctx))
+
+		require.Equal(t, http.StatusInternalServerError, rec.Code)
+		require.Empty(t, rec.Body.Bytes())
+	})
 }

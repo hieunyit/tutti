@@ -77,6 +77,12 @@ func (h *diffHandlers) Start(ctx context.Context, req *pb.StartDiffCheckRequest)
 
 	settings := entity.NewDiffSettings(req.User, shouldCheckVersions, req.IgnoreSizes, req.IgnoreEtags)
 
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "START_INTENT", "diff", diffID.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record start diff intent: %w", err)
+		}
+	}
+
 	if err := h.diffSvc.StartDiff(ctx, diffID, settings); err != nil {
 		return nil, fmt.Errorf("unable to start diff check: %w", err)
 	}
@@ -162,6 +168,11 @@ func (h *diffHandlers) DeleteReport(ctx context.Context, req *pb.DiffCheckReques
 	}
 
 	diffID := pbToDiffID(req.Locations)
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "DELETE_INTENT", "diff_report", diffID.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record delete diff report intent: %w", err)
+		}
+	}
 	if err := h.diffSvc.DeleteDiff(ctx, diffID); err != nil {
 		return nil, fmt.Errorf("unable to delete diff check: %w", err)
 	}
@@ -186,6 +197,11 @@ func (h *diffHandlers) Fix(ctx context.Context, req *pb.StartDiffFixRequest) (*e
 	diffID := pbToDiffID(req.Locations)
 	source := entity.NewDiffLocation(req.Locations[req.SourceIndex].Storage, req.Locations[req.SourceIndex].Bucket)
 	storageType := h.credsSvc.Storages()[req.Locations[req.SourceIndex].Storage]
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "FIX_INTENT", "diff", diffID.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record fix diff intent: %w", err)
+		}
+	}
 	if err := h.diffSvc.FixDiff(ctx, diffID, source, storageType); err != nil {
 		return nil, fmt.Errorf("unable to fix diff: %w", err)
 	}
@@ -203,6 +219,11 @@ func (h *diffHandlers) Restart(ctx context.Context, req *pb.DiffCheckRequest) (*
 	}
 
 	diffID := pbToDiffID(req.Locations)
+	if h.cpStore != nil {
+		if err := h.cpStore.Repos().Audit.Record(ctx, "RESTART_INTENT", "diff", diffID.String(), req); err != nil {
+			return nil, fmt.Errorf("audit: unable to record restart diff intent: %w", err)
+		}
+	}
 	if err := h.diffSvc.RestartDiff(ctx, diffID); err != nil {
 		return nil, fmt.Errorf("unable to restart diff check: %w", err)
 	}

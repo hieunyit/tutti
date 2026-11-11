@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/xml"
+	"errors"
 	"html"
 	"io"
 	"net/http"
@@ -162,17 +163,29 @@ func copySourceBucket(v string) (bucket string, invalid bool) {
 	return b, false
 }
 
+const maxListBucketsBufferSize = 10 << 20
+
 // filterWriter buffers a ListBuckets response and removes buckets that the policy does not allow.
 type filterWriter struct {
 	http.ResponseWriter
-	pol    accesspolicy.Policy
-	status int
-	buf    bytes.Buffer
+	pol      accesspolicy.Policy
+	status   int
+	buf      bytes.Buffer
+	overflow bool
 }
 
 func (f *filterWriter) WriteHeader(code int) { f.status = code }
 
-func (f *filterWriter) Write(b []byte) (int, error) { return f.buf.Write(b) }
+func (f *filterWriter) Write(b []byte) (int, error) {
+	if f.overflow {
+		return 0, errors.New("list buckets response exceeded maximum allowed buffer size")
+	}
+	if f.buf.Len()+len(b) > maxListBucketsBufferSize {
+		f.overflow = true
+		return 0, errors.New("list buckets response exceeded maximum allowed buffer size")
+	}
+	return f.buf.Write(b)
+}
 
 type bucketEntry struct {
 	Name         string `xml:"Name"`
@@ -192,11 +205,24 @@ type listBucketsResult struct {
 }
 
 func (f *filterWriter) finish(ctx context.Context) {
+	if f.overflow {
+		zerolog.Ctx(ctx).Error().Msg("access policy: ListBuckets response exceeded buffer limit")
+		f.status = http.StatusInternalServerError
+		h := f.ResponseWriter.Header()
+		h.Del("Content-Encoding")
+		h.Del("Etag")
+		h.Set("Content-Length", "0")
+		f.ResponseWriter.WriteHeader(f.status)
+		return
+	}
 	body := f.buf.Bytes()
 	if f.status == http.StatusOK && strings.EqualFold(f.ResponseWriter.Header().Get("Content-Encoding"), "gzip") {
 		zr, err := gzip.NewReader(bytes.NewReader(body))
 		if err == nil {
-			body, err = io.ReadAll(io.LimitReader(zr, 64<<20))
+			body, err = io.ReadAll(io.LimitReader(zr, maxListBucketsBufferSize+1))
+			if err == nil && len(body) > maxListBucketsBufferSize {
+				err = errors.New("decompressed list buckets response exceeded buffer limit")
+			}
 		}
 		if err != nil {
 			// cannot decode: never leak the unfiltered list

@@ -755,7 +755,7 @@ func TestDeleteRecreate_OldCompletionMustNotCatchUp(t *testing.T) {
 		"old completion must not mark recreated object caught up")
 }
 
-func TestObjectID_FallbackToLegacyKeys(t *testing.T) {
+func TestObjectID_NoAliasBetweenPrefixedAndUnprefixed(t *testing.T) {
 	client := testutil.SetupRedis(t)
 	s := NewVersionService(client)
 	ctx := t.Context()
@@ -763,32 +763,43 @@ func TestObjectID_FallbackToLegacyKeys(t *testing.T) {
 		User: "u", FromStorage: "primary", ToStorage: "replica",
 		FromBucket: "bucket", ToBucket: "bucket",
 	})
-	obj := dom.Object{Bucket: "bucket", Name: "report"}
+	// Object A has name "a", object B has name "1:a"
+	// Under length prefix, objA is encoded as "1:a", objB is encoded as "3:1:a"
+	objA := dom.Object{Bucket: "bucket", Name: "a"}
+	objB := dom.Object{Bucket: "bucket", Name: "1:a"}
+
 	src := Destination{Storage: "primary", Bucket: "bucket"}
+	dst := Destination{Storage: "replica", Bucket: "bucket"}
 
-	// Simulate legacy data in Redis: key "v:u:primary:replica:bucket:bucket", field "f:report:p" = 10
-	hashKey := "v:u:primary:replica:bucket:bucket"
-	require.NoError(t, client.HSet(ctx, hashKey, "f:report:p", 10).Err())
-
-	// 1. GetObj should fall back to legacy field
-	v, err := s.GetObj(ctx, id, obj)
+	// 1. Fully synchronize Object A (From=1, To=1)
+	vA, err := s.IncrementObj(ctx, id, objA, src)
 	require.NoError(t, err)
-	require.EqualValues(t, 10, v.From, "should read from legacy field")
-	require.EqualValues(t, 0, v.To)
+	require.Equal(t, 1, vA)
+	require.NoError(t, s.UpdateIfGreater(ctx, id, objA, dst, 1))
 
-	// 2. IncrementObj should take max from legacy and bump to 11 in delimited field
-	next, err := s.IncrementObj(ctx, id, obj, src)
+	verA, err := s.GetObj(ctx, id, objA)
 	require.NoError(t, err)
-	require.EqualValues(t, 11, next, "increment should observe legacy version and bump to 11")
+	require.Equal(t, 1, verA.From)
+	require.Equal(t, 1, verA.To)
 
-	// 3. Delimited field is now populated
-	v2, err := s.GetObj(ctx, id, obj)
+	// 2. Object B ("1:a") has NOT been synced yet.
+	// It must NOT read Object A's counter, and must return 0/0.
+	verB, err := s.GetObj(ctx, id, objB)
 	require.NoError(t, err)
-	require.EqualValues(t, 11, v2.From)
+	require.Equal(t, Version{}, verB, "Object B ('1:a') must not alias Object A ('a')")
 
-	// 4. DeleteObjAll should delete both delimited and legacy fields
-	require.NoError(t, s.DeleteObjAll(ctx, id, obj))
-	v3, err := s.GetObj(ctx, id, obj)
+	// 3. Mutating B must not affect A
+	vB, err := s.IncrementObj(ctx, id, objB, src)
 	require.NoError(t, err)
-	require.Equal(t, Version{}, v3, "both new and legacy fields must be deleted")
+	require.Equal(t, 1, vB)
+
+	verAAfter, err := s.GetObj(ctx, id, objA)
+	require.NoError(t, err)
+	require.Equal(t, 1, verAAfter.From)
+	require.Equal(t, 1, verAAfter.To)
+
+	verBAfter, err := s.GetObj(ctx, id, objB)
+	require.NoError(t, err)
+	require.Equal(t, 1, verBAfter.From)
+	require.Equal(t, 0, verBAfter.To)
 }

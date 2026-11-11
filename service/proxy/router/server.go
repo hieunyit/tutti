@@ -323,10 +323,21 @@ func serveAtomic(router Router, replSvc replication.Service, proxyCors bool, rep
 					}
 				}
 			}
-			if recordErr != nil && replOpts.OnEventError == OnEventErrorFail {
-				// resp body is closed by defer
-				writeEventRecordError(ctx, w)
-				return
+			if recordErr != nil {
+				if replOpts.OnEventError == OnEventErrorFail {
+					// resp body is closed by defer
+					writeEventRecordError(ctx, w)
+					return
+				}
+				// OnEventErrorLog is an explicit durability exception (breaking I1 durability guarantee):
+				// primary write succeeded, but replication event could not be recorded in Redis/Asynq.
+				// Forwarding backend 2xx means this write will NOT be replicated until out-of-band diff/fix.
+				logger.Warn().
+					Err(recordErr).
+					Str("bucket", xctx.GetBucket(ctx)).
+					Str("object", xctx.GetObject(ctx)).
+					Msg("CRITICAL: replication event dropped with onEventError=log; replication durability (I1) is NOT guaranteed for this write")
+				w.Header().Set("X-Tutti-Replication-Warning", "replication event dropped; durability not guaranteed")
 			}
 			if recordErr == nil && syncOpts.active() {
 				syncRes, synced = syncOpts.syncDestinations(replCtx, taskList)

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -298,7 +299,10 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		toObjectPresent = false
 	}
 
-	if toObjectPresent && fromObjectStat.ETag == toObjectStat.ETag && fromObjectStat.Size == toObjectStat.Size {
+	if toObjectPresent &&
+		fromObjectStat.ETag == toObjectStat.ETag &&
+		fromObjectStat.Size == toObjectStat.Size &&
+		sameMetadata(fromObjectStat, toObjectStat, features.Tagging(ctx)) {
 		return nil
 	}
 
@@ -564,4 +568,17 @@ func srcOwnerToDestOwner(owner, srcBucketOwner, dstBucketOwner *string) *string 
 		return owner
 	}
 	return dstBucketOwner
+}
+
+func sameMetadata(from, to minio.ObjectInfo, checkTags bool) bool {
+	if from.ContentType != to.ContentType {
+		return false
+	}
+	if !maps.Equal(from.UserMetadata, to.UserMetadata) {
+		return false
+	}
+	if checkTags && !maps.Equal(from.UserTags, to.UserTags) {
+		return false
+	}
+	return true
 }

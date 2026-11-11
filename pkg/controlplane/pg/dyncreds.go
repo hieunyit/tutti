@@ -77,16 +77,21 @@ func (d *dynCreds) Delete(ctx context.Context, storage, user string) error {
 		if err := rows.Err(); err != nil {
 			return err
 		}
-		ops := []RedisOp{{Op: OpHIncr, Key: KeyDynamicCreds, Field: "version"}}
-		for _, t := range []string{"S3", "SWIFT"} {
-			ops = append(ops, opHDel(KeyDynamicCreds, t+":"+storage+":"+user))
-		}
 		for _, t := range types {
-			if err := record(ctx, tx, mutation{action: "delete", objectType: "dynamic_credentials", objectID: t + ":" + storage + ":" + user,
-				before: credDoc(controlplane.DynamicCredential{StorageType: t, Storage: storage, User: user, Sealed: "x"}), ops: ops}); err != nil {
+			field := t + ":" + storage + ":" + user
+			ops := []RedisOp{
+				opHDel(KeyDynamicCreds, field),
+				{Op: OpHIncr, Key: KeyDynamicCreds, Field: "version"},
+			}
+			if err := record(ctx, tx, mutation{
+				action:     "delete",
+				objectType: "dynamic_credentials",
+				objectID:   field,
+				before:     credDoc(controlplane.DynamicCredential{StorageType: t, Storage: storage, User: user, Sealed: "x"}),
+				ops:        ops,
+			}); err != nil {
 				return err
 			}
-			ops = nil // one projection is enough
 		}
 		return nil
 	})

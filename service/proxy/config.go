@@ -162,8 +162,10 @@ func (f *FailoverConfig) Validate() error {
 
 type ReplicationConfig struct {
 	// OnEventError defines what to do when a write succeeded on the main storage but its replication event
-	// could not be recorded: "fail" (default) returns 503 so the client retries the (idempotent) request,
-	// which records the event again; "log" keeps the legacy behavior (respond with the storage response and only log).
+	// could not be recorded:
+	// - "fail" (default): responds with HTTP 503 so the client retries the request, preserving invariant I1 (replication durability).
+	// - "log": EXCEPTION TO DURABILITY (I1). Responds with the backend 2xx status and logs a critical warning. Replication
+	//   is NOT guaranteed for dropped events and requires out-of-band reconciliation (diff/fix).
 	OnEventError string `yaml:"onEventError"`
 	// EventRetryBudget is the total time to retry recording the event before OnEventError applies. Default 2s.
 	EventRetryBudget time.Duration `yaml:"eventRetryBudget"`
