@@ -700,6 +700,30 @@ func LookupStorageGroup(index map[string]string, storage string) (group string, 
 	return id, true
 }
 
+// LookupEffectiveScope resolves the protection group governing a write to (user, bucket) routed to storage.
+// It checks user/bucket scope first, then storage-level scope for the routed storage.
+// ok is false when the index is incomplete or when route is empty but storage groups exist,
+// requiring callers to fall back to authoritative Redis admission.
+func LookupEffectiveScope(index map[string]string, user, bucket, route string) (group string, ok bool) {
+	if index[indexVersionField] == "" {
+		return "", false
+	}
+	if group, ok := LookupScope(index, user, bucket); !ok || group != "" {
+		return group, ok
+	}
+	if route != "" {
+		return LookupStorageGroup(index, route)
+	}
+	// Route is empty: check if any storage-level protection group exists.
+	// If one does, an empty route is ambiguous and cannot safely be declared unprotected.
+	for k := range index {
+		if strings.HasPrefix(k, "st:") {
+			return "", false
+		}
+	}
+	return "", true
+}
+
 // LookupSharedGroup resolves the protection group of ANOTHER identity that manages bucket on storage, for a user
 // whose requests on storage use the storage's shared connection account (credential mode "connection"). It
 // is an O(1) lookup of the storage fields of the index: only bucket groups that list storage as a member
@@ -726,14 +750,19 @@ func LookupSharedGroup(index map[string]string, storage, user, bucket string) (g
 	return id, true, nil
 }
 
-// ScopeFields reads the scope index fields LookupScope needs for (user, bucket): a partial index for that lookup.
-func ScopeFields(ctx context.Context, r redis.Cmdable, user, bucket string) (map[string]string, error) {
+// ScopeFields reads the scope index fields LookupScope and LookupStorageGroup need for (user, bucket, storages): a partial index for that lookup.
+func ScopeFields(ctx context.Context, r redis.Cmdable, user, bucket string, storages ...string) (map[string]string, error) {
 	keys := []string{indexVersionField}
 	if user != "" {
 		keys = append(keys, "u:"+user, "b:"+user+"/"+bucket)
 	}
 	if bucket != "" {
 		keys = append(keys, "b:"+bucket)
+	}
+	for _, s := range storages {
+		if s != "" {
+			keys = append(keys, "st:"+s)
+		}
 	}
 	vals, err := r.HMGet(ctx, ScopeIndexKey, keys...).Result()
 	if err != nil {
@@ -813,6 +842,17 @@ func (s *Store) AutomaticFrozen(ctx context.Context) (bool, error) {
 	return v == "1", err
 }
 func (s *Store) SetAutomaticFrozen(ctx context.Context, frozen bool) error {
+	if s.CP != nil {
+		action := "ENABLE"
+		if !frozen {
+			action = "DISABLE"
+		}
+		if err := s.CP.Repos().Audit.Record(ctx, action, "protection_groups", "automatic_freeze", map[string]any{
+			"frozen": frozen,
+		}); err != nil {
+			return fmt.Errorf("audit: unable to record automatic freeze intent: %w", err)
+		}
+	}
 	v := "0"
 	if frozen {
 		v = "1"

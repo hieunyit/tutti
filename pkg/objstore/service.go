@@ -108,7 +108,9 @@ type commonObjectOptions struct {
 	versionID string
 }
 
-func WithVersionID(versionID string) func(o *commonObjectOptions) {
+type CommonObjectOption = func(o *commonObjectOptions)
+
+func WithVersionID(versionID string) CommonObjectOption {
 	return func(o *commonObjectOptions) {
 		o.versionID = versionID
 	}

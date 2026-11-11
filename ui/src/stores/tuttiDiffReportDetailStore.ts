@@ -92,6 +92,10 @@ export const useTuttiDiffReportDetailStore = defineStore(
         state.pollingRequest = getDiffReport(currentGen);
 
         await state.pollingRequest;
+
+        if (currentGen === generation) {
+          state.hasError = false;
+        }
       } catch (e) {
         if (currentGen !== generation) {
           return;
@@ -103,7 +107,14 @@ export const useTuttiDiffReportDetailStore = defineStore(
           return;
         }
 
-        throw e;
+        if (!state.report) {
+          state.hasError = true;
+        }
+
+        // Transient error (e.g. 503): schedule next poll attempt instead of killing the polling loop
+        state.pollingTimeout = window.setTimeout(startPolling, POLL_INTERVAL_MS);
+
+        return;
       } finally {
         if (currentGen === generation) {
           state.pollingRequest = null;
@@ -127,6 +138,11 @@ export const useTuttiDiffReportDetailStore = defineStore(
     }
 
     async function initDiffReportDetailsPage() {
+      state.locations = DiffReportsHelper.parseQueryParamsToLocations(
+        route.query.from,
+        route.query.to,
+      );
+
       if (state.locations.length !== 2) {
         return;
       }
@@ -135,11 +151,6 @@ export const useTuttiDiffReportDetailStore = defineStore(
 
       try {
         await startPolling();
-
-        state.hasError = false;
-      } catch {
-        state.hasError = true;
-        stopPolling();
       } finally {
         state.isLoading = false;
       }

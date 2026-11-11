@@ -20,18 +20,34 @@ import (
 
 // fakeCP is an in-memory control plane holding only protection group rows, with injectable failures.
 type fakeCP struct {
-	mu       sync.Mutex
-	rows     map[string][]byte
-	failPut  bool
-	failDel  bool
-	failRead bool
-	readOnly bool
+	mu        sync.Mutex
+	rows      map[string][]byte
+	failPut   bool
+	failDel   bool
+	failRead  bool
+	readOnly  bool
+	auditLogs []string
 }
 
 func newFakeCP() *fakeCP { return &fakeCP{rows: map[string][]byte{}} }
 
+type fakeAudit struct {
+	controlplane.Audit
+	f *fakeCP
+}
+
+func (a *fakeAudit) Record(ctx context.Context, action, objectType, objectID string, details any) error {
+	a.f.mu.Lock()
+	defer a.f.mu.Unlock()
+	a.f.auditLogs = append(a.f.auditLogs, action+":"+objectType+":"+objectID)
+	return nil
+}
+
 func (f *fakeCP) Repos() controlplane.Repos {
-	return controlplane.Repos{ProtectionGroups: &fakeKV{f: f}}
+	return controlplane.Repos{
+		ProtectionGroups: &fakeKV{f: f},
+		Audit:            &fakeAudit{f: f},
+	}
 }
 func (f *fakeCP) Tx(context.Context, func(controlplane.Repos) error) error {
 	return errors.New("unused")
@@ -312,3 +328,33 @@ func TestWorkerMiddlewareRefusesSharedDestination(t *testing.T) {
 	require.NoError(t, h.ProcessTask(ctx, task("alice", "s1", "s2", "x")), "the group's own replication")
 	require.Equal(t, 4, ran)
 }
+
+func TestAuditRecordedForAutomaticFreezeAndClearWriter(t *testing.T) {
+	s, cp := newCPStore(t)
+	ctx := t.Context()
+
+	// 1. Automatic freeze toggle audits
+	require.NoError(t, s.SetAutomaticFrozen(ctx, true))
+	require.NoError(t, s.SetAutomaticFrozen(ctx, false))
+
+	cp.mu.Lock()
+	logs := append([]string(nil), cp.auditLogs...)
+	cp.mu.Unlock()
+
+	require.Contains(t, logs, "ENABLE:protection_groups:automatic_freeze")
+	require.Contains(t, logs, "DISABLE:protection_groups:automatic_freeze")
+
+	// 2. ClearWriter audits
+	g := saveGroup(t, s, Group{ID: "g-audit", User: "alice", Members: []string{"s1", "s2"}})
+	g.Frozen = true
+	require.NoError(t, s.Save(ctx, &g))
+
+	require.NoError(t, s.ClearWriterKind(ctx, "g-audit", "test-token", true, false))
+
+	cp.mu.Lock()
+	logs = append([]string(nil), cp.auditLogs...)
+	cp.mu.Unlock()
+
+	require.Contains(t, logs, "CLEAR_WRITER:protection_groups:g-audit")
+}
+

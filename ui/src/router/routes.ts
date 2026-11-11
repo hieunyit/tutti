@@ -240,12 +240,7 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'failover',
-        meta: {
-          navGroup: 'dataProtection',
-          navSection: RouteName.TUTTI_FAILOVER,
-        },
-        name: RouteName.TUTTI_FAILOVER,
-        component: TuttiFailoverPage,
+        redirect: { name: RouteName.TUTTI_PROTECTION_GROUPS },
       },
       {
         path: 'protection-groups',

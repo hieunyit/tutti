@@ -227,3 +227,304 @@ func TestProtectionGroupOfUsesCurrentIndex(t *testing.T) {
 		e.mr.SetError("")
 	}
 }
+
+// Storage-level protection groups protect all users and buckets routed to their member storages.
+// A write routed to a member storage must register a writer record under the storage group ID
+// before the downstream handler starts, and keep it active until the handler returns.
+func TestStorageGroup_WriteRegistersWriterUntilHandlerReturns(t *testing.T) {
+	e := newSnapEnv(t)
+	ctx := t.Context()
+	require.NoError(t, e.svc.SetUserRouting(ctx, "bob", "main"))
+
+	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+	t.Cleanup(func() { _ = other.Close() })
+	groups := protectiongroups.NewStore(other)
+	require.NoError(t, groups.EnsureIndex(ctx))
+	lease := groups.NewLease("p1", false, 0)
+
+	g := protectiongroups.Group{
+		ID:         "storage-main",
+		User:       "",
+		Buckets:    nil,
+		Members:    []string{"main", "follower"},
+		Primary:    "main",
+		Copies:     2,
+		Generation: 1,
+		State:      "ready",
+		Frozen:     false,
+	}
+	require.NoError(t, g.Validate())
+	require.NoError(t, groups.Save(ctx, &g))
+
+	inHandler := make(chan struct{})
+	releaseHandler := make(chan struct{})
+	fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(inHandler)
+		<-releaseHandler
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	done := make(chan int, 1)
+	go func() {
+		rctx, err := e.svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "data"), "bob", "data")
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		fence.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/data/k", nil).WithContext(rctx))
+		done <- rec.Code
+	}()
+
+	<-inHandler
+	// While inside handler, the writer must be recorded in Redis for storage-main
+	active, err := groups.ActiveWriters(ctx, "storage-main")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, active, "storage group write must register writer record while downstream handler is running")
+
+	close(releaseHandler)
+	code := <-done
+	require.Equal(t, http.StatusOK, code)
+
+	// After handler returns, writer record must be released
+	active, err = groups.ActiveWriters(ctx, "storage-main")
+	require.NoError(t, err)
+	require.Zero(t, active, "writer record must be released after downstream handler finishes")
+}
+
+// When a storage-level group is frozen, new writes must be blocked with HTTP 503 before downstream,
+// while existing in-flight writes continue until they return and keep their writer records.
+func TestStorageGroup_FreezeBlocksNewWriteButKeepsExistingWriter(t *testing.T) {
+	e := newSnapEnv(t)
+	ctx := t.Context()
+	require.NoError(t, e.svc.SetUserRouting(ctx, "bob", "main"))
+
+	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+	t.Cleanup(func() { _ = other.Close() })
+	groups := protectiongroups.NewStore(other)
+	require.NoError(t, groups.EnsureIndex(ctx))
+	lease := groups.NewLease("p1", false, 0)
+
+	g := protectiongroups.Group{
+		ID:         "storage-main",
+		User:       "",
+		Buckets:    nil,
+		Members:    []string{"main", "follower"},
+		Primary:    "main",
+		Copies:     2,
+		Generation: 1,
+		State:      "ready",
+		Frozen:     false,
+	}
+	require.NoError(t, g.Validate())
+	require.NoError(t, groups.Save(ctx, &g))
+
+	write1InHandler := make(chan struct{})
+	releaseWrite1 := make(chan struct{})
+	write2Entered := false
+
+	fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/data/write1" {
+			close(write1InHandler)
+			<-releaseWrite1
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		write2Entered = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	done1 := make(chan int, 1)
+	go func() {
+		rctx, err := e.svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "data"), "bob", "data")
+		require.NoError(t, err)
+		rec := httptest.NewRecorder()
+		fence.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/data/write1", nil).WithContext(rctx))
+		done1 <- rec.Code
+	}()
+
+	<-write1InHandler
+	active, err := groups.ActiveWriters(ctx, "storage-main")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, active)
+
+	// Freeze group
+	g.Frozen = true
+	g.State = "draining"
+	require.NoError(t, groups.Save(ctx, &g))
+
+	// Send write 2: must be blocked by freeze (503) and must NOT enter downstream
+	rctx2, err := e.svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "data"), "bob", "data")
+	require.NoError(t, err)
+	rec2 := httptest.NewRecorder()
+	fence.ServeHTTP(rec2, httptest.NewRequest(http.MethodPut, "/data/write2", nil).WithContext(rctx2))
+	require.Equal(t, http.StatusServiceUnavailable, rec2.Code, "new write to frozen storage group must return 503")
+	require.False(t, write2Entered, "write 2 must not reach downstream handler")
+
+	// Write 1 is still active
+	active, err = groups.ActiveWriters(ctx, "storage-main")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, active, "write 1 writer record must remain active")
+
+	// Release write 1
+	close(releaseWrite1)
+	code1 := <-done1
+	require.Equal(t, http.StatusOK, code1)
+
+	// Now all writers drained
+	active, err = groups.ActiveWriters(ctx, "storage-main")
+	require.NoError(t, err)
+	require.Zero(t, active)
+}
+
+// A storage-level group created after an unprotected write was cached in memory must immediately
+// fence subsequent writes on the storage.
+func TestStorageGroup_CreatedAfterCachedUnprotectedWrite(t *testing.T) {
+	e := newSnapEnv(t)
+	ctx := t.Context()
+	require.NoError(t, e.svc.SetUserRouting(ctx, "bob", "main"))
+
+	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+	t.Cleanup(func() { _ = other.Close() })
+	groups := protectiongroups.NewStore(other)
+	require.NoError(t, groups.EnsureIndex(ctx))
+	lease := groups.NewLease("p1", false, 0)
+
+	reached := 0
+	handler := func() http.Handler {
+		fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached++ }))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rctx, err := e.svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(r.Context(), "bob"), "data"), "bob", "data")
+			require.NoError(t, err)
+			fence.ServeHTTP(w, r.WithContext(rctx))
+		})
+	}()
+	put := func() int {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/data/key", nil).WithContext(ctx))
+		return rec.Code
+	}
+
+	// 1. Unprotected write warms the snapshot
+	require.Equal(t, http.StatusOK, put())
+	require.Equal(t, 1, reached)
+
+	// 2. Storage group created as frozen
+	g := protectiongroups.Group{
+		ID:         "storage-main",
+		User:       "",
+		Buckets:    nil,
+		Members:    []string{"main", "follower"},
+		Primary:    "main",
+		Copies:     2,
+		Generation: 1,
+		State:      "initializing",
+		Frozen:     true,
+	}
+	require.NoError(t, g.Validate())
+	require.NoError(t, groups.Save(ctx, &g))
+
+	// 3. Next write must be refused (503)
+	require.Equal(t, http.StatusServiceUnavailable, put(), "frozen storage group must refuse next write")
+	require.Equal(t, 1, reached)
+
+	// 4. Unfrozen admits write
+	g.Frozen = false
+	g.State = "ready"
+	require.NoError(t, groups.Save(ctx, &g))
+	require.Equal(t, http.StatusOK, put())
+	require.Equal(t, 2, reached)
+}
+
+// ProtectionGroupOf must identify storage-level protection groups for scopes on member storages.
+func TestProtectionGroupOf_RecognizesEffectiveStorageProtection(t *testing.T) {
+	for _, snap := range []bool{true, false} {
+		t.Run(fmt.Sprintf("snap=%v", snap), func(t *testing.T) {
+			e := newSnapEnv(t)
+			ctx := t.Context()
+			svc := e.svc
+			if !snap {
+				svc = e.direct
+			}
+			require.NoError(t, svc.SetUserRouting(ctx, "bob", "main"))
+
+			// Before group creation: empty
+			group, err := svc.ProtectionGroupOf(ctx, "bob", "data")
+			require.NoError(t, err)
+			require.Empty(t, group)
+
+			// Create storage-level group on main
+			other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+			t.Cleanup(func() { _ = other.Close() })
+			groups := protectiongroups.NewStore(other)
+			g := protectiongroups.Group{
+				ID:         "storage-main",
+				User:       "",
+				Buckets:    nil,
+				Members:    []string{"main", "follower"},
+				Primary:    "main",
+				Copies:     2,
+				Generation: 1,
+				State:      "ready",
+			}
+			require.NoError(t, g.Validate())
+			require.NoError(t, groups.Save(ctx, &g))
+
+			// ProtectionGroupOf must now report storage-main
+			group, err = svc.ProtectionGroupOf(ctx, "bob", "data")
+			require.NoError(t, err)
+			require.Equal(t, "storage-main", group)
+
+			// Scopes on other storage remain unprotected
+			require.NoError(t, svc.SetUserRouting(ctx, "otheruser", "s0"))
+			group, err = svc.ProtectionGroupOf(ctx, "otheruser", "data")
+			require.NoError(t, err)
+			require.Empty(t, group)
+		})
+	}
+}
+
+// Incomplete or unreadable index must never be assumed unprotected: write must fall back
+// to Redis admission (fail closed if frozen or unavailable).
+func TestUnknownScope_FallsBackToAdmission(t *testing.T) {
+	e := newSnapEnv(t)
+	ctx := t.Context()
+	require.NoError(t, e.svc.SetUserRouting(ctx, "bob", "main"))
+
+	other := redis.NewClient(&redis.Options{Addr: e.mr.Addr()})
+	t.Cleanup(func() { _ = other.Close() })
+	groups := protectiongroups.NewStore(other)
+	require.NoError(t, groups.EnsureIndex(ctx))
+	lease := groups.NewLease("p1", false, 0)
+
+	g := protectiongroups.Group{
+		ID:         "storage-main",
+		User:       "",
+		Buckets:    nil,
+		Members:    []string{"main", "follower"},
+		Primary:    "main",
+		Copies:     2,
+		Generation: 1,
+		State:      "ready",
+		Frozen:     true,
+	}
+	require.NoError(t, g.Validate())
+	require.NoError(t, groups.Save(ctx, &g))
+
+	handlerReached := false
+	fence := groups.Middleware(lease, e.svc.ProtectionScope)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerReached = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Case 1: Corrupt the scope index key in Redis so snapshot cannot read it (returns error, ok=false)
+	require.NoError(t, e.client.Set(ctx, protectiongroups.ScopeIndexKey, "corrupted-string", 0).Err())
+
+	rctx, err := e.svc.BuildProxyContext(xctx.SetBucket(xctx.SetUser(ctx, "bob"), "data"), "bob", "data")
+	require.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	fence.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/data/k", nil).WithContext(rctx))
+	// Must fail closed (503), not reach downstream!
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code, "corrupted index must fail closed")
+	require.False(t, handlerReached, "downstream handler must not be reached when index is unreadable")
+}
+
+

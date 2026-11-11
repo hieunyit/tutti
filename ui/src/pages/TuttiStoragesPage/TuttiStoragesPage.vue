@@ -147,7 +147,6 @@
               <th>{{ t('requests') }}</th>
               <th>{{ t('users') }}</th>
               <th>{{ t('replication') }}</th>
-              <th>{{ t('failover') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -236,13 +235,6 @@
                 }}<small
                   >{{ t('lag') }}: {{ number(row.replication.lag) }}</small
                 >
-              </td>
-              <td :data-label="t('failover')">
-                <RouterLink
-                  v-if="row.failover"
-                  :to="{ name: RouteName.TUTTI_FAILOVER }"
-                  >→ {{ row.failover.target }}</RouterLink
-                ><span v-else>–</span>
               </td>
             </tr>
           </tbody>

@@ -341,7 +341,7 @@ func (s *Store) checkSharedDestination(ctx context.Context, user, storage, bucke
 // ScopeCache resolves a scope from an in-memory copy of the scope index that is at least as new as the
 // config version the current request validated (the proxy policy snapshot). ok=false means "unknown":
 // the caller must use the Redis admission path.
-type ScopeCache func(ctx context.Context, user, bucket string) (group string, ok bool)
+type ScopeCache func(ctx context.Context, user, bucket, route string) (group string, ok bool)
 
 // Middleware must execute after routing resolution and surround both forwarding and event
 // recording. With a ScopeCache, writes of unprotected scopes are admitted from memory (no Redis
@@ -363,13 +363,14 @@ func (s *Store) Middleware(l *Lease, cached ScopeCache) func(http.Handler) http.
 				return
 			}
 			user, bucket := xctx.GetUser(ctx), xctx.GetBucket(ctx)
+			route := xctx.GetRoutingPolicy(ctx)
 			if cached != nil {
-				if group, ok := cached(ctx, user, bucket); ok && group == "" {
+				if group, ok := cached(ctx, user, bucket, route); ok && group == "" {
 					next.ServeHTTP(w, r)
 					return
 				}
 			}
-			a, err := l.Admit(ctx, user, bucket, xctx.GetRoutingPolicy(ctx))
+			a, err := l.Admit(ctx, user, bucket, route)
 			if err != nil {
 				util.WriteError(ctx, w, err)
 				return
@@ -400,6 +401,16 @@ func (s *Store) ClearWriterKind(ctx context.Context, id, token string, externall
 	}
 	if !g.Frozen {
 		return fmt.Errorf("%w: freeze the group before clearing a writer", dom.ErrFailedPrecondition)
+	}
+	if s.CP != nil {
+		if err := s.CP.Repos().Audit.Record(ctx, "CLEAR_WRITER", "protection_groups", id, map[string]any{
+			"group":            id,
+			"token":            token,
+			"externallyFenced": externallyFenced,
+			"worker":           worker,
+		}); err != nil {
+			return fmt.Errorf("audit: unable to record clear writer intent: %w", err)
+		}
 	}
 	key := writerKey(id)
 	if worker {

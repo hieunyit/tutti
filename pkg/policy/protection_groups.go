@@ -425,35 +425,67 @@ func (b *protectionBackend) SyncControlPlane(ctx context.Context, g protectiongr
 	return clearPendingScript.Run(ctx, p.client, []string{commitPendingKey}, g.ID, marker).Err()
 }
 
+func (r *policySvc) resolveBaseStorage(ctx context.Context, user, bucket string) (string, error) {
+	if bucket != "" && user != "" {
+		bucketRouteID := entity.NewBucketRoutingPolicyID(user, bucket)
+		bRoute, err := r.bucketRoutingStore.GetOp(ctx, bucketRouteID).Get()
+		if err == nil {
+			return bRoute, nil
+		}
+		if !errors.Is(err, dom.ErrNotFound) {
+			return "", err
+		}
+	}
+	if user != "" {
+		uRoute, err := r.userRoutingStore.GetOp(ctx, user).Get()
+		if err == nil {
+			return uRoute, nil
+		}
+		if !errors.Is(err, dom.ErrNotFound) {
+			return "", err
+		}
+	}
+	return r.mainStorage, nil
+}
+
 // ProtectionGroupOf resolves the protection group managing (user, bucket) for control loops such as the legacy
 // failover controller, which are not serving a request and so have not validated the snapshot's config
 // version: the snapshot is refreshed first and used only when it is current, otherwise the index is read from
 // Redis (rebuilt when missing). An error means the scope is unknown; callers must fail closed.
 func (r *policySvc) ProtectionGroupOf(ctx context.Context, user, bucket string) (string, error) {
+	baseStorage, err := r.resolveBaseStorage(ctx, user, bucket)
+	if err != nil {
+		return "", fmt.Errorf("%w: unable to resolve base storage for protection group lookup: %w", dom.ErrUnavailable, err)
+	}
+
+	lookup := func(idx map[string]string) (string, bool) {
+		return protectiongroups.LookupEffectiveScope(idx, user, bucket, baseStorage)
+	}
+
 	if r.snap != nil {
 		if err := r.snap.refresh(ctx, false); err == nil {
 			if idx, err := r.snap.protectionScope(ctx); err == nil {
-				if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+				if group, ok := lookup(idx); ok {
 					return group, nil
 				}
 			}
 		}
 	}
-	idx, err := protectiongroups.ScopeFields(ctx, r.client, user, bucket)
+	idx, err := protectiongroups.ScopeFields(ctx, r.client, user, bucket, baseStorage)
 	if err != nil {
 		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
 	}
-	if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+	if group, ok := lookup(idx); ok {
 		return group, nil
 	}
 	if err := protectiongroups.NewStore(r.client).EnsureIndex(ctx); err != nil {
 		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
 	}
-	idx, err = protectiongroups.ScopeFields(ctx, r.client, user, bucket)
+	idx, err = protectiongroups.ScopeFields(ctx, r.client, user, bucket, baseStorage)
 	if err != nil {
 		return "", fmt.Errorf("%w: protection group scope index unavailable: %w", dom.ErrUnavailable, err)
 	}
-	if group, ok := protectiongroups.LookupScope(idx, user, bucket); ok {
+	if group, ok := lookup(idx); ok {
 		return group, nil
 	}
 	return "", fmt.Errorf("%w: protection group scope index is incomplete", dom.ErrUnavailable)

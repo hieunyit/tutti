@@ -368,7 +368,7 @@ func (s *snapshot) protectionScope(ctx context.Context) (map[string]string, erro
 // ProtectionScope resolves the protection group of a write from the snapshot (see protectiongroups.ScopeCache).
 // Callers must have validated the config version for this request first (BuildProxyContext on the write path
 // does). ok is false when the snapshot is disabled or cannot answer; the caller then asks Redis.
-func (r *policySvc) ProtectionScope(ctx context.Context, user, bucket string) (string, bool) {
+func (r *policySvc) ProtectionScope(ctx context.Context, user, bucket, route string) (string, bool) {
 	if r.snap == nil {
 		return "", false
 	}
@@ -376,7 +376,7 @@ func (r *policySvc) ProtectionScope(ctx context.Context, user, bucket string) (s
 	if err != nil {
 		return "", false
 	}
-	return protectiongroups.LookupScope(idx, user, bucket)
+	return protectiongroups.LookupEffectiveScope(idx, user, bucket, route)
 }
 
 // isRedisDown tells connectivity failures from semantic ones.

@@ -331,7 +331,7 @@ export abstract class DashboardHelper {
           from: event.from,
           to: event.to,
         },
-        route: RouteName.TUTTI_FAILOVER,
+        route: RouteName.TUTTI_PROTECTION_GROUPS,
       }),
     );
 
@@ -374,7 +374,7 @@ export abstract class DashboardHelper {
           ? 'error'
           : 'warning',
         params: failoverOff,
-        route: RouteName.TUTTI_FAILOVER,
+        route: RouteName.TUTTI_PROTECTION_GROUPS,
       });
     }
 

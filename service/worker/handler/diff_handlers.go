@@ -15,11 +15,16 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -245,6 +250,7 @@ func (r *DiffCtrl) diffIDFromMigrateLocations(migrateLocations []tasks.MigrateLo
 }
 
 type DiffSvc struct {
+	client            redis.Cmdable
 	idStore           *store.DiffIDStore
 	settingsStore     *store.DiffSettingsStore
 	listStateStore    *store.DiffListStateStore
@@ -257,6 +263,7 @@ type DiffSvc struct {
 
 func NewDiffSvc(redisClient redis.Cmdable, clients objstore.Clients, queueSvc tasks.QueueService) *DiffSvc {
 	return &DiffSvc{
+		client:            redisClient,
 		idStore:           store.NewDiffIDStore(redisClient),
 		settingsStore:     store.NewDiffSettingsStore(redisClient),
 		listStateStore:    store.NewDiffListStateStore(redisClient),
@@ -491,6 +498,11 @@ func (r *DiffSvc) GetDiffStatus(ctx context.Context, id entity.DiffID) (entity.D
 		return entity.DiffStatus{}, fmt.Errorf("unable to check if there are inconsistencies: %w", err)
 	}
 
+	if notConsistent && !settings.IgnoreEtags {
+		_ = r.ReconcileInconclusiveMultipart(ctx, id, settings)
+		notConsistent, _ = r.setStore.HasIDs(ctx, tokens...)
+	}
+
 	status.Check.Consistent = !notConsistent
 
 	fixQueue := tasks.DiffFixQueue(id)
@@ -513,6 +525,11 @@ func (r *DiffSvc) GetDiffStatus(ctx context.Context, id entity.DiffID) (entity.D
 }
 
 func (r *DiffSvc) GetDiffReportEntries(ctx context.Context, id entity.DiffID, cursor uint64, pageSize uint64) (entity.DiffReportEntryPage, error) {
+	settings, _ := r.settingsStore.Get(ctx, id)
+	if !settings.IgnoreEtags {
+		_ = r.ReconcileInconclusiveMultipart(ctx, id, settings)
+	}
+
 	tokens, err := store.DiffIDToTokensConverter(id)
 	if err != nil {
 		return entity.DiffReportEntryPage{}, fmt.Errorf("unable to make tokens out of diff id: %w", err)
@@ -546,6 +563,156 @@ func (r *DiffSvc) GetDiffReportEntries(ctx context.Context, id entity.DiffID, cu
 	}
 
 	return entity.NewDiffReportEntryPage(entries, idPage.Next), nil
+}
+
+func isMultipartETag(etag string) bool {
+	e := strings.ToLower(strings.Trim(strings.TrimSpace(etag), `"`))
+	if strings.Contains(e, "-") {
+		return true
+	}
+	if len(e) != 32 && len(e) > 0 {
+		return true
+	}
+	for _, c := range e {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return true
+		}
+	}
+	return false
+}
+
+// ReconcileInconclusiveMultipart checks remaining diff entries where ETags cannot be definitively
+// compared (e.g. multipart upload with '-' part suffix vs singlepart upload). If all locations have
+// matching sizes and content SHA-256 digests, the entries represent identical content and are pruned
+// from the diff set so false inconsistencies are not reported.
+func (r *DiffSvc) ReconcileInconclusiveMultipart(ctx context.Context, id entity.DiffID, settings entity.DiffSettings) error {
+	if r.clients == nil || r.client == nil || len(id.Locations) < 2 {
+		return nil
+	}
+
+	tokens, err := store.DiffIDToTokensConverter(id)
+	if err != nil {
+		return err
+	}
+
+	reconciledKey := "cc:reconciled:" + tokens[0]
+	if val, _ := r.client.Get(ctx, reconciledKey).Result(); val == "1" {
+		return nil
+	}
+
+	type candInfo struct {
+		size         uint64
+		hasMultipart bool
+		ids          []entity.DiffSetID
+		locations    map[string]string // storage -> versionID
+	}
+
+	candidates := map[string]*candInfo{}
+	pager := store.NewPager(0, 500)
+	for {
+		idPage, err := r.setStore.GetIDs(ctx, pager, tokens...)
+		if err != nil {
+			return err
+		}
+
+		if len(idPage.Entries) > 0 {
+			exec := r.setStore.GroupExecutor()
+			execSetStore := r.setStore.WithExecutor(exec)
+			opResults := make([]store.OperationResult[[]entity.DiffSetEntry], 0, len(idPage.Entries))
+			for _, sid := range idPage.Entries {
+				opResults = append(opResults, execSetStore.GetOp(ctx, sid))
+			}
+			if err := exec.Exec(ctx); err != nil {
+				return err
+			}
+
+			for idx, sid := range idPage.Entries {
+				objKey := sid.Object + "\x00" + strconv.FormatUint(sid.VersionIndex, 10)
+				cand := candidates[objKey]
+				if cand == nil {
+					cand = &candInfo{
+						size:      sid.Size,
+						locations: make(map[string]string),
+					}
+					candidates[objKey] = cand
+				}
+				cand.ids = append(cand.ids, sid)
+				if isMultipartETag(sid.Etag) {
+					cand.hasMultipart = true
+				}
+				entrySet, _ := opResults[idx].Get()
+				for _, entry := range entrySet {
+					cand.locations[entry.Location.Storage] = entry.VersionID
+				}
+			}
+		}
+
+		if idPage.Next == 0 {
+			break
+		}
+		pager.From = idPage.Next
+	}
+
+	requiredStorageCount := len(id.Locations)
+	var spuriousIDs []entity.DiffSetID
+
+	for _, cand := range candidates {
+		if !cand.hasMultipart || len(cand.locations) < requiredStorageCount {
+			continue
+		}
+
+		var firstHash []byte
+		allMatch := true
+
+		for _, loc := range id.Locations {
+			c, err := r.clients.AsCommon(ctx, loc.Storage, settings.User)
+			if err != nil {
+				allMatch = false
+				break
+			}
+			var reader io.Reader
+			if verID := cand.locations[loc.Storage]; verID != "" {
+				reader, err = c.GetObject(ctx, loc.Bucket, cand.ids[0].Object, objstore.WithVersionID(verID))
+			} else {
+				reader, err = c.GetObject(ctx, loc.Bucket, cand.ids[0].Object)
+			}
+			if err != nil {
+				allMatch = false
+				break
+			}
+			h := sha256.New()
+			n, err := io.Copy(h, reader)
+			if closer, ok := reader.(io.Closer); ok {
+				_ = closer.Close()
+			}
+			if err != nil || uint64(n) != cand.size {
+				allMatch = false
+				break
+			}
+			sum := h.Sum(nil)
+			if firstHash == nil {
+				firstHash = sum
+			} else if !bytes.Equal(firstHash, sum) {
+				allMatch = false
+				break
+			}
+		}
+
+		if allMatch && firstHash != nil {
+			spuriousIDs = append(spuriousIDs, cand.ids...)
+		}
+	}
+
+	if len(spuriousIDs) > 0 {
+		exec := r.setStore.GroupExecutor()
+		for _, sid := range spuriousIDs {
+			_ = r.setStore.WithExecutor(exec).DropOp(ctx, sid)
+		}
+		_ = exec.Exec(ctx)
+	}
+
+	_ = r.client.Set(ctx, reconciledKey, "1", 24*time.Hour).Err()
+	return nil
 }
 
 func (r *DiffSvc) StartDiff(ctx context.Context, id entity.DiffID, settings entity.DiffSettings) error {
@@ -638,61 +805,85 @@ func (r *DiffSvc) FixDiff(ctx context.Context, id entity.DiffID, source entity.D
 	return nil
 }
 
+var luaRecordPresence = redis.NewScript(`
+for i = 1, #ARGV, 2 do
+	local obj = ARGV[i]
+	local mask = tonumber(ARGV[i+1])
+	local old = tonumber(redis.call('HGET', KEYS[1], obj) or '0')
+	local s = (old % 2 >= 1 or mask % 2 >= 1) and 1 or 0
+	local d = (math.floor(old / 2) % 2 >= 1 or math.floor(mask / 2) % 2 >= 1) and 2 or 0
+	local dir = (math.floor(old / 4) % 2 >= 1 or math.floor(mask / 4) % 2 >= 1) and 4 or 0
+	redis.call('HSET', KEYS[1], obj, tostring(s + d + dir))
+end
+redis.call('EXPIRE', KEYS[1], 3600)
+return 0
+`)
+
 func (r *DiffSvc) CollectObjectsToFix(ctx context.Context, diffFixID entity.DiffFixID, source string, versioned bool) error {
+	settings, _ := r.settingsStore.Get(ctx, diffFixID.DiffID)
+	if !settings.IgnoreEtags {
+		_ = r.ReconcileInconclusiveMultipart(ctx, diffFixID.DiffID, settings)
+	}
+
 	tokens, err := store.DiffIDToTokensConverter(diffFixID.DiffID)
 	if err != nil {
 		return fmt.Errorf("unable to make tokens out of diff id: %w", err)
 	}
 
 	destination := diffFixID.Destination
-	// TODO use redis map to persist presence?
-	type presence struct {
-		inSource bool
-		inDest   bool
-		isDir    bool
-	}
-	objectPresence := map[string]*presence{}
+	presenceKey := "cc:fix:presence:" + tokens[0] + ":" + destination
+	defer func() {
+		if r.client != nil {
+			_ = r.client.Del(ctx, presenceKey).Err()
+		}
+	}()
+
 	pager := store.NewPager(0, 1000)
+	hasAny := false
 	for {
 		idPage, err := r.setStore.GetIDs(ctx, pager, tokens...)
 		if err != nil {
 			return fmt.Errorf("unable to get id page: %w", err)
 		}
 
-		exec := r.setStore.GroupExecutor()
-		execSetStore := r.setStore.WithExecutor(exec)
+		if len(idPage.Entries) > 0 {
+			exec := r.setStore.GroupExecutor()
+			execSetStore := r.setStore.WithExecutor(exec)
 
-		opResults := make([]store.OperationResult[[]entity.DiffSetEntry], 0, len(idPage.Entries))
-		for _, id := range idPage.Entries {
-			opResults = append(opResults, execSetStore.GetOp(ctx, id))
-		}
-
-		if err := exec.Exec(ctx); err != nil {
-			return fmt.Errorf("unable to get diff sets: %w", err)
-		}
-
-		for idx, id := range idPage.Entries {
-			isNew := false
-			isHit := false
-			present := objectPresence[id.Object]
-			if present == nil {
-				isNew = true
-				present = &presence{}
+			opResults := make([]store.OperationResult[[]entity.DiffSetEntry], 0, len(idPage.Entries))
+			for _, id := range idPage.Entries {
+				opResults = append(opResults, execSetStore.GetOp(ctx, id))
 			}
-			entrySet, _ := opResults[idx].Get()
-			for _, entry := range entrySet {
-				switch entry.Location.Storage {
-				case source:
-					isHit = true
-					present.inSource = true
-					present.isDir = entry.IsDir
-				case destination:
-					isHit = true
-					present.inDest = true
+
+			if err := exec.Exec(ctx); err != nil {
+				return fmt.Errorf("unable to get diff sets: %w", err)
+			}
+
+			args := make([]any, 0, len(idPage.Entries)*2)
+			for idx, id := range idPage.Entries {
+				mask := 0
+				entrySet, _ := opResults[idx].Get()
+				for _, entry := range entrySet {
+					switch entry.Location.Storage {
+					case source:
+						mask |= 1
+						if entry.IsDir {
+							mask |= 4
+						}
+					case destination:
+						mask |= 2
+					}
+				}
+				if mask > 0 {
+					args = append(args, id.Object, mask)
+					hasAny = true
 				}
 			}
-			if isNew && isHit {
-				objectPresence[id.Object] = present
+
+			if len(args) > 0 {
+				if err := luaRecordPresence.Eval(ctx, r.client, []string{presenceKey}, args...).Err(); err != nil {
+					return fmt.Errorf("unable to record presence in redis: %w", err)
+				}
 			}
 		}
 
@@ -703,42 +894,59 @@ func (r *DiffSvc) CollectObjectsToFix(ctx context.Context, diffFixID entity.Diff
 		pager.From = idPage.Next
 	}
 
-	if len(objectPresence) == 0 {
+	if !hasAny {
 		return nil
 	}
 
-	copyObjectSet := []entity.DiffFixCopyObject{}
-	removeObjectSet := []string{}
-	for object, present := range objectPresence {
-		switch {
-		case present.inSource && !present.inDest:
-			// Only in source - copy
-			copyObjectSet = append(copyObjectSet, entity.NewDiffFixCopyObject(object, present.isDir))
-		case !present.inSource && present.inDest:
-			// Only in destination - remove
-			removeObjectSet = append(removeObjectSet, object)
-		case present.inSource && present.inDest:
-			if !versioned {
-				// In both, not versioned - copy
-				copyObjectSet = append(copyObjectSet, entity.NewDiffFixCopyObject(object, present.isDir))
-			} else {
-				// In both, versioned - delete and copy
-				copyObjectSet = append(copyObjectSet, entity.NewDiffFixCopyObject(object, present.isDir))
-				removeObjectSet = append(removeObjectSet, object)
+	var cursor uint64
+	for {
+		entries, nextCur, err := r.client.HScan(ctx, presenceKey, cursor, "*", 1000).Result()
+		if err != nil {
+			return fmt.Errorf("unable to scan presence: %w", err)
+		}
+
+		var copyBatch []entity.DiffFixCopyObject
+		var hasRemove bool
+
+		for i := 0; i < len(entries); i += 2 {
+			object := entries[i]
+			val, _ := strconv.Atoi(entries[i+1])
+			inSource := (val & 1) != 0
+			inDest := (val & 2) != 0
+			isDir := (val & 4) != 0
+
+			switch {
+			case inSource && !inDest:
+				copyBatch = append(copyBatch, entity.NewDiffFixCopyObject(object, isDir))
+			case !inSource && inDest:
+				hasRemove = true
+			case inSource && inDest:
+				if !versioned {
+					copyBatch = append(copyBatch, entity.NewDiffFixCopyObject(object, isDir))
+				} else {
+					copyBatch = append(copyBatch, entity.NewDiffFixCopyObject(object, isDir))
+					hasRemove = true
+				}
 			}
 		}
-	}
 
-	exec := r.fixCopySetStore.GroupExecutor()
-	if len(copyObjectSet) > 0 {
-		r.fixCopySetStore.WithExecutor(exec).AddOp(ctx, diffFixID, copyObjectSet...)
-	}
-	if len(removeObjectSet) > 0 {
-		r.fixRemoveSetStore.WithExecutor(exec).AddOp(ctx, diffFixID, removeObjectSet...)
-	}
+		if hasRemove {
+			return fmt.Errorf("%w: destructive diff fix requires fenced writes: %w",
+				dom.ErrFailedPrecondition, asynq.SkipRetry)
+		}
 
-	if err := exec.Exec(ctx); err != nil {
-		return fmt.Errorf("unable to add objects to fix sets: %w", err)
+		if len(copyBatch) > 0 {
+			exec := r.fixCopySetStore.GroupExecutor()
+			r.fixCopySetStore.WithExecutor(exec).AddOp(ctx, diffFixID, copyBatch...)
+			if err := exec.Exec(ctx); err != nil {
+				return fmt.Errorf("unable to add objects to fix sets: %w", err)
+			}
+		}
+
+		if nextCur == 0 {
+			break
+		}
+		cursor = nextCur
 	}
 
 	return nil
@@ -755,46 +963,7 @@ func (r *DiffSvc) RemoveDiffObjects(ctx context.Context, id entity.DiffFixID, lo
 		return nil
 	}
 
-	client, err := r.clients.AsCommon(ctx, location.Storage, user)
-	if err != nil {
-		return fmt.Errorf("unable to obtain client: %w", err)
-	}
-
-	if !versioned {
-		removeErrs := client.RemoveObjects(ctx, location.Bucket, objectNames)
-		for _, err := range removeErrs {
-			if !errors.Is(err, dom.ErrNotFound) {
-				return fmt.Errorf("unable to remove diff objects: %w", err)
-			}
-		}
-		return nil
-	}
-
-	listErrs := []error{}
-	namesAndVersions := []objstore.NameAndVersion{}
-	for _, objectName := range objectNames {
-		versionIter := client.ObjectVersions(ctx, location.Bucket, objectName)
-
-		for versionInfo, err := range versionIter {
-			if err != nil {
-				listErrs = append(listErrs, fmt.Errorf("unable to list version: %w", err))
-				continue
-			}
-			namesAndVersions = append(namesAndVersions, objstore.NameAndVersion{
-				Name:    objectName,
-				Version: versionInfo.VersionID,
-			})
-		}
-	}
-
-	removeErrs := client.RemoveVersionedObjects(ctx, location.Bucket, namesAndVersions)
-
-	if len(listErrs) > 0 || len(removeErrs) > 0 {
-		joinErr := errors.Join(errors.Join(listErrs...), errors.Join(removeErrs...))
-		return fmt.Errorf("unable to delete object versions: %w", joinErr)
-	}
-
-	return nil
+	return fmt.Errorf("%w: destructive diff fix requires fenced writes: %w", dom.ErrFailedPrecondition, asynq.SkipRetry)
 }
 
 func (r *DiffSvc) EnsureObjectsDeleted(ctx context.Context, id entity.DiffFixID, location entity.DiffLocation, user string, versioned bool, makePayload func(object string, isDir bool) (any, error)) error {

@@ -103,4 +103,56 @@ describe('tuttiDiffReportDetailStore', () => {
     // getDiffReport should not have been called to start new polling
     expect(ChorusService.getDiffReport).not.toHaveBeenCalled();
   });
+
+  it('re-parses locations from route on initDiffReportDetailsPage after $reset', async () => {
+    vi.mocked(ChorusService.getDiffReport).mockResolvedValue({
+      check: { consistent: true, fixReady: false },
+    } as DiffReportDetailResponse);
+
+    const store = useTuttiDiffReportDetailStore();
+
+    expect(store.locations.length).toBe(2);
+
+    // Reset store on navigation unmount
+    store.$reset();
+    expect(store.locations.length).toBe(0);
+
+    // Navigate back to the page in SPA (same singleton store)
+    await store.initDiffReportDetailsPage();
+
+    // Locations must be re-parsed and polling started
+    expect(store.locations.length).toBe(2);
+    expect(ChorusService.getDiffReport).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues polling after transient 503 error without crashing timer loop', async () => {
+    let callCount = 0;
+
+    vi.mocked(ChorusService.getDiffReport).mockImplementation(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        const err = new Error('Service Unavailable') as Error & { response?: { status: number } };
+
+        err.response = { status: 503 };
+        throw err;
+      }
+
+      return {
+        check: { consistent: true, fixReady: false },
+      } as DiffReportDetailResponse;
+    });
+
+    const store = useTuttiDiffReportDetailStore();
+
+    await store.initDiffReportDetailsPage();
+    expect(callCount).toBe(1);
+    expect(store.hasError).toBe(true);
+
+    // Advance timer to next poll cycle: must retry and succeed
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(callCount).toBe(2);
+    expect(store.hasError).toBe(false);
+    expect(store.report?.consistent).toBe(true);
+  });
 });
