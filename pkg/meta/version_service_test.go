@@ -754,3 +754,41 @@ func TestDeleteRecreate_OldCompletionMustNotCatchUp(t *testing.T) {
 	require.Less(t, v.To, v.From,
 		"old completion must not mark recreated object caught up")
 }
+
+func TestObjectID_FallbackToLegacyKeys(t *testing.T) {
+	client := testutil.SetupRedis(t)
+	s := NewVersionService(client)
+	ctx := t.Context()
+	id := entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{
+		User: "u", FromStorage: "primary", ToStorage: "replica",
+		FromBucket: "bucket", ToBucket: "bucket",
+	})
+	obj := dom.Object{Bucket: "bucket", Name: "report"}
+	src := Destination{Storage: "primary", Bucket: "bucket"}
+
+	// Simulate legacy data in Redis: key "v:u:primary:replica:bucket:bucket", field "f:report:p" = 10
+	hashKey := "v:u:primary:replica:bucket:bucket"
+	require.NoError(t, client.HSet(ctx, hashKey, "f:report:p", 10).Err())
+
+	// 1. GetObj should fall back to legacy field
+	v, err := s.GetObj(ctx, id, obj)
+	require.NoError(t, err)
+	require.EqualValues(t, 10, v.From, "should read from legacy field")
+	require.EqualValues(t, 0, v.To)
+
+	// 2. IncrementObj should take max from legacy and bump to 11 in delimited field
+	next, err := s.IncrementObj(ctx, id, obj, src)
+	require.NoError(t, err)
+	require.EqualValues(t, 11, next, "increment should observe legacy version and bump to 11")
+
+	// 3. Delimited field is now populated
+	v2, err := s.GetObj(ctx, id, obj)
+	require.NoError(t, err)
+	require.EqualValues(t, 11, v2.From)
+
+	// 4. DeleteObjAll should delete both delimited and legacy fields
+	require.NoError(t, s.DeleteObjAll(ctx, id, obj))
+	v3, err := s.GetObj(ctx, id, obj)
+	require.NoError(t, err)
+	require.Equal(t, Version{}, v3, "both new and legacy fields must be deleted")
+}

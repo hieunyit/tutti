@@ -64,9 +64,11 @@ var kinds = []versionKind{acl, payload, tags}
 //	 ...
 //	}
 type redisKeys struct {
-	hashKey   string
-	fromField string
-	toField   string
+	hashKey         string
+	fromField       string
+	toField         string
+	legacyFromField string
+	legacyToField   string
 }
 
 func toRedisKeys(replID entity.UniversalReplicationID, bucket, objectID string, kind versionKind) redisKeys {
@@ -98,21 +100,7 @@ func toRedisBucketKeys(replID entity.UniversalReplicationID, bucket string, kind
 	return toRedisKeys(replID, bucket, "", kind), nil
 }
 
-func toRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object, kind versionKind) (redisKeys, error) {
-	bucket, objectID := object.Bucket, objectID(object)
-	if bucket == "" {
-		return redisKeys{}, fmt.Errorf("%w: bucket name is required for object version", dom.ErrInvalidArg)
-	}
-	if objectID == "" {
-		return redisKeys{}, fmt.Errorf("%w: object ID is required for object version", dom.ErrInvalidArg)
-	}
-	if !slices.Contains(kinds, kind) {
-		return redisKeys{}, fmt.Errorf("%w: invalid object version kind %q", dom.ErrInvalidArg, kind)
-	}
-	return toRedisKeys(replID, bucket, objectID, kind), nil
-}
-
-// provides unique ID for versioning objects
+// provides unique ID for versioning objects using length-delimited prefix to avoid Name+Version collisions
 func objectID(obj dom.Object) string {
 	if obj.Name == "" {
 		return ""
@@ -120,8 +108,37 @@ func objectID(obj dom.Object) string {
 	return fmt.Sprintf("%d:%s%s", len(obj.Name), obj.Name, obj.Version)
 }
 
+// legacyObjectID provides backwards-compatible ID for reading legacy unsegmented metadata
+func legacyObjectID(obj dom.Object) string {
+	if obj.Version == "" {
+		return obj.Name
+	}
+	return obj.Name + obj.Version
+}
+
+func toRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object, kind versionKind) (redisKeys, error) {
+	bucket, objID := object.Bucket, objectID(object)
+	if bucket == "" {
+		return redisKeys{}, fmt.Errorf("%w: bucket name is required for object version", dom.ErrInvalidArg)
+	}
+	if objID == "" {
+		return redisKeys{}, fmt.Errorf("%w: object ID is required for object version", dom.ErrInvalidArg)
+	}
+	if !slices.Contains(kinds, kind) {
+		return redisKeys{}, fmt.Errorf("%w: invalid object version kind %q", dom.ErrInvalidArg, kind)
+	}
+	rk := toRedisKeys(replID, bucket, objID, kind)
+	legID := legacyObjectID(object)
+	if legID != "" && legID != objID {
+		legRk := toRedisKeys(replID, bucket, legID, kind)
+		rk.legacyFromField = legRk.fromField
+		rk.legacyToField = legRk.toField
+	}
+	return rk, nil
+}
+
 func allRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object) (key string, fields []string, err error) {
-	fields = make([]string, 0, len(kinds)*2)
+	fields = make([]string, 0, len(kinds)*4)
 	for _, kind := range kinds {
 		objKeys, err := toRedisObjKeys(replID, object, kind)
 		if err != nil {
@@ -129,6 +146,9 @@ func allRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object) (k
 		}
 		key = objKeys.hashKey
 		fields = append(fields, objKeys.fromField, objKeys.toField)
+		if objKeys.legacyFromField != "" {
+			fields = append(fields, objKeys.legacyFromField, objKeys.legacyToField)
+		}
 	}
 	return key, fields, nil
 }

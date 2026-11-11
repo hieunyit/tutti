@@ -278,7 +278,22 @@ func (s *versionSvc) getObjVersion(ctx context.Context, replID entity.UniversalR
 	if err != nil {
 		return Version{}, err
 	}
-	return s.getVersion(ctx, keys)
+	v, err := s.getVersion(ctx, keys)
+	if err != nil {
+		return Version{}, err
+	}
+	// Fallback to legacy fields if current delimited fields are not set
+	if v.From == 0 && v.To == 0 && keys.legacyFromField != "" {
+		legacyV, lerr := s.getVersion(ctx, redisKeys{
+			hashKey:   keys.hashKey,
+			fromField: keys.legacyFromField,
+			toField:   keys.legacyToField,
+		})
+		if lerr == nil && (legacyV.From > 0 || legacyV.To > 0) {
+			return legacyV, nil
+		}
+	}
+	return v, nil
 }
 
 func (s *versionSvc) getBucketVersion(ctx context.Context, replID entity.UniversalReplicationID, bucket string, kind versionKind) (Version, error) {
@@ -322,28 +337,38 @@ func (s *versionSvc) incrementDest(ctx context.Context, replID entity.UniversalR
 		return 0, err
 	}
 	if isFrom {
-		return s.incVersion(ctx, keys.hashKey, keys.fromField, keys.toField)
+		return s.incVersion(ctx, keys.hashKey, keys.fromField, keys.toField, keys.legacyFromField, keys.legacyToField)
 	}
 	// swap fields for 'to' destination
-	return s.incVersion(ctx, keys.hashKey, keys.toField, keys.fromField)
+	return s.incVersion(ctx, keys.hashKey, keys.toField, keys.fromField, keys.legacyToField, keys.legacyFromField)
 }
 
-// luaHIncVersion - takes max value out of 2 hash fields (A,B), increments it, and assigns result to A.
+// luaHIncVersion - takes max value out of hash fields (A,B,sequence,legacyA,legacyB), increments it, and assigns result to A and sequence.
 //
-//	A = max(A,B) + 1
+//	A = max(A, B, sequence, legacyA, legacyB) + 1
+//	sequence = A
 //
 // Input:
 // KEYS[1] -> Redis hash Key
 // --
 // ARGV[1] -> First hash field (A)
 // ARGV[2] -> Second hash field (B)
+// ARGV[3] -> Legacy first hash field (optional)
+// ARGV[4] -> Legacy second hash field (optional)
 //
 // Output:
 // Returns incremented version
 var luaHIncVersion = redis.NewScript(`
 local max_ver = 0
 local sequence = 's:' .. string.sub(ARGV[1], 3)
-local vals = redis.call('HMGET', KEYS[1], ARGV[1], ARGV[2], sequence)
+local fields = {ARGV[1], ARGV[2], sequence}
+if ARGV[3] and ARGV[3] ~= '' then
+	table.insert(fields, ARGV[3])
+end
+if ARGV[4] and ARGV[4] ~= '' then
+	table.insert(fields, ARGV[4])
+end
+local vals = redis.call('HMGET', KEYS[1], unpack(fields))
 for _, ver in ipairs(vals) do
 	if ver then
 		max_ver = math.max(max_ver, tonumber(ver))
@@ -353,8 +378,8 @@ max_ver = max_ver + 1
 redis.call('HSET', KEYS[1], ARGV[1], max_ver, sequence, max_ver)
 return max_ver`)
 
-func (s *versionSvc) incVersion(ctx context.Context, key, a, b string) (int, error) {
-	result, err := luaHIncVersion.Run(ctx, s.client, []string{key}, a, b).Result()
+func (s *versionSvc) incVersion(ctx context.Context, key, a, b, legacyA, legacyB string) (int, error) {
+	result, err := luaHIncVersion.Run(ctx, s.client, []string{key}, a, b, legacyA, legacyB).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -377,24 +402,26 @@ func (s *versionSvc) setDestIfGreater(ctx context.Context, replID entity.Univers
 		return err
 	}
 	if isFrom {
-		return s.setIfGreater(ctx, keys.hashKey, keys.fromField, keys.toField, version)
+		return s.setIfGreater(ctx, keys.hashKey, keys.fromField, keys.toField, version, keys.legacyFromField, keys.legacyToField)
 	}
 	// swap fields for 'to' destination
-	return s.setIfGreater(ctx, keys.hashKey, keys.toField, keys.fromField, version)
+	return s.setIfGreater(ctx, keys.hashKey, keys.toField, keys.fromField, version, keys.legacyToField, keys.legacyFromField)
 }
 
-// luaHSetIfExAndGreater(hash_key, field_A, field_B, X) - sets X to hash field A only if:
+// luaHSetIfExAndGreater(hash_key, field_A, field_B, X, legacyA, legacyB) - sets X to hash field A only if:
 //  1. hash key exists
-//  2. field B exists - checks concurrent delete
-//  3. X <= B         - checks concurrent delete
-//  3. X > A          - checks concurrent updates
+//  2. field B (or legacy B) exists - checks concurrent delete
+//  3. X <= B                       - checks concurrent delete
+//  4. X > A (and legacy A)         - checks concurrent updates
 //
 // Input:
 // KEYS[1] -> Redis hash Key
 // --
 // ARGV[1] -> First Hash field (A)
 // ARGV[2] -> Second Hash field (B)
-// ARGV[2] -> Integer value (X) to set to first hash field
+// ARGV[3] -> Integer value (X) to set to first hash field
+// ARGV[4] -> Legacy first hash field (optional)
+// ARGV[5] -> Legacy second hash field (optional)
 //
 // Output:
 // Returns -1 if hash key does not exist or second field does not exist or less than given integer
@@ -404,21 +431,33 @@ var luaHSetIfExAndGreater = redis.NewScript(`
 if redis.call('exists',KEYS[1]) ~= 1 then return -1 end
 
 local other = redis.call('hget', KEYS[1], ARGV[2])
+if not other and ARGV[5] and ARGV[5] ~= '' then
+	other = redis.call('hget', KEYS[1], ARGV[5])
+end
 if not other or tonumber(other) < tonumber(ARGV[3]) then return -1 end
 
-local prev = redis.call('hget', KEYS[1], ARGV[1]);
+local prev = redis.call('hget', KEYS[1], ARGV[1])
+if not prev and ARGV[4] and ARGV[4] ~= '' then
+	prev = redis.call('hget', KEYS[1], ARGV[4])
+end
 if prev and (tonumber(prev) >= tonumber(ARGV[3])) then return 0
 else 
-	redis.call("hset", KEYS[1], ARGV[1], ARGV[3]);
+	local sequence = 's:' .. string.sub(ARGV[1], 3)
+	local seq_val = redis.call('hget', KEYS[1], sequence)
+	local max_seq = tonumber(ARGV[3])
+	if seq_val and tonumber(seq_val) > max_seq then
+		max_seq = tonumber(seq_val)
+	end
+	redis.call("hset", KEYS[1], ARGV[1], ARGV[3], sequence, max_seq)
 	return 1
 end`)
 
-func (s *versionSvc) setIfGreater(ctx context.Context, key, a, b string, version int) error {
+func (s *versionSvc) setIfGreater(ctx context.Context, key, a, b string, version int, legacyA, legacyB string) error {
 	if version <= 0 {
 		zerolog.Ctx(ctx).Warn().Str("key", key).Str("field", a).Msgf("discarded attempt to set invalid version %d", version)
 		return fmt.Errorf("%w: version value must be positive", dom.ErrInvalidArg)
 	}
-	result, err := luaHSetIfExAndGreater.Run(ctx, s.client, []string{key}, a, b, version).Result()
+	result, err := luaHSetIfExAndGreater.Run(ctx, s.client, []string{key}, a, b, version, legacyA, legacyB).Result()
 	if err != nil {
 		return err
 	}

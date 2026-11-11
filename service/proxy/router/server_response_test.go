@@ -95,3 +95,30 @@ func TestServe_ForwardsAllHeaderValuesDropsHopByHop(t *testing.T) {
 		require.Empty(t, resp.Header.Values(h), h)
 	}
 }
+
+func TestServe_ConditionalGET_Preserves304Headers(t *testing.T) {
+	srv := newRespProxy(t, respRouter{resp: func() *http.Response {
+		h := http.Header{}
+		h.Set("ETag", `"etag-12345"`)
+		h.Set("Last-Modified", "Wed, 21 Oct 2025 07:28:00 GMT")
+		h.Set("Cache-Control", "max-age=3600")
+		return &http.Response{
+			StatusCode: http.StatusNotModified,
+			Header:     h,
+			Body:       io.NopCloser(strings.NewReader("")),
+		}
+	}})
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/bucket/object", nil)
+	require.NoError(t, err)
+	req.Header.Set("If-None-Match", `"etag-12345"`)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusNotModified, resp.StatusCode)
+	require.Equal(t, `"etag-12345"`, resp.Header.Get("ETag"))
+	require.Equal(t, "Wed, 21 Oct 2025 07:28:00 GMT", resp.Header.Get("Last-Modified"))
+	require.Equal(t, "max-age=3600", resp.Header.Get("Cache-Control"))
+}
