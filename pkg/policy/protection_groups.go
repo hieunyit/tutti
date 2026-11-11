@@ -294,6 +294,7 @@ func (b *protectionBackend) Commit(ctx context.Context, before protectiongroups.
 			}
 			pipe.HSet(ctx, protectiongroups.GroupsKey, after.ID, rawNext)
 			pipe.HSet(ctx, protectiongroups.PromotionKey, after.ID, promRaw)
+			pipe.HSet(ctx, protectiongroups.ScopeIndexKey, "p:"+after.ID, after.Primary)
 			if pending != nil {
 				pipe.HSet(ctx, commitPendingKey, after.ID, pending)
 			}

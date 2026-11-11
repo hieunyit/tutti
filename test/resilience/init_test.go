@@ -84,8 +84,9 @@ func setup(m *testing.M) int {
 			mainCreds = creds
 		}
 		storages[key] = s3.Storage{
-			StorageAddress: s3.StorageAddress{Address: "http://" + endpoint, Provider: s3.ProviderMinIO},
-			Credentials:    map[string]s3.CredentialsV4{user: creds},
+			StorageAddress:    s3.StorageAddress{Address: "http://" + endpoint, Provider: s3.ProviderMinIO},
+			Credentials:       map[string]s3.CredentialsV4{user: creds},
+			ConnectionAccount: &creds,
 		}
 		direct[key], err = mclient.New(endpoint, &mclient.Options{
 			Creds: mcredentials.NewStaticV4(creds.AccessKeyID, creds.SecretAccessKey, ""),
