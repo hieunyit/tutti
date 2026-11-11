@@ -4,8 +4,8 @@ go 1.26.10
 
 require (
 	github.com/boltdb/bolt v1.3.1
-	github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede
 	github.com/golang/protobuf v1.5.4
+	github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/sirupsen/logrus v1.10.1
@@ -39,6 +39,9 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/hibiken/asynq v0.26.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.12.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
