@@ -512,26 +512,26 @@ func Test_Version(t *testing.T) {
 	// inc obj payload tags and acls again to verify they work after deletion
 	incVer, err = s.IncrementObj(ctx, replID, obj, fromDest)
 	r.NoError(err, "increment object from version after deletion")
-	r.EqualValues(1, incVer, "object from version incremented to 1 after deletion")
+	r.EqualValues(4, incVer, "object from version incremented to 4 after deletion due to sequence tracking")
 	ver, err = s.GetObj(ctx, replID, obj)
 	r.NoError(err, "get object version after increment post-deletion")
-	r.EqualValues(1, ver.From, "object from version is 1 after deletion")
+	r.EqualValues(4, ver.From, "object from version is 4 after deletion")
 	r.EqualValues(0, ver.To, "object to version is 0 after deletion")
 
 	incVer, err = s.IncrementTags(ctx, replID, obj, fromDest)
 	r.NoError(err, "increment tags from version after deletion")
-	r.EqualValues(1, incVer, "tags from version incremented to 1 after deletion")
+	r.EqualValues(2, incVer, "tags from version incremented to 2 after deletion due to sequence tracking")
 	ver, err = s.GetTags(ctx, replID, obj)
 	r.NoError(err, "get object tags version after increment post-deletion")
-	r.EqualValues(1, ver.From, "tags from version is 1 after deletion")
+	r.EqualValues(2, ver.From, "tags from version is 2 after deletion")
 	r.EqualValues(0, ver.To, "tags to version is 0 after deletion")
 
 	incVer, err = s.IncrementACL(ctx, replID, obj, fromDest)
 	r.NoError(err, "increment ACL from version after deletion")
-	r.EqualValues(1, incVer, "ACL from version incremented to 1 after deletion")
+	r.EqualValues(2, incVer, "ACL from version incremented to 2 after deletion due to sequence tracking")
 	ver, err = s.GetACL(ctx, replID, obj)
 	r.NoError(err, "get object ACL version after increment post-deletion")
-	r.EqualValues(1, ver.From, "ACL from version is 1 after deletion")
+	r.EqualValues(2, ver.From, "ACL from version is 2 after deletion")
 	r.EqualValues(0, ver.To, "ACL to version is 0 after deletion")
 
 	//delete bucket versions
@@ -546,17 +546,17 @@ func Test_Version(t *testing.T) {
 	//check that all object version remains unaffected
 	ver, err = s.GetObj(ctx, replID, obj)
 	r.NoError(err, "get object version after bucket deletion")
-	r.EqualValues(1, ver.From, "object from version remains after bucket deletion")
+	r.EqualValues(4, ver.From, "object from version remains after bucket deletion")
 	r.EqualValues(0, ver.To, "object to version remains after bucket deletion")
 
 	ver, err = s.GetTags(ctx, replID, obj)
 	r.NoError(err, "get object tags version after bucket deletion")
-	r.EqualValues(1, ver.From, "object tags from version remains after bucket deletion")
+	r.EqualValues(2, ver.From, "object tags from version remains after bucket deletion")
 	r.EqualValues(0, ver.To, "object tags to version remains after bucket deletion")
 
 	ver, err = s.GetACL(ctx, replID, obj)
 	r.NoError(err, "get object ACL version after bucket deletion")
-	r.EqualValues(1, ver.From, "object ACL from version remains after bucket deletion")
+	r.EqualValues(2, ver.From, "object ACL from version remains after bucket deletion")
 	r.EqualValues(0, ver.To, "object ACL to version remains after bucket deletion")
 
 	// add second replication versions to verify cleanup of multiple replications
@@ -729,4 +729,28 @@ func Test_Version_DestinationMismatch(t *testing.T) {
 	ver, err := s.GetObj(ctx, replID, obj)
 	r.NoError(err)
 	r.Equal(Version{}, ver)
+}
+
+func TestDeleteRecreate_OldCompletionMustNotCatchUp(t *testing.T) {
+	s := NewVersionService(testutil.SetupRedis(t))
+	ctx := t.Context()
+	id := entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{
+		User: "u", FromStorage: "primary", ToStorage: "replica",
+		FromBucket: "bucket", ToBucket: "bucket",
+	})
+	obj := dom.Object{Bucket: "bucket", Name: "key"}
+	src := Destination{Storage: "primary", Bucket: "bucket"}
+	dst := Destination{Storage: "replica", Bucket: "bucket"}
+
+	old, err := s.IncrementObj(ctx, id, obj, src)
+	require.NoError(t, err)
+	require.NoError(t, s.DeleteObjAll(ctx, id, obj))
+	_, err = s.IncrementObj(ctx, id, obj, src)
+	require.NoError(t, err)
+
+	require.NoError(t, s.UpdateIfGreater(ctx, id, obj, dst, old))
+	v, err := s.GetObj(ctx, id, obj)
+	require.NoError(t, err)
+	require.Less(t, v.To, v.From,
+		"old completion must not mark recreated object caught up")
 }

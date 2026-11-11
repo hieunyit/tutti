@@ -114,10 +114,10 @@ func toRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object, kin
 
 // provides unique ID for versioning objects
 func objectID(obj dom.Object) string {
-	if obj.Version == "" {
-		return obj.Name
+	if obj.Name == "" {
+		return ""
 	}
-	return obj.Name + obj.Version
+	return fmt.Sprintf("%d:%s%s", len(obj.Name), obj.Name, obj.Version)
 }
 
 func allRedisObjKeys(replID entity.UniversalReplicationID, object dom.Object) (key string, fields []string, err error) {

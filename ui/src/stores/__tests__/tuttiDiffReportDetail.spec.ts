@@ -70,4 +70,34 @@ describe('tuttiDiffReportDetailStore', () => {
     // getDiffReport should NOT have been called again (polling was stopped, not revived)
     expect(ChorusService.getDiffReport).toHaveBeenCalledTimes(1);
   });
+
+  it('does not revive polling after $reset during in-flight restartDiffReport', async () => {
+    let resolveRestart: (val: any) => void = () => {};
+    const pendingRestart = new Promise((resolve) => {
+      resolveRestart = resolve;
+    });
+
+    vi.mocked(ChorusService.restartDiffReport).mockImplementation(() => pendingRestart as any);
+    vi.mocked(ChorusService.getDiffReport).mockResolvedValue({
+      check: { consistent: true, fixReady: false },
+    } as any);
+
+    const store = useTuttiDiffReportDetailStore();
+    const restartPromise = store.restartDiffReport();
+
+    expect(ChorusService.restartDiffReport).toHaveBeenCalledTimes(1);
+
+    // Unmount / reset store while restartDiffReport is in-flight
+    store.$reset();
+
+    // Now resolve the restart call
+    resolveRestart({});
+    await restartPromise;
+
+    // Fast-forward time
+    await vi.advanceTimersByTimeAsync(10000);
+
+    // getDiffReport should not have been called to start new polling
+    expect(ChorusService.getDiffReport).not.toHaveBeenCalled();
+  });
 });

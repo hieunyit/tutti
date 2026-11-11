@@ -147,14 +147,17 @@ export const useTuttiDiffReportDetailStore = defineStore(
       state.isRestartLoading = true;
 
       stopPolling();
+      const currentGen = generation;
 
       try {
         await ChorusService.restartDiffReport({
           locations: state.locations,
         });
       } finally {
-        state.isRestartLoading = false;
-        await startPolling();
+        if (currentGen === generation) {
+          state.isRestartLoading = false;
+          await startPolling();
+        }
       }
     }
 

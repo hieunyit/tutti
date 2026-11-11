@@ -94,3 +94,19 @@ func TestDo_ObservesOutcomes(t *testing.T) {
 	r.Error(err)
 	r.Empty(h.observed)
 }
+
+func TestDo_StatusNotModified_NotTreatedAsApiErr(t *testing.T) {
+	r := require.New(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("ETag", "\"12345\"")
+		w.WriteHeader(http.StatusNotModified)
+	}))
+	defer srv.Close()
+	c := newTestClient(srv.URL, &fakeHealth{allow: true})
+	req := httptest.NewRequest(http.MethodGet, "/bucket/key", nil)
+	resp, isApiErr, err := c.Do(req)
+	r.NoError(err)
+	r.False(isApiErr)
+	r.Equal(http.StatusNotModified, resp.StatusCode)
+	r.Equal("\"12345\"", resp.Header.Get("ETag"))
+}

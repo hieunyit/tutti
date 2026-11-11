@@ -36,6 +36,7 @@ var successStatus = map[int]bool{
 	http.StatusOK:             true,
 	http.StatusNoContent:      true,
 	http.StatusPartialContent: true,
+	http.StatusNotModified:    true,
 }
 
 var s3ErrorResponseMap = map[string]string{

@@ -342,14 +342,15 @@ func (s *versionSvc) incrementDest(ctx context.Context, replID entity.UniversalR
 // Returns incremented version
 var luaHIncVersion = redis.NewScript(`
 local max_ver = 0
-local vals = redis.call('HMGET', KEYS[1], ARGV[1], ARGV[2])
+local sequence = 's:' .. string.sub(ARGV[1], 3)
+local vals = redis.call('HMGET', KEYS[1], ARGV[1], ARGV[2], sequence)
 for _, ver in ipairs(vals) do
 	if ver then
 		max_ver = math.max(max_ver, tonumber(ver))
 	end
 end
 max_ver = max_ver + 1
-redis.call('HSET',KEYS[1], ARGV[1], max_ver )
+redis.call('HSET', KEYS[1], ARGV[1], max_ver, sequence, max_ver)
 return max_ver`)
 
 func (s *versionSvc) incVersion(ctx context.Context, key, a, b string) (int, error) {

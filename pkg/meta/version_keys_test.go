@@ -276,8 +276,8 @@ func Test_toRedisObjKeys(t *testing.T) {
 			},
 			want: redisKeys{
 				hashKey:   "v:user1:storage1:storage2:bucket1:bucket2",
-				fromField: "f:obj1:p",
-				toField:   "t:obj1:p",
+				fromField: "f:4:obj1:p",
+				toField:   "t:4:obj1:p",
 			},
 			wantErr: false,
 		},
@@ -298,8 +298,8 @@ func Test_toRedisObjKeys(t *testing.T) {
 			},
 			want: redisKeys{
 				hashKey:   "v:user1:storage1:storage2:bucket1:bucket1",
-				fromField: "f:obj1:t",
-				toField:   "t:obj1:t",
+				fromField: "f:4:obj1:t",
+				toField:   "t:4:obj1:t",
 			},
 			wantErr: false,
 		},
@@ -374,8 +374,8 @@ func Test_toRedisObjKeys(t *testing.T) {
 			},
 			want: redisKeys{
 				hashKey:   "v:user1:storage1:storage2:bucket1:bucket1",
-				fromField: "f:obj1v1:p",
-				toField:   "t:obj1v1:p",
+				fromField: "f:4:obj1v1:p",
+				toField:   "t:4:obj1v1:p",
 			},
 			wantErr: false,
 		},
@@ -393,5 +393,15 @@ func Test_toRedisObjKeys(t *testing.T) {
 				t.Errorf("toRedisObjKeys() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestObjectID_DoesNotAliasLatestAndVersionedObject(t *testing.T) {
+	v := "example-version"
+	a := dom.Object{Name: "report", Version: v}
+	b := dom.Object{Name: "report" + v}
+
+	if objectID(a) == objectID(b) {
+		t.Fatalf("objectID(a) == objectID(b) (%q); expected distinct keys", objectID(a))
 	}
 }
