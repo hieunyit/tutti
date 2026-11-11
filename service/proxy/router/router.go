@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rs/zerolog"
-
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/features"
@@ -29,6 +27,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/s3client"
 	"github.com/hieunyit/tutti/pkg/storage"
 	"github.com/hieunyit/tutti/pkg/tasks"
 )
@@ -145,12 +144,14 @@ func (r *s3Router) Route(req *http.Request) (resp *http.Response, taskList []tas
 		}
 	}
 
-	if err != nil || isApiErr {
-		return
-	}
-	if rlErr := r.limit.StorReq(ctx, storage, ratelimit.S3Method(method)); rlErr != nil && !dom.IsErrRateLimitExceeded(rlErr) {
-		zerolog.Ctx(ctx).Err(rlErr).Str("storage", storage).Msg("rate limit error")
-	}
-
 	return
+}
+
+func (r *s3Router) forward(req *http.Request, storage string, c s3client.Client) (*http.Response, bool, error) {
+	if r.limit != nil {
+		if err := r.limit.StorReq(req.Context(), storage, ratelimit.S3Method(xctx.GetMethod(req.Context()))); err != nil {
+			return nil, false, err
+		}
+	}
+	return c.Do(req)
 }

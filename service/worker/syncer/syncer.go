@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hibiken/asynq"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
@@ -72,7 +71,9 @@ func (s *ObjectSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) erro
 		return err
 	}
 	if versions.IsEmpty() {
-		return s.objectDelete(ctx, p)
+		return lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
+			return s.objectDelete(ctx, p)
+		})
 	}
 
 	fromVer, toVer := versions.From, versions.To
@@ -111,11 +112,11 @@ func (s *ObjectSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) erro
 func (s *ObjectSyncer) objectDelete(ctx context.Context, p tasks.ObjectSyncPayload) error {
 	fromClient, err := s.clients.AsS3(ctx, p.ID.FromStorage(), p.ID.User())
 	if err != nil {
-		return fmt.Errorf("unable to get %q s3 client: %w: %w", p.ID.FromStorage(), err, asynq.SkipRetry)
+		return fmt.Errorf("unable to get %q s3 client: %w", p.ID.FromStorage(), err)
 	}
 	toClient, err := s.clients.AsS3(ctx, p.ID.ToStorage(), p.ID.User())
 	if err != nil {
-		return fmt.Errorf("unable to get %q s3 client: %w: %w", p.ID.ToStorage(), err, asynq.SkipRetry)
+		return fmt.Errorf("unable to get %q s3 client: %w", p.ID.ToStorage(), err)
 	}
 	_, err = fromClient.S3().StatObject(ctx, p.Object.Bucket, p.Object.Name, mclient.StatObjectOptions{})
 	if err == nil {

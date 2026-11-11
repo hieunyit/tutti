@@ -43,6 +43,16 @@ var (
 
 func main() {
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "config" || f.Name == "config-override" {
+			path := f.Value.String()
+			if path != "" {
+				if _, err := os.Stat(path); err != nil {
+					stdlog.Fatal().Err(err).Msgf("specified config file %q does not exist", path)
+				}
+			}
+		}
+	})
 	var configs []config.Opt
 	if configPath != nil && *configPath != "" {
 		configs = append(configs, config.Path(*configPath))

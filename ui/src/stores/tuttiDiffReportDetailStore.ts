@@ -70,24 +70,32 @@ export const useTuttiDiffReportDetailStore = defineStore(
       );
     });
 
-    async function getDiffReport() {
+    let generation = 0;
+
+    async function getDiffReport(currentGen: number) {
       if (!state.locations) return;
 
       const res = await ChorusService.getDiffReport({
         locations: state.locations,
       });
 
-      state.report = res.check;
+      if (currentGen === generation) {
+        state.report = res.check;
+      }
     }
 
     async function startPolling() {
-      try {
-        stopPolling();
+      stopPolling();
+      const currentGen = generation;
 
-        state.pollingRequest = getDiffReport();
+      try {
+        state.pollingRequest = getDiffReport(currentGen);
 
         await state.pollingRequest;
       } catch (e) {
+        if (currentGen !== generation) {
+          return;
+        }
         if (ErrorHelper.getStatusCode(e) === 404) {
           state.isNotFound = true;
 
@@ -96,13 +104,20 @@ export const useTuttiDiffReportDetailStore = defineStore(
 
         throw e;
       } finally {
-        state.pollingRequest = null;
+        if (currentGen === generation) {
+          state.pollingRequest = null;
+        }
+      }
+
+      if (currentGen !== generation) {
+        return;
       }
 
       state.pollingTimeout = window.setTimeout(startPolling, POLL_INTERVAL_MS);
     }
 
     function stopPolling() {
+      generation++;
       if (state.pollingTimeout) {
         clearTimeout(state.pollingTimeout);
         state.pollingTimeout = null;

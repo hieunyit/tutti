@@ -80,8 +80,12 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 	start = func(_ context.Context) error {
 		return srv.ListenAndServe()
 	}
-	stop = func(_ context.Context) error {
-		return srv.Shutdown(context.Background())
+	stop = func(ctx context.Context) error {
+		if err := srv.Shutdown(ctx); err != nil {
+			_ = srv.Close()
+			return err
+		}
+		return nil
 	}
 	return
 }

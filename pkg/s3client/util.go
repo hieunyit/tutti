@@ -236,8 +236,13 @@ func ExtractReqBody(r *http.Request, body any) error {
 }
 
 func ExtractRespBody(r *http.Response, body any) error {
+	if r == nil || r.Body == nil {
+		return nil
+	}
+	original := r.Body
+	defer original.Close()
 	var b bytes.Buffer
-	_, err := b.ReadFrom(r.Body)
+	_, err := b.ReadFrom(original)
 	if err != nil {
 		return err
 	}

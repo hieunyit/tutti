@@ -31,8 +31,7 @@ func HttpMiddleware(cfg *Config, app, appID string, flow xctx.Flow) func(next ht
 			builder := l.With()
 			if zerolog.GlobalLevel() < zerolog.InfoLevel {
 				builder = builder.Str(httpMethod, r.Method).
-					Str(httpPath, r.URL.Path).
-					Str(httpQuery, r.URL.RawQuery)
+					Str(httpPath, r.URL.Path)
 			}
 			newLogger := builder.Logger()
 

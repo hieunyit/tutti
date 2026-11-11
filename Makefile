@@ -6,12 +6,12 @@ TEST_WAIT_SHORT=5s
 TEST_WAIT_LONG=20s
 
 .PHONY: all
-all: chorus proxy worker chorctl bench
+all: tutti proxy worker tuttictl bench
 
 .PHONY: tidy
 tidy:
 	go mod tidy
-	cd tools/chorctl; go mod tidy
+	cd tools/tuttictl; go mod tidy
 	cd tools/bench; go mod tidy
 
 .PHONY: gen
@@ -36,7 +36,7 @@ imports:
 .PHONY: fieldalignment
 fieldalignment:
 	until go tool betteralign -apply ./pkg/... ./test/... ./cmd/... ; do :; done
-	cd ./tools/chorctl && until go tool betteralign -apply ./... ; do :; done
+	cd ./tools/tuttictl && until go tool betteralign -apply ./... ; do :; done
 	cd ./tools/bench && until go tool betteralign -apply ./... ; do :; done
 
 .PHONY: lint
@@ -81,21 +81,30 @@ proxy: proxy-bin
 worker: worker-bin
 	go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o build/worker cmd/worker/main.go
 
+.PHONY: tuttictl
+tuttictl: tuttictl-bin
+	cd tools/tuttictl; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/tuttictl main.go
+
 .PHONY: chorctl
-chorctl: chorctl-bin
-	cd tools/chorctl; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/chorctl main.go
+chorctl: tuttictl
+
+.PHONY: chorus
+chorus: tutti
 
 .PHONY: bench
 bench: bench-bin
 	cd tools/bench; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/bench main.go
 
 .PHONY: test
-test: pretty test-chorctl
+test: pretty test-tuttictl
 	TEST_WAIT_SHORT=$(TEST_WAIT_SHORT) TEST_WAIT_LONG=$(TEST_WAIT_LONG) go test ./...
 
+.PHONY: test-tuttictl
+test-tuttictl:
+	cd tools/tuttictl && go test ./...
+
 .PHONY: test-chorctl
-test-chorctl:
-	cd tools/chorctl && go test ./...
+test-chorctl: test-tuttictl
 
 .PHONY: proto-gen
 proto-gen:

@@ -60,7 +60,7 @@ func (r *s3Router) putObject(req *http.Request) (resp *http.Response, taskList [
 	if err != nil {
 		return nil, nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	if err != nil || isApiErr {
 		return
 	}
@@ -118,7 +118,7 @@ func (r *s3Router) deleteObjects(req *http.Request) (resp *http.Response, taskLi
 		return
 	}
 
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	if err != nil || isApiErr {
 		return
 	}

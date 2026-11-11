@@ -458,7 +458,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			case <-shutdownCtx.Done():
 			}
 		}
-		return proxyServer.Shutdown(shutdownCtx)
+		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
+			_ = proxyServer.Close()
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return err

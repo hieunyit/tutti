@@ -558,3 +558,26 @@ func TestFingerprintChangesWithEveryRowChange(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "empty", d)
 }
+
+func TestPublisher_MaxConnsOneWithStats(t *testing.T) {
+	s := newStoreWithMaxConns(t, 1)
+	env := newRedis(t)
+	ctx := actorCtx("tester")
+	pub := newPublisher(t, s, env.rdb)
+
+	statsCalled := false
+	pub.OnStats = func(n int64, oldest time.Duration) {
+		statsCalled = true
+	}
+
+	r := s.Repos()
+	id := controlplane.ReplicationID{User: "alice", FromStorage: "s1", ToStorage: "s2"}
+	require.NoError(t, r.Replications.Add(ctx, id, controlplane.ReplicationStatus{CreatedAt: t0}))
+
+	runCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	res, err := pub.RunOnce(runCtx)
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Published)
+	require.True(t, statsCalled)
+}

@@ -118,13 +118,21 @@ func (c *client) Do(req *http.Request) (resp *http.Response, isApiErr bool, err 
 	resp, err = c.c.Do(newReq)
 	doReqSpan.End()
 	c.observe(req.Context(), resp, err)
+	const maxErrorBody = 1 << 20 // 1 MiB
+
 	if resp != nil && !successStatus[resp.StatusCode] {
 		isApiErr = true
-		// Read the body to be saved later.
+		// Read the body to be saved later with a bounded limit to prevent OOM
 		var errBodyBytes []byte
-		errBodyBytes, err = io.ReadAll(resp.Body)
+		errBodyBytes, err = io.ReadAll(io.LimitReader(resp.Body, maxErrorBody+1))
 		// res.Body should be closed
 		closeResponse(resp)
+		if err != nil {
+			return nil, false, err
+		}
+		if len(errBodyBytes) > maxErrorBody {
+			return nil, false, fmt.Errorf("storage error response exceeds size limit (%d bytes)", maxErrorBody)
+		}
 
 		// Save the body.
 		errBodySeeker := bytes.NewReader(errBodyBytes)

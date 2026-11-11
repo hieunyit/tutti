@@ -19,9 +19,13 @@ import (
 func TestMain(m *testing.M) { os.Exit(pgtest.Run(m)) }
 
 func newStore(t *testing.T) *pg.Store {
+	return newStoreWithMaxConns(t, 8)
+}
+
+func newStoreWithMaxConns(t *testing.T, maxConns int32) *pg.Store {
 	t.Helper()
 	dsn := pgtest.NewDB(t)
-	s, err := pg.Open(context.Background(), controlplane.Config{Backend: controlplane.BackendPostgres, Postgres: controlplane.PostgresConfig{DSN: dsn, MaxConns: 8, AutoMigrate: true}})
+	s, err := pg.Open(context.Background(), controlplane.Config{Backend: controlplane.BackendPostgres, Postgres: controlplane.PostgresConfig{DSN: dsn, MaxConns: maxConns, AutoMigrate: true}})
 	require.NoError(t, err)
 	t.Cleanup(s.Close)
 	return s

@@ -131,7 +131,7 @@ func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicat
 		return nil, err
 	}
 	// acquire user lock, then the lock of both storages (the replication references them)
-	err = h.inUserLock(ctx, req.Id.User, func() error {
+	err = h.inUserLock(ctx, req.Id.User, func(ctx context.Context) error {
 		return h.storageLocker.With(ctx, []string{uid.FromStorage(), uid.ToStorage()}, func(ctx context.Context) error {
 			// the storage may have been deleted while waiting for the lock
 			if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
@@ -212,7 +212,7 @@ func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID e
 	return h.queueSvc.EnqueueTask(ctx, task)
 }
 
-func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID entity.BucketReplicationPolicy, req *pb.AddReplicationRequest) error {
+func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID entity.BucketReplicationPolicy, req *pb.AddReplicationRequest) (err error) {
 	storageType := h.credsSvc.Storages()[replicationID.FromStorage]
 	var eventSource pb.EventSource
 	if req.Opts != nil {
@@ -270,6 +270,16 @@ func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID
 	if err != nil {
 		return fmt.Errorf("%w: unable to add bucket replication policy", err)
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if cleanupErr := h.policySvc.DeleteBucketReplication(cleanupCtx, replicationID); cleanupErr != nil {
+			zerolog.Ctx(ctx).Error().Err(cleanupErr).Msg("bucket replication cleanup failed")
+		}
+	}()
 	// create bucket notification for agent:
 	err = h.createAgentBucketNotification(ctx, replicationID, opts.AgentURL)
 	if err != nil {
@@ -358,8 +368,8 @@ func (h *policyHandlers) DeleteReplication(ctx context.Context, req *pb.Replicat
 		return nil, err
 	}
 	// lock order: user, then replication
-	err = h.inUserLock(ctx, req.User, func() error {
-		return h.inReplicationLock(ctx, uid, func() error {
+	err = h.inUserLock(ctx, req.User, func(ctx context.Context) error {
+		return h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 			return h.deleteReplication(ctx, uid)
 		})
 	})
@@ -431,7 +441,7 @@ func (h *policyHandlers) DeleteSwitch(ctx context.Context, req *pb.ReplicationID
 	if err != nil {
 		return nil, err
 	}
-	err = h.inReplicationLock(ctx, uid, func() error {
+	err = h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 		return h.policySvc.DeleteReplicationSwitch(ctx, uid)
 	})
 	if err != nil {
@@ -619,7 +629,7 @@ func (h *policyHandlers) PauseReplication(ctx context.Context, req *pb.Replicati
 	if err != nil {
 		return nil, err
 	}
-	err = h.inUserLock(ctx, req.User, func() error {
+	err = h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.policySvc.PauseReplication(ctx, uid)
 	})
 	if err != nil {
@@ -633,7 +643,7 @@ func (h *policyHandlers) ResumeReplication(ctx context.Context, req *pb.Replicat
 	if err != nil {
 		return nil, err
 	}
-	err = h.inUserLock(ctx, req.User, func() error {
+	err = h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.policySvc.ResumeReplication(ctx, uid)
 	})
 	if err != nil {
@@ -685,7 +695,7 @@ func (h *policyHandlers) SwitchWithDowntime(ctx context.Context, req *pb.SwitchD
 	if err != nil {
 		return nil, err
 	}
-	err = h.inReplicationLock(ctx, uid, func() error {
+	err = h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 		// persist switch metadata
 		err = h.policySvc.SetDowntimeReplicationSwitch(ctx, uid, pbToDowntimeOpts(req.DowntimeOpts))
 		if err != nil {
@@ -715,7 +725,7 @@ func (h *policyHandlers) SwitchWithZeroDowntime(ctx context.Context, req *pb.Swi
 	if storageType != dom.S3 {
 		return nil, fmt.Errorf("%w: zero-downtime switch is only supported for S3 storage type", dom.ErrInvalidArg)
 	}
-	err = h.inReplicationLock(ctx, uid, func() error {
+	err = h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 		// persist switch metadata
 		opts := &entity.ReplicationSwitchZeroDowntimeOpts{
 			MultipartTTL: defaultZeroDowntimeMultipartTTL,
@@ -789,29 +799,29 @@ func (h *policyHandlers) createAgentBucketNotification(ctx context.Context, repl
 	return nil
 }
 
-func (h *policyHandlers) inUserLock(ctx context.Context, user string, fn func() error) error {
+func (h *policyHandlers) inUserLock(ctx context.Context, user string, fn func(ctx context.Context) error) error {
 	lock, err := h.userLocker.Lock(ctx, user, store.WithDuration(time.Second), store.WithRetry(true))
 	if err != nil {
 		return err
 	}
 	defer lock.Release(ctx)
-	return lock.Do(ctx, time.Second, fn)
+	return lock.DoCtx(ctx, time.Second, fn)
 }
 
-func (h *policyHandlers) inReplicationLock(ctx context.Context, id entity.UniversalReplicationID, fn func() error) error {
+func (h *policyHandlers) inReplicationLock(ctx context.Context, id entity.UniversalReplicationID, fn func(ctx context.Context) error) error {
 	lock, err := h.replicationStatusLocker.Lock(ctx, id, store.WithDuration(time.Second), store.WithRetry(true))
 	if err != nil {
 		return err
 	}
 	defer lock.Release(ctx)
-	return lock.Do(ctx, time.Second, fn)
+	return lock.DoCtx(ctx, time.Second, fn)
 }
 
 func (h *policyHandlers) AddRouting(ctx context.Context, req *pb.AddRoutingRequest) (*emptypb.Empty, error) {
 	if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
 		return nil, err
 	}
-	err := h.inUserLock(ctx, req.User, func() error {
+	err := h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.storageLocker.With(ctx, []string{req.ToStorage}, func(ctx context.Context) error {
 			// the storage may have been deleted while waiting for the lock
 			if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
@@ -843,7 +853,7 @@ func (h *policyHandlers) UpdateRouting(ctx context.Context, req *pb.UpdateRoutin
 	if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
 		return nil, err
 	}
-	err := h.inUserLock(ctx, req.User, func() error {
+	err := h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		return h.storageLocker.With(ctx, []string{req.ToStorage}, func(ctx context.Context) error {
 			if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
 				return err
@@ -867,7 +877,7 @@ func (h *policyHandlers) DeleteRouting(ctx context.Context, req *pb.RoutingID) (
 	if req.User == "" {
 		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
 	}
-	err := h.inUserLock(ctx, req.User, func() error {
+	err := h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		if req.Bucket != nil && *req.Bucket != "" {
 			return h.policySvc.DeleteBucketRouting(ctx, entity.BucketRoutingPolicyID{
 				User:   req.User,
@@ -886,7 +896,7 @@ func (h *policyHandlers) BlockRouting(ctx context.Context, req *pb.RoutingID) (*
 	if req.User == "" {
 		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
 	}
-	err := h.inUserLock(ctx, req.User, func() error {
+	err := h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		if req.Bucket != nil && *req.Bucket != "" {
 			return h.policySvc.BlockBucketRouting(ctx, entity.BucketRoutingPolicyID{
 				User:   req.User,
@@ -905,7 +915,7 @@ func (h *policyHandlers) UnblockRouting(ctx context.Context, req *pb.RoutingID) 
 	if req.User == "" {
 		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
 	}
-	err := h.inUserLock(ctx, req.User, func() error {
+	err := h.inUserLock(ctx, req.User, func(ctx context.Context) error {
 		if req.Bucket != nil && *req.Bucket != "" {
 			return h.policySvc.UnblockBucketRouting(ctx, entity.BucketRoutingPolicyID{
 				User:   req.User,

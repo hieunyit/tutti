@@ -105,7 +105,7 @@ func TestSync_EmptyVersionsTakesDeletePath(t *testing.T) {
 	s, fc, cl, _, p := setup(t)
 	err := s.Sync(t.Context(), p)
 	r.Error(err)
-	r.ErrorIs(err, asynq.SkipRetry)
+	r.False(errors.Is(err, asynq.SkipRetry), "unclassified client failures must retain retry")
 	r.Equal(1, cl.calls)
 	r.Empty(fc.calls)
 }

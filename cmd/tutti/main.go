@@ -78,6 +78,16 @@ func main() {
 	flag.BoolVar(&help, "help", false, "Print help. Example: chorus -help")
 	flag.BoolVar(&printVer, "version", false, "Print version. Example: chorus -version")
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "config" {
+			path := f.Value.String()
+			if path != "" {
+				if _, err := os.Stat(path); err != nil {
+					stdlog.Fatal().Err(err).Msgf("specified config file %q does not exist", path)
+				}
+			}
+		}
+	})
 	if h || help {
 		fmt.Print(helpText)
 		flag.PrintDefaults()

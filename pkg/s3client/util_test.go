@@ -1,7 +1,9 @@
 package s3client
 
 import (
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -123,4 +125,35 @@ func TestProcessHeaders(t *testing.T) {
 			r.Len(notToSign, len(tc.wantNotToSign))
 		})
 	}
+}
+
+type trackingReader struct {
+	io.Reader
+	closed bool
+}
+
+func (t *trackingReader) Close() error {
+	t.closed = true
+	return nil
+}
+
+func TestExtractRespBody_ClosesOriginal(t *testing.T) {
+	xmlContent := `<TestResponse><Field>hello</Field></TestResponse>`
+	tracker := &trackingReader{Reader: strings.NewReader(xmlContent)}
+	resp := &http.Response{
+		Body: tracker,
+	}
+
+	type target struct {
+		Field string `xml:"Field"`
+	}
+	var res target
+	err := ExtractRespBody(resp, &res)
+	require.NoError(t, err)
+	require.Equal(t, "hello", res.Field)
+	require.True(t, tracker.closed, "original body must be closed")
+
+	newBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, xmlContent, string(newBody))
 }

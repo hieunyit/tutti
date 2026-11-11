@@ -95,15 +95,14 @@ func TestServe_ReplicationAlwaysFails_LogMode(t *testing.T) {
 	r.True(rt.body.closed.Load())
 }
 
-func TestServe_ReplicationRetryRespectsContextCancel(t *testing.T) {
+func TestRecordEvent_AfterPrimarySuccessIgnoresDisconnect(t *testing.T) {
 	r := require.New(t)
-	svc := &failingReplSvc{failFirst: -1}
+	svc := &failingReplSvc{failFirst: 1}
 	ctx, cancel := context.WithCancel(context.Background())
-	time.AfterFunc(100*time.Millisecond, cancel)
-	start := time.Now()
-	rec, _ := runServe(t, svc, ReplicationOptions{OnEventError: "fail", EventRetryBudget: 10 * time.Second}, ctx)
-	r.Less(time.Since(start), 3*time.Second)
-	r.Equal(http.StatusServiceUnavailable, rec.Code)
+	cancel() // client disconnected right as primary finished
+	rec, _ := runServe(t, svc, ReplicationOptions{OnEventError: "fail", EventRetryBudget: 2 * time.Second}, ctx)
+	r.Equal(int32(2), svc.calls.Load())
+	r.Equal(http.StatusOK, rec.Code)
 }
 
 // A request producing many tasks (e.g. DeleteObjects with 500 keys) must be bounded by a

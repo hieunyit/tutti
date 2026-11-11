@@ -44,7 +44,7 @@ func (r *s3Router) commonRead(req *http.Request) (resp *http.Response, storage s
 	if err != nil {
 		return nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	return
 }
 
@@ -59,7 +59,7 @@ func (r *s3Router) commonWrite(req *http.Request) (resp *http.Response, storage 
 	if err != nil {
 		return nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	return
 }
 

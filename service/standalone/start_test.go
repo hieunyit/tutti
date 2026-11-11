@@ -19,6 +19,7 @@ package standalone
 import (
 	"context"
 	"fmt"
+	"net"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,12 +32,36 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
+func getFreePort(t *testing.T) int {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	port := l.Addr().(*net.TCPAddr).Port
+	_ = l.Close()
+	return port
+}
+
 func TestStandaloneDefaultConfig(t *testing.T) {
 	r := require.New(t)
 	conf, err := GetConfig()
 	r.NoError(err)
 	r.EqualValues(5*time.Second, conf.ShutdownTimeout)
 	conf.ShutdownTimeout = 500 * time.Millisecond
+	conf.Proxy.Port = getFreePort(t)
+	conf.Api.GrpcPort = getFreePort(t)
+	conf.Api.HttpPort = getFreePort(t)
+	conf.UIPort = getFreePort(t)
+	for k, s := range conf.Storage.Storages {
+		if s.S3 != nil {
+			s.S3.Address = fmt.Sprintf(":%d", getFreePort(t))
+			conf.Storage.Storages[k] = s
+		}
+	}
+	for k, s := range conf.Proxy.Storage.Storages {
+		if s.S3 != nil {
+			s.S3.Address = conf.Storage.Storages[k].S3.Address
+			conf.Proxy.Storage.Storages[k] = s
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()

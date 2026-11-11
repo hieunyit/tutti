@@ -282,21 +282,25 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 	// not found in cache or creds changed - obtain write lock to create new client
 
 	r.Lock()
-	defer r.Unlock()
 	// re-check cache after acquiring write lock
 	cred, _, err := r.credsSvc.ResolveS3Credentials(storage, user)
 	if err != nil {
+		r.Unlock()
 		return nil, err
 	}
 	cacheVal, ok = r.s3Clients[key]
 	s3Addr, err = r.credsSvc.GetS3Address(storage)
 	if err != nil {
+		r.Unlock()
 		return nil, err
 	}
 	if ok && cacheVal.cred == cred && cacheVal.address == s3Addr {
+		r.Unlock()
 		return cacheVal.client, nil
 	}
-	// create new client
+	r.Unlock()
+
+	// create new client outside lock to avoid blocking other storages
 	var clientOpts []s3client.Option
 	if r.health != nil {
 		clientOpts = append(clientOpts, s3client.WithHealth(r.health))
@@ -304,6 +308,12 @@ func (r *clients) AsS3(ctx context.Context, storage, user string) (s3client.Clie
 	client, err := s3client.NewClient(ctx, r.metricsSvc, s3Addr, cred, storage, user, clientOpts...)
 	if err != nil {
 		return nil, err
+	}
+
+	r.Lock()
+	defer r.Unlock()
+	if cacheVal, ok = r.s3Clients[key]; ok && cacheVal.cred == cred && cacheVal.address == s3Addr {
+		return cacheVal.client, nil
 	}
 	r.s3Clients[key] = s3CacheVal{
 		cred:    cred,
@@ -332,20 +342,29 @@ func (r *clients) AsSwift(ctx context.Context, storage string, user string) (*go
 	}
 
 	r.Lock()
-	defer r.Unlock()
 	// re-check cache after acquiring write lock
 	cred, err := r.credsSvc.GetSwiftCredentials(storage, user)
 	if err != nil {
+		r.Unlock()
 		return nil, err
 	}
 	cacheVal, ok = r.swiftClients[key]
 	if ok && cacheVal.cred == cred {
+		r.Unlock()
 		return cacheVal.client, nil
 	}
-	// create new client
+	r.Unlock()
+
+	// create new client outside lock
 	client, err := swift.NewClient(ctx, swiftAddr, cred)
 	if err != nil {
 		return nil, err
+	}
+
+	r.Lock()
+	defer r.Unlock()
+	if cacheVal, ok = r.swiftClients[key]; ok && cacheVal.cred == cred {
+		return cacheVal.client, nil
 	}
 	r.swiftClients[key] = swiftCacheVal{
 		cred:   cred,

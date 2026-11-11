@@ -47,11 +47,11 @@ func (r *replications) check(id controlplane.ReplicationID) error {
 
 func dest(toStorage, toBucket string) string { return toStorage + ":" + toBucket }
 
-// replScopeKey is the outbox object key of every replication entry of one scope (user-level when fromBucket is empty).
-// The projection of a scope (destination set, generations, per-user index) is absolute, so all entries of the scope
-// must be applied in commit order: one key per scope, never one key per destination.
-func replScopeKey(user, fromBucket string) string {
-	return "replication_scope/" + user + "/" + fromBucket
+// replScopeKey is the outbox object key of every replication entry of one user.
+// The projection of a scope (destination set, generations, per-user index) is absolute, so all entries of the user
+// must be applied in commit order: one key per user, never one key per destination or bucket.
+func replScopeKey(user, _ string) string {
+	return "replication_user/" + user
 }
 
 // lockScope serializes the writers of one replication scope until the end of the transaction. The absolute

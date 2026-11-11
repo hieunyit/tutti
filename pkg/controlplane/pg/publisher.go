@@ -157,7 +157,7 @@ func (p *Publisher) RunOnce(ctx context.Context) (Result, error) {
 		res.Published++
 	}
 	if p.OnStats != nil {
-		if n, oldest, serr := p.Pending(ctx); serr == nil {
+		if n, oldest, serr := pendingStats(ctx, conn); serr == nil {
 			p.OnStats(n, oldest)
 		}
 	}
@@ -293,8 +293,12 @@ func (p *Publisher) Purge(ctx context.Context) (int64, error) {
 
 // Pending returns the number of unpublished entries and the age of the oldest one (for metrics and alerts).
 func (p *Publisher) Pending(ctx context.Context) (n int64, oldest time.Duration, err error) {
+	return pendingStats(ctx, p.Store.pool)
+}
+
+func pendingStats(ctx context.Context, q querier) (n int64, oldest time.Duration, err error) {
 	var age *float64
-	err = p.Store.pool.QueryRow(ctx, `SELECT count(*), EXTRACT(EPOCH FROM now()-min(created_at)) FROM outbox WHERE published_at IS NULL`).Scan(&n, &age)
+	err = q.QueryRow(ctx, `SELECT count(*), EXTRACT(EPOCH FROM now()-min(created_at)) FROM outbox WHERE published_at IS NULL`).Scan(&n, &age)
 	if age != nil {
 		oldest = time.Duration(*age * float64(time.Second))
 	}

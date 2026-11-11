@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
@@ -88,7 +89,8 @@ func (s *server) Start(ctx context.Context) error {
 		go func(name string, fn func(ctx context.Context) error) {
 			defer cleanWG.Done()
 			<-groupCtx.Done()
-			cleanUpCtx := context.Background()
+			cleanUpCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 			zerolog.Ctx(cleanUpCtx).Info().Msgf("server: start cleanup for worker %q", name)
 			err := fn(cleanUpCtx)
 			if err != nil {

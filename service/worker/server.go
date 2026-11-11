@@ -428,6 +428,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 
 	if conf.Api.Enabled {
+		if conf.Api.Secure {
+			return fmt.Errorf("api.secure is unsupported by the embedded API listeners")
+		}
 		chorusHandler := api.ChorusHandlers(credsSvc, rpc.NewProxyClient(appRedis), &app)
 		diffHandler := api.DiffHandlers(credsSvc, checkSvc)
 		var webhookConf *api.WebhookConfig

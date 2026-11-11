@@ -45,7 +45,7 @@ func (r *s3Router) createBucket(req *http.Request) (resp *http.Response, task *t
 		zerolog.Ctx(ctx).Warn().Err(err).Msg("unable to unmarshal createBucketConfiguration request body")
 	}
 
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	if err != nil || isApiErr {
 		return
 	}
@@ -70,7 +70,7 @@ func (r *s3Router) deleteBucket(req *http.Request) (resp *http.Response, task *t
 		return nil, nil, "", false, err
 	}
 	// delete bucket
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	if err != nil || isApiErr {
 		return
 	}
@@ -89,6 +89,6 @@ func (r *s3Router) listBuckets(req *http.Request) (resp *http.Response, storage 
 	if err != nil {
 		return nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	return
 }

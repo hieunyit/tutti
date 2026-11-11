@@ -17,8 +17,11 @@
 package router
 
 import (
+	"context"
 	"net/http"
+	"time"
 
+	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 
@@ -54,6 +57,22 @@ func (r *s3Router) createMultipartUpload(req *http.Request) (resp *http.Response
 	id := entity.NewUserUploadObjectID(user, bucket)
 	val := entity.NewUserUploadObject(object, respBody.UploadID)
 	err = r.uploadSvc.StoreUpload(ctx, id, val, inProgressSwitch.MultipartTTL)
+	if err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		c, cleanupErr := r.clients.AsS3(cleanupCtx, storage, user)
+		if cleanupErr == nil {
+			_, cleanupErr = c.AWS().AbortMultipartUploadWithContext(
+				cleanupCtx, &awss3.AbortMultipartUploadInput{
+					Bucket:   &bucket,
+					Key:      &object,
+					UploadId: &respBody.UploadID,
+				})
+		}
+		if cleanupErr != nil {
+			zerolog.Ctx(ctx).Error().Err(cleanupErr).Msg("multipart cleanup failed")
+		}
+	}
 
 	return
 }
@@ -71,7 +90,7 @@ func (r *s3Router) completeMultipartUpload(req *http.Request) (resp *http.Respon
 	if err != nil {
 		return nil, nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	if err != nil || isApiErr {
 		return
 	}
@@ -155,7 +174,7 @@ func (r *s3Router) listMultipartUploads(req *http.Request) (resp *http.Response,
 	if err != nil {
 		return nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	return
 }
 
@@ -171,7 +190,7 @@ func (r *s3Router) uploadPart(req *http.Request) (resp *http.Response, storage s
 	if err != nil {
 		return nil, "", false, err
 	}
-	resp, isApiErr, err = client.Do(req)
+	resp, isApiErr, err = r.forward(req, storage, client)
 	return
 }
 

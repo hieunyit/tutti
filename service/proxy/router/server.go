@@ -287,15 +287,15 @@ func serveAtomic(router Router, replSvc replication.Service, proxyCors bool, rep
 		trafficstats.SetRoute(ctx, opClass(ctx))
 
 		resp, taskList, storage, isApiErr, err := router.Route(r)
-		if err != nil {
-			util.WriteError(r.Context(), w, err)
-			return
-		}
 		defer func() {
 			if resp != nil && resp.Body != nil {
 				_ = resp.Body.Close()
 			}
 		}()
+		if err != nil {
+			util.WriteError(r.Context(), w, err)
+			return
+		}
 		ctx = log.WithStorage(ctx, storage)
 		trafficstats.SetStorage(ctx, storage)
 		var syncRes syncResult
@@ -307,13 +307,10 @@ func serveAtomic(router Router, replSvc replication.Service, proxyCors bool, rep
 		} else {
 			replCtx, cancel := log.StartNew(ctx)
 			defer cancel()
-			// detached ctx keeps values but ignores client cancel; stop retrying when client is gone
-			retryCtx, stopRetry := withCancelFrom(replCtx, r.Context())
-			defer stopRetry()
 			deadline := time.Now().Add(replOpts.EventRetryBudget)
 			var recordErr error
 			for _, task := range taskList {
-				replErr := replicateWithRetry(retryCtx, replSvc, storage, task, deadline)
+				replErr := replicateWithRetry(replCtx, replSvc, storage, task, deadline)
 				if replErr != nil {
 					logger.Err(replErr).
 						Str("bucket", xctx.GetBucket(ctx)).
@@ -321,7 +318,7 @@ func serveAtomic(router Router, replSvc replication.Service, proxyCors bool, rep
 						Str("on_event_error", replOpts.OnEventError).
 						Msg("unable to handle replication")
 					recordErr = replErr
-					if retryCtx.Err() != nil || !time.Now().Before(deadline) {
+					if replCtx.Err() != nil || !time.Now().Before(deadline) {
 						break
 					}
 				}
@@ -410,16 +407,5 @@ func copyResponseHeaders(dst, src http.Header, proxyCors bool) {
 			}
 		}
 		dst[k] = append([]string(nil), v...)
-	}
-}
-
-// withCancelFrom returns a ctx with the values of base that is also canceled when
-// cancelSrc is done. The returned func releases it and must be called.
-func withCancelFrom(base, cancelSrc context.Context) (context.Context, func()) {
-	ctx, cancel := context.WithCancel(base)
-	stop := context.AfterFunc(cancelSrc, cancel)
-	return ctx, func() {
-		stop()
-		cancel()
 	}
 }
