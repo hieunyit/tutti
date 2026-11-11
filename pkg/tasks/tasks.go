@@ -97,6 +97,11 @@ type TaskPayload interface {
 		DiffFixS3ListVersionsPayload
 }
 
+type TraceableTask interface {
+	SetTraceContext(parent, state string)
+	GetTraceContext() (parent, state string)
+}
+
 type ReplicationTask interface {
 	SetReplicationID(id entity.UniversalReplicationID, generation int64)
 	GetReplicationID() entity.UniversalReplicationID
@@ -105,9 +110,20 @@ type ReplicationTask interface {
 }
 
 type replicationID struct {
-	ID         entity.UniversalReplicationID
-	Queue      string
-	Generation int64
+	ID          entity.UniversalReplicationID
+	Queue       string
+	Generation  int64
+	TraceParent string `json:"traceparent,omitempty"`
+	TraceState  string `json:"tracestate,omitempty"`
+}
+
+func (r *replicationID) SetTraceContext(parent, state string) {
+	r.TraceParent = parent
+	r.TraceState = state
+}
+
+func (r *replicationID) GetTraceContext() (parent, state string) {
+	return r.TraceParent, r.TraceState
 }
 
 func (r *replicationID) GetReplicationID() entity.UniversalReplicationID {

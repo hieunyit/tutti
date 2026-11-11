@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
@@ -61,9 +63,28 @@ func (e encoder[T]) Encode(ctx context.Context, payload T) (*asynq.Task, error) 
 			replTask.SetInheritableQueue(queue)
 		}
 	}
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if trTask, ok := any(&payload).(TraceableTask); ok {
+		trTask.SetTraceContext(carrier.Get("traceparent"), carrier.Get("tracestate"))
+	}
 	bytes, err := json.Marshal(&payload)
 	if err != nil {
 		return nil, err
+	}
+	if tp := carrier.Get("traceparent"); tp != "" {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(bytes, &raw); err == nil {
+			if _, exists := raw["traceparent"]; !exists {
+				raw["traceparent"], _ = json.Marshal(tp)
+				if ts := carrier.Get("tracestate"); ts != "" {
+					raw["tracestate"], _ = json.Marshal(ts)
+				}
+				if newBytes, err := json.Marshal(raw); err == nil {
+					bytes = newBytes
+				}
+			}
+		}
 	}
 	optionList := []asynq.Option{asynq.Queue(queue), asynq.Timeout(taskTimeout)}
 	if e.taskID != nil {
@@ -88,136 +109,152 @@ func (e encoder[T]) Enqueue(ctx context.Context, taskClient *asynq.Client, paylo
 	return nil
 }
 
-func enqueueAny(ctx context.Context, taskClient *asynq.Client, payload any) error {
-	// TODO: think about code generation to avoid this boilerplate code
+func EncodeAny(ctx context.Context, payload any) (*asynq.Task, error) {
+	if trTask, ok := payload.(TraceableTask); ok {
+		carrier := propagation.MapCarrier{}
+		otel.GetTextMapPropagator().Inject(ctx, carrier)
+		trTask.SetTraceContext(carrier.Get("traceparent"), carrier.Get("tracestate"))
+	}
 	switch p := payload.(type) {
 	case *BucketCreatePayload:
-		return bucketCreate.Enqueue(ctx, taskClient, *p)
+		return bucketCreate.Encode(ctx, *p)
 	case BucketCreatePayload:
-		return bucketCreate.Enqueue(ctx, taskClient, p)
+		return bucketCreate.Encode(ctx, p)
 	case *BucketDeletePayload:
-		return bucketDelete.Enqueue(ctx, taskClient, *p)
+		return bucketDelete.Encode(ctx, *p)
 	case BucketDeletePayload:
-		return bucketDelete.Enqueue(ctx, taskClient, p)
+		return bucketDelete.Encode(ctx, p)
 	case *BucketSyncTagsPayload:
-		return bucketSyncTags.Enqueue(ctx, taskClient, *p)
+		return bucketSyncTags.Encode(ctx, *p)
 	case BucketSyncTagsPayload:
-		return bucketSyncTags.Enqueue(ctx, taskClient, p)
+		return bucketSyncTags.Encode(ctx, p)
 	case *BucketSyncACLPayload:
-		return bucketSyncACL.Enqueue(ctx, taskClient, *p)
+		return bucketSyncACL.Encode(ctx, *p)
 	case BucketSyncACLPayload:
-		return bucketSyncACL.Enqueue(ctx, taskClient, p)
+		return bucketSyncACL.Encode(ctx, p)
 	case *ObjectSyncPayload:
-		return objectSync.Enqueue(ctx, taskClient, *p)
+		return objectSync.Encode(ctx, *p)
 	case ObjectSyncPayload:
-		return objectSync.Enqueue(ctx, taskClient, p)
+		return objectSync.Encode(ctx, p)
 	case *ObjSyncTagsPayload:
-		return objSyncTags.Enqueue(ctx, taskClient, *p)
+		return objSyncTags.Encode(ctx, *p)
 	case ObjSyncTagsPayload:
-		return objSyncTags.Enqueue(ctx, taskClient, p)
+		return objSyncTags.Encode(ctx, p)
 	case *ObjSyncACLPayload:
-		return objSyncACL.Enqueue(ctx, taskClient, *p)
+		return objSyncACL.Encode(ctx, *p)
 	case ObjSyncACLPayload:
-		return objSyncACL.Enqueue(ctx, taskClient, p)
+		return objSyncACL.Encode(ctx, p)
 	case *MigrateS3UserPayload:
-		return migrateS3User.Enqueue(ctx, taskClient, *p)
+		return migrateS3User.Encode(ctx, *p)
 	case MigrateS3UserPayload:
-		return migrateS3User.Enqueue(ctx, taskClient, p)
+		return migrateS3User.Encode(ctx, p)
 	case *MigrateBucketListObjectsPayload:
-		return migrateBucketListObjects.Enqueue(ctx, taskClient, *p)
+		return migrateBucketListObjects.Encode(ctx, *p)
 	case MigrateBucketListObjectsPayload:
-		return migrateBucketListObjects.Enqueue(ctx, taskClient, p)
+		return migrateBucketListObjects.Encode(ctx, p)
 	case *MigrateObjCopyPayload:
-		return migrateObjCopy.Enqueue(ctx, taskClient, *p)
+		return migrateObjCopy.Encode(ctx, *p)
 	case MigrateObjCopyPayload:
-		return migrateObjCopy.Enqueue(ctx, taskClient, p)
+		return migrateObjCopy.Encode(ctx, p)
 	case *ListObjectVersionsPayload:
-		return listObjectVersions.Enqueue(ctx, taskClient, *p)
+		return listObjectVersions.Encode(ctx, *p)
 	case ListObjectVersionsPayload:
-		return listObjectVersions.Enqueue(ctx, taskClient, p)
+		return listObjectVersions.Encode(ctx, p)
 	case *MigrateVersionedObjectPayload:
-		return migrateVersionedObject.Enqueue(ctx, taskClient, *p)
+		return migrateVersionedObject.Encode(ctx, *p)
 	case MigrateVersionedObjectPayload:
-		return migrateVersionedObject.Enqueue(ctx, taskClient, p)
+		return migrateVersionedObject.Encode(ctx, p)
 	case *ZeroDowntimeReplicationSwitchPayload:
-		return zeroDowntimeReplicationSwitch.Enqueue(ctx, taskClient, *p)
+		return zeroDowntimeReplicationSwitch.Encode(ctx, *p)
 	case ZeroDowntimeReplicationSwitchPayload:
-		return zeroDowntimeReplicationSwitch.Enqueue(ctx, taskClient, p)
+		return zeroDowntimeReplicationSwitch.Encode(ctx, p)
 	case *SwitchWithDowntimePayload:
-		return switchWithDowntime.Enqueue(ctx, taskClient, *p)
+		return switchWithDowntime.Encode(ctx, *p)
 	case SwitchWithDowntimePayload:
-		return switchWithDowntime.Enqueue(ctx, taskClient, p)
+		return switchWithDowntime.Encode(ctx, p)
 	case *DiffPayload:
-		return diff.Enqueue(ctx, taskClient, *p)
+		return diff.Encode(ctx, *p)
 	case DiffPayload:
-		return diff.Enqueue(ctx, taskClient, p)
+		return diff.Encode(ctx, p)
 	case *DiffListObjectsPayload:
-		return diffListObjects.Enqueue(ctx, taskClient, *p)
+		return diffListObjects.Encode(ctx, *p)
 	case DiffListObjectsPayload:
-		return diffListObjects.Enqueue(ctx, taskClient, p)
+		return diffListObjects.Encode(ctx, p)
 	case *DiffListVersionsPayload:
-		return diffListVersions.Enqueue(ctx, taskClient, *p)
+		return diffListVersions.Encode(ctx, *p)
 	case DiffListVersionsPayload:
-		return diffListVersions.Enqueue(ctx, taskClient, p)
+		return diffListVersions.Encode(ctx, p)
 	case *DiffFixCollectObjectsPayload:
-		return diffFixCollectObjectsPayload.Enqueue(ctx, taskClient, *p)
+		return diffFixCollectObjectsPayload.Encode(ctx, *p)
 	case DiffFixCollectObjectsPayload:
-		return diffFixCollectObjectsPayload.Enqueue(ctx, taskClient, p)
+		return diffFixCollectObjectsPayload.Encode(ctx, p)
 	case *DiffFixRemoveObjectsPayload:
-		return diffFixRemoveObjects.Enqueue(ctx, taskClient, *p)
+		return diffFixRemoveObjects.Encode(ctx, *p)
 	case DiffFixRemoveObjectsPayload:
-		return diffFixRemoveObjects.Enqueue(ctx, taskClient, p)
+		return diffFixRemoveObjects.Encode(ctx, p)
 	case *DiffFixEnsureObjectsRemovedPayload:
-		return diffFixEnsureObjectsRemoved.Enqueue(ctx, taskClient, *p)
+		return diffFixEnsureObjectsRemoved.Encode(ctx, *p)
 	case DiffFixEnsureObjectsRemovedPayload:
-		return diffFixEnsureObjectsRemoved.Enqueue(ctx, taskClient, p)
+		return diffFixEnsureObjectsRemoved.Encode(ctx, p)
 	case *DiffFixS3CopyPayload:
-		return diffFixS3Copy.Enqueue(ctx, taskClient, *p)
+		return diffFixS3Copy.Encode(ctx, *p)
 	case DiffFixS3CopyPayload:
-		return diffFixS3Copy.Enqueue(ctx, taskClient, p)
+		return diffFixS3Copy.Encode(ctx, p)
 	case *DiffFixSwiftCopyPayload:
-		return diffFixSwiftCopy.Enqueue(ctx, taskClient, *p)
+		return diffFixSwiftCopy.Encode(ctx, *p)
 	case DiffFixSwiftCopyPayload:
-		return diffFixSwiftCopy.Enqueue(ctx, taskClient, p)
+		return diffFixSwiftCopy.Encode(ctx, p)
 	case *DiffFixS3ListVersionsPayload:
-		return diffFixS3ListVersions.Enqueue(ctx, taskClient, *p)
+		return diffFixS3ListVersions.Encode(ctx, *p)
 	case DiffFixS3ListVersionsPayload:
-		return diffFixS3ListVersions.Enqueue(ctx, taskClient, p)
+		return diffFixS3ListVersions.Encode(ctx, p)
 	case *SwiftAccountUpdatePayload:
-		return swiftAccountUpdate.Enqueue(ctx, taskClient, *p)
+		return swiftAccountUpdate.Encode(ctx, *p)
 	case SwiftAccountUpdatePayload:
-		return swiftAccountUpdate.Enqueue(ctx, taskClient, p)
+		return swiftAccountUpdate.Encode(ctx, p)
 	case *SwiftContainerUpdatePayload:
-		return swiftContainerUpdate.Enqueue(ctx, taskClient, *p)
+		return swiftContainerUpdate.Encode(ctx, *p)
 	case SwiftContainerUpdatePayload:
-		return swiftContainerUpdate.Enqueue(ctx, taskClient, p)
+		return swiftContainerUpdate.Encode(ctx, p)
 	case *SwiftObjectMetaUpdatePayload:
-		return swiftObjectMetaUpdate.Enqueue(ctx, taskClient, *p)
+		return swiftObjectMetaUpdate.Encode(ctx, *p)
 	case SwiftObjectMetaUpdatePayload:
-		return swiftObjectMetaUpdate.Enqueue(ctx, taskClient, p)
+		return swiftObjectMetaUpdate.Encode(ctx, p)
 	case *SwiftObjectUpdatePayload:
-		return swiftObjectUpdate.Enqueue(ctx, taskClient, *p)
+		return swiftObjectUpdate.Encode(ctx, *p)
 	case SwiftObjectUpdatePayload:
-		return swiftObjectUpdate.Enqueue(ctx, taskClient, p)
+		return swiftObjectUpdate.Encode(ctx, p)
 	case *SwiftObjectDeletePayload:
-		return swiftObjectDelete.Enqueue(ctx, taskClient, *p)
+		return swiftObjectDelete.Encode(ctx, *p)
 	case SwiftObjectDeletePayload:
-		return swiftObjectDelete.Enqueue(ctx, taskClient, p)
+		return swiftObjectDelete.Encode(ctx, p)
 	case *SwiftAccountMigrationPayload:
-		return swiftAccountMigration.Enqueue(ctx, taskClient, *p)
+		return swiftAccountMigration.Encode(ctx, *p)
 	case SwiftAccountMigrationPayload:
-		return swiftAccountMigration.Enqueue(ctx, taskClient, p)
+		return swiftAccountMigration.Encode(ctx, p)
 	case *SwiftContainerMigrationPayload:
-		return swiftContainerMigration.Enqueue(ctx, taskClient, *p)
+		return swiftContainerMigration.Encode(ctx, *p)
 	case SwiftContainerMigrationPayload:
-		return swiftContainerMigration.Enqueue(ctx, taskClient, p)
+		return swiftContainerMigration.Encode(ctx, p)
 	case *SwiftObjectMigrationPayload:
-		return swiftObjectMigration.Enqueue(ctx, taskClient, *p)
+		return swiftObjectMigration.Encode(ctx, *p)
 	case SwiftObjectMigrationPayload:
-		return swiftObjectMigration.Enqueue(ctx, taskClient, p)
+		return swiftObjectMigration.Encode(ctx, p)
 	default:
-		return fmt.Errorf("%w: unsupported payload type %T. Define encoder[%T] instance in pkg/tasks/encoder.go and add it to encodeAny switch statement", dom.ErrNotImplemented, payload, payload)
+		return nil, fmt.Errorf("%w: unsupported payload type %T. Define encoder[%T] instance in pkg/tasks/encoder.go and add it to EncodeAny switch statement", dom.ErrNotImplemented, payload, payload)
 	}
+}
+
+func enqueueAny(ctx context.Context, taskClient *asynq.Client, payload any) error {
+	task, err := EncodeAny(ctx, payload)
+	if err != nil {
+		return err
+	}
+	_, err = taskClient.EnqueueContext(ctx, task)
+	if err != nil && !errors.Is(err, asynq.ErrDuplicateTask) && !errors.Is(err, asynq.ErrTaskIDConflict) {
+		return err
+	}
+	return nil
 }
 
 var (

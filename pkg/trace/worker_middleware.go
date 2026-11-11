@@ -18,8 +18,11 @@ package trace
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hibiken/asynq"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/hieunyit/tutti/pkg/log"
@@ -28,8 +31,24 @@ import (
 func WorkerMiddleware(tp trace.TracerProvider) asynq.MiddlewareFunc {
 	return func(next asynq.Handler) asynq.Handler {
 		return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+			carrier := propagation.MapCarrier{}
+			var traceFields struct {
+				TraceParent string `json:"traceparent"`
+				TraceState  string `json:"tracestate"`
+			}
+			if err := json.Unmarshal(t.Payload(), &traceFields); err == nil {
+				if traceFields.TraceParent != "" {
+					carrier["traceparent"] = traceFields.TraceParent
+				}
+				if traceFields.TraceState != "" {
+					carrier["tracestate"] = traceFields.TraceState
+				}
+			}
+
+			extractedCtx := otel.GetTextMapPropagator().Extract(ctx, carrier)
+
 			tr := tp.Tracer("worker_handler")
-			taskCtx, span := tr.Start(ctx, t.Type())
+			taskCtx, span := tr.Start(extractedCtx, t.Type())
 			defer span.End()
 			traceID := trace.SpanFromContext(taskCtx).
 				SpanContext().
