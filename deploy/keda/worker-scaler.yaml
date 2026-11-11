@@ -1,0 +1,68 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: tutti-worker-keda-auth
+  labels:
+    app.kubernetes.io/name: tutti
+    app.kubernetes.io/component: worker
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: tutti-redis-secret
+      key: redis-password
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: tutti-worker-scaler
+  labels:
+    app.kubernetes.io/name: tutti
+    app.kubernetes.io/component: worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tutti-worker
+  pollingInterval: 15
+  cooldownPeriod: 60
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 20
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 4
+              periodSeconds: 15
+          selectPolicy: Max
+  triggers:
+    # Trigger 1: Prometheus trigger monitoring total unprocessed replication events.
+    # Each worker can comfortably process a batch of ~50 backlog items in parallel.
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-k8s.monitoring.svc.cluster.local:9090
+        metricName: tutti_replication_unprocessed_backlog
+        query: sum(replication_unprocessed_events)
+        threshold: '50'
+
+    # Trigger 2: Direct Redis trigger on the Asynq default pending queue.
+    - type: redis
+      metadata:
+        address: tutti-redis:6379
+        listName: asynq:{default}:pending
+        listLength: '20'
+        enableTLS: 'false'
+      authenticationRef:
+        name: tutti-worker-keda-auth
