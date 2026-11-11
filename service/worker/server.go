@@ -411,6 +411,26 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return err
 		}
 	}
+	err = server.Add("replication_reconciler", func(ctx context.Context) error {
+		policy.RunReplicationReconciler(ctx, policySvc, users, 1*time.Minute, func(err error) {
+			logger.Warn().Err(err).Msg("replication reconciler cycle error")
+		})
+		return nil
+	}, func(context.Context) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	err = server.Add("tombstone_gc", func(ctx context.Context) error {
+		meta.RunTombstoneGC(ctx, versionSvc, 1*time.Hour, 24*time.Hour, func(err error) {
+			logger.Warn().Err(err).Msg("tombstone GC cycle error")
+		})
+		return nil
+	}, func(context.Context) error { return nil })
+	if err != nil {
+		return err
+	}
+
 	err = server.Add("queue_workers", func(ctx context.Context) error {
 		err := srv.Start(mux)
 		if err != nil {

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -93,6 +94,8 @@ type VersionService interface {
 	GetBucketTags(ctx context.Context, replID entity.UniversalReplicationID, bucket string) (Version, error)
 	IncrementBucketTags(ctx context.Context, replID entity.UniversalReplicationID, bucket string, dest Destination) (int, error)
 	UpdateBucketTagsIfGreater(ctx context.Context, replID entity.UniversalReplicationID, bucket string, dest Destination, version int) error
+
+	GCObjectTombstones(ctx context.Context, maxAge time.Duration) (int, error)
 }
 
 func NewVersionService(client redis.UniversalClient) VersionService {
@@ -128,7 +131,18 @@ func (s *versionSvc) DeleteObjAll(ctx context.Context, replID entity.UniversalRe
 	if err != nil {
 		return err
 	}
-	return s.client.HDel(ctx, key, fields...).Err()
+	now := time.Now().Unix()
+	pipe := s.client.Pipeline()
+	pipe.HDel(ctx, key, fields...)
+	for _, kind := range kinds {
+		rk, err := toRedisObjKeys(replID, obj, kind)
+		if err == nil {
+			tsField := "ts:" + rk.fromField[2:]
+			pipe.HSet(ctx, key, tsField, now)
+		}
+	}
+	_, err = pipe.Exec(ctx)
+	return err
 }
 
 func (s *versionSvc) GetACL(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object) (Version, error) {
@@ -376,6 +390,8 @@ for _, ver in ipairs(vals) do
 end
 max_ver = max_ver + 1
 redis.call('HSET', KEYS[1], ARGV[1], max_ver, sequence, max_ver)
+local ts = 'ts:' .. string.sub(ARGV[1], 3)
+redis.call('HDEL', KEYS[1], ts)
 return max_ver`)
 
 func (s *versionSvc) incVersion(ctx context.Context, key, a, b, legacyA, legacyB string) (int, error) {
@@ -472,4 +488,74 @@ func (s *versionSvc) setIfGreater(ctx context.Context, key, a, b string, version
 		return fmt.Errorf("%w: unable to update replicated version for key %s", dom.ErrAlreadyExists, key)
 	}
 	return nil
+}
+
+// GCObjectTombstones scans Redis for version metadata hashes and prunes sequence/tombstone fields
+// whose deletion timestamp is older than maxAge.
+func (s *versionSvc) GCObjectTombstones(ctx context.Context, maxAge time.Duration) (int, error) {
+	if maxAge <= 0 {
+		maxAge = 24 * time.Hour
+	}
+	cutoff := time.Now().Unix() - int64(maxAge.Seconds())
+
+	var totalPruned int
+	var cursor uint64
+	for {
+		keys, nextCursor, err := s.client.Scan(ctx, cursor, "v:*", 100).Result()
+		if err != nil {
+			return totalPruned, err
+		}
+		for _, key := range keys {
+			var hcursor uint64
+			for {
+				fields, nextHCursor, err := s.client.HScan(ctx, key, hcursor, "ts:*", 100).Result()
+				if err != nil {
+					break
+				}
+				var toDelete []string
+				for i := 0; i < len(fields); i += 2 {
+					tsField := fields[i]
+					tsValStr := fields[i+1]
+					tsVal, err := strconv.ParseInt(tsValStr, 10, 64)
+					if err == nil && tsVal <= cutoff {
+						seqField := "s:" + tsField[3:]
+						toDelete = append(toDelete, tsField, seqField)
+					}
+				}
+				if len(toDelete) > 0 {
+					_ = s.client.HDel(ctx, key, toDelete...).Err()
+					totalPruned += len(toDelete) / 2
+				}
+				hcursor = nextHCursor
+				if hcursor == 0 {
+					break
+				}
+			}
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return totalPruned, nil
+}
+
+// RunTombstoneGC periodically purges expired object sequence tombstones until ctx is canceled.
+func RunTombstoneGC(ctx context.Context, svc VersionService, interval time.Duration, maxAge time.Duration, onError func(error)) {
+	if interval <= 0 {
+		interval = time.Hour
+	}
+	t := time.NewTicker(interval)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if _, err := svc.GCObjectTombstones(ctx, maxAge); err != nil && onError != nil && ctx.Err() == nil {
+				onError(err)
+			}
+		}
+	}
 }
