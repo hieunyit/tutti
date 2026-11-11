@@ -43,3 +43,11 @@ func TestNoCredentialsMetric(t *testing.T) {
 	require.Equal(t, 503, rec.Code)
 	require.Equal(t, before+1, noCredsCount(t, "st-x"))
 }
+
+func TestRateLimitExceededResponse(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(context.Background(), rec, &dom.ErrRateLimitExceeded{RetryIn: 3 * 1000000000}) // 3s
+	require.Equal(t, 503, rec.Code)
+	require.Equal(t, "3", rec.Header().Get("Retry-After"))
+	require.Contains(t, rec.Body.String(), "<Code>SlowDown</Code>")
+}

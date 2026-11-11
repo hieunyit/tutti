@@ -409,10 +409,22 @@
   function familyDisplayLabel(family: string): string {
     if (!family) return EMPTY_VALUE;
 
-    const key = `family.${family}`;
-    const translated = t(key);
+    const directKey = `family.${family}`;
+    const directTranslated = t(directKey);
 
-    return translated !== key ? translated : family;
+    if (directTranslated !== directKey) return directTranslated;
+
+    const singular = family.endsWith('ies')
+      ? family.slice(0, -3) + 'y'
+      : family.endsWith('s')
+        ? family.slice(0, -1)
+        : family;
+    const singKey = `family.${singular}`;
+    const singTranslated = t(singKey);
+
+    if (singTranslated !== singKey) return singTranslated;
+
+    return family;
   }
 
   function actionDisplayLabel(action: string): string {

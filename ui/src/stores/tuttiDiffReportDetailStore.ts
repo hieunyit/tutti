@@ -96,6 +96,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
         if (currentGen !== generation) {
           return;
         }
+
         if (ErrorHelper.getStatusCode(e) === 404) {
           state.isNotFound = true;
 
@@ -118,6 +119,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
 
     function stopPolling() {
       generation++;
+
       if (state.pollingTimeout) {
         clearTimeout(state.pollingTimeout);
         state.pollingTimeout = null;

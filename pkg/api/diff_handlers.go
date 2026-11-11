@@ -190,8 +190,8 @@ func (h *diffHandlers) Fix(ctx context.Context, req *pb.StartDiffFixRequest) (*e
 	}
 
 	locationCount := len(req.Locations)
-	if int(req.SourceIndex) >= locationCount {
-		return nil, fmt.Errorf("source index %d is out of bound of location count %d", req.SourceIndex, locationCount)
+	if req.SourceIndex < 0 || int(req.SourceIndex) >= locationCount {
+		return nil, fmt.Errorf("%w: source index %d is out of bound of location count %d", dom.ErrInvalidArg, req.SourceIndex, locationCount)
 	}
 
 	diffID := pbToDiffID(req.Locations)
@@ -242,28 +242,28 @@ var ccSupportedStorTypes = map[dom.StorageType]bool{
 
 func (h *diffHandlers) validateStorageLocations(locations []*pb.MigrateLocation) error {
 	if len(locations) < 2 {
-		return errors.New("at least 2 migration locations should be provided")
+		return fmt.Errorf("%w: at least 2 migration locations should be provided", dom.ErrInvalidArg)
 	}
 
 	var prevStorageType dom.StorageType
 	for idx, location := range locations {
 		if location.Bucket == "" {
-			return fmt.Errorf("location %d bucket is empty", idx)
+			return fmt.Errorf("%w: location %d bucket is empty", dom.ErrInvalidArg, idx)
 		}
 		if location.Storage == "" {
-			return fmt.Errorf("location %d storage is empty", idx)
+			return fmt.Errorf("%w: location %d storage is empty", dom.ErrInvalidArg, idx)
 		}
 		storType, ok := h.credsSvc.Storages()[location.Storage]
 		if !ok {
-			return fmt.Errorf("unable to find storage %s in config", location.Storage)
+			return fmt.Errorf("%w: unable to find storage %s in config", dom.ErrInvalidArg, location.Storage)
 		}
 		if !ccSupportedStorTypes[storType] {
-			return fmt.Errorf("storage %s of type %s is not supported storage location", location.Storage, storType)
+			return fmt.Errorf("%w: storage %s of type %s is not supported storage location", dom.ErrInvalidArg, location.Storage, storType)
 		}
 		if prevStorageType == "" {
 			prevStorageType = storType
 		} else if prevStorageType != storType {
-			return errors.New("all storages should have the same type")
+			return fmt.Errorf("%w: all storages should have the same type", dom.ErrInvalidArg)
 		}
 	}
 

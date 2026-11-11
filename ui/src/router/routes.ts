@@ -218,6 +218,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'audit-log',
         meta: {
+          requiresAdmin: true,
           navGroup: 'administration',
           navSection: AUDIT_LOG_ROUTE_NAME as unknown as RouteName,
         },

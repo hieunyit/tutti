@@ -32,7 +32,9 @@
   const route = useRoute();
   const isApi = computed(() => route.name === RouteName.TUTTI_API_REFERENCE);
   const slug = computed(() =>
-    typeof route.params.slug === 'string' ? route.params.slug : undefined,
+    typeof route.params.slug === 'string' && route.params.slug.trim() !== ''
+      ? route.params.slug
+      : undefined,
   );
 </script>
 

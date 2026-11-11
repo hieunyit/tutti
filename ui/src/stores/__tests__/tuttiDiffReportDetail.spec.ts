@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiDiffReportDetailStore } from '../tuttiDiffReportDetailStore';
 import { ChorusService } from '@/services/ChorusService';
+import type { DiffReportDetailResponse } from '@/utils/types/chorus';
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({
@@ -33,14 +34,15 @@ afterEach(() => {
 
 describe('tuttiDiffReportDetailStore', () => {
   it('does not revive polling after $reset during in-flight request', async () => {
-    let resolveReq: (val: any) => void = () => {};
-    const pendingPromise = new Promise((resolve) => {
+    let resolveReq: (val: DiffReportDetailResponse) => void = () => {};
+    const pendingPromise = new Promise<DiffReportDetailResponse>((resolve) => {
       resolveReq = resolve;
     });
 
-    vi.mocked(ChorusService.getDiffReport).mockImplementation(() => pendingPromise as any);
+    vi.mocked(ChorusService.getDiffReport).mockImplementation(() => pendingPromise);
 
     const store = useTuttiDiffReportDetailStore();
+
     expect(store.locations.length).toBe(2);
 
     const initPromise = store.initDiffReportDetailsPage();
@@ -57,7 +59,7 @@ describe('tuttiDiffReportDetailStore', () => {
         consistent: true,
         fixReady: false,
       },
-    });
+    } as DiffReportDetailResponse);
 
     await initPromise;
 
@@ -72,17 +74,18 @@ describe('tuttiDiffReportDetailStore', () => {
   });
 
   it('does not revive polling after $reset during in-flight restartDiffReport', async () => {
-    let resolveRestart: (val: any) => void = () => {};
-    const pendingRestart = new Promise((resolve) => {
+    let resolveRestart: (val: void) => void = () => {};
+    const pendingRestart = new Promise<void>((resolve) => {
       resolveRestart = resolve;
     });
 
-    vi.mocked(ChorusService.restartDiffReport).mockImplementation(() => pendingRestart as any);
+    vi.mocked(ChorusService.restartDiffReport).mockImplementation(() => pendingRestart);
     vi.mocked(ChorusService.getDiffReport).mockResolvedValue({
       check: { consistent: true, fixReady: false },
-    } as any);
+    } as DiffReportDetailResponse);
 
     const store = useTuttiDiffReportDetailStore();
+
     const restartPromise = store.restartDiffReport();
 
     expect(ChorusService.restartDiffReport).toHaveBeenCalledTimes(1);
@@ -91,7 +94,7 @@ describe('tuttiDiffReportDetailStore', () => {
     store.$reset();
 
     // Now resolve the restart call
-    resolveRestart({});
+    resolveRestart();
     await restartPromise;
 
     // Fast-forward time

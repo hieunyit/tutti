@@ -13,6 +13,41 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
+func normalizeAuditFamily(fam string) string {
+	switch strings.TrimSpace(fam) {
+	case "console_user":
+		return "console_users"
+	case "storage":
+		return "storages"
+	case "s3_identity":
+		return "s3_identities"
+	case "dynamic_credential":
+		return "dynamic_credentials"
+	case "proxy_account":
+		return "proxy_accounts"
+	case "access_policy":
+		return "access_policies"
+	case "route":
+		return "routes"
+	case "route_block":
+		return "route_blocks"
+	case "replication_policy":
+		return "replication_policies"
+	case "replication_generation":
+		return "replication_generations"
+	case "failover_policy":
+		return "failover_policies"
+	case "failover_event":
+		return "failover_events"
+	case "protection_group":
+		return "protection_groups"
+	case "storage_test":
+		return "storage_tests"
+	default:
+		return strings.TrimSpace(fam)
+	}
+}
+
 func (h *resilienceHandlers) ListAuditLog(ctx context.Context, req *pb.ListAuditLogRequest) (*pb.AuditLogList, error) {
 	backend := strings.TrimSpace(h.cpConfig.Backend)
 	if backend == "" {
@@ -34,7 +69,7 @@ func (h *resilienceHandlers) ListAuditLog(ctx context.Context, req *pb.ListAudit
 		limit = 100
 	}
 	filter := controlplane.AuditFilter{
-		ObjectType: strings.TrimSpace(req.GetFamily()),
+		ObjectType: normalizeAuditFamily(req.GetFamily()),
 		ObjectID:   strings.TrimSpace(req.GetEntityKey()),
 		Actor:      strings.TrimSpace(req.GetActor()),
 		Action:     strings.TrimSpace(req.GetAction()),

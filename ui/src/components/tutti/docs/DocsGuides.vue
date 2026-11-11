@@ -40,7 +40,7 @@
   const route = useRoute();
   const router = useRouter();
 
-  const current = computed(() => findDoc(props.slug ?? DOCS[0]?.slug));
+  const current = computed(() => findDoc(props.slug || DOCS[0]?.slug));
   const rendered = ref<RenderedDoc | null>(null);
   const status = ref<'loading' | 'ready' | 'missing' | 'failed'>('loading');
   let loadToken = 0;

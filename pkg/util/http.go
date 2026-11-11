@@ -22,6 +22,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"net/http"
+	"strconv"
 
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
@@ -38,7 +39,22 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	logLevel := zerolog.ErrorLevel
 
 	var chunkedErr *chunked.Error
+	var rateLimitErr *dom.ErrRateLimitExceeded
 	switch {
+	case errors.As(err, &rateLimitErr):
+		logLevel = zerolog.WarnLevel
+		retrySeconds := int(rateLimitErr.RetryIn.Seconds())
+		if retrySeconds < 1 {
+			retrySeconds = 1
+		}
+		w.Header().Set("Retry-After", strconv.Itoa(retrySeconds))
+		s3Err = mclient.ErrorResponse{
+			Code:       "SlowDown",
+			Message:    "Please reduce your request rate.",
+			BucketName: xctx.GetBucket(ctx),
+			Key:        xctx.GetObject(ctx),
+			StatusCode: http.StatusServiceUnavailable,
+		}
 	case errors.As(err, &s3Err):
 		logLevel = zerolog.InfoLevel
 	case errors.As(err, &chunkedErr):
