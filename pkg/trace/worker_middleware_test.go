@@ -12,6 +12,7 @@ import (
 	otrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
 )
@@ -37,7 +38,13 @@ func TestTracePropagation_ProxyToWorker(t *testing.T) {
 	parentSpanID := proxySpan.SpanContext().SpanID().String()
 	r.NotEmpty(parentTraceID)
 
-	// 2. Encode task inside Proxy request context
+	// 2. Proxy detaches context using log.StartNew before enqueueing replication task
+	replCtx, cancel := log.StartNew(proxyCtx)
+	defer cancel()
+
+	// Simulate client request finishing/canceling
+	proxySpan.End()
+
 	payload := tasks.ObjectSyncPayload{
 		Object: tasks.ObjectSyncPayload{}.Object,
 	}
@@ -49,10 +56,10 @@ func TestTracePropagation_ProxyToWorker(t *testing.T) {
 		ToBucket:    "b2",
 	}), 1)
 
-	task, err := tasks.EncodeAny(proxyCtx, &payload)
+	task, err := tasks.EncodeAny(replCtx, &payload)
 	r.NoError(err)
 
-	// Verify that traceparent was injected into task payload
+	// Verify that traceparent was injected into task payload even after log.StartNew
 	traceparent, _ := payload.GetTraceContext()
 	r.Contains(string(task.Payload()), parentTraceID)
 

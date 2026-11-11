@@ -179,6 +179,11 @@ func GetUser(ctx context.Context) string {
 	return k
 }
 
+func HasRoutingPolicy(ctx context.Context) bool {
+	p, _ := ctx.Value(routingPolicyKey{}).(string)
+	return p != ""
+}
+
 func GetRoutingPolicy(ctx context.Context) string {
 	p, _ := ctx.Value(routingPolicyKey{}).(string)
 	if p == "" {

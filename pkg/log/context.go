@@ -119,7 +119,7 @@ func WithUser(ctx context.Context, u string) context.Context {
 }
 
 func StartNew(from context.Context) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.WithoutCancel(from))
 	ctx = zerolog.Ctx(from).WithContext(ctx)
 
 	if u := xctx.GetUser(from); u != "" {
@@ -143,8 +143,8 @@ func StartNew(from context.Context) (context.Context, context.CancelFunc) {
 	if t := xctx.GetTraceID(from); t != "" {
 		ctx = xctx.SetTraceID(ctx, t)
 	}
-	if rp := xctx.GetRoutingPolicy(from); rp != "" {
-		ctx = xctx.SetRoutingPolicy(ctx, rp)
+	if xctx.HasRoutingPolicy(from) {
+		ctx = xctx.SetRoutingPolicy(ctx, xctx.GetRoutingPolicy(from))
 	}
 	if reps := xctx.GetReplications(from); len(reps) != 0 {
 		ctx = xctx.SetReplications(ctx, reps)

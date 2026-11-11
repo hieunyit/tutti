@@ -16,6 +16,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +48,17 @@ func (r *UploadSvc) StoreUpload(ctx context.Context, id entity.UserUploadObjectI
 	if _, err := r.store.Add(ctx, id, object); err != nil {
 		return fmt.Errorf("unable to add user upload object: %w", err)
 	}
-	_, _ = r.store.SetTTL(ctx, id, ttl)
+	if ttl > 0 {
+		ok, err := r.store.SetTTL(ctx, id, ttl)
+		if err != nil {
+			_, _ = r.store.Remove(ctx, id, object)
+			return fmt.Errorf("unable to set ttl on user upload object: %w", err)
+		}
+		if !ok {
+			_, _ = r.store.Remove(ctx, id, object)
+			return errors.New("unable to set ttl on user upload object: key does not exist")
+		}
+	}
 	return nil
 }
 
