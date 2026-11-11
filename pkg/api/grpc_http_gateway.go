@@ -75,7 +75,7 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-	srv.Handler = handler
+	srv.Handler = ConcurrencyLimiter(handler, conf.MaxConcurrentRequests)
 
 	start = func(_ context.Context) error {
 		return srv.ListenAndServe()
@@ -88,4 +88,26 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 		return nil
 	}
 	return
+}
+
+const defaultMaxConcurrentRequests = 100
+
+// ConcurrencyLimiter wraps an http.Handler with an in-flight concurrency limiter.
+// If maxConcurrent is <= 0, it defaults to defaultMaxConcurrentRequests (100).
+// When saturated, it immediately returns HTTP 503 (Service Unavailable) with Retry-After: 1.
+func ConcurrencyLimiter(h http.Handler, maxConcurrent int) http.Handler {
+	if maxConcurrent <= 0 {
+		maxConcurrent = defaultMaxConcurrentRequests
+	}
+	sem := make(chan struct{}, maxConcurrent)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case sem <- struct{}{}:
+			defer func() { <-sem }()
+			h.ServeHTTP(w, r)
+		default:
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, "server busy: too many concurrent requests", http.StatusServiceUnavailable)
+		}
+	})
 }

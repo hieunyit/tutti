@@ -25,12 +25,13 @@ import (
 )
 
 type Config struct {
-	Webhook  WebhookConfig `yaml:"webhook"`
-	GrpcPort int           `yaml:"grpcPort"`
-	HttpPort int           `yaml:"httpPort"`
-	Enabled  bool          `yaml:"enabled"`
-	Secure   bool          `yaml:"secure"`
-	Auth     auth.Config   `yaml:"auth"`
+	Webhook               WebhookConfig `yaml:"webhook"`
+	GrpcPort              int           `yaml:"grpcPort"`
+	HttpPort              int           `yaml:"httpPort"`
+	MaxConcurrentRequests int           `yaml:"maxConcurrentRequests"`
+	Enabled               bool          `yaml:"enabled"`
+	Secure                bool          `yaml:"secure"`
+	Auth                  auth.Config   `yaml:"auth"`
 }
 
 type WebhookConfig struct {
