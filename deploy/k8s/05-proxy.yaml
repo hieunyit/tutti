@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tutti-proxy
+  namespace: tutti
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tutti-proxy
+  template:
+    metadata:
+      labels:
+        app: tutti-proxy
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: tutti-proxy
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: proxy
+          image: ghcr.io/hieunyit/tutti-proxy:latest
+          args: ["-config", "/etc/tutti/proxy.yaml"]
+          ports:
+            - containerPort: 9669
+              name: s3-proxy
+          envFrom:
+            - secretRef:
+                name: tutti-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tutti
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+          readinessProbe:
+            tcpSocket:
+              port: 9669
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9669
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: tutti-proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tutti-s3
+  namespace: tutti
+spec:
+  type: LoadBalancer
+  selector:
+    app: tutti-proxy
+  ports:
+    - name: s3
+      port: 9669
+      targetPort: 9669

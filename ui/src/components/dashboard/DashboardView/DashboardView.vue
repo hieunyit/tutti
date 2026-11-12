@@ -61,6 +61,12 @@
       'dashboard-view--mobile': isMobile,
     }"
   >
+    <a
+      class="dashboard-view__skip"
+      href="#main-content"
+      >{{ t('skipToContent') }}</a
+    >
+
     <div
       v-if="!isMobile"
       class="dashboard-view__sidebar"
@@ -167,7 +173,11 @@
         </Callout>
       </div>
 
-      <main class="dashboard-view__main">
+      <main
+        id="main-content"
+        class="dashboard-view__main"
+        tabindex="-1"
+      >
         <RouterView />
       </main>
 
@@ -179,6 +189,22 @@
 <style lang="scss" scoped>
   .dashboard-view {
     --sidebar-width: 248px;
+
+    &__skip {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 20;
+      padding: 10px 16px;
+      border-radius: var(--tt-radius-control);
+      background: var(--tt-accent-solid);
+      color: var(--tt-on-accent);
+      transform: translateY(-200%);
+
+      &:focus {
+        transform: translateY(0);
+      }
+    }
 
     display: grid;
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);

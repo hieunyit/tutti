@@ -25,6 +25,11 @@ type Config struct {
 	SessionTTL time.Duration `yaml:"sessionTTL"`
 	// Users is the list of local users. Passwords are bcrypt hashes.
 	Users []User `yaml:"users"`
+	// AllowManagedUsers allows running without static config users when managed users (PostgreSQL/Redis) are enabled.
+	AllowManagedUsers bool `yaml:"allowManagedUsers"`
+	// BootstrapAdminPassword is the initial password for the seeded admin user when the database is empty.
+	// Can also be set via TUTTI_BOOTSTRAP_ADMIN_PASSWORD environment variable.
+	BootstrapAdminPassword string `yaml:"bootstrapAdminPassword"`
 	// TrustedProxies lists CIDRs or IPs of reverse proxies (e.g. nginx serving
 	// the web UI) whose X-Forwarded-For / X-Real-IP headers are trusted when
 	// resolving the client address for login rate limiting. Empty by default:
@@ -79,7 +84,7 @@ func (c *Config) Validate() error {
 	if c.SessionTTL < 0 {
 		return fmt.Errorf("auth config: sessionTTL must not be negative")
 	}
-	if len(c.Users) == 0 {
+	if len(c.Users) == 0 && !c.AllowManagedUsers {
 		return fmt.Errorf("auth config: at least one user is required when auth is enabled")
 	}
 	seen := make(map[string]struct{}, len(c.Users))

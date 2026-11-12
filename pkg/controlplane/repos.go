@@ -56,6 +56,10 @@ type ProtectionGroups interface{ KV[RawDoc] }
 // StorageTests: last connection test result of a storage (SaveStorageTest/StorageTests). Key: storage name.
 type StorageTests interface{ KV[RawDoc] }
 
+// SystemSettings: dynamic cluster features and operational parameters. Key: "system".
+type SystemSettingsStore interface{ KV[SystemSettings] }
+
+
 // ConsoleUserGuard configures the "keep one enabled admin" check of ConsoleUsers.MutateGuarded (pkg/auth
 // consoleMutation).
 type ConsoleUserGuard struct {
@@ -184,6 +188,7 @@ type Repos struct {
 	FailoverEvents     FailoverEvents
 	ProtectionGroups   ProtectionGroups
 	StorageTests       StorageTests
+	SystemSettings     SystemSettingsStore
 	Audit              Audit
 }
 

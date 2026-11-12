@@ -57,6 +57,8 @@ const (
 	Resilience_GetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/GetProxyFleetConfig"
 	Resilience_SetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/SetProxyFleetConfig"
 	Resilience_ListAuditLog_FullMethodName                   = "/chorus.Resilience/ListAuditLog"
+	Resilience_GetSystemSettings_FullMethodName              = "/chorus.Resilience/GetSystemSettings"
+	Resilience_UpdateSystemSettings_FullMethodName           = "/chorus.Resilience/UpdateSystemSettings"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -160,6 +162,10 @@ type ResilienceClient interface {
 	SetProxyFleetConfig(ctx context.Context, in *SetProxyFleetConfigRequest, opts ...grpc.CallOption) (*ProxyFleetConfig, error)
 	// ListAuditLog returns control-plane audit log entries matching the filter (newest first).
 	ListAuditLog(ctx context.Context, in *ListAuditLogRequest, opts ...grpc.CallOption) (*AuditLogList, error)
+	// GetSystemSettings returns dynamic cluster features, worker performance tuning, and operational parameters.
+	GetSystemSettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SystemSettings, error)
+	// UpdateSystemSettings updates dynamic cluster features, worker performance tuning, and operational parameters.
+	UpdateSystemSettings(ctx context.Context, in *UpdateSystemSettingsRequest, opts ...grpc.CallOption) (*SystemSettings, error)
 }
 
 type resilienceClient struct {
@@ -540,6 +546,26 @@ func (c *resilienceClient) ListAuditLog(ctx context.Context, in *ListAuditLogReq
 	return out, nil
 }
 
+func (c *resilienceClient) GetSystemSettings(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SystemSettings, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SystemSettings)
+	err := c.cc.Invoke(ctx, Resilience_GetSystemSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resilienceClient) UpdateSystemSettings(ctx context.Context, in *UpdateSystemSettingsRequest, opts ...grpc.CallOption) (*SystemSettings, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SystemSettings)
+	err := c.cc.Invoke(ctx, Resilience_UpdateSystemSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResilienceServer is the server API for Resilience service.
 // All implementations should embed UnimplementedResilienceServer
 // for forward compatibility.
@@ -641,6 +667,10 @@ type ResilienceServer interface {
 	SetProxyFleetConfig(context.Context, *SetProxyFleetConfigRequest) (*ProxyFleetConfig, error)
 	// ListAuditLog returns control-plane audit log entries matching the filter (newest first).
 	ListAuditLog(context.Context, *ListAuditLogRequest) (*AuditLogList, error)
+	// GetSystemSettings returns dynamic cluster features, worker performance tuning, and operational parameters.
+	GetSystemSettings(context.Context, *emptypb.Empty) (*SystemSettings, error)
+	// UpdateSystemSettings updates dynamic cluster features, worker performance tuning, and operational parameters.
+	UpdateSystemSettings(context.Context, *UpdateSystemSettingsRequest) (*SystemSettings, error)
 }
 
 // UnimplementedResilienceServer should be embedded to have
@@ -760,6 +790,12 @@ func (UnimplementedResilienceServer) SetProxyFleetConfig(context.Context, *SetPr
 }
 func (UnimplementedResilienceServer) ListAuditLog(context.Context, *ListAuditLogRequest) (*AuditLogList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAuditLog not implemented")
+}
+func (UnimplementedResilienceServer) GetSystemSettings(context.Context, *emptypb.Empty) (*SystemSettings, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSystemSettings not implemented")
+}
+func (UnimplementedResilienceServer) UpdateSystemSettings(context.Context, *UpdateSystemSettingsRequest) (*SystemSettings, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateSystemSettings not implemented")
 }
 func (UnimplementedResilienceServer) testEmbeddedByValue() {}
 
@@ -1447,6 +1483,42 @@ func _Resilience_ListAuditLog_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Resilience_GetSystemSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).GetSystemSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_GetSystemSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).GetSystemSettings(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Resilience_UpdateSystemSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSystemSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResilienceServer).UpdateSystemSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Resilience_UpdateSystemSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResilienceServer).UpdateSystemSettings(ctx, req.(*UpdateSystemSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Resilience_ServiceDesc is the grpc.ServiceDesc for Resilience service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1601,6 +1673,14 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAuditLog",
 			Handler:    _Resilience_ListAuditLog_Handler,
+		},
+		{
+			MethodName: "GetSystemSettings",
+			Handler:    _Resilience_GetSystemSettings_Handler,
+		},
+		{
+			MethodName: "UpdateSystemSettings",
+			Handler:    _Resilience_UpdateSystemSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

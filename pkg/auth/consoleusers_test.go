@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -318,6 +319,67 @@ func TestConsoleUsers_ConfigWinsOnConflict(t *testing.T) {
 	list, err := svc.ListUsers(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 2)
+}
+
+func TestConsoleUsers_EnsureAdminAndAllowManagedUsers(t *testing.T) {
+	ctx := context.Background()
+	mr := miniredis.RunT(t)
+	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+	conf := Config{Enabled: true, SessionTTL: 12 * time.Hour, AllowManagedUsers: true, BootstrapAdminPassword: "bootstrap-pw-123"}
+	svc, err := NewService(conf, rc, WithManagedUsers(rc))
+	require.NoError(t, err)
+	svc.bcryptCost = bcryptMinCost
+
+	require.NoError(t, svc.EnsureAdmin(ctx))
+	list, err := svc.ListUsers(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, "admin", list[0].Username)
+	require.Equal(t, SourceManaged, list[0].Source)
+
+	login, err := svc.Login(ctx, "admin", "bootstrap-pw-123", "ip")
+	require.NoError(t, err)
+	require.NotEmpty(t, login.Token)
+
+	sess, err := svc.Authenticate(ctx, login.Token)
+	require.NoError(t, err)
+	require.True(t, sess.MustChangePassword, "bootstrapped admin must be forced to change password")
+
+	// Can change own password!
+	require.NoError(t, svc.ChangeOwnPassword(ctx, login.Token, "bootstrap-pw-123", "new-password-123", "ip"))
+
+	// Login with new password works and mustChangePassword is cleared
+	login2, err := svc.Login(ctx, "admin", "new-password-123", "ip")
+	require.NoError(t, err)
+	require.NotEmpty(t, login2.Token)
+
+	sess2, err := svc.Authenticate(ctx, login2.Token)
+	require.NoError(t, err)
+	require.False(t, sess2.MustChangePassword, "password change clears mustChangePassword")
+}
+
+func TestConsoleUsers_EnsureAdmin_EnvOptions(t *testing.T) {
+	ctx := context.Background()
+	mr := miniredis.RunT(t)
+	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+
+	t.Setenv("TUTTI_BOOTSTRAP_ADMIN_PASSWORD", "custom-secret-pw-1")
+	t.Setenv("TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE", "false")
+
+	conf := Config{Enabled: true, SessionTTL: 12 * time.Hour, AllowManagedUsers: true}
+	svc, err := NewService(conf, rc, WithManagedUsers(rc))
+	require.NoError(t, err)
+	svc.bcryptCost = bcryptMinCost
+
+	require.NoError(t, svc.EnsureAdmin(ctx))
+
+	login, err := svc.Login(ctx, "admin", "custom-secret-pw-1", "ip")
+	require.NoError(t, err)
+	sess, err := svc.Authenticate(ctx, login.Token)
+	require.NoError(t, err)
+	require.False(t, sess.MustChangePassword, "force change explicitly disabled via env")
 }
 
 func TestConsoleUsers_DisabledAuth(t *testing.T) {

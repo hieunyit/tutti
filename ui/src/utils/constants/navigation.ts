@@ -24,6 +24,8 @@ export interface NavItem {
   /** SVG path data (24x24 viewBox, stroked) */
   iconPath: string;
   badgeKey?: NavBadgeKey;
+  /** hidden for read-only / viewer accounts */
+  adminOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -54,6 +56,8 @@ const ICONS = {
   key: 'M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z',
   docs: 'M4 4h11l5 5v11H4zM15 4v5h5M8 13h8M8 17h6',
   api: 'M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16',
+  settings:
+    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.4-2.8l1.8-1.2-1.8-3.1-2.1.7a7.2 7.2 0 0 0-1.7-1L15.3 5h-3.6l-.3 2.6a7.2 7.2 0 0 0-1.7 1l-2.1-.7-1.8 3.1 1.8 1.2a7.4 7.4 0 0 0 0 2l-1.8 1.2 1.8 3.1 2.1-.7a7.2 7.2 0 0 0 1.7 1l.3 2.6h3.6l.3-2.6a7.2 7.2 0 0 0 1.7-1l2.1.7 1.8-3.1-1.8-1.2c.1-.7.1-1.3 0-2z',
 } as const;
 
 /** Sidebar structure; labels come from i18n (group: nav.group.<id>, item: route name). */
@@ -79,15 +83,15 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'dataProtection',
     items: [
-      { routeName: RouteName.CHORUS_REPLICATION, iconPath: ICONS.replication },
-      {
-        routeName: RouteName.CHORUS_ROUTING_POLICIES,
-        iconPath: ICONS.routing,
-      },
       {
         routeName: RouteName.TUTTI_PROTECTION_GROUPS,
         iconPath: ICONS.protection,
         badgeKey: 'protection',
+      },
+      { routeName: RouteName.CHORUS_REPLICATION, iconPath: ICONS.replication },
+      {
+        routeName: RouteName.CHORUS_ROUTING_POLICIES,
+        iconPath: ICONS.routing,
       },
       { routeName: RouteName.CHORUS_DIFF_REPORTS, iconPath: ICONS.diff },
     ],
@@ -97,13 +101,27 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { routeName: RouteName.TUTTI_USERS, iconPath: ICONS.users },
       { routeName: RouteName.TUTTI_PROXY_ACCOUNTS, iconPath: ICONS.key },
+      {
+        routeName: RouteName.TUTTI_CONSOLE_USERS,
+        iconPath: ICONS.admin,
+        adminOnly: true,
+      },
     ],
   },
   {
     id: 'administration',
     adminOnly: true,
     items: [
-      { routeName: RouteName.TUTTI_CONSOLE_USERS, iconPath: ICONS.admin },
+      {
+        routeName: RouteName.TUTTI_SYSTEM_SETTINGS,
+        iconPath: ICONS.settings,
+        adminOnly: true,
+      },
+      {
+        routeName: RouteName.TUTTI_AUDIT_LOG,
+        iconPath: 'M9 3H5v18h14V3h-4M9 3v4h6V3zM8 12h8M8 16h8',
+        adminOnly: true,
+      },
     ],
   },
   {

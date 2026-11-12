@@ -17,7 +17,7 @@ groups:
           component: proxy
         annotations:
           summary: 'Storage {{ $labels.storage }} circuit breaker is open'
-          description: 'storage_available{storage="{{ $labels.storage }}"} is 0 on at least one proxy, so requests to this storage fail fast. The breaker opens after about 3 failed probes or requests (about 30s with defaults). The 2m wait avoids alerts for short blips. Check per-proxy state with chorctl proxies.'
+          description: 'storage_available{storage="{{ $labels.storage }}"} is 0 on at least one proxy, so requests to this storage fail fast. The breaker opens after about 3 failed probes or requests (about 30s with defaults). The 2m wait avoids alerts for short blips. Check per-proxy state with tuttictl proxies.'
           runbook_url: 'docs/tutti/runbooks.md#a-a-storage-is-down-and-automatic-failover-happened'
 
       - alert: TuttiStorageBreakerFlapping
@@ -41,7 +41,7 @@ groups:
           component: proxy
         annotations:
           summary: 'Automatic failover from {{ $labels.from }} to {{ $labels.to }}'
-          description: 'Routing for at least one user or bucket moved to {{ $labels.to }}. Replication from {{ $labels.from }} is paused. Failback is manual: check the failover event (chorctl failover events) and the eventLag, then follow the failback procedure. Acknowledge the event only after failback.'
+          description: 'Routing for at least one user or bucket moved to {{ $labels.to }}. Replication from {{ $labels.from }} is paused. Failback is manual: check the failover event (tuttictl failover events) and the eventLag, then follow the failback procedure. Acknowledge the event only after failback.'
           runbook_url: 'docs/tutti/runbooks.md#a-a-storage-is-down-and-automatic-failover-happened'
 
 
@@ -147,7 +147,7 @@ groups:
           component: worker
         annotations:
           summary: 'Replication for {{ $labels.user }} ({{ $labels.from }} -> {{ $labels.to }}) has {{ $value }} unprocessed events'
-          description: 'replication_unprocessed_events sums unprocessed events over the user and bucket replications of {{ $labels.user }} from {{ $labels.from }} to {{ $labels.to }}. Drill down with chorctl repl.'
+          description: 'replication_unprocessed_events sums unprocessed events over the user and bucket replications of {{ $labels.user }} from {{ $labels.from }} to {{ $labels.to }}. Drill down with tuttictl repl.'
           runbook_url: 'docs/tutti/runbooks.md#b-manual-failback-return-routing-to-the-original-storage'
 
   - name: tutti-protection-groups

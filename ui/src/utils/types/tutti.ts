@@ -305,3 +305,54 @@ export interface TuttiTrafficStats {
   bytesOut?: TuttiInt64;
   latency?: TuttiLatencyHistogram;
 }
+
+export interface TuttiSystemFeaturesSettings {
+  tagging?: boolean;
+  acl?: boolean;
+  lifecycle?: boolean;
+  policy?: boolean;
+  preserveAclGrants?: boolean;
+  versioning?: boolean;
+}
+
+export interface TuttiSystemWorkerSettings {
+  concurrency?: number;
+  shutdownTimeout?: string;
+  queueUpdateInterval?: string;
+  taskCheckInterval?: string;
+  delayedTaskCheckInterval?: string;
+  swiftRetryInterval?: string;
+  pauseRetryInterval?: string;
+  switchRetryInterval?: string;
+  backlogHighWatermark?: number;
+  backlogLowWatermark?: number;
+  bandwidthLimitBytes?: string;
+  bufferBudgetBytes?: string;
+}
+
+export interface TuttiSystemLockSettings {
+  overlap?: string;
+}
+
+export interface TuttiSystemWebhookSettings {
+  enabled?: boolean;
+  baseUrl?: string;
+}
+
+export interface TuttiSystemSettings {
+  version?: TuttiInt64;
+  updatedAt?: string;
+  features?: TuttiSystemFeaturesSettings;
+  worker?: TuttiSystemWorkerSettings;
+  lock?: TuttiSystemLockSettings;
+  webhook?: TuttiSystemWebhookSettings;
+}
+
+export interface TuttiUpdateSystemSettingsRequest {
+  expectedVersion?: TuttiInt64;
+  features?: TuttiSystemFeaturesSettings;
+  worker?: TuttiSystemWorkerSettings;
+  lock?: TuttiSystemLockSettings;
+  webhook?: TuttiSystemWebhookSettings;
+}
+

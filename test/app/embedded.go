@@ -37,7 +37,6 @@ import (
 	"github.com/hibiken/asynq"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/johannesboyne/gofakes3"
-	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/rs/xid"
@@ -147,23 +146,23 @@ func SetupEmbedded(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Con
 	proxyConf.Redis.Address = redisAddr
 	workerConf.Redis.Address = redisAddr
 
-	mainBackend := s3mem.New()
+	mainBackend := newVersionedMemory()
 	mainFaker := gofakes3.New(mainBackend)
-	mainTs := httptest.NewServer(mainFaker.Server())
+	mainTs := httptest.NewServer(versionAwareFakeServer(mainFaker.Server()))
 	t.Cleanup(func() {
 		mainTs.Close()
 	})
 
-	f1Backend := s3mem.New()
+	f1Backend := newVersionedMemory()
 	f1Faker := gofakes3.New(f1Backend)
-	f1Ts := httptest.NewServer(f1Faker.Server())
+	f1Ts := httptest.NewServer(versionAwareFakeServer(f1Faker.Server()))
 	t.Cleanup(func() {
 		f1Ts.Close()
 	})
 
-	f2Backend := s3mem.New()
+	f2Backend := newVersionedMemory()
 	f2Faker := gofakes3.New(f2Backend)
-	f2Ts := httptest.NewServer(f2Faker.Server())
+	f2Ts := httptest.NewServer(versionAwareFakeServer(f2Faker.Server()))
 	t.Cleanup(func() {
 		f2Ts.Close()
 	})

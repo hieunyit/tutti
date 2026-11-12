@@ -80,7 +80,7 @@
       <thead>
         <tr>
           <th scope="col">{{ t('columnName') }}</th>
-          <th scope="col">{{ t('columnRole') }}</th>
+          <th scope="col">{{ t('columnProvider') }}</th>
           <th scope="col">{{ t('columnStatus') }}</th>
           <th
             scope="col"
@@ -105,7 +105,7 @@
               {{ storage.name }}
             </RouterLink>
           </td>
-          <td>{{ storage.isMain ? t('roleMain') : t('roleFollower') }}</td>
+          <td>{{ storage.provider || 'S3' }}</td>
           <td>
             <StatusTag
               :variant="VARIANT[storage.state]"

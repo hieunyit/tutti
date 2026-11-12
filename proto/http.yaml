@@ -234,3 +234,9 @@ http:
       body: "*"
     - selector: chorus.Resilience.ListAuditLog
       get: /tutti/audit-log
+    - selector: chorus.Resilience.GetSystemSettings
+      get: /tutti/system-settings
+    - selector: chorus.Resilience.UpdateSystemSettings
+      put: /tutti/system-settings
+      body: "*"
+

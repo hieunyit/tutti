@@ -52,19 +52,6 @@
       >{{ t('notConfigured') }}</Callout
     >
     <Callout
-      v-for="user in store.incompleteUsers"
-      :key="user.name"
-      tone="warning"
-      ><RouterLink
-        :to="{ name: RouteName.TUTTI_USER_DETAIL, params: { name: user.name } }"
-        >{{ user.name }}</RouterLink
-      >
-      —
-      {{
-        t('missing', { storages: UserHelper.missingStorages(user).join(', ') })
-      }}</Callout
-    >
-    <Callout
       v-if="store.hasError"
       tone="danger"
       >{{ t('error') }}
@@ -131,16 +118,25 @@
             <td>
               <div class="phase-d__actions">
                 <StatusTag
-                  v-for="part in UserHelper.credentialParts(user)"
+                  v-for="part in UserHelper.credentialParts(user).filter(
+                    (p) => p.kind !== 'missing',
+                  )"
                   :key="part.kind"
                   :variant="
                     part.kind === 'connection-account'
                       ? 'success'
-                      : part.kind === 'override'
-                        ? 'info'
-                        : 'warning'
+                      : 'info'
                   "
                   >{{ UserHelper.credentialText(part, t) }}</StatusTag
+                >
+                <span
+                  v-if="
+                    !UserHelper.credentialParts(user).some(
+                      (p) => p.kind !== 'missing',
+                    )
+                  "
+                  class="phase-d__muted"
+                  >–</span
                 >
               </div>
             </td>

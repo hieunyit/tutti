@@ -178,8 +178,12 @@ export abstract class ProtectionGroupHelper {
     return Math.max(...members.map((m) => m.eventLag ?? 0));
   }
 
-  static scopeKind(group: ProtectionGroup): 'user' | 'buckets' {
-    return (group.buckets ?? []).length > 0 ? 'buckets' : 'user';
+  static scopeKind(group: ProtectionGroup): 'user' | 'buckets' | 'storage' {
+    if ((group.buckets ?? []).length > 0) return 'buckets';
+
+    if (group.user) return 'user';
+
+    return 'storage';
   }
 
   static memberHealth(m: ProtectionMemberStatus | undefined): MemberHealth {

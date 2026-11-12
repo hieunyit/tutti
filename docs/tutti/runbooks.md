@@ -14,7 +14,7 @@ export TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/jso
 AUTH=(-H "Authorization: Bearer $TOKEN")  # when api.auth.enabled is false, use AUTH=() instead
 ```
 
-`chorctl` reads its address from `-a` (default `http://localhost:9671`) and the token from `--token`, `TUTTI_TOKEN`, or the file saved by `chorctl login`.
+`tuttictl` reads its address from `-a` (default `http://localhost:9671`) and the token from `--token`, `TUTTI_TOKEN`, or the file saved by `tuttictl login`.
 
 Verbs follow [api.md](./api.md): reads are `GET` or `POST` (for example `POST /routing`), changes are `PUT` or `POST` as listed there. `PUT /routing/update` and the failover event and policy routes are admin only.
 
@@ -31,7 +31,7 @@ Goal: confirm what moved, what is still at risk, and what to do before failback.
 1. **Read the failover events.** Each event is one scope (user, or user + bucket) that moved.
 
    ```bash
-   chorctl failover events
+   tuttictl failover events
    curl -s "${AUTH[@]}" $API/tutti/failover/events
    ```
 
@@ -40,7 +40,7 @@ Goal: confirm what moved, what is still at risk, and what to do before failback.
 2. **Confirm the storage state on every proxy.**
 
    ```bash
-   chorctl proxies            # STORAGES column: name=up or name=DOWN, FAILOVER column
+   tuttictl proxies            # STORAGES column: name=up or name=DOWN, FAILOVER column
    curl -s "${AUTH[@]}" $API/tutti/proxies
    ```
 
@@ -57,13 +57,13 @@ Goal: confirm what moved, what is still at risk, and what to do before failback.
 4. **Check the copy count.** Failover pauses the replication from the failed storage to the new primary. It does **not** create replication from the new primary to other storages, so the scope may now have a single copy until you add one.
 
    ```bash
-   chorctl repl              # PAUSED column: old -> new should be true
+   tuttictl repl              # PAUSED column: old -> new should be true
    ```
 
    If a third storage exists, create replication from the new primary:
 
    ```bash
-   chorctl repl add -f <new-primary> -t <third> -u <user> [-b <bucket>]
+   tuttictl repl add -f <new-primary> -t <third> -u <user> [-b <bucket>]
    ```
 
    Wait for `PROGRESS` to reach 100% and `EVENTS` done to equal total.
@@ -80,7 +80,7 @@ Goal: confirm what moved, what is still at risk, and what to do before failback.
 
 Preconditions:
 
-- The old storage is healthy on every proxy (`chorctl proxies` shows `up`).
+- The old storage is healthy on every proxy (`tuttictl proxies` shows `up`).
 - The workers can reach the old storage with the same credentials.
 - You have the `eventLag` value from the failover event. It says how many writes may be missing on the target.
 
@@ -89,8 +89,8 @@ Steps:
 1. **Remove the paused forward replication** (old -> new, the one failover paused). Record its `EVENTS` value first.
 
    ```bash
-   chorctl repl                                                         # note EVENTS done/total
-   chorctl repl delete -f main -t f1 -u user1 [-b photos]               # old=main, new=f1 in this example
+   tuttictl repl                                                         # note EVENTS done/total
+   tuttictl repl delete -f main -t f1 -u user1 [-b photos]               # old=main, new=f1 in this example
    ```
 
    Deleting archives the replication status and purges its queue. Work that was still queued for the old storage is discarded here, which is why the diff in step 4 matters.
@@ -98,18 +98,18 @@ Steps:
 2. **Create reverse replication**, so the old storage receives everything written during the outage:
 
    ```bash
-   chorctl repl add -f f1 -t main -u user1 [-b photos]
-   chorctl repl                                                         # wait for PROGRESS 100%, EVENTS done == total
+   tuttictl repl add -f f1 -t main -u user1 [-b photos]
+   tuttictl repl                                                         # wait for PROGRESS 100%, EVENTS done == total
    ```
 
-3. **Verify the old storage has caught up.** `chorctl repl` shows the queue age in `LAG`. That is the age of the oldest queued task, not a count. The failover policy's `maxEventLag` counts unprocessed events, which you can estimate as `EVENTS` total minus done.
+3. **Verify the old storage has caught up.** `tuttictl repl` shows the queue age in `LAG`. That is the age of the oldest queued task, not a count. The failover policy's `maxEventLag` counts unprocessed events, which you can estimate as `EVENTS` total minus done.
 
 4. **Check consistency** against the current primary as source of truth:
 
    ```bash
-   chorctl diff check f1:photos main:photos --user user1
-   chorctl diff report
-   chorctl diff fix --source f1:photos main:photos      # only after reviewing the report
+   tuttictl diff check f1:photos main:photos --user user1
+   tuttictl diff report
+   tuttictl diff fix --source f1:photos main:photos      # only after reviewing the report
    ```
 
    Objects that existed only on the old storage (writes that had not reached the target at failover time, see `eventLag`) appear in the report. Decide whether they should be copied back before you switch routing.
@@ -119,7 +119,7 @@ Steps:
    ```bash
    curl -s -X PUT "${AUTH[@]}" $API/routing/block -H 'Content-Type: application/json' \
      -d '{"user":"user1","bucket":"photos"}'
-   chorctl repl                                    # EVENTS done == total again, nothing new queued
+   tuttictl repl                                    # EVENTS done == total again, nothing new queued
    curl -s -X PUT "${AUTH[@]}" $API/routing/update -H 'Content-Type: application/json' \
      -d '{"user":"user1","bucket":"photos","toStorage":"main"}'
    curl -s -X PUT "${AUTH[@]}" $API/routing/unblock -H 'Content-Type: application/json' \
@@ -128,20 +128,20 @@ Steps:
 
    While a user or bucket is blocked, its S3 requests fail with `404 NoSuchBucket` ("Bucket already used as replication destination"). That message is the existing one for blocked routing; it is a block, not a missing bucket. For a user-level scope, omit `bucket` in every call. Failover also moves explicit bucket routings that pointed at the failed storage, so repeat the routing update for each of them.
 
-   Do not use the `chorctl repl switch` commands for this. Their help text describes bucket-level replications, and they also change replication direction, which this runbook handles explicitly.
+   Do not use the `tuttictl repl switch` commands for this. Their help text describes bucket-level replications, and they also change replication direction, which this runbook handles explicitly.
 
 6. **Restore forward replication immediately after the switch**, otherwise writes on the old storage are not copied to the failed-over storage:
 
    ```bash
-   chorctl repl add -f main -t f1 -u user1 [-b photos]
+   tuttictl repl add -f main -t f1 -u user1 [-b photos]
    ```
 
-   The new replication runs an initial copy. Wait for it to finish with `chorctl repl`.
+   The new replication runs an initial copy. Wait for it to finish with `tuttictl repl`.
 
 7. **Remove the reverse replication** once its queue is drained (`EVENTS` done == total):
 
    ```bash
-   chorctl repl delete -f f1 -t main -u user1 [-b photos]
+   tuttictl repl delete -f f1 -t main -u user1 [-b photos]
    ```
 
 8. **Acknowledge the failover event** (bucket `""` or omitted for a user-level event):
@@ -153,7 +153,7 @@ Steps:
 
    Equivalent: `redis-cli -n <configDB> del tutti:failover:bucket:user1:photos` (user-level: `tutti:failover:user:<user>`). Prefer the API.
 
-9. **Verify.** `chorctl failover events` no longer lists the scope, `POST /routing` shows the original storage, and `chorctl repl` shows both directions as expected. Repeat for every scope in the failover event list.
+9. **Verify.** `tuttictl failover events` no longer lists the scope, `POST /routing` shows the original storage, and `tuttictl repl` shows both directions as expected. Repeat for every scope in the failover event list.
 
 ---
 
@@ -166,11 +166,11 @@ Steps:
 | 1 | Proxy runs the controller | `curl -s "${AUTH[@]}" $API/tutti/proxies` → `settings.failover.enabled` on each proxy | `true` on proxies that should act | set `failover.enabled: true` in the proxy config and restart it (the file is read at startup) |
 | 2 | Policy exists and is enabled | `curl -s "${AUTH[@]}" $API/tutti/failover/policies` | entry for the failed storage, `enabled: true`, non-empty `targets` | create or update it with `POST /tutti/failover/policies` |
 | 3 | Target is in the policy | same output | the replica you expect is in `targets` in order | only listed targets are considered |
-| 4 | Replication exists from the failed storage to the target, for the scope | `chorctl repl` | from = failed storage, to = target, same bucket name for bucket-level | create it with `chorctl repl add` (bucket-level targets need the same destination bucket name) |
-| 5 | Replication not paused | `chorctl repl` → `PAUSED` | `false` | `chorctl repl resume ...` (an operator pause blocks promotion) |
-| 6 | Initial migration finished | `chorctl repl` → `PROGRESS` | 100% | wait; a replication still copying is not promoted |
-| 7 | Event lag within limit | `chorctl repl` → `EVENTS` (done/total) | unprocessed count ≤ `maxEventLag` (policy value, or `failover.maxEventLag` if unset) | wait for the queue to drain, or raise `maxEventLag` deliberately |
-| 8 | Target healthy | `chorctl proxies` → target `up` on every proxy | `up` | fix the target first; a target with an open breaker is skipped |
+| 4 | Replication exists from the failed storage to the target, for the scope | `tuttictl repl` | from = failed storage, to = target, same bucket name for bucket-level | create it with `tuttictl repl add` (bucket-level targets need the same destination bucket name) |
+| 5 | Replication not paused | `tuttictl repl` → `PAUSED` | `false` | `tuttictl repl resume ...` (an operator pause blocks promotion) |
+| 6 | Initial migration finished | `tuttictl repl` → `PROGRESS` | 100% | wait; a replication still copying is not promoted |
+| 7 | Event lag within limit | `tuttictl repl` → `EVENTS` (done/total) | unprocessed count ≤ `maxEventLag` (policy value, or `failover.maxEventLag` if unset) | wait for the queue to drain, or raise `maxEventLag` deliberately |
+| 8 | Target healthy | `tuttictl proxies` → target `up` on every proxy | `up` | fix the target first; a target with an open breaker is skipped |
 | 9 | Source breaker open long enough | proxy status `available: false`; metric `storage_available{storage}` = 0 | open for at least `after` (policy value or `failover.after`) | breakers are per proxy; if only one proxy sees the outage, its view counts |
 | 10 | Scope routed to the failed storage | `POST /routing` (`{}`) | the user or bucket routes to the failed storage (explicit or implicit via `main`) | a user routed elsewhere is not in scope |
 | 11 | No other controller holds the lock | Redis `tutti:failover-lock:<storage>` in the lock DB, TTL 30 s | absent, or held briefly | another proxy is acting; check again after 30 s |
@@ -219,12 +219,12 @@ $REDIS INFO stats | grep rejected_connections
    ```
 
 3. **Fix the cause**, not the symptom: restart or scale workers so the queue drains; fix the failing storage behind retried tasks.
-4. **Do not** set the policy to an eviction policy, do not `FLUSHDB`/`FLUSHALL`, and do not delete `asynq:*` keys by hand. Deleting queued tasks loses replication work. If tasks were dropped, run a diff (`chorctl diff check`) on the affected buckets afterwards.
+4. **Do not** set the policy to an eviction policy, do not `FLUSHDB`/`FLUSHALL`, and do not delete `asynq:*` keys by hand. Deleting queued tasks loses replication work. If tasks were dropped, run a diff (`tuttictl diff check`) on the affected buckets afterwards.
 
 ### Recover from Redis down
 
 1. Restart Redis. With AOF enabled, check the load: `INFO persistence` → `aof_last_write_status:ok`, and `INFO keyspace` shows keys in DB 0, 1 and 3.
-2. Confirm proxies publish again: `chorctl proxies` lists every instance (status keys have TTL 3 × `status.interval`).
+2. Confirm proxies publish again: `tuttictl proxies` lists every instance (status keys have TTL 3 × `status.interval`).
 3. Check the event-recording 503s from the outage window. Clients retry, which records the event again.
 4. Because AOF `everysec` can lose about one second of acknowledged writes on a crash, run a diff on buckets written during the crash window.
 
@@ -340,7 +340,7 @@ Prerequisites: `storage.dynamicCredentials.enabled: true` and a `masterPassword`
 
    The API verifies again on the server. Proxies and workers pick the change up within about 2 seconds under healthy Redis connectivity, without restart.
 
-3. **Confirm propagation.** `chorctl proxies` lists the new storage on each proxy, and `GET /tutti/storages` shows it with `references: []`.
+3. **Confirm propagation.** `tuttictl proxies` lists the new storage on each proxy, and `GET /tutti/storages` shows it with `references: []`.
 
 4. **Give each existing dynamic user credentials on the new storage**, then check `complete`:
 
@@ -360,7 +360,7 @@ Prerequisites: `storage.dynamicCredentials.enabled: true` and a `masterPassword`
 6. **Add replication and failover target if wanted.** A storage does nothing until replication exists. For failover, add it to a policy's `targets`:
 
    ```bash
-   chorctl repl add -f main -t archive -u user1 [-b photos]
+   tuttictl repl add -f main -t archive -u user1 [-b photos]
    curl -s -X POST "${AUTH[@]}" $API/tutti/failover/policies -H 'Content-Type: application/json' \
      -d '{"source":"main","enabled":true,"targets":["f1","archive"]}'
    ```

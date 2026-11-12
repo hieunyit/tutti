@@ -27,6 +27,7 @@ import (
 
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/minio/minio-go/v7"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -39,6 +40,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/s3client"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/util"
 )
 
@@ -253,6 +255,24 @@ func (r *S3CopySvc) ClearDestination(ctx context.Context, user string, to File, 
 	return nil
 }
 
+// EstimateCopyBuffer calculates the buffer budget needed for copying an object of the given size.
+// For objects <= 5 MiB (non-multipart), the SDK uploads in a single PUT using the object size.
+// For larger multipart objects, the SDK determines optimal part size via minio.OptimalPartInfo
+// and allocates buffers according to that part size layout.
+func EstimateCopyBuffer(size int64, customPartSize uint64) int64 {
+	if size <= 0 {
+		return 5 * 1024 * 1024
+	}
+	if size <= 5*1024*1024 {
+		return size
+	}
+	_, partSize, _, err := minio.OptimalPartInfo(size, customPartSize)
+	if err != nil || partSize <= 0 {
+		return 64 * 1024 * 1024
+	}
+	return partSize
+}
+
 func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to File) error {
 	fromClient, err := r.clientRegistry.AsS3(ctx, from.Storage, user)
 	if err != nil {
@@ -299,6 +319,27 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		toObjectPresent = false
 	}
 
+	if features.Tagging(ctx) {
+		if len(fromObjectStat.UserTags) == 0 && fromObjectStat.UserTagCount > 0 {
+			tags, err := fromClient.S3().GetObjectTagging(ctx, from.Bucket, from.Name, minio.GetObjectTaggingOptions{VersionID: from.Version})
+			if err != nil {
+				return fmt.Errorf("unable to get from object tagging: %w", err)
+			}
+			if tags != nil {
+				fromObjectStat.UserTags = tags.ToMap()
+			}
+		}
+		if toObjectPresent && len(toObjectStat.UserTags) == 0 && toObjectStat.UserTagCount > 0 {
+			tags, err := toClient.S3().GetObjectTagging(ctx, to.Bucket, to.Name, minio.GetObjectTaggingOptions{VersionID: to.Version})
+			if err != nil && !isNotFound(err) {
+				return fmt.Errorf("unable to get to object tagging: %w", err)
+			}
+			if tags != nil {
+				toObjectStat.UserTags = tags.ToMap()
+			}
+		}
+	}
+
 	if toObjectPresent &&
 		fromObjectStat.ETag == toObjectStat.ETag &&
 		fromObjectStat.Size == toObjectStat.Size &&
@@ -328,8 +369,13 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 	provider := toStorage.Provider
 
 	putObjectOpts := minio.PutObjectOptions{
-		UserMetadata: fromObjectStat.UserMetadata,
-		ContentType:  fromObjectStat.ContentType,
+		UserMetadata:       fromObjectStat.UserMetadata,
+		ContentType:        fromObjectStat.ContentType,
+		ContentEncoding:    fromObjectStat.ContentEncoding,
+		ContentDisposition: fromObjectStat.Metadata.Get("Content-Disposition"),
+		ContentLanguage:    fromObjectStat.Metadata.Get("Content-Language"),
+		CacheControl:       fromObjectStat.Metadata.Get("Cache-Control"),
+		Expires:            fromObjectStat.Expires,
 	}
 
 	if features.Tagging(ctx) {
@@ -383,8 +429,24 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		// workaround for big objects in e2e tests TODO: investigate
 		putObjectOpts.DisableContentSha256 = true
 	}
+
+	// Buffer budget guardrail:
+	// Calculate actual buffer allocation needed by the SDK according to part layout (F2).
+	// Small files (<= 5 MiB) allocate file size; multipart files allocate buffers based on minio.OptimalPartInfo.
+	estimatedBuffer := EstimateCopyBuffer(stat.Size, putObjectOpts.PartSize)
+	releaseBuffer, err := systemsettings.AcquireBufferBudget(ctx, estimatedBuffer)
+	if err != nil {
+		var oversize *systemsettings.BufferExceedsBudgetError
+		if errors.As(err, &oversize) {
+			return fmt.Errorf("unable to acquire buffer budget: %w: %w", err, asynq.SkipRetry)
+		}
+		return fmt.Errorf("unable to acquire buffer budget: %w", err)
+	}
+	defer releaseBuffer()
+
 	source := &sourceReader{obj: fromObject}
-	info, err := toClient.S3().PutObject(ctx, to.Bucket, to.Name, source, stat.Size, putObjectOpts)
+	throttledSource := systemsettings.NewThrottledReader(ctx, source, systemsettings.BandwidthLimiter())
+	info, err := toClient.S3().PutObject(ctx, to.Bucket, to.Name, throttledSource, stat.Size, putObjectOpts)
 	if err != nil {
 		if isNotFound(source.err) {
 			return dom.ErrNotFound
@@ -572,6 +634,21 @@ func srcOwnerToDestOwner(owner, srcBucketOwner, dstBucketOwner *string) *string 
 
 func sameMetadata(from, to minio.ObjectInfo, checkTags bool) bool {
 	if from.ContentType != to.ContentType {
+		return false
+	}
+	if from.ContentEncoding != to.ContentEncoding {
+		return false
+	}
+	if from.Metadata.Get("Content-Disposition") != to.Metadata.Get("Content-Disposition") {
+		return false
+	}
+	if from.Metadata.Get("Content-Language") != to.Metadata.Get("Content-Language") {
+		return false
+	}
+	if from.Metadata.Get("Cache-Control") != to.Metadata.Get("Cache-Control") {
+		return false
+	}
+	if !from.Expires.Equal(to.Expires) {
 		return false
 	}
 	if !maps.Equal(from.UserMetadata, to.UserMetadata) {

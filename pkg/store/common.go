@@ -437,6 +437,10 @@ func NewRedisCommonStore(client redis.Cmdable, keyPrefix string) *RedisCommonSto
 	}
 }
 
+func (r *RedisCommonStore) Client() redis.Cmdable {
+	return r.client
+}
+
 func (r *RedisCommonStore) JoinParts(keyParts ...string) string {
 	return strings.Join(keyParts, CKeyPartsDelimiter)
 }

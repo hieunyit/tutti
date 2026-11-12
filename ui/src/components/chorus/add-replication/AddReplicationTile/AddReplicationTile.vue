@@ -26,7 +26,6 @@
   import { inject, readonly, ref } from 'vue';
   import { storeToRefs } from 'pinia';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
-  import UserFormStep from '@/components/chorus/add-replication/UserFormStep/UserFormStep.vue';
   import BucketsFormStep from '@/components/chorus/add-replication/BucketsFormStep/BucketsFormStep.vue';
   import FromStorageFormStep from '@/components/chorus/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
   import ToStorageFormStep from '@/components/chorus/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
@@ -98,10 +97,6 @@
           <ToStorageFormStep
             v-else-if="currentStep === AddReplicationStepName.TO_STORAGE"
             :key="AddReplicationStepName.TO_STORAGE"
-          />
-          <UserFormStep
-            v-else-if="currentStep === AddReplicationStepName.USER"
-            :key="AddReplicationStepName.USER"
           />
           <BucketsFormStep
             v-else-if="currentStep === AddReplicationStepName.BUCKETS"

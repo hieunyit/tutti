@@ -39,6 +39,27 @@
   const showPassword = ref(false);
   const showErrors = ref(false);
   const usernameInput = ref<HTMLInputElement | null>(null);
+  const isRetrying = ref(false);
+
+  async function retryConnection() {
+    if (isRetrying.value) return;
+
+    isRetrying.value = true;
+
+    try {
+      await auth.init(true);
+
+      if (auth.isAuthenticated) {
+        await router.replace(
+          AuthHelper.getSafeRedirect(route.query.redirect) ?? {
+            name: RouteName.CHORUS_HOME,
+          },
+        );
+      }
+    } finally {
+      isRetrying.value = false;
+    }
+  }
 
   const usernameError = computed(() =>
     showErrors.value && username.value.trim() === ''
@@ -150,6 +171,23 @@
           <h1 class="login-page__title">{{ t('loginTitle') }}</h1>
           <p class="login-page__subtitle">{{ t('loginDescription') }}</p>
         </div>
+
+        <Callout
+          v-if="auth.initError"
+          tone="warning"
+        >
+          {{ t('connectionUnavailable') }}
+          <template #actions>
+            <button
+              type="button"
+              class="login-page__retry"
+              :disabled="isRetrying"
+              @click="retryConnection"
+            >
+              {{ t('retryConnection') }}
+            </button>
+          </template>
+        </Callout>
 
         <Callout
           v-if="errorMessage"
@@ -265,6 +303,21 @@
 </template>
 
 <style lang="scss" scoped>
+  .login-page__retry {
+    padding: 6px 10px;
+    border: 1px solid var(--tt-border-strong);
+    border-radius: var(--tt-radius-control);
+    background: var(--tt-surface);
+    color: var(--tt-text);
+    font: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+  }
+
   .login-page {
     display: flex;
     flex-wrap: wrap;

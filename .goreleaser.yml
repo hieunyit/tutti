@@ -3,8 +3,8 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - binary: chorctl
-    dir: tools/chorctl
+  - binary: tuttictl
+    dir: tools/tuttictl
     env:
       - CGO_ENABLED=0
     goos:
@@ -21,7 +21,7 @@ builds:
       - goos: windows
         goarch: arm64
 archives:
-  - name_template: chorctl_{{ .Tag }}_{{ .Os }}_{{ .Arch }}
+  - name_template: tuttictl_{{ .Tag }}_{{ .Os }}_{{ .Arch }}
     format_overrides:
       - goos: windows
         format: zip
@@ -30,7 +30,7 @@ archives:
 checksum:
   name_template: checksums.txt
 brews:
-  - name: chorctl
+  - name: tuttictl
     repository:
       owner: clyso
       name: homebrew-tap
@@ -38,15 +38,15 @@ brews:
     commit_author:
       name: clyso_bot
       email: release-bot@clyso.com
-    commit_msg_template: Brew formula update for chorctl version {{ .Tag }}
+    commit_msg_template: Brew formula update for tuttictl version {{ .Tag }}
     folder: Formula
     homepage: https://github.com/clyso/chorus
     description: Management CLI for chorus service
     license: Apache-2.0
     test: |
-      system "#{bin}/chorctl --version"
+      system "#{bin}/tuttictl --version"
     install: |
-      bin.install "chorctl"
+      bin.install "tuttictl"
 release:
   github:
     owner: clyso

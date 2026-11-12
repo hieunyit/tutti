@@ -55,30 +55,37 @@
   >(() => [
     {
       type: 'selection',
+      width: 44,
     },
     {
       title: t('columnUser'),
       key: 'user',
+      width: 160,
       sorter: true,
     },
     {
       title: t('columnBucket'),
       key: 'bucket',
+      width: 240,
+      minWidth: 200,
       sorter: true,
     },
     {
       title: t('columnStorage'),
       key: 'storage',
+      width: 180,
       sorter: true,
     },
     {
       title: t('columnStatus'),
       key: 'isBlocked',
+      width: 150,
       sorter: true,
     },
     {
       title: t('columnActions'),
       key: 'actions',
+      width: 120,
     },
   ]);
 
@@ -156,6 +163,14 @@
 
 <style lang="scss" scoped>
   .routing-policies-list {
+    &__container {
+      overflow-x: auto;
+    }
+
+    &__table {
+      min-width: 900px;
+    }
+
     &__result {
       min-height: 200px;
     }

@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -215,25 +217,93 @@ const (
 	SourceManaged = "managed"
 )
 
-// lookup finds the user in config first, then in the managed store.
+// lookup finds the user in the database (managed store) first if AllowManagedUsers is set, or config first.
 func (s *Service) lookup(ctx context.Context, username string) (account, bool, error) {
+	if !s.conf.AllowManagedUsers {
+		if u, ok := s.users[username]; ok {
+			return account{Username: u.Username, Hash: u.PasswordHash, Role: u.Role, Source: SourceConfig}, true, nil
+		}
+	}
+	if s.managed != nil {
+		m, err := s.managed.Get(ctx, username)
+		if err == nil {
+			return account{
+				Username: m.Username, Hash: m.PasswordHash, Role: m.Role, Source: SourceManaged, Disabled: m.Disabled,
+				MustChangePassword: m.MustChangePassword, PasswordChangedAt: m.PasswordChangedAt,
+			}, true, nil
+		}
+		if !errors.Is(err, dom.ErrNotFound) {
+			return account{}, false, err
+		}
+	}
 	if u, ok := s.users[username]; ok {
 		return account{Username: u.Username, Hash: u.PasswordHash, Role: u.Role, Source: SourceConfig}, true, nil
 	}
+	return account{}, false, nil
+}
+
+// EnsureAdmin ensures at least one active administrator exists in the database (managed store).
+// If the database has no admin, it imports from config or seeds the bootstrap admin user.
+// The bootstrapped admin account always requires a password change upon first login unless
+// TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE=false is explicitly set.
+func (s *Service) EnsureAdmin(ctx context.Context) error {
 	if s.managed == nil {
-		return account{}, false, nil
+		return nil
 	}
-	m, err := s.managed.Get(ctx, username)
-	if errors.Is(err, dom.ErrNotFound) {
-		return account{}, false, nil
+	list, err := s.managed.List(ctx)
+	if err != nil && !errors.Is(err, dom.ErrNotFound) {
+		return err
 	}
+	for _, u := range list {
+		if u.Role == RoleAdmin && !u.Disabled {
+			return nil
+		}
+	}
+	if len(list) > 0 {
+		// Users already exist in the database; do not silently re-seed default admin.
+		return nil
+	}
+	now := s.now().UTC()
+	if len(s.conf.Users) > 0 {
+		for _, u := range s.conf.Users {
+			_ = s.managed.Create(ctx, ManagedUser{
+				Username:          u.Username,
+				Role:              u.Role,
+				PasswordHash:      u.PasswordHash,
+				CreatedAt:         now,
+				UpdatedAt:         now,
+				PasswordChangedAt: now,
+			})
+		}
+		return nil
+	}
+	bootstrapPw := strings.TrimSpace(os.Getenv("TUTTI_BOOTSTRAP_ADMIN_PASSWORD"))
+	if bootstrapPw == "" {
+		bootstrapPw = strings.TrimSpace(s.conf.BootstrapAdminPassword)
+	}
+	mustChange := true
+	if val := os.Getenv("TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE"); val == "false" || val == "0" {
+		mustChange = false
+	}
+	if bootstrapPw == "" {
+		bootstrapPw = randomBootstrapPassword()
+		mustChange = true
+		log.Warn().Str("username", "admin").Str("password", bootstrapPw).Msg("no bootstrap admin password configured (TUTTI_BOOTSTRAP_ADMIN_PASSWORD / bootstrapAdminPassword): generated a one-time admin password, shown once; it must be changed at first login")
+	}
+	cost := s.cost()
+	hash, err := bcrypt.GenerateFromPassword([]byte(bootstrapPw), cost)
 	if err != nil {
-		return account{}, false, err
+		return err
 	}
-	return account{
-		Username: m.Username, Hash: m.PasswordHash, Role: m.Role, Source: SourceManaged, Disabled: m.Disabled,
-		MustChangePassword: m.MustChangePassword, PasswordChangedAt: m.PasswordChangedAt,
-	}, true, nil
+	return s.managed.Create(ctx, ManagedUser{
+		Username:           "admin",
+		Role:               RoleAdmin,
+		PasswordHash:       string(hash),
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		PasswordChangedAt:  now,
+		MustChangePassword: mustChange,
+	})
 }
 
 // throttled enforces the login budgets:
@@ -402,4 +472,12 @@ func (s *Service) restamp(ctx context.Context, token string, sess *Session) erro
 		return err
 	}
 	return s.rdb.SetArgs(ctx, sessionPrefix+hashToken(token), data, redis.SetArgs{Mode: "XX", KeepTTL: true}).Err()
+}
+
+func randomBootstrapPassword() string {
+	b := make([]byte, 18)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("auth: random bootstrap password: %v", err))
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
 }

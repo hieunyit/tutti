@@ -13,7 +13,7 @@ import (
 
 // replicationUnprocessed is aggregated per (user, from, to). Bucket-level replications can number in the
 // thousands per user, so their lag is summed into the user's series instead of getting a series per bucket:
-// the label set is bounded by users x storage pairs. Drill down with chorctl repl.
+// the label set is bounded by users x storage pairs. Drill down with tuttictl repl.
 var replicationUnprocessed = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "replication_unprocessed_events",
 	Help: "Unprocessed replication events (queued or running) summed over the user and bucket replications of a user between two storages."},

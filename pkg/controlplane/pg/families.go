@@ -242,3 +242,32 @@ func (c *consoleUsers) TouchLogin(ctx context.Context, username string, at time.
 	_, err = c.rt.q().Exec(ctx, `INSERT INTO outbox (object_key, ops) VALUES ($1,$2)`, "console_user_logins/"+username, json.RawMessage(ops))
 	return err
 }
+
+func newSystemSettings(r *runner) controlplane.SystemSettingsStore {
+	return &kv[controlplane.SystemSettings]{rt: r, spec: kvSpec[controlplane.SystemSettings]{
+		table: "system_settings", label: "system settings",
+		key: func(v *controlplane.SystemSettings) string {
+			if v.ID == "" {
+				return "system"
+			}
+			return v.ID
+		},
+		setKey: func(v *controlplane.SystemSettings, k string) { v.ID = k },
+		project: func(k string, v *controlplane.SystemSettings) []RedisOp {
+			if v == nil {
+				return []RedisOp{
+					{Op: OpDel, Key: KeySystemSettings},
+					{Op: OpIncr, Key: KeySystemSettingsVersion},
+					{Op: OpPublish, Key: SystemSettingsChannel, Value: "deleted"},
+				}
+			}
+			raw, _ := json.Marshal(v)
+			return []RedisOp{
+				{Op: OpSet, Key: KeySystemSettings, Value: string(raw)},
+				{Op: OpIncr, Key: KeySystemSettingsVersion},
+				{Op: OpPublish, Key: SystemSettingsChannel, Value: "updated"},
+			}
+		},
+	}}
+}
+

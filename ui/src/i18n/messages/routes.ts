@@ -16,6 +16,7 @@
 
 import { type I18nMessages, I18nLocale } from '@clyso/clyso-ui-kit';
 import { RouteName } from '@/utils/types/router';
+import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 
 type Routes = {
   [k in RouteName]: string;
@@ -46,6 +47,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.TUTTI_PROTECTION_GROUPS]: 'Protection groups',
     [RouteName.TUTTI_PROTECTION_GROUP_DETAIL]: 'Protection group',
     [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Access keys',
+    [RouteName.TUTTI_SYSTEM_SETTINGS]: 'System settings',
+    [AUDIT_LOG_ROUTE_NAME]: 'Audit log',
     [RouteName.TUTTI_DOCS]: 'Documentation',
     [RouteName.TUTTI_API_REFERENCE]: 'API reference',
   },
@@ -73,6 +76,8 @@ const routes: I18nMessages<Routes> = {
     [RouteName.TUTTI_PROTECTION_GROUPS]: 'Schutzgruppen',
     [RouteName.TUTTI_PROTECTION_GROUP_DETAIL]: 'Schutzgruppe',
     [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Zugriffsschlüssel',
+    [RouteName.TUTTI_SYSTEM_SETTINGS]: 'Systemeinstellungen',
+    [AUDIT_LOG_ROUTE_NAME]: 'Audit-Protokoll',
     [RouteName.TUTTI_DOCS]: 'Dokumentation',
     [RouteName.TUTTI_API_REFERENCE]: 'API-Referenz',
   },

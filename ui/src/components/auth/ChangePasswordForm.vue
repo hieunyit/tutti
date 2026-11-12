@@ -3,6 +3,7 @@
   import { computed, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NInput } from 'naive-ui';
+  import { useNotification } from '@clyso/clyso-ui-kit';
   import Callout from '@/components/ui/Callout.vue';
   import messages from '@/components/tutti/users/i18nManagement';
   import { useAuthStore } from '@/stores/authStore';
@@ -12,6 +13,7 @@
   const emit = defineEmits<{ (e: 'changed'): void }>();
   const { t } = useI18n({ messages });
   const auth = useAuthStore();
+  const { createNotification } = useNotification();
   const current = ref('');
   const password = ref('');
   const repeat = ref('');
@@ -51,6 +53,12 @@
       current.value = '';
       password.value = '';
       repeat.value = '';
+      createNotification({
+        type: 'success',
+        title: 'Success',
+        content: t('passwordChanged') || 'Password changed successfully.',
+        isClosable: true,
+      });
       emit('changed');
     } catch (e) {
       error.value = ProxyAccountHelper.getMessage(e) ?? t('error');

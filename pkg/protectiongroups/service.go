@@ -232,7 +232,7 @@ func (s *Service) status(ctx context.Context, g Group, reports []proxystatus.Sta
 			if err != nil {
 				return out, err
 			}
-			if !info.InitDone() || info.IsPaused || info.IsArchived || info.Switch != nil || g.Seeded[id.AsString()] == 0 {
+			if !info.InitDone() || info.IsPaused || info.IsArchived || info.Switch != nil || g.Seeded[id.AsString()] == 0 || info.HasFailures() || info.EventMigration.Archived > 0 {
 				st.Initialized = false
 			}
 			st.EventLag += info.EventMigration.Unprocessed
@@ -514,6 +514,9 @@ func (s *Service) finishFrozen(ctx context.Context, g *Group, reports []proxysta
 		}
 		if !info.InitDone() {
 			return fmt.Errorf("%w: target initial migration became incomplete", dom.ErrFailedPrecondition)
+		}
+		if info.HasFailures() || info.EventMigration.Archived > 0 {
+			return fmt.Errorf("%w: target has failed or archived replication events (%d archived)", dom.ErrFailedPrecondition, info.EventMigration.Archived)
 		}
 		lag += info.EventMigration.Unprocessed
 	}

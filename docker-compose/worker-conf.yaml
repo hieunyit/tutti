@@ -3,19 +3,11 @@ api:
   grpcPort: 9670
   httpPort: 9671
   secure: false
-  # DEMO ONLY sign-in for the management API and web UI: admin/admin (role admin), viewer/viewer (role viewer).
-  # Change these before any real use. Generate production hashes as described in service/worker/config.yaml
-  # (bcrypt, cost 10: htpasswd -nbBC 10 "" 'password' | tr -d ':\n').
+  # Console accounts & passwords are fully managed and stored in PostgreSQL (console_users table).
   auth:
     enabled: true
     sessionTTL: 12h
-    users:
-      - username: admin
-        passwordHash: "$2a$10$i3sMA.JflbLfYy0COwREu.8PIacpCJyLjdY1gqUXmmqH9HprmIU0S" # bcrypt("admin"), demo only
-        role: admin
-      - username: viewer
-        passwordHash: "$2a$10$8OnPANAIaWMZQIj.rdsRP.5EGHtVUqEonF25xKtIcIEYQ31ur/D3K" # bcrypt("viewer"), demo only
-        role: viewer
+    allowManagedUsers: true
 log:
   json: false # false for dev console logger, true - json log for prod to export to Grafana&Loki.
   level: info

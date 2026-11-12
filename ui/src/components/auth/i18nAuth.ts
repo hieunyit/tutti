@@ -53,6 +53,9 @@ export default <I18nMessages>{
     errorRateLimited: 'Too many attempts. Try again in {time}.',
     errorRateLimitedUnknown: 'Too many attempts. Try again later.',
     errorUnknown: 'Sign in failed. Check your connection and try again.',
+    connectionUnavailable:
+      'The server could not be reached to verify your access. No administrator access has been assumed.',
+    retryConnection: 'Retry connection',
     secondsShort: '{n} s',
     minutesShort: '{n} min',
     logout: 'Sign out',
@@ -107,6 +110,9 @@ export default <I18nMessages>{
       'Zu viele Versuche. Versuchen Sie es später erneut.',
     errorUnknown:
       'Anmeldung fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.',
+    connectionUnavailable:
+      'Der Server ist zur Zugriffsprüfung nicht erreichbar. Administratorrechte wurden nicht angenommen.',
+    retryConnection: 'Verbindung erneut prüfen',
     secondsShort: '{n} s',
     minutesShort: '{n} Min.',
     logout: 'Abmelden',

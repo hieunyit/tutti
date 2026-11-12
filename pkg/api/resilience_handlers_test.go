@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/hieunyit/tutti/pkg/failover"
+	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
@@ -401,3 +402,54 @@ func TestResilience_ProxyFleetConfigExpectedVersionAndAudit(t *testing.T) {
 	})
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
+
+func TestResilience_SystemSettings(t *testing.T) {
+	ctx := context.Background()
+	c, _, _ := resilienceClient(t)
+
+	// Initial Get returns defaults
+	s0, err := c.GetSystemSettings(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.NotNil(t, s0)
+	require.False(t, s0.Features.Tagging)
+	require.EqualValues(t, 10, s0.Worker.Concurrency)
+
+	// Update features & worker settings
+	s1, err := c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{
+		Features: &pb.SystemFeaturesSettings{
+			Tagging: true,
+			Acl:     true,
+			Policy:  true,
+		},
+		Worker: &pb.SystemWorkerSettings{
+			Concurrency: 24,
+		},
+		Lock: &pb.SystemLockSettings{
+			Overlap: durationpb.New(3 * time.Second),
+		},
+		Webhook: &pb.SystemWebhookSettings{
+			Enabled: true,
+			BaseUrl: "http://webhook.internal",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, s1)
+	require.True(t, s1.Features.Tagging)
+	require.True(t, s1.Features.Acl)
+	require.True(t, s1.Features.Policy)
+	require.EqualValues(t, 24, s1.Worker.Concurrency)
+	require.True(t, s1.Webhook.Enabled)
+	require.Equal(t, "http://webhook.internal", s1.Webhook.BaseUrl)
+
+	// Verify in-memory features updated
+	require.True(t, features.Tagging(ctx))
+	require.True(t, features.ACL(ctx))
+	require.True(t, features.Policy(ctx))
+
+	// Get again confirms persistence
+	s2, err := c.GetSystemSettings(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.True(t, s2.Features.Tagging)
+	require.EqualValues(t, 24, s2.Worker.Concurrency)
+}
+

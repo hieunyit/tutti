@@ -37,7 +37,7 @@ import (
 
 type RegisterHandlersFunc func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
-func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFunc) (start func(context.Context) error, stop func(context.Context) error, err error) {
+func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFunc, readiness ...func(context.Context) error) (start func(context.Context) error, stop func(context.Context) error, err error) {
 	mux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(auth.GatewayHeaderMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
@@ -75,7 +75,11 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-	srv.Handler = ConcurrencyLimiter(handler, conf.MaxConcurrentRequests)
+	var ready func(context.Context) error
+	if len(readiness) > 0 {
+		ready = readiness[0]
+	}
+	srv.Handler = healthHandler(ctx, ConcurrencyLimiter(handler, conf.MaxConcurrentRequests), ready)
 
 	start = func(_ context.Context) error {
 		return srv.ListenAndServe()
@@ -88,6 +92,35 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 		return nil
 	}
 	return
+}
+
+// Probes expose process/readiness status only, never management inventory.
+func healthHandler(appCtx context.Context, next http.Handler, ready func(context.Context) error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" && r.URL.Path != "/readyz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if appCtx.Err() != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if r.URL.Path == "/readyz" && ready != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			if ready(ctx) != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 }
 
 const defaultMaxConcurrentRequests = 100

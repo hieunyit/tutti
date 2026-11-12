@@ -230,6 +230,23 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 		}
 	}
 
+	settings, err := r.SystemSettings.List(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, v := range settings {
+		val := v.Value
+		raw, _ := json.Marshal(val)
+		if err := enqueue("system_settings/system", []RedisOp{
+			{Op: OpSet, Key: KeySystemSettings, Value: string(raw)},
+			{Op: OpIncr, Key: KeySystemSettingsVersion},
+			{Op: OpPublish, Key: SystemSettingsChannel, Value: "updated"},
+		}); err != nil {
+			return 0, err
+		}
+	}
+
+
 	if err := tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("controlplane: commit snapshot: %w", err)
 	}

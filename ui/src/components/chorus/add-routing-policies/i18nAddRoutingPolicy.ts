@@ -24,11 +24,15 @@ export default <I18nMessages>{
     addRoutingPolicyHeader:
       'Create a new routing policy to control traffic direction within the proxy.',
     userSelectionTitle: 'User',
-    userSelectionDescription: 'Select a user:',
+    userSelectionDescription: 'Select or specify an S3 user:',
+    userSelectionPlaceholder: 'Select or enter an S3 user name',
     bucketSelectionTitle: 'Bucket Name',
     bucketSelectionDescription: 'Narrow down a policy to a specific bucket:',
     bucketSelectionAll: 'Apply to all buckets (including future ones)',
     bucketSelectionPlaceholder: 'Enter bucket name',
+    selectFromAvailableBuckets: 'Or select from available cluster buckets:',
+    loadingBuckets: 'Discovering buckets...',
+    availableBucketsCount: '{count} buckets available',
     bucketSelectionInputLabel: 'Bucket Name',
     bucketNameRequired: 'Please enter a bucket name.',
     bucketNameInvalid:
@@ -92,12 +96,16 @@ export default <I18nMessages>{
       'Neue Routing-Richtlinie erstellen, um den Datenverkehr im Proxy zu steuern.',
     userSelectionTitle: 'Benutzer',
     userSelectionDescription: 'Benutzer für die Routing-Richtlinie auswählen:',
+    userSelectionPlaceholder: 'S3-Benutzernamen auswählen oder eingeben',
     bucketSelectionTitle: 'Bucket Name',
     bucketSelectionDescription:
       'Richtlinie auf einen speziellen Bucket anwenden:',
     bucketSelectionAll:
       'Auf alle Buckets anwenden (einschließlich zukünftiger)',
     bucketSelectionPlaceholder: 'Bucket Namen eingeben',
+    selectFromAvailableBuckets: 'Oder aus verfügbaren Cluster-Buckets auswählen:',
+    loadingBuckets: 'Buckets werden ermittelt...',
+    availableBucketsCount: '{count} Buckets verfügbar',
     bucketSelectionInputLabel: 'Bucket-Name',
     bucketNameRequired: 'Bitte geben Sie einen Bucket-Namen ein.',
     bucketNameInvalid:

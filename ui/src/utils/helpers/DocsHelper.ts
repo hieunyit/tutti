@@ -27,6 +27,7 @@ export interface DocEntry {
 
 /** Guides bundled with the UI, in navigation order. */
 export const DOCS: DocEntry[] = [
+  { slug: 'deployment-guide', path: 'docs/tutti/deployment-guide.md' },
   { slug: 'operations', path: 'docs/tutti/operations.md' },
   { slug: 'configuration', path: 'docs/tutti/configuration.md' },
   { slug: 'storage-accounts', path: 'docs/tutti/storage-accounts.md' },

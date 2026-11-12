@@ -10,7 +10,7 @@ It incorporates ideas and code ported from ReplicaT4
 License split
 -------------
 
-- Backend (everything outside ui/: proxy, worker, standalone, chorctl, pkg/, proto/,
+- Backend (everything outside ui/: proxy, worker, standalone, tuttictl, pkg/, proto/,
   tests, deploy): Apache License, Version 2.0, see LICENSE.
   Original code Copyright © Clyso GmbH; Tutti modifications Copyright 2026 hieunyit.
 

@@ -51,20 +51,24 @@
     {
       title: t('columnObject'),
       key: 'object',
+      minWidth: 260,
       sorter: true,
     },
     {
       title: t('columnSize'),
       key: 'size',
+      width: 130,
       sorter: true,
     },
     {
       title: t('columnEtag'),
       key: 'etag',
+      width: 200,
     },
     {
       title: t('columnObjectPlacement'),
       key: 'objectPlacement',
+      minWidth: 240,
     },
   ]);
 
@@ -145,7 +149,11 @@
     }
 
     &__table {
-      min-width: 680px;
+      min-width: 840px;
+
+      :deep(td) {
+        overflow-wrap: anywhere;
+      }
     }
 
     &__version {

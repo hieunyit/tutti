@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
@@ -39,14 +40,13 @@ type QueueService interface {
 	// Purge requires stopped queues: asynq refuses to delete a queue with active tasks.
 	Purge(ctx context.Context, queues ...string) error
 	Stats(ctx context.Context, queueName string) (*QueueStats, error)
-	EnqueueTask(ctx context.Context, task any) error
+	EnqueueTask(ctx context.Context, task any, opts ...asynq.Option) error
 }
 
 type QueueStats struct {
-	// Current number of tasks present in the queue (asynq QueueInfo.Size).
-	// Includes pending, active, scheduled, retry, aggregating AND archived
-	// (permanently failed) tasks. It is a live snapshot, not a lifetime total,
-	// and it does NOT include tasks that were already processed and deleted.
+	// Current number of tasks awaiting or currently in processing in the queue.
+	// Includes pending, active, scheduled, retry, and aggregating tasks.
+	// Does NOT include archived (permanently failed / SkipRetry) tasks.
 	Unprocessed int
 	// Total number of times tasks in this queue finished processing, counting
 	// every retry and archival. asynq bumps this counter on success AND on each
@@ -55,6 +55,8 @@ type QueueStats struct {
 	ProcessedTotal int
 	// Total number of failed processing attempts (retries + archived tasks).
 	FailedTotal int
+	// Total number of archived (permanently failed / SkipRetry) tasks.
+	Archived int
 
 	// Paused indicates whether the queue is paused.
 	// If true, tasks in the queue will not be processed.
@@ -68,10 +70,25 @@ type QueueStats struct {
 	Latency time.Duration
 }
 
+func activeWaitingCount(info *asynq.QueueInfo) int {
+	if info == nil {
+		return 0
+	}
+	return info.Pending + info.Active + info.Scheduled + info.Retry + info.Aggregating
+}
+
+func extractRedisFromInspector(insp *asynq.Inspector) redis.Cmdable {
+	if insp == nil {
+		return nil
+	}
+	return insp.RedisClient()
+}
+
 func NewQueueService(client *asynq.Client, inspector *asynq.Inspector) *queueService {
 	return &queueService{
 		inspector: inspector,
 		client:    client,
+		rc:        extractRedisFromInspector(inspector),
 	}
 }
 
@@ -80,10 +97,33 @@ var _ QueueService = (*queueService)(nil)
 type queueService struct {
 	inspector *asynq.Inspector
 	client    *asynq.Client
+	rc        redis.Cmdable
 }
 
-func (q *queueService) EnqueueTask(ctx context.Context, task any) error {
-	return enqueueAny(ctx, q.client, task)
+func (q *queueService) RedisClient() redis.Cmdable {
+	if q.rc != nil {
+		return q.rc
+	}
+	if q.inspector != nil {
+		q.rc = extractRedisFromInspector(q.inspector)
+		return q.rc
+	}
+	return nil
+}
+
+// WithStrictWatermark is retained for source compatibility. Admission is now
+// strict for every caller of a queue with a configured high watermark.
+// Deprecated: no context marker is needed by the atomic broker admission.
+func WithStrictWatermark(ctx context.Context) context.Context { return ctx }
+
+// Admission is enforced by the broker in the same Lua script that creates the
+// task. A caller delayed between encoding and enqueue cannot commit over quota.
+func (q *queueService) EnqueueTask(ctx context.Context, task any, opts ...asynq.Option) error {
+	err := enqueueAny(ctx, q.client, task, opts...)
+	if errors.Is(err, asynq.ErrQueueFull) {
+		return &dom.ErrRateLimitExceeded{RetryIn: time.Second}
+	}
+	return err
 }
 
 func (q *queueService) Stats(ctx context.Context, queueName string) (*QueueStats, error) {
@@ -92,9 +132,10 @@ func (q *queueService) Stats(ctx context.Context, queueName string) (*QueueStats
 		return nil, err
 	}
 	return &QueueStats{
-		Unprocessed:    info.Size,
+		Unprocessed:    activeWaitingCount(info),
 		ProcessedTotal: info.ProcessedTotal,
 		FailedTotal:    info.FailedTotal,
+		Archived:       info.Archived,
 		Paused:         info.Paused,
 		MemoryUsage:    info.MemoryUsage,
 		Latency:        info.Latency,
@@ -213,7 +254,7 @@ func (q *queueService) UnprocessedCount(ctx context.Context, ignoreNotFound bool
 		if err != nil {
 			return 0, err
 		}
-		count += info.Size
+		count += activeWaitingCount(info)
 	}
 	return count, nil
 }

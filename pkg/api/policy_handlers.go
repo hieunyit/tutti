@@ -31,8 +31,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/controlplane"
+	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/meta"
@@ -85,6 +85,12 @@ func PolicyHandlers(
 // PolicyOption customizes PolicyHandlers.
 type PolicyOption func(*policyHandlers)
 
+// WithPolicyWebhook resolves the current effective settings for every request.
+// Token and listener configuration remain controlled by worker startup config.
+func WithPolicyWebhook(current func() WebhookConfig) PolicyOption {
+	return func(h *policyHandlers) { h.currentWebhook = current }
+}
+
 // WithPolicyScope restricts user-level replications and bucket listings of users on a shared connection account to
 // the buckets of their access policy.
 func WithPolicyScope(scope *accesspolicy.Scope) PolicyOption {
@@ -116,6 +122,7 @@ type policyHandlers struct {
 	replicationStatusLocker *store.ReplicationStatusLocker
 	userLocker              *store.UserLocker
 	webhookConf             *WebhookConfig
+	currentWebhook          func() WebhookConfig
 	storageLocker           *StorageLocker
 	scope                   *accesspolicy.Scope
 	cpStore                 controlplane.Store
@@ -234,10 +241,11 @@ func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID
 		if storageType != dom.S3 {
 			return fmt.Errorf("%w: s3_notification event source is only supported for S3 storage", dom.ErrInvalidArg)
 		}
-		if h.webhookConf == nil {
+		webhook := h.effectiveWebhook()
+		if webhook == nil || !webhook.Enabled {
 			return fmt.Errorf("%w: webhook must be enabled for s3_notification event source", dom.ErrInvalidArg)
 		}
-		agentURL, err := h.webhookConf.S3NotificationURL(replicationID.FromStorage)
+		agentURL, err := webhook.S3NotificationURL(replicationID.FromStorage)
 		if err != nil {
 			return err
 		}
@@ -788,21 +796,34 @@ func pbToEventSource(es pb.EventSource) dom.EventSource {
 }
 
 func (h *policyHandlers) webhookURLForStorage(storage string, storageType dom.StorageType) (string, error) {
+	webhook := h.effectiveWebhook()
+	if webhook == nil || !webhook.Enabled {
+		return "", fmt.Errorf("%w: webhook must be enabled", dom.ErrInvalidArg)
+	}
 	switch storageType {
 	case dom.S3:
-		return h.webhookConf.S3NotificationURL(storage)
+		return webhook.S3NotificationURL(storage)
 	case dom.Swift:
-		return h.webhookConf.SwiftWebhookURL(storage)
+		return webhook.SwiftWebhookURL(storage)
 	default:
 		return "", fmt.Errorf("%w: unsupported storage type %s for webhook", dom.ErrInvalidArg, storageType)
 	}
 }
 
 func (h *policyHandlers) validateWebhookEventSource(eventSource pb.EventSource) error {
-	if eventSource == pb.EventSource_EVENT_SOURCE_WEBHOOK && (h.webhookConf == nil || !h.webhookConf.Enabled) {
+	webhook := h.effectiveWebhook()
+	if eventSource == pb.EventSource_EVENT_SOURCE_WEBHOOK && (webhook == nil || !webhook.Enabled) {
 		return fmt.Errorf("%w: webhook must be enabled for webhook event source", dom.ErrInvalidArg)
 	}
 	return nil
+}
+
+func (h *policyHandlers) effectiveWebhook() *WebhookConfig {
+	if h.currentWebhook != nil {
+		conf := h.currentWebhook()
+		return &conf
+	}
+	return h.webhookConf
 }
 
 func (h *policyHandlers) createAgentBucketNotification(ctx context.Context, replicationID entity.BucketReplicationPolicy, agentURL string) error {

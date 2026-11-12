@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tutti-worker
+  namespace: tutti
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tutti-worker
+  template:
+    metadata:
+      labels:
+        app: tutti-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/hieunyit/tutti-worker:latest
+          args: ["-config", "/etc/tutti/worker.yaml"]
+          ports:
+            - containerPort: 9671
+              name: http-api
+            - containerPort: 9670
+              name: grpc-api
+          envFrom:
+            - secretRef:
+                name: tutti-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tutti
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9671
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9671
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      volumes:
+        - name: config
+          configMap:
+            name: tutti-worker-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tutti-worker
+  namespace: tutti
+spec:
+  selector:
+    app: tutti-worker
+  ports:
+    - name: http-api
+      port: 9671
+      targetPort: 9671
+    - name: grpc-api
+      port: 9670
+      targetPort: 9670

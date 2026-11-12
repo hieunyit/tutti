@@ -140,7 +140,7 @@
 <template>
   <NDrawer
     :show="show"
-    :width="520"
+    width="min(520px, 100vw)"
     @update:show="emit('update:show', $event)"
   >
     <NDrawerContent

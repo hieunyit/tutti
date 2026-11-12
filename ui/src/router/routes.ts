@@ -52,8 +52,6 @@ const TuttiConsoleUsersPage = () =>
   import('@/pages/TuttiConsoleUsersPage/TuttiConsoleUsersPage.vue');
 const TuttiChangePasswordPage = () =>
   import('@/pages/TuttiChangePasswordPage/TuttiChangePasswordPage.vue');
-const TuttiFailoverPage = () =>
-  import('@/pages/TuttiFailoverPage/TuttiFailoverPage.vue');
 const TuttiProtectionGroupsPage = () =>
   import('@/pages/TuttiProtectionGroupsPage/TuttiProtectionGroupsPage.vue');
 const TuttiProtectionGroupDetailPage = () =>
@@ -62,6 +60,8 @@ const TuttiProxyAccountsPage = () =>
   import('@/pages/TuttiProxyAccountsPage/TuttiProxyAccountsPage.vue');
 const TuttiAuditLogPage = () =>
   import('@/pages/TuttiAuditLogPage/TuttiAuditLogPage.vue');
+const TuttiSystemSettingsPage = () =>
+  import('@/pages/TuttiSystemSettingsPage/TuttiSystemSettingsPage.vue');
 const DocsPage = () => import('@/pages/DocsPage.vue');
 const LoginPage = () => import('@/pages/LoginPage/LoginPage.vue');
 
@@ -226,6 +226,16 @@ export const routes: RouteRecordRaw[] = [
         component: TuttiAuditLogPage,
       },
       {
+        path: 'system-settings',
+        meta: {
+          requiresAdmin: true,
+          navGroup: 'administration',
+          navSection: RouteName.TUTTI_SYSTEM_SETTINGS,
+        },
+        name: RouteName.TUTTI_SYSTEM_SETTINGS,
+        component: TuttiSystemSettingsPage,
+      },
+      {
         path: 'access-keys',
         redirect: { name: RouteName.TUTTI_PROXY_ACCOUNTS },
       },
@@ -262,16 +272,15 @@ export const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
-        // /docs/api (API reference) is matched first: static segments win
-        path: 'docs/:slug?',
-        meta: { navGroup: 'help', navSection: RouteName.TUTTI_DOCS },
-        name: RouteName.TUTTI_DOCS,
-        component: DocsPage,
-      },
-      {
         path: 'docs/api',
         meta: { navGroup: 'help', navSection: RouteName.TUTTI_API_REFERENCE },
         name: RouteName.TUTTI_API_REFERENCE,
+        component: DocsPage,
+      },
+      {
+        path: 'docs/:slug?',
+        meta: { navGroup: 'help', navSection: RouteName.TUTTI_DOCS },
+        name: RouteName.TUTTI_DOCS,
         component: DocsPage,
       },
       {

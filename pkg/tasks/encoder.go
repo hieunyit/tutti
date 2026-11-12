@@ -245,12 +245,12 @@ func EncodeAny(ctx context.Context, payload any) (*asynq.Task, error) {
 	}
 }
 
-func enqueueAny(ctx context.Context, taskClient *asynq.Client, payload any) error {
+func enqueueAny(ctx context.Context, taskClient *asynq.Client, payload any, opts ...asynq.Option) error {
 	task, err := EncodeAny(ctx, payload)
 	if err != nil {
 		return err
 	}
-	_, err = taskClient.EnqueueContext(ctx, task)
+	_, err = taskClient.EnqueueContext(ctx, task, opts...)
 	if err != nil && !errors.Is(err, asynq.ErrDuplicateTask) && !errors.Is(err, asynq.ErrTaskIDConflict) {
 		return err
 	}
@@ -321,6 +321,9 @@ var (
 	}
 	migrateBucketListObjects = encoder[MigrateBucketListObjectsPayload]{
 		taskID: func(p MigrateBucketListObjectsPayload) string {
+			if p.Iteration > 0 {
+				return toTaskID("mgr:lo", p.ID.AsString(), p.Bucket, p.Prefix, fmt.Sprintf("it:%d", p.Iteration))
+			}
 			return toTaskID("mgr:lo", p.ID.AsString(), p.Bucket, p.Prefix)
 		},
 		queue: func(p MigrateBucketListObjectsPayload) string {
@@ -593,4 +596,9 @@ func toTaskID(args ...string) string {
 		panic("toTaskID: no args provided")
 	}
 	return strings.Join(args, ":")
+}
+
+// MigrateBucketListObjectsTaskID exposes the task ID generator for MigrateBucketListObjectsPayload.
+func MigrateBucketListObjectsTaskID(p MigrateBucketListObjectsPayload) string {
+	return migrateBucketListObjects.taskID(p)
 }

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -37,6 +38,7 @@ const (
 )
 
 func (s *svc) HandleObjectVersionList(ctx context.Context, t *asynq.Task) error {
+	ctx = tasks.WithStrictWatermark(ctx)
 	var listVersionsPayload tasks.ListObjectVersionsPayload
 	if err := json.Unmarshal(t.Payload(), &listVersionsPayload); err != nil {
 		return fmt.Errorf("unable to unmarshal payload: %w: %w", err, asynq.SkipRetry)
@@ -48,7 +50,7 @@ func (s *svc) HandleObjectVersionList(ctx context.Context, t *asynq.Task) error 
 	objectVersionID := entity.NewVersionedObjectID(listVersionsPayload.ID.FromStorage(), fromBucket, listVersionsPayload.Prefix)
 	replicationID := entity.NewBucketReplicationPolicy(user, listVersionsPayload.ID.FromStorage(), fromBucket, listVersionsPayload.ID.ToStorage(), toBucket)
 
-	if err := s.versionedSvc.ListVersions(ctx, objectVersionID, replicationID); err != nil {
+	if err := s.versionedSvc.ListVersions(ctx, objectVersionID, replicationID, listVersionsPayload.Generation); err != nil {
 		return fmt.Errorf("unable to list obejct versions: %w", err)
 	}
 
@@ -83,7 +85,7 @@ func (s *svc) HandleVersionedObjectMigration(ctx context.Context, t *asynq.Task)
 	fromBucket, toBucket := migratePayload.ID.FromToBuckets(migratePayload.Bucket)
 	replicationID := entity.NewBucketReplicationPolicy(user, migratePayload.ID.FromStorage(), fromBucket, migratePayload.ID.ToStorage(), toBucket)
 
-	if err := s.versionedSvc.MigrateVersions(ctx, replicationID, migratePayload.Prefix); err != nil {
+	if err := s.versionedSvc.MigrateVersions(ctx, replicationID, migratePayload.Prefix, migratePayload.Generation); err != nil {
 		return fmt.Errorf("unable to migrate object version: %w", err)
 	}
 
@@ -105,45 +107,70 @@ func NewVersionedMigrationSvc(copySvc copy.CopySvc,
 	}
 }
 
-func (r *VersionedMigrationSvc) ListVersions(ctx context.Context, objectID entity.VersionedObjectID, replicationID entity.BucketReplicationPolicy) error {
-	lastListedVersionInfo, err := r.objectVersionInfoStore.GetRight(ctx, objectID)
-	if err != nil && !errors.Is(err, dom.ErrNotFound) {
-		return fmt.Errorf("unable to get last listed version for object: %w", err)
+func workGeneration(generation []int64) int64 {
+	if len(generation) > 0 {
+		return generation[0]
 	}
-
-	toFile := copy.NewFile(objectID.Storage, objectID.Bucket, objectID.Name)
-
-	var shouldSkipFirstListings bool
-	if lastListedVersionInfo.Version != "" {
-		shouldSkipFirstListings = true
-	}
-
-	versionInfoList, err := r.copySvc.GetVersionInfo(ctx, replicationID.User, toFile)
-	if err != nil {
-		return fmt.Errorf("unable to get version info: %w", err)
-	}
-
-	for _, info := range versionInfoList {
-		if shouldSkipFirstListings {
-			if info.Version == lastListedVersionInfo.Version {
-				shouldSkipFirstListings = false
-			}
-			continue
-		}
-	}
-
-	if err := r.objectVersionInfoStore.AddLeft(ctx, objectID, versionInfoList...); err != nil {
-		return fmt.Errorf("unable to store version info list: %w", err)
-	}
-
-	return nil
+	return 0
 }
 
-func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replicationID entity.BucketReplicationPolicy, prefix string) error {
+func (r *VersionedMigrationSvc) withObjectLock(ctx context.Context, id entity.BucketReplicationPolicy, key string, work func(context.Context) error) error {
+	locker := r.objectLocker
+	if locker == nil {
+		locker = store.NewObjectLocker(r.objectVersionInfoStore.Client(), 2*time.Second)
+	}
+	lock, err := locker.Lock(ctx, entity.NewObjectLockID(id.ToStorage, id.ToBucket, key), store.WithRetry(true))
+	if err != nil {
+		return err
+	}
+	defer lock.Release(ctx)
+	return lock.DoCtx(ctx, 2*time.Second, work)
+}
+
+func (r *VersionedMigrationSvc) snapshot(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, work *store.ObjectVersionInfoStore) error {
+	versions, err := r.copySvc.GetVersionInfo(ctx, id.User, copy.NewFile(objectID.Storage, objectID.Bucket, objectID.Name))
+	if err != nil {
+		return fmt.Errorf("unable to list object versions: %w", err)
+	}
+	// Copy the slice: a client or test may retain its listing result.
+	chronological := append([]entity.ObjectVersionInfo(nil), versions...)
+	slices.Reverse(chronological)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return work.ReplaceSnapshot(ctx, objectID, chronological)
+}
+
+func (r *VersionedMigrationSvc) ListVersions(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, generation ...int64) error {
+	work := r.objectVersionInfoStore.ForReplication(id, workGeneration(generation))
+	return r.withObjectLock(ctx, id, objectID.Name, func(ctx context.Context) error {
+		return r.snapshot(ctx, objectID, id, work)
+	})
+}
+
+func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, id entity.BucketReplicationPolicy, prefix string, generation ...int64) error {
+	work := r.objectVersionInfoStore.ForReplication(id, workGeneration(generation))
+	return r.withObjectLock(ctx, id, prefix, func(ctx context.Context) error {
+		return r.migrateVersions(ctx, id, prefix, work)
+	})
+}
+
+func (r *VersionedMigrationSvc) migrateVersions(ctx context.Context, replicationID entity.BucketReplicationPolicy, prefix string, work *store.ObjectVersionInfoStore) error {
 	toFile := copy.File{
 		Storage: replicationID.ToStorage,
 		Bucket:  replicationID.ToBucket,
 		Name:    prefix,
+	}
+
+	objectID := entity.NewVersionedObjectID(replicationID.FromStorage, replicationID.FromBucket, prefix)
+	firstPage, err := work.GetPage(ctx, objectID, store.NewPager(0, 1))
+	if err != nil {
+		return err
+	}
+	if len(firstPage) == 0 {
+		if err := r.snapshot(ctx, objectID, replicationID, work); err != nil {
+			return err
+		}
 	}
 
 	var destinationIsEmpty bool
@@ -164,7 +191,7 @@ func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replication
 		if migratedObjectVersionInfo.Version == "" {
 			shouldClearDestination = true
 		} else {
-			versionIdx, err := r.objectVersionInfoStore.Find(ctx, versionedObjectID, migratedObjectVersionInfo)
+			versionIdx, err := work.Find(ctx, versionedObjectID, migratedObjectVersionInfo)
 			if errors.Is(err, dom.ErrNotFound) {
 				shouldClearDestination = true
 			} else if err != nil {
@@ -181,17 +208,9 @@ func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replication
 		}
 	}
 
-	// Not providing version to lock id, since migration should be performed in particular order
-	objectLockID := entity.NewObjectLockID(replicationID.ToStorage, replicationID.ToBucket, prefix)
-	lock, err := r.objectLocker.Lock(ctx, objectLockID)
-	if err != nil {
-		return fmt.Errorf("unable to acquire object lock: %w", err)
-	}
-	defer lock.Release(ctx)
-
 	pager := store.NewPager(firstVersionToMigrateIdx, CMaxBufferedMoveObjectVersions)
 	for {
-		objectVersionInfoList, err := r.objectVersionInfoStore.GetPage(ctx, versionedObjectID, pager)
+		objectVersionInfoList, err := work.GetPage(ctx, versionedObjectID, pager)
 		if err != nil {
 			return fmt.Errorf("unable to get object version info list: %w", err)
 		}
@@ -200,9 +219,7 @@ func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replication
 			fromFile := copy.NewVersionedFile(replicationID.FromStorage, replicationID.FromBucket, prefix, info.Version)
 			toFile := copy.NewVersionedFile(replicationID.ToStorage, replicationID.ToBucket, prefix, info.Version)
 
-			if err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
-				return r.copySvc.CopyObject(ctx, replicationID.User, fromFile, toFile)
-			}); err != nil {
+			if err = r.copySvc.CopyObject(ctx, replicationID.User, fromFile, toFile); err != nil {
 				if errors.Is(err, dom.ErrNotFound) {
 					zerolog.Ctx(ctx).Warn().Str(log.ObjectVer, info.Version).Msg("versioned migration: skip object version copy: version missing in source")
 					continue
@@ -218,8 +235,8 @@ func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, replication
 		pager.From += CMaxBufferedMoveObjectVersions
 	}
 
-	if _, err := r.objectVersionInfoStore.Drop(ctx, versionedObjectID); err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("unable to drop object version list")
+	if _, err := work.Drop(ctx, versionedObjectID); err != nil {
+		return fmt.Errorf("unable to clean up version work: %w", err)
 	}
 
 	return nil

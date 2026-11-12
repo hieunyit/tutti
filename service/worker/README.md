@@ -19,5 +19,5 @@ See [config.yaml](./config.yaml) for all options with examples.
 Key settings:
 - `storage.storages` - S3 and Swift storage definitions with credentials
 - `storage.dynamicCredentials` - enable API-based credential management
-- `api.enabled` - enable management API (required for chorctl)
+- `api.enabled` - enable management API (required for tuttictl)
 - `concurrency` - max parallel replication tasks

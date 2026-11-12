@@ -58,35 +58,36 @@
   >(() => [
     {
       type: 'selection',
-    },
-    {
-      title: t('columnUser'),
-      key: 'id.user',
-      width: '10%',
-      sorter: true,
+      width: 44,
     },
     {
       title: t('columnBucket'),
       key: 'bucket',
-      width: '25%',
-    },
-    {
-      title: t('columnCreatedAt'),
-      key: 'createdAt',
-      sorter: true,
+      width: 260,
+      minWidth: 240,
     },
     {
       title: t('columnDirection'),
       key: 'direction',
+      width: 200,
+      minWidth: 190,
     },
     {
       title: t('columnStatus'),
       key: 'status',
-      width: '25%',
+      width: 240,
+      minWidth: 220,
+    },
+    {
+      title: t('columnCreatedAt'),
+      key: 'createdAt',
+      width: 180,
+      sorter: true,
     },
     {
       title: t('columnActions'),
       key: 'actions',
+      width: 110,
     },
   ]);
 
@@ -187,7 +188,7 @@
     }
 
     &__table {
-      min-width: 960px;
+      min-width: 1180px;
     }
 
     &__result {

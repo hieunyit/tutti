@@ -86,7 +86,7 @@ credentials:
         secretAccessKey: "xJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 # After deployment (S3 / Ceph RGW):
 # 1. Create replication with webhook event source:
-#    chorctl repl add -u app-user -b mybucket -f main -t backup \
+#    tuttictl repl add -u app-user -b mybucket -f main -t backup \
 #      --event-source s3-notification
 # 2. Chorus automatically creates the topic and registers bucket notifications.
 #    No manual configuration needed.
@@ -96,5 +96,5 @@ credentials:
 #    and sends parsed events to: <baseUrl>/webhook/<storage>/swift
 #    See docs/swift-agent/design.md for Fluent Bit config and Lua script.
 # 2. Create replication with webhook event source:
-#    chorctl repl add -u app-user -b mybucket -f main -t backup \
+#    tuttictl repl add -u app-user -b mybucket -f main -t backup \
 #      --event-source webhook

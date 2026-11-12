@@ -94,10 +94,13 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+    min-width: 0;
 
     &__secondary {
       font-size: 12px;
       color: var(--tt-text-3);
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
   }
 </style>

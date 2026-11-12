@@ -3,7 +3,7 @@ module github.com/hieunyit/tutti
 go 1.26.10
 
 replace (
-	github.com/hibiken/asynq => github.com/clyso/asynq v0.0.0-20251202163730-20cb0d89aa76
+	github.com/hibiken/asynq => ./third_party/asynq
 	github.com/minio/minio-go/v7 => github.com/aiivashchenko/minio-go/v7 v7.0.0-20260910131941-154d9dfa4858
 )
 

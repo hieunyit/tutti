@@ -47,7 +47,7 @@
     isBucketsListLoading,
     hasBucketsError,
     isReplicatedShown,
-    selectedUser,
+    selectedFromStorage,
   } = storeToRefs(useTuttiAddReplicationStore());
   const { initBucketsList } = useTuttiAddReplicationStore();
 
@@ -60,6 +60,7 @@
   >([
     {
       type: 'selection',
+      width: 44,
       disabled(row: DataTableRowData) {
         return row.isReplicated;
       },
@@ -223,7 +224,7 @@
               {{ t('noResultsTitle') }}
             </template>
 
-            <p>{{ t('noResultsText', { user: selectedUser }) }}</p>
+            <p>{{ t('noResultsText', { storage: selectedFromStorage?.name }) }}</p>
           </CResult>
           <CResult
             v-else

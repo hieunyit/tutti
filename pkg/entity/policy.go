@@ -134,8 +134,17 @@ type ReplicationStatusExtended struct {
 }
 
 func (r *ReplicationStatusExtended) InitDone() bool {
-	// all listing tasks done and all listed objects processed
-	return r.InitMigrationListing.Unprocessed == 0 && r.InitMigration.Unprocessed == 0
+	// all listing tasks done, all listed objects processed, and nothing permanently failed.
+	// Archived tasks keep this false by contract (see TestBulkLifecycle_FalseDoneWhenArchived);
+	// operators must clear them via the diff-fix / retry flow.
+	return r.InitMigrationListing.Unprocessed == 0 &&
+		r.InitMigration.Unprocessed == 0 &&
+		r.InitMigrationListing.Archived == 0 &&
+		r.InitMigration.Archived == 0
+}
+
+func (r *ReplicationStatusExtended) HasFailures() bool {
+	return r.InitMigration.Archived > 0 || r.InitMigrationListing.Archived > 0 || r.EventMigration.Archived > 0
 }
 
 func (r *ReplicationStatusExtended) Latency() time.Duration {
@@ -150,6 +159,10 @@ type QueueStats struct {
 	Unprocessed int
 	// Total number of successfully processed tasks.
 	Done int
+	// Number of permanently failed (archived) tasks.
+	Archived int
+	// Total failed task attempts (retries + archived).
+	Failed int
 	// Age of the oldest pending task in the queue.
 	Latency time.Duration
 	// Approx bytes used by the queue and its tasks in Redis.

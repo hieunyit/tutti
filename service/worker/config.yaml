@@ -1,3 +1,10 @@
+# Runtime settings (concurrency, intervals, lock overlap, webhooks, and replication features)
+# are managed dynamically in the PostgreSQL database and Redis projection.
+# The values below serve as initial bootstrap defaults on fresh deployments.
+# They can be changed via the Console Web UI (Administration -> System Settings) or the REST API:
+# GET/PUT /tutti/system-settings. Concurrency, intervals, shutdownTimeout and lock overlap are read
+# at process startup only and require a worker restart to take effect; feature flags and webhook
+# settings may apply without a restart.
 concurrency: 10 # max number of task that can be processed in parallel
 shutdownTimeout: 5s
 worker:
@@ -26,6 +33,8 @@ api:
     # per-username limit of 100 per 15 min (any IP) only slows brute force down: when hit, that
     # username gets 429 for everyone until the window expires. Trade-off: protects against
     # distributed guessing, but a determined attacker can then still temporarily block that user.
+    # Console accounts & passwords are fully managed and stored in PostgreSQL (console_users table).
+    allowManagedUsers: true
     trustedProxies: []
     users: []
     #  - username: admin

@@ -16,7 +16,7 @@
 
 import useVuelidate from '@vuelidate/core';
 import { defineStore } from 'pinia';
-import { computed, reactive, toRefs } from 'vue';
+import { computed, reactive, toRefs, watch } from 'vue';
 import { helpers } from '@vuelidate/validators';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
@@ -25,6 +25,8 @@ import type {
   RoutingPolicyEditRequest,
 } from '@/utils/types/chorus';
 import { ChorusService } from '@/services/ChorusService';
+import { TuttiService } from '@/services/TuttiService';
+import { BucketDiscoveryHelper } from '@/utils/helpers/BucketDiscoveryHelper';
 import {
   hasNoAdjacentPeriods,
   hasValidChars,
@@ -41,12 +43,15 @@ interface ChorusAddRoutingPolicyState {
   isLoading: boolean;
   hasError: boolean;
   storages: ChorusStorage[];
+  s3Users: string[];
   selectedToStorage: ChorusStorage | null;
   selectedUser: string | null;
   bucketName: string | null;
   isForAllBuckets: boolean;
   isBlocked: boolean;
   isConfirmDialogOpen: boolean;
+  availableBuckets: string[];
+  isBucketsLoading: boolean;
 }
 
 function getInitialState(): ChorusAddRoutingPolicyState {
@@ -54,12 +59,15 @@ function getInitialState(): ChorusAddRoutingPolicyState {
     isLoading: false,
     hasError: false,
     storages: [],
+    s3Users: [],
     selectedToStorage: null,
     selectedUser: null,
     bucketName: null,
     isForAllBuckets: false,
     isBlocked: false,
     isConfirmDialogOpen: false,
+    availableBuckets: [],
+    isBucketsLoading: false,
   };
 }
 
@@ -75,9 +83,13 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
     const users = computed<string[]>(() => {
       const usersSet = new Set<string>();
 
+      state.s3Users.forEach((user) => {
+        if (user) usersSet.add(user);
+      });
+
       state.storages.forEach((storage) => {
         storage.credentials.forEach((credential) => {
-          usersSet.add(credential.alias);
+          if (credential.alias) usersSet.add(credential.alias);
         });
       });
 
@@ -88,14 +100,44 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       () => state.isBlocked && !state.selectedToStorage,
     );
 
+    async function fetchBucketsForRouting() {
+      state.isBucketsLoading = true;
+
+      try {
+        state.availableBuckets = await BucketDiscoveryHelper.discoverBuckets(
+          state.selectedUser || undefined,
+        );
+      } catch {
+        state.availableBuckets = [];
+      } finally {
+        state.isBucketsLoading = false;
+      }
+    }
+
+    watch(
+      () => [state.selectedUser, state.selectedToStorage],
+      () => {
+        fetchBucketsForRouting();
+      },
+    );
+
     async function initAddRoutingPolicyPage() {
       state.isLoading = true;
       state.hasError = false;
 
       try {
-        const res = await ChorusService.getStorages();
+        const [storagesRes, usersRes] = await Promise.all([
+          ChorusService.getStorages(),
+          TuttiService.getUsers().catch(() => null),
+        ]);
 
-        state.storages = res.storages;
+        state.storages = storagesRes.storages;
+
+        if (usersRes?.users) {
+          state.s3Users = usersRes.users.map((u) => u.name);
+        }
+
+        await fetchBucketsForRouting();
       } catch {
         state.hasError = true;
       } finally {
@@ -261,6 +303,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
     return {
       ...toRefs(state),
       initAddRoutingPolicyPage,
+      fetchBucketsForRouting,
       addRoutingPolicy,
       users,
       isBlockOnly,

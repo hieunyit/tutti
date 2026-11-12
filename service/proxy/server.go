@@ -52,6 +52,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/storage"
 	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
@@ -109,6 +110,12 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return fmt.Errorf("%w: unable to instrument tracing app redis", err)
 	}
+
+	if ss, _, err := systemsettings.Load(ctx, nil, confRedis); err == nil && ss != nil {
+		systemsettings.ApplyFeatures(*ss)
+		logger.Info().Msg("loaded dynamic features from redis projection")
+	}
+	systemsettings.Watch(ctx, confRedis, nil, logger)
 	queueRedis := util.NewRedisAsynqRole(conf.Redis, config.RedisRoleQueue)
 	taskClient := asynq.NewClient(queueRedis)
 	defer taskClient.Close()
@@ -119,7 +126,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
-	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main)
+	mainStorage := conf.Storage.Main
+	if mainStorage == "" {
+		mainStorage = "main"
+	}
+	policySvc := policy.NewService(confRedis, queueSvc, mainStorage)
 	// the snapshot keeps running while the listener drains, so it has its own context
 	snapCtx, snapStop := context.WithCancel(context.WithoutCancel(ctx))
 	defer snapStop()
@@ -144,7 +155,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		initialFC = &proxystatus.FleetConfig{Version: 0, Groups: map[string]proxystatus.SettingsOverride{}}
 	}
 	// sync needs the Syncer, which only the S3 proxy has
-	syncAvailable := len(conf.Storage.S3Storages()) != 0
+	syncAvailable := len(conf.Storage.S3Storages()) != 0 || conf.Storage.DynamicCredentials.Enabled
 	nStorages := len(conf.Storage.Storages)
 	initEff, initPending, initReasons, initErr := resolveFleet(startupSettings, group, initialFC, nStorages, syncAvailable)
 	if initErr != nil {
@@ -182,12 +193,13 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		proxyConfig.CorsMiddleware = cors.HttpMiddleware(conf.Cors)
 	}
 	var (
-		healthReg    *health.Registry
-		failoverCtrl *failovercontroller.Controller
-		statusPub    *proxystatus.Publisher
-		updateAuth   func(bool)
+		healthReg     *health.Registry
+		failoverCtrl  *failovercontroller.Controller
+		statusPub     *proxystatus.Publisher
+		updateAuth    func(bool)
+		proxyCredsSvc objstore.CredsService
 	)
-	if s3Conf := conf.Storage.S3Storages(); len(s3Conf) != 0 {
+	if s3Conf := conf.Storage.S3Storages(); len(s3Conf) != 0 || conf.Storage.DynamicCredentials.Enabled {
 		metricsSvc := metrics.NewS3Service(conf.Metrics.Enabled)
 		credsConf, err := ProxyToCredsConf(conf.Storage)
 		if err != nil {
@@ -196,6 +208,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		credsSvc, err := objstore.NewCredsSvc(ctx, &credsConf, appRedis, objstore.WithManagedStorages(confRedis))
 		if err != nil {
 			return err
+		}
+		proxyCredsSvc = credsSvc
+		if credsSvc.MainStorage() != "" {
+			policySvc.SetMainStorage(credsSvc.MainStorage())
 		}
 		// same predicate as the worker's bucket scope: only requests that really use the shared connection account
 		policySvc.WithSharedAccount(func(storage, user string) bool {
@@ -254,7 +270,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			DefaultAfter:       initEff.Failover.After,
 			DefaultMaxEventLag: initEff.Failover.MaxEventLag,
 			CheckInterval:      initEff.Failover.CheckInterval,
-			MainStorage:        conf.Storage.Main,
+			MainStorage:        credsSvc.MainStorage(),
 		}, policySvc, healthReg, failovercontroller.RedisLocker{Client: lockRedis}, failoverStore, logger,
 			failovercontroller.WithEnabled(initEff.Failover.Enabled),
 			// with controlPlane.backend=postgres the worker applies the failover through the control plane
@@ -409,11 +425,15 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			})
 		}
 		if failoverCtrl != nil {
+			mainStor := conf.Storage.Main
+			if proxyCredsSvc != nil && proxyCredsSvc.MainStorage() != "" {
+				mainStor = proxyCredsSvc.MainStorage()
+			}
 			failoverCtrl.SetConfig(failovercontroller.Config{
 				DefaultAfter:       eff.Failover.After,
 				DefaultMaxEventLag: eff.Failover.MaxEventLag,
 				CheckInterval:      eff.Failover.CheckInterval,
-				MainStorage:        conf.Storage.Main,
+				MainStorage:        mainStor,
 			}, eff.Failover.Enabled)
 		}
 		if updateAuth != nil {
@@ -474,7 +494,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		credentials = append(credentials, s3torageConf.Credentials)
 	}
 	err = server.Add("proxy_request_reply", func(ctx context.Context) error {
-		return rpc.ProxyServe(ctx, appRedis, requestReplyServer(conf.Address, credentials...))
+		return rpc.ProxyServe(ctx, appRedis, requestReplyServer(conf.Address, conf.Auth, proxyCredsSvc, credentials...))
 	}, func(ctx context.Context) error { return nil })
 	if err != nil {
 		return err
@@ -492,29 +512,39 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	return server.Start(ctx)
 }
 
-func requestReplyServer(proxyUrl string, credentials ...map[string]s3.CredentialsV4) rpc.ProxyGetCredentials {
-	creds := make([]*pb.Credential, 0)
-	for _, c := range credentials {
-		for alias, cred := range c {
+func requestReplyServer(proxyUrl string, authConf *auth.Config, credsSvc objstore.CredsService, credentials ...map[string]s3.CredentialsV4) rpc.ProxyGetCredentials {
+	return func(ctx context.Context) (*pb.GetProxyCredentialsResponse, error) {
+		credsMap := make(map[string]s3.CredentialsV4)
+		for _, c := range credentials {
+			for alias, cred := range c {
+				credsMap[alias] = cred
+			}
+		}
+		if credsSvc != nil && authConf != nil && authConf.UseStorage != "" {
+			for _, user := range credsSvc.ListUsers(authConf.UseStorage) {
+				if c, err := credsSvc.GetS3Credentials(authConf.UseStorage, user); err == nil {
+					credsMap[user] = c
+				}
+			}
+		}
+		creds := make([]*pb.Credential, 0, len(credsMap))
+		for alias, cred := range credsMap {
 			creds = append(creds, &pb.Credential{
 				Alias:     alias,
 				AccessKey: cred.AccessKeyID,
 				SecretKey: cred.SecretAccessKey,
 			})
 		}
-	}
-	slices.SortFunc(creds, func(a, b *pb.Credential) int {
-		if n := strings.Compare(a.Alias, b.Alias); n != 0 {
-			return n
-		}
-		return strings.Compare(a.AccessKey, b.AccessKey)
-	})
-	res := &pb.GetProxyCredentialsResponse{
-		Address:     proxyUrl,
-		Credentials: creds,
-	}
-	return func(ctx context.Context) (*pb.GetProxyCredentialsResponse, error) {
-		return res, nil
+		slices.SortFunc(creds, func(a, b *pb.Credential) int {
+			if n := strings.Compare(a.Alias, b.Alias); n != 0 {
+				return n
+			}
+			return strings.Compare(a.AccessKey, b.AccessKey)
+		})
+		return &pb.GetProxyCredentialsResponse{
+			Address:     proxyUrl,
+			Credentials: creds,
+		}, nil
 	}
 }
 

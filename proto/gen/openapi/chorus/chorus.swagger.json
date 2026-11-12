@@ -2348,6 +2348,60 @@
         ]
       }
     },
+    "/tutti/system-settings": {
+      "get": {
+        "summary": "GetSystemSettings returns dynamic cluster features, worker performance tuning, and operational parameters.",
+        "operationId": "Resilience_GetSystemSettings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusSystemSettings"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      },
+      "put": {
+        "summary": "UpdateSystemSettings updates dynamic cluster features, worker performance tuning, and operational parameters.",
+        "operationId": "Resilience_UpdateSystemSettings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusSystemSettings"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/chorusUpdateSystemSettingsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/tutti/unprotected-scopes": {
       "get": {
         "summary": "Scopes with a replication from a storage that has neither an enabled legacy failover policy nor a group.",
@@ -5494,6 +5548,119 @@
       },
       "description": "SyncSettings are the effective synchronous replication settings of a proxy."
     },
+    "chorusSystemFeaturesSettings": {
+      "type": "object",
+      "properties": {
+        "tagging": {
+          "type": "boolean"
+        },
+        "acl": {
+          "type": "boolean"
+        },
+        "lifecycle": {
+          "type": "boolean"
+        },
+        "policy": {
+          "type": "boolean"
+        },
+        "preserveAclGrants": {
+          "type": "boolean"
+        },
+        "versioning": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chorusSystemLockSettings": {
+      "type": "object",
+      "properties": {
+        "overlap": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusSystemSettings": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "features": {
+          "$ref": "#/definitions/chorusSystemFeaturesSettings"
+        },
+        "worker": {
+          "$ref": "#/definitions/chorusSystemWorkerSettings"
+        },
+        "lock": {
+          "$ref": "#/definitions/chorusSystemLockSettings"
+        },
+        "webhook": {
+          "$ref": "#/definitions/chorusSystemWebhookSettings"
+        }
+      }
+    },
+    "chorusSystemWebhookSettings": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "baseUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "chorusSystemWorkerSettings": {
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "shutdownTimeout": {
+          "type": "string"
+        },
+        "queueUpdateInterval": {
+          "type": "string"
+        },
+        "taskCheckInterval": {
+          "type": "string"
+        },
+        "delayedTaskCheckInterval": {
+          "type": "string"
+        },
+        "swiftRetryInterval": {
+          "type": "string"
+        },
+        "pauseRetryInterval": {
+          "type": "string"
+        },
+        "switchRetryInterval": {
+          "type": "string"
+        },
+        "backlogHighWatermark": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "backlogLowWatermark": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "bandwidthLimitBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferBudgetBytes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "chorusTestProxyRequest": {
       "type": "object",
       "properties": {
@@ -5878,6 +6045,27 @@
         "verify": {
           "type": "boolean",
           "description": "Check the credentials with a ListBuckets call before saving."
+        }
+      }
+    },
+    "chorusUpdateSystemSettingsRequest": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "string",
+          "format": "int64"
+        },
+        "features": {
+          "$ref": "#/definitions/chorusSystemFeaturesSettings"
+        },
+        "worker": {
+          "$ref": "#/definitions/chorusSystemWorkerSettings"
+        },
+        "lock": {
+          "$ref": "#/definitions/chorusSystemLockSettings"
+        },
+        "webhook": {
+          "$ref": "#/definitions/chorusSystemWebhookSettings"
         }
       }
     },

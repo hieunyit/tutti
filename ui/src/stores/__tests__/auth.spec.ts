@@ -53,6 +53,44 @@ beforeEach(() => {
 
 describe('authStore', () => {
   describe('init', () => {
+    it('does not grant administrator controls when the server is unreachable', async () => {
+      svc.me.mockRejectedValue(new Error('network'));
+      const store = useAuthStore();
+
+      await store.init();
+      expect(store.authEnabled).toBeNull();
+      expect(store.initError).toBe(true);
+      expect(store.canWrite).toBe(false);
+      expect(store.isAdmin).toBe(false);
+      expect(store.isAuthenticated).toBe(false);
+    });
+
+    it('retains a stored token for connection retry without trusting a stale role', async () => {
+      AuthTokenHelper.set('tok', false);
+      svc.me.mockResolvedValueOnce({
+        authEnabled: true,
+        username: 'admin',
+        role: AuthRole.ADMIN,
+      });
+      const store = useAuthStore();
+
+      await store.init();
+      svc.me.mockRejectedValueOnce(new Error('network'));
+      await store.init(true);
+      expect(store.isAdmin).toBe(false);
+      expect(store.isAuthenticated).toBe(false);
+      expect(AuthTokenHelper.get()).toBe('tok');
+      svc.me.mockResolvedValueOnce({
+        authEnabled: true,
+        username: 'viewer',
+        role: AuthRole.VIEWER,
+      });
+      await store.init(true);
+      expect(store.initError).toBe(false);
+      expect(store.isAuthenticated).toBe(true);
+      expect(store.canWrite).toBe(false);
+    });
+
     it('with auth disabled grants full access and hides the user menu', async () => {
       svc.me.mockResolvedValue({ authEnabled: false });
       const store = useAuthStore();

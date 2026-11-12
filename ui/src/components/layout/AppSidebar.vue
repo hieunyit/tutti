@@ -37,6 +37,7 @@
   });
   i18n.global.mergeLocaleMessage('vi', {
     [AUDIT_LOG_ROUTE_NAME]: 'Nhật ký kiểm toán',
+    [RouteName.TUTTI_SYSTEM_SETTINGS]: 'Cấu hình hệ thống',
   });
 
   const AUDIT_NAV_ITEM: NavItem = {
@@ -63,13 +64,17 @@
   const { isAdmin } = storeToRefs(useAuthStore());
   const groups = computed(() =>
     NAV_GROUPS.map((group) => {
+      const filteredItems = group.items.filter(
+        (item) => !item.adminOnly || isAdmin.value,
+      );
+
       if (group.id !== 'administration') {
         return !group.adminOnly || isAdmin.value
-          ? group
+          ? { ...group, items: filteredItems }
           : { ...group, items: [] };
       }
 
-      const baseItems = isAdmin.value ? group.items : [];
+      const baseItems = isAdmin.value ? filteredItems : [];
       const hasAudit = baseItems.some(
         (item) => String(item.routeName) === AUDIT_LOG_ROUTE_NAME,
       );
@@ -150,6 +155,7 @@
                 'app-sidebar__item--active': activeItem === item.routeName,
               }"
               :to="{ name: item.routeName }"
+              :aria-label="$t(item.routeName)"
               :aria-current="activeItem === item.routeName ? 'page' : undefined"
               @click="emit('navigate')"
             >

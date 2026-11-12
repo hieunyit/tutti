@@ -168,7 +168,7 @@ A **protection group** = scope (user, bucket list or all buckets) + ordered set 
 1. Tutti keeps a **primary** (where routing points) and creates/maintains replications from the primary to every other healthy member automatically.
 2. **Failover** = pick the first in-sync member (lag ≤ maxEventLag), switch routing, then **re-point replications from the new primary to the remaining members**, so the copy count is restored instead of dropping to 1.
 3. **Repeated failover** works without extra policies: the group always knows its members.
-4. **Failback / switchover** (planned, from the UI): resync the recovered storage from the current primary (reverse replication), wait until the replication's events are done (`EVENTS` done == total in `chorctl repl`), short write freeze, switch routing, restore the original direction.
+4. **Failback / switchover** (planned, from the UI): resync the recovered storage from the current primary (reverse replication), wait until the replication's events are done (`EVENTS` done == total in `tuttictl repl`), short write freeze, switch routing, restore the original direction.
 5. Group status in UI: primary, members with lag, copies healthy vs wanted, RPO estimate.
 6. Existing replications and failover policies keep working; a migration wizard can turn them into groups.
 

@@ -118,7 +118,7 @@ func (s *ObjectSyncer) objectDelete(ctx context.Context, p tasks.ObjectSyncPaylo
 	if err != nil {
 		return fmt.Errorf("unable to get %q s3 client: %w", p.ID.ToStorage(), err)
 	}
-	_, err = fromClient.S3().StatObject(ctx, p.Object.Bucket, p.Object.Name, mclient.StatObjectOptions{})
+	_, err = fromClient.S3().StatObject(ctx, p.Object.Bucket, p.Object.Name, mclient.StatObjectOptions{VersionID: p.Object.Version})
 	if err == nil {
 		zerolog.Ctx(ctx).Warn().Msg("skip obj delete: obj still exists in source storage")
 		return nil

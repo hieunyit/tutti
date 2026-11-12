@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tutti-web-ui
+  namespace: tutti
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tutti-web-ui
+  template:
+    metadata:
+      labels:
+        app: tutti-web-ui
+    spec:
+      containers:
+        - name: web-ui
+          image: ghcr.io/hieunyit/tutti-web-ui:latest
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: API_URL
+              value: "http://tutti-worker:9671"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tutti-web-ui
+  namespace: tutti
+spec:
+  selector:
+    app: tutti-web-ui
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tutti-ingress
+  namespace: tutti
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tutti.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tutti-web-ui
+                port:
+                  number: 80

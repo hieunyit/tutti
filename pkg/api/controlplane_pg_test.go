@@ -237,9 +237,23 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 	require.Len(t, createsOnly.Entries, 1)
 	require.Equal(t, "create", createsOnly.Entries[0].Action)
 
+	// Update system settings in PostgreSQL
+	settingsResp, err := h.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{
+		Features: &pb.SystemFeaturesSettings{Tagging: true, Acl: true},
+		Worker:   &pb.SystemWorkerSettings{Concurrency: 32},
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 32, settingsResp.Worker.Concurrency)
+	require.True(t, settingsResp.Features.Tagging)
+
 	// 6. Drain outbox to Redis so Redis has the warm projection
 	_, err = pub.RunOnce(ctx)
 	require.NoError(t, err)
+
+	// Redis has the projected system settings
+	rawSet, err := rdb.Get(ctx, pg.KeySystemSettings).Result()
+	require.NoError(t, err)
+	require.Contains(t, rawSet, `"concurrency":32`)
 
 	// 7. Read-only mode returns 503 Unavailable (ErrReadOnly) on mutations while reads still succeed
 	cpStore.SetReadOnly(true)
@@ -269,6 +283,11 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 	gotGroup, err := pgGroupStore.Get(ctx, "pg-orders")
 	require.NoError(t, err)
 	require.Equal(t, "main", gotGroup.Primary)
+
+	// Fallback read from Redis
+	gotSettings, err := h.GetSystemSettings(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.EqualValues(t, 32, gotSettings.Worker.Concurrency)
 
 	// Write while PG is down returns ErrUnavailable -> gRPC Unavailable (503)
 	_, err = h.SetAccessPolicy(ctx, &pb.AccessPolicy{

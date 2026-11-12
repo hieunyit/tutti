@@ -295,7 +295,7 @@ failover:
   maxEventLag: 0
 ```
 
-`failover` is only the global switch and the defaults. What may fail over to where is defined by **per-source-storage failover policies** stored in Redis and managed with the [Resilience API](./api.md) (REST, gRPC, `chorctl`, or the UI `/failover` page).
+`failover` is only the global switch and the defaults. What may fail over to where is defined by **per-source-storage failover policies** stored in Redis and managed with the [Resilience API](./api.md) (REST, gRPC, `tuttictl`, or the UI `/failover` page).
 
 - `enabled` (bool, default `false`): starts the failover controller in this proxy.
 - `checkInterval` (duration, default `10s`): how often conditions are evaluated.

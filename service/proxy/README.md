@@ -9,15 +9,15 @@ Set storage and Redis credentials in [config.yaml](./config.yaml) and run.
 > [!IMPORTANT]
 > Both Proxy and [Worker](../worker) should have the same Redis and storage configuration.
 
-Manage replication policies with [CLI](../../tools/chorctl).
+Manage replication policies with [CLI](../../tools/tuttictl).
 
 > [!NOTE]
 > [Worker](../worker) is required to use CLI. Deploy worker and provide worker gRPC API address to CLI.
 
-With [CLI](../../tools/chorctl):
-- Check current replication state: `chorctl dash`
-- List buckets for replication: `chorctl repl buckets -f <from> -t <to> -u <user>`
-- Create replication: `chorctl repl add -f <from> -t <to> -u <user> -b <bucket>`
+With [CLI](../../tools/tuttictl):
+- Check current replication state: `tuttictl dash`
+- List buckets for replication: `tuttictl repl buckets -f <from> -t <to> -u <user>`
+- Create replication: `tuttictl repl add -f <from> -t <to> -u <user> -b <bucket>`
 
 ## Configuration
 

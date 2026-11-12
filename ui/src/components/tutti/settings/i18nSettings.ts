@@ -1,0 +1,343 @@
+/*
+ * Copyright © 2026 hieunyit
+ *
+ *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
+
+export default <I18nMessages>{
+  [I18nLocale.EN]: {
+    configuration: 'Configuration',
+    settingsSections: 'System settings sections',
+    tabFeatures: 'Features',
+    tabBulk: 'Bulk migration',
+    tabWorker: 'Worker',
+    tabLocking: 'Locking',
+    tabWebhook: 'Webhook',
+    restartRequired: 'Requires worker restart',
+    saved: 'Saved',
+    validationSummary: '{count} field(s) need attention',
+    reviewFields: 'Review fields',
+    loading: 'Loading configuration…',
+    savedVersion: 'Saved version',
+    effectiveNotice:
+      'Saved values may take a moment to reach workers. Worker concurrency and intervals require a restart.',
+    bulkTitle: 'Bulk migration limits',
+    bulkDesc:
+      'Control copy throughput, multipart buffer usage and queue backpressure per worker and copy queue.',
+    requestFailed: 'Configuration request failed',
+    loadFailed:
+      'The configuration could not be loaded. Retry before editing; no defaults have been applied.',
+    draftRetained:
+      'Your draft is retained. Refresh to load the current version before saving again.',
+    discardTitle: 'Discard unsaved changes?',
+    discardText:
+      'Your draft will be replaced or left behind. Continue only if you no longer need these edits.',
+    discardConfirm: 'Discard changes',
+    keepEditing: 'Keep editing',
+    durationHint: 'Duration format: 500ms, 30s or 1m30s.',
+    invalidDuration: 'Enter a positive duration, e.g. 500ms, 30s or 1m30s.',
+    invalidConcurrency: 'Enter a whole number between 1 and 1,000.',
+    invalidWatermark: 'Enter a whole number between 1 and 2,147,483,647.',
+    invalidWatermarkOrder:
+      'The low watermark must be smaller than the high watermark.',
+    invalidBytes:
+      'Enter a non-negative whole number of bytes (maximum 9,223,372,036,854,775,807).',
+    invalidUrl:
+      'Enter an absolute HTTP(S) URL without embedded credentials, or leave it empty.',
+    title: 'System settings',
+    subtitle: 'Manage replication features and worker configuration.',
+    lastUpdated: 'Last updated',
+    version: 'Version',
+    save: 'Save settings',
+    saving: 'Saving...',
+    reset: 'Discard changes',
+    refresh: 'Refresh',
+    featuresTitle: 'Replication features',
+    featuresDesc:
+      'Choose which object and bucket metadata to replicate between storages.',
+    tagging: 'Object & bucket tagging',
+    taggingDesc:
+      'Synchronize user tags assigned to buckets and objects across storages',
+    acl: 'Access control lists (ACL)',
+    aclDesc:
+      'Synchronize object and bucket permissions and access grants across storages',
+    lifecycle: 'Lifecycle configuration',
+    lifecycleDesc:
+      'Synchronize bucket lifecycle expiration and transition rules',
+    policy: 'Bucket policies',
+    policyDesc:
+      'Synchronize JSON bucket access policies across member storages',
+    preserveAclGrants: 'Preserve source ACL grants',
+    preserveAclGrantsDesc:
+      'Maintain original grant permissions rather than mapping to target owner',
+    versioning: 'Object versioning',
+    versioningDesc:
+      'Synchronize versioned objects and delete markers across storages',
+    workerTitle: 'Worker configuration',
+    workerDesc:
+      'Set task concurrency and processing intervals. Changes in this section require a worker restart.',
+    concurrency: 'Task concurrency',
+    concurrencyHint: 'Maximum parallel replication tasks per worker process.',
+    shutdownTimeout: 'Shutdown timeout',
+    queueUpdateInterval: 'Queue update interval',
+    taskCheckInterval: 'Task check interval',
+    delayedTaskCheckInterval: 'Delayed task check interval',
+    swiftRetryInterval: 'Swift retry interval',
+    pauseRetryInterval: 'Pause retry interval',
+    switchRetryInterval: 'Switch retry interval',
+    backlogHighWatermark: 'High watermark (tasks)',
+    backlogHighWatermarkHint:
+      'Pause listing when the copy backlog reaches this limit.',
+    backlogLowWatermark: 'Low watermark (tasks)',
+    backlogLowWatermarkHint:
+      'Resume listing below this limit. Must be lower than the high watermark.',
+    bandwidthLimitBytes: 'Copy bandwidth (bytes/s)',
+    bandwidthLimitHint: 'Per worker. 0 = unlimited; 2097152 = 2 MiB/s.',
+    bufferBudgetBytes: 'Multipart buffer budget (bytes)',
+    bufferBudgetHint: 'Per worker. 0 = unlimited; 268435456 = 256 MiB.',
+    lockTitle: 'Distributed locking',
+    lockDesc: 'Configure the overlap margin for distributed worker locks.',
+    lockOverlap: 'Lock overlap',
+    lockOverlapHint: 'Duration margin for distributed locks, e.g. 2s.',
+    webhookTitle: 'Webhook configuration',
+    webhookDesc: 'Receive object notifications from S3 and Swift storages.',
+    webhookEnabled: 'Enable webhook endpoint',
+    webhookBaseUrl: 'Webhook base URL',
+    webhookBaseUrlHint:
+      'Public HTTP(S) address for incoming storage notifications.',
+    saveSuccess:
+      'Configuration saved. Live settings propagate asynchronously; concurrency and interval changes require a worker restart. Runtime application has not been confirmed by this page.',
+    conflictError:
+      'The configuration was modified by another operator. Reload and review your changes.',
+    unsavedChanges: 'Unsaved changes',
+    never: 'Never',
+  },
+  [I18nLocale.DE]: {
+    configuration: 'Konfiguration',
+    settingsSections: 'Bereiche der Systemeinstellungen',
+    tabFeatures: 'Funktionen',
+    tabBulk: 'Massenmigration',
+    tabWorker: 'Worker',
+    tabLocking: 'Sperren',
+    tabWebhook: 'Webhook',
+    restartRequired: 'Worker-Neustart erforderlich',
+    saved: 'Gespeichert',
+    validationSummary: '{count} Feld(er) prüfen',
+    reviewFields: 'Felder prüfen',
+    loading: 'Konfiguration wird geladen…',
+    savedVersion: 'Gespeicherte Version',
+    effectiveNotice:
+      'Gespeicherte Werte erreichen die Worker zeitversetzt. Parallelität und Intervalle erfordern einen Neustart.',
+    bulkTitle: 'Limits für Massenmigration',
+    bulkDesc:
+      'Live-Limits je Worker-Prozess und Kopierwarteschlange, keine clusterweiten Ressourcenlimits.',
+    requestFailed: 'Konfigurationsanfrage fehlgeschlagen',
+    loadFailed:
+      'Konfiguration konnte nicht geladen werden. Vor dem Bearbeiten erneut versuchen; es wurden keine Standardwerte angewendet.',
+    draftRetained:
+      'Ihr Entwurf bleibt erhalten. Vor dem erneuten Speichern die aktuelle Version laden.',
+    discardTitle: 'Ungespeicherte Änderungen verwerfen?',
+    discardText:
+      'Der Entwurf wird ersetzt oder verlassen. Nur fortfahren, wenn diese Änderungen nicht mehr benötigt werden.',
+    discardConfirm: 'Änderungen verwerfen',
+    keepEditing: 'Weiter bearbeiten',
+    durationHint: 'Dauerformat: 500ms, 30s oder 1m30s.',
+    invalidDuration: 'Positive Dauer eingeben, z. B. 500ms, 30s oder 1m30s.',
+    invalidConcurrency: 'Ganze Zahl zwischen 1 und 1.000 eingeben.',
+    invalidWatermark: 'Ganze Zahl zwischen 1 und 2.147.483.647 eingeben.',
+    invalidWatermarkOrder: 'Die untere Grenze muss kleiner als die obere sein.',
+    invalidBytes:
+      'Nichtnegative ganze Bytezahl eingeben (maximal 9.223.372.036.854.775.807).',
+    invalidUrl:
+      'Absolute HTTP(S)-URL ohne Zugangsdaten eingeben oder leer lassen.',
+    title: 'Systemeinstellungen',
+    subtitle:
+      'Cluster-Funktionen, Worker-Leistungsoptimierung und Betriebsparameter',
+    lastUpdated: 'Zuletzt aktualisiert',
+    version: 'Version',
+    save: 'Einstellungen speichern',
+    saving: 'Wird gespeichert...',
+    reset: 'Änderungen verwerfen',
+    refresh: 'Aktualisieren',
+    featuresTitle: 'Replikationsfunktionen',
+    featuresDesc:
+      'Optionale Replikationsfunktionen clusterweit ohne Dienstneustart aktivieren oder deaktivieren',
+    tagging: 'Objekt- & Bucket-Tagging',
+    taggingDesc:
+      'Benutzer-Tags für Buckets und Objekte über Speicher hinweg synchronisieren',
+    acl: 'Zugriffskontrolllisten (ACL)',
+    aclDesc:
+      'Objekt- und Bucket-Berechtigungen über Speicher hinweg synchronisieren',
+    lifecycle: 'Lebenszyklus-Konfiguration',
+    lifecycleDesc: 'Bucket-Ablauf- und Übergangsregeln synchronisieren',
+    policy: 'Bucket-Richtlinien',
+    policyDesc:
+      'JSON-Bucket-Zugriffsrichtlinien zwischen Speichern synchronisieren',
+    preserveAclGrants: 'Quell-ACL-Berechtigungen beibehalten',
+    preserveAclGrantsDesc:
+      'Ursprüngliche Berechtigungen beibehalten statt auf Zielbesitzer abzubilden',
+    versioning: 'Objekt-Versionierung',
+    versioningDesc:
+      'Versionierte Objekte und Löschmarkierungen synchronisieren',
+    workerTitle: 'Worker-Konfiguration',
+    workerDesc:
+      'Parallelität und Verarbeitungsintervalle festlegen. Änderungen erfordern einen Worker-Neustart.',
+    concurrency: 'Task-Parallelität',
+    concurrencyHint:
+      'Maximale Anzahl paralleler Replikationsaufgaben je Worker-Prozess.',
+    shutdownTimeout: 'Timeout beim Herunterfahren',
+    queueUpdateInterval: 'Warteschlangen-Aktualisierungsintervall',
+    taskCheckInterval: 'Task-Prüfintervall',
+    delayedTaskCheckInterval: 'Intervall verzögerter Tasks',
+    swiftRetryInterval: 'Swift-Wiederholungsintervall',
+    pauseRetryInterval: 'Pausen-Wiederholungsintervall',
+    switchRetryInterval: 'Umschalt-Wiederholungsintervall',
+    backlogHighWatermark: 'Backlog-Höchstgrenze (Tasks)',
+    backlogHighWatermarkHint:
+      'Wenn anstehende Kopieraufgaben diese Grenze überschreiten, pausiert die Auflistung (live angewendet)',
+    backlogLowWatermark: 'Backlog-Niedriggrenze (Tasks)',
+    backlogLowWatermarkHint:
+      'Setzt die normale Auflistung fort, sobald die Warteschlange unter diese Grenze fällt (live angewendet)',
+    bandwidthLimitBytes: 'Massenkopie-Bandbreite (Bytes/s)',
+    bandwidthLimitHint:
+      'Bandbreite drosseln (z.B. 2097152 für 2 MiB/s; 0 für unbegrenzt, live angewendet)',
+    bufferBudgetBytes: 'Pufferbudget im Flug (Bytes)',
+    bufferBudgetHint:
+      'Maximaler RAM für parallele SDK-Multipart-Puffer (z.B. 268435456 für 256 MiB, live angewendet)',
+    lockTitle: 'Verteilte Sperren',
+    lockDesc: 'Pufferzeit für verteilte Redis-Sperren konfigurieren',
+    lockOverlap: 'Sperrüberlappungsdauer',
+    lockOverlapHint:
+      'Pufferzeit vor Ablauf der Sperre zur Vermeidung von Race Conditions',
+    webhookTitle: 'API-Webhook-Integration',
+    webhookDesc:
+      'Endpunkt für eingehende S3- oder Swift-Ereignisbenachrichtigungen',
+    webhookEnabled: 'Webhook-Endpunkt aktivieren',
+    webhookBaseUrl: 'Webhook-Basis-URL',
+    webhookBaseUrlHint:
+      'Öffentlich erreichbare Basis-URL für Benachrichtigungs-Push-Endpunkte',
+    saveSuccess:
+      'Konfiguration gespeichert. Live-Werte werden asynchron verteilt; Parallelität und Intervalle benötigen einen Worker-Neustart. Diese Seite bestätigt die Laufzeitanwendung nicht.',
+    conflictError:
+      'Die Konfiguration wurde von einem anderen Benutzer geändert. Bitte neu laden.',
+    unsavedChanges: 'Ungespeicherte Änderungen',
+    never: 'Nie',
+  },
+  vi: {
+    configuration: 'Cấu hình',
+    settingsSections: 'Các nhóm cấu hình hệ thống',
+    tabFeatures: 'Tính năng',
+    tabBulk: 'Bulk migration',
+    tabWorker: 'Worker',
+    tabLocking: 'Khóa phân tán',
+    tabWebhook: 'Webhook',
+    restartRequired: 'Cần khởi động lại worker',
+    saved: 'Đã lưu',
+    validationSummary: '{count} trường cần kiểm tra',
+    reviewFields: 'Kiểm tra trường lỗi',
+    loading: 'Đang tải cấu hình…',
+    savedVersion: 'Phiên bản đã lưu',
+    effectiveNotice:
+      'Cấu hình đã lưu có thể cần thời gian để đến worker. Concurrency và chu kỳ cần khởi động lại worker.',
+    bulkTitle: 'Giới hạn bulk migration',
+    bulkDesc:
+      'Giới hạn băng thông, bộ đệm multipart và backlog theo từng worker và hàng đợi copy.',
+    requestFailed: 'Không thực hiện được yêu cầu cấu hình',
+    loadFailed:
+      'Chưa tải được cấu hình. Hãy thử lại trước khi chỉnh sửa; không áp dụng giá trị mặc định.',
+    draftRetained:
+      'Bản nháp vẫn được giữ. Tải phiên bản hiện tại trước khi lưu lại.',
+    discardTitle: 'Bỏ các thay đổi chưa lưu?',
+    discardText:
+      'Bản nháp sẽ bị thay thế hoặc bị bỏ lại. Chỉ tiếp tục nếu không cần giữ các chỉnh sửa này.',
+    discardConfirm: 'Bỏ thay đổi',
+    keepEditing: 'Tiếp tục chỉnh sửa',
+    durationHint: 'Định dạng thời lượng: 500ms, 30s hoặc 1m30s.',
+    invalidDuration: 'Nhập thời lượng dương, ví dụ 500ms, 30s hoặc 1m30s.',
+    invalidConcurrency: 'Nhập số nguyên từ 1 đến 1.000.',
+    invalidWatermark: 'Nhập số nguyên từ 1 đến 2.147.483.647.',
+    invalidWatermarkOrder: 'Ngưỡng thấp phải nhỏ hơn ngưỡng cao.',
+    invalidBytes:
+      'Nhập số byte nguyên không âm (tối đa 9.223.372.036.854.775.807).',
+    invalidUrl:
+      'Nhập URL HTTP(S) tuyệt đối không kèm tài khoản/mật khẩu, hoặc để trống.',
+    title: 'Cấu hình hệ thống',
+    subtitle: 'Quản lý tính năng đồng bộ và cấu hình worker.',
+    lastUpdated: 'Cập nhật lần cuối',
+    version: 'Phiên bản',
+    save: 'Lưu cấu hình',
+    saving: 'Đang lưu...',
+    reset: 'Hủy thay đổi',
+    refresh: 'Làm mới',
+    featuresTitle: 'Tính năng đồng bộ',
+    featuresDesc:
+      'Chọn metadata của object và bucket cần đồng bộ giữa các storage.',
+    tagging: 'Đồng bộ Thẻ (Tagging)',
+    taggingDesc:
+      'Đồng bộ hóa các tag được gán cho bucket và object giữa các storage',
+    acl: 'Danh sách kiểm soát truy cập (ACL)',
+    aclDesc: 'Đồng bộ hóa quyền truy cập object và bucket giữa các storage',
+    lifecycle: 'Cấu hình vòng đời (Lifecycle)',
+    lifecycleDesc:
+      'Đồng bộ hóa quy tắc hết hạn và chuyển đổi trạng thái của bucket',
+    policy: 'Chính sách Bucket (Bucket Policy)',
+    policyDesc:
+      'Đồng bộ hóa các tài liệu chính sách JSON giữa các storage thành viên',
+    preserveAclGrants: 'Giữ nguyên ACL Grants từ nguồn',
+    preserveAclGrantsDesc:
+      'Duy trì các quyền ban đầu thay vì ánh xạ sang chủ sở hữu đích',
+    versioning: 'Phiên bản đối tượng (Versioning)',
+    versioningDesc: 'Đồng bộ hóa đối tượng có phiên bản và delete marker',
+    workerTitle: 'Cấu hình worker',
+    workerDesc:
+      'Điều chỉnh số tác vụ song song và các chu kỳ xử lý. Các thay đổi trong mục này cần khởi động lại worker.',
+    concurrency: 'Số tác vụ song song',
+    concurrencyHint:
+      'Số tác vụ đồng bộ song song tối đa trên mỗi tiến trình worker.',
+    shutdownTimeout: 'Thời gian chờ tắt',
+    queueUpdateInterval: 'Chu kỳ cập nhật hàng đợi',
+    taskCheckInterval: 'Chu kỳ kiểm tra tác vụ',
+    delayedTaskCheckInterval: 'Chu kỳ kiểm tra tác vụ hoãn',
+    swiftRetryInterval: 'Chu kỳ thử lại Swift',
+    pauseRetryInterval: 'Chu kỳ thử lại khi tạm dừng',
+    switchRetryInterval: 'Chu kỳ thử lại chuyển đổi',
+    backlogHighWatermark: 'Ngưỡng cao (tác vụ)',
+    backlogHighWatermarkHint:
+      'Tạm dừng listing khi backlog copy đạt ngưỡng này.',
+    backlogLowWatermark: 'Ngưỡng thấp (tác vụ)',
+    backlogLowWatermarkHint:
+      'Tiếp tục listing khi backlog dưới ngưỡng này. Phải nhỏ hơn ngưỡng cao.',
+    bandwidthLimitBytes: 'Băng thông copy (bytes/s)',
+    bandwidthLimitHint: 'Theo worker. 0 = không giới hạn; 2097152 = 2 MiB/s.',
+    bufferBudgetBytes: 'Ngân sách bộ đệm multipart (bytes)',
+    bufferBudgetHint: 'Theo worker. 0 = không giới hạn; 268435456 = 256 MiB.',
+    lockTitle: 'Khóa phân tán',
+    lockDesc: 'Điều chỉnh khoảng thời gian gối đầu cho khóa giữa các worker.',
+    lockOverlap: 'Thời gian gối đầu khóa',
+    lockOverlapHint: 'Khoảng đệm thời gian của khóa, ví dụ 2s.',
+    webhookTitle: 'Cấu hình webhook',
+    webhookDesc: 'Nhận thông báo object từ storage S3 và Swift.',
+    webhookEnabled: 'Bật endpoint webhook',
+    webhookBaseUrl: 'URL gốc của webhook',
+    webhookBaseUrlHint:
+      'Địa chỉ HTTP(S) công khai để nhận thông báo từ storage.',
+    saveSuccess:
+      'Đã lưu cấu hình. Tham số động được truyền bất đồng bộ; concurrency và chu kỳ cần khởi động lại worker. Trang này chưa xác nhận cấu hình đã có hiệu lực tại runtime.',
+    conflictError:
+      'Cấu hình đã bị thay đổi bởi người quản trị khác. Vui lòng tải lại trang.',
+    unsavedChanges: 'Thay đổi chưa lưu',
+    never: 'Chưa có',
+  },
+};

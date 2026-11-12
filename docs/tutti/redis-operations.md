@@ -187,8 +187,8 @@ Restore into a live environment (verify each step in staging first):
 1. Stop all workers and proxies, so no writes or task consumers run.
 2. Stop Redis. With AOF enabled, Redis loads the AOF in preference to the RDB at startup. Move the AOF data aside (Redis 7 and later keep it in the `appendonlydir` directory inside the data directory) so the RDB is used.
 3. Place the snapshot as `dump.rdb` in the data directory. Start Redis with `--appendonly no`, check `INFO keyspace`, then `CONFIG SET appendonly yes` to recreate the AOF, and `CONFIG REWRITE` if the setting must persist.
-4. Start the workers and proxies with the same master password. Check `GET /tutti/proxy-accounts`, `GET /tutti/users` (`complete`), `chorctl repl` and `chorctl proxies`.
-5. A snapshot older than the last acknowledged writes loses those writes. Run `chorctl diff check` on buckets that changed after the snapshot, and restore from object storage state where needed.
+4. Start the workers and proxies with the same master password. Check `GET /tutti/proxy-accounts`, `GET /tutti/users` (`complete`), `tuttictl repl` and `tuttictl proxies`.
+5. A snapshot older than the last acknowledged writes loses those writes. Run `tuttictl diff check` on buckets that changed after the snapshot, and restore from object storage state where needed.
 
 ## Monitoring
 
@@ -206,7 +206,7 @@ Use `INFO` (or an exporter such as redis_exporter) and the Tutti API. The thresh
 | connections | `rejected_connections`, `connected_clients` | any rejection |
 | keyspace | `INFO keyspace` per DB | unexpected growth in DB 1 (queue) |
 | queue depth | Asynq inspector or counts of `asynq:*` keys in DB 1 | growth over time; a non-draining queue means failing workers |
-| Tutti | `chorctl proxies` (count of live proxies), `chorctl repl` (`EVENTS` done vs total), `failover_total`, `storage_available` | fewer proxies than expected; events not draining; any failover |
+| Tutti | `tuttictl proxies` (count of live proxies), `tuttictl repl` (`EVENTS` done vs total), `failover_total`, `storage_available` | fewer proxies than expected; events not draining; any failover |
 
 Commands for a quick check:
 

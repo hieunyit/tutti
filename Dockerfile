@@ -8,6 +8,8 @@ WORKDIR /build
 
 COPY ./go.mod go.mod
 COPY ./go.sum go.sum
+COPY ./third_party/asynq/go.mod ./third_party/asynq/go.mod
+COPY ./third_party/asynq/go.sum ./third_party/asynq/go.sum
 
 RUN go mod download
 

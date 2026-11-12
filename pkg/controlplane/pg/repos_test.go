@@ -150,6 +150,17 @@ func TestRepositoriesCRUD(t *testing.T) {
 		testKV[controlplane.RawDoc](t, r.StorageTests, func(i int) controlplane.RawDoc { return raw(fmt.Sprintf("st%d", i), 0) },
 			func(v controlplane.RawDoc) string { return v.ID }, func(v *controlplane.RawDoc) { v.JSON = json.RawMessage(fmt.Sprintf(`{"n":%d}`, time.Now().UnixNano())) })
 	})
+	t.Run("system settings", func(t *testing.T) {
+		testKV[controlplane.SystemSettings](t, r.SystemSettings, func(i int) controlplane.SystemSettings {
+			return controlplane.SystemSettings{
+				ID:       fmt.Sprintf("system_%d", i),
+				Features: controlplane.SystemFeaturesSettings{Tagging: true, ACL: i%2 == 0},
+				Worker:   controlplane.SystemWorkerSettings{Concurrency: 10 + i, ShutdownTimeout: 5 * time.Second},
+			}
+		}, func(v controlplane.SystemSettings) string { return v.ID }, func(v *controlplane.SystemSettings) {
+			v.Worker.Concurrency += 5
+		})
+	})
 }
 
 func TestProxyAccountGeneratedColumns(t *testing.T) {

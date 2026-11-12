@@ -127,28 +127,48 @@ export const useTuttiAddReplicationStore = defineStore(
         title: t('step3Title'),
         description: t('step3Description'),
       },
-      {
-        title: t('step4Title'),
-        description: t('step4Description'),
-      },
     ]);
     const stepsCount = computed(() => steps.value.length);
 
     function prepareForm() {
-      state.selectedFromStorage =
-        state.storages.find((storage) => storage.isMain) ?? null;
+      state.selectedFromStorage = state.storages[0] ?? null;
       state.selectedToStorage =
-        state.storages.find((storage) => !storage.isMain) ?? null;
-      // the user is chosen explicitly: never default to an arbitrary tenant
-      state.selectedUser = null;
-      setTimeout(() => {
-        state.isMainAsSourceAlertShown = true;
-      }, 500);
+        state.storages.find((s) => s.name !== state.selectedFromStorage?.name) ??
+        state.storages[1] ??
+        null;
+      const queryUser = router?.currentRoute?.value?.query?.user as string | undefined;
+      const matchingUser = queryUser ? state.users.find((u) => u.name === queryUser) : undefined;
+
+      state.selectedUser =
+        matchingUser?.name ||
+        state.users[0]?.name ||
+        state.storages[0]?.credentials?.[0]?.alias ||
+        '';
+      state.isMainAsSourceAlertShown = false;
+    }
+
+    async function selectUser(user: string) {
+      if (state.selectedUser === user) {
+        return;
+      }
+
+      state.selectedUser = user;
+      await initBucketsList();
     }
 
     async function getBucketsList() {
+      if (!state.selectedUser) {
+        const queryUser = router?.currentRoute?.value?.query?.user as string | undefined;
+        const matchingUser = queryUser ? state.users.find((u) => u.name === queryUser) : undefined;
+
+        state.selectedUser =
+          matchingUser?.name ||
+          state.users[0]?.name ||
+          state.storages[0]?.credentials?.[0]?.alias ||
+          '';
+      }
+
       if (
-        !state.selectedUser ||
         !state.selectedFromStorage ||
         !state.selectedToStorage
       ) {
@@ -252,10 +272,16 @@ export const useTuttiAddReplicationStore = defineStore(
         isForAllBuckets,
       } = state;
 
+      const effectiveUser =
+        selectedUser ||
+        state.users[0]?.name ||
+        state.storages[0]?.credentials?.[0]?.alias ||
+        '';
+
       if (
+        !effectiveUser ||
         !selectedToStorage ||
         !selectedFromStorage ||
-        !selectedUser ||
         (!selectedBuckets.length && !isForAllBuckets)
       ) {
         return;
@@ -267,7 +293,7 @@ export const useTuttiAddReplicationStore = defineStore(
       const errorList: [ChorusReplicationId, string][] = [];
 
       const baseReplicationId: ChorusReplicationId = {
-        user: selectedUser,
+        user: effectiveUser,
         fromStorage: selectedFromStorage.name,
         toStorage: selectedToStorage.name,
       };
@@ -346,6 +372,7 @@ export const useTuttiAddReplicationStore = defineStore(
       ...toRefs(state),
       steps,
       stepsCount,
+      selectUser,
       initBucketsList,
       getBucketsList,
       isBucketsAlreadyRequested,

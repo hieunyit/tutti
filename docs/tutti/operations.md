@@ -105,7 +105,7 @@ Observability:
 
 - Metrics (only when `metrics.enabled`): gauge `storage_available{storage}` (1 closed, 0 open), counter `storage_breaker_transitions_total{storage,to}` with `to` = `open` or `closed`.
 - Logs: warn `storage circuit breaker opened: requests fail fast until the storage recovers` and info `storage circuit breaker closed: storage is available again`.
-- `chorctl proxies`, `GET /tutti/proxies`, UI `/health`.
+- `tuttictl proxies`, `GET /tutti/proxies`, UI `/health`.
 
 Breaker state is per proxy instance and in memory; it starts closed after a restart.
 
@@ -148,7 +148,7 @@ Per failed-over scope:
 
 Other replications from the failed storage (for example main -> f2 when f1 was promoted) are not paused, but requests routed to the promoted storage only carry replications whose source is the routed storage, so they do not record events against the failed side.
 
-Observability: warn log `failover: routing switched to replica and replication from the failed storage paused; failback is manual`, counter `failover_total{from,to}` (when `metrics.enabled`), `chorctl failover events`, UI `/failover`. If the routing change succeeded but the event could not be saved the error `failover performed but event not saved` is logged.
+Observability: warn log `failover: routing switched to replica and replication from the failed storage paused; failback is manual`, counter `failover_total{from,to}` (when `metrics.enabled`), `tuttictl failover events`, UI `/failover`. If the routing change succeeded but the event could not be saved the error `failover performed but event not saved` is logged.
 
 Verified: with a policy of `after=20s` failover took about 60 s end to end (breaker detection ~30 s + 20 s + check interval). There is no automatic failback.
 
@@ -156,12 +156,12 @@ Verified: with a policy of `after=20s` failover took about 60 s end to end (brea
 
 Failback never happens automatically. After the old storage is repaired:
 
-1. Repair/restore the old (source) storage and confirm it is healthy (`chorctl proxies` shows it `up`).
+1. Repair/restore the old (source) storage and confirm it is healthy (`tuttictl proxies` shows it `up`).
 2. Delete the paused old -> new replication:
-   `chorctl repl delete -f old -t new -u <user> [-b <bucket>]`.
+   `tuttictl repl delete -f old -t new -u <user> [-b <bucket>]`.
 3. Create the reverse replication so the old storage catches up with writes made during the outage:
-   `chorctl repl add -f new -t old -u <user> [-b <bucket>]`, and wait until its `EVENTS` column shows done == total and `PROGRESS` is 100%. Do not use the `LAG` column as the completion signal: it shows the age of the oldest queued task (a duration), not a count of events (`chorctl repl`, `chorctl dash`).
-4. Switch routing back. The routing change itself is the `PUT /routing/update` and `PUT /routing/block` sequence in [runbooks.md](./runbooks.md#b-manual-failback-return-routing-to-the-original-storage) step 5, not a `chorctl repl switch` command: the switch commands work on bucket-level replications and also change replication direction, so do not use them for failback.
+   `tuttictl repl add -f new -t old -u <user> [-b <bucket>]`, and wait until its `EVENTS` column shows done == total and `PROGRESS` is 100%. Do not use the `LAG` column as the completion signal: it shows the age of the oldest queued task (a duration), not a count of events (`tuttictl repl`, `tuttictl dash`).
+4. Switch routing back. The routing change itself is the `PUT /routing/update` and `PUT /routing/block` sequence in [runbooks.md](./runbooks.md#b-manual-failback-return-routing-to-the-original-storage) step 5, not a `tuttictl repl switch` command: the switch commands work on bucket-level replications and also change replication direction, so do not use them for failback.
 5. Acknowledge the failover event so it disappears from the list: `PUT /tutti/failover/events/delete` (UI `/failover` -> acknowledge), or `redis-cli del tutti:failover:user:<user>` (bucket scope: `tutti:failover:bucket:<user>:<bucket>`).
 6. Re-create the old -> new replication if you want the original topology back.
 
@@ -186,7 +186,7 @@ Until step 5 the event stays listed; it has no effect on routing.
 - Failover is decided by the instance(s) whose own breaker has been open for `after`; the Redis lock lets only one act per failed storage at a time, and the others re-check scopes under the lock and find nothing to do. Routing is shared through Redis, so every instance follows.
 - A failover triggered by one instance is not conditional on the other instances also seeing the storage down. Use a conservative `after`.
 - Enable `failover.enabled` consistently across instances; instances with it off never act, but follow routing.
-- Each instance publishes its status to `tutti:proxy-status:<app_id>` every `status.interval` (default 2 s) with a TTL of 3 intervals; a stopped instance disappears from `chorctl proxies` after at most 3 intervals.
+- Each instance publishes its status to `tutti:proxy-status:<app_id>` every `status.interval` (default 2 s) with a TTL of 3 intervals; a stopped instance disappears from `tuttictl proxies` after at most 3 intervals.
 - Sync replication settings are per instance; keep them identical or clients will see different guarantees depending on which instance they hit.
 - Failover policies and events live in the config Redis DB, and locks in the lock DB, shared by all instances and the worker.
 

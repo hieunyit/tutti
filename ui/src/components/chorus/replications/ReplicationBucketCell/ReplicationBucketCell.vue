@@ -68,3 +68,18 @@
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+  .replication-bucket-cell {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+
+    &__user,
+    &__bucket {
+      display: inline-flex;
+      min-width: 0;
+      max-width: 100%;
+    }
+  }
+</style>

@@ -55,6 +55,24 @@ type GenericStorage[
 }
 
 func (s StoragesConfig[_, _]) Validate() error {
+	if s.DynamicCredentials.Enabled {
+		if err := s.DynamicCredentials.Validate(); err != nil {
+			return fmt.Errorf("%w: invalid dynamic credentials config: %w", dom.ErrInvalidStorageConfig, err)
+		}
+		if len(s.Storages) > 0 {
+			if s.Main != "" {
+				if _, ok := s.Storages[s.Main]; !ok {
+					return fmt.Errorf("%w: main storage %q is not found in storages list", dom.ErrInvalidStorageConfig, s.Main)
+				}
+			}
+			for name, storConf := range s.Storages {
+				if err := storConf.Validate(); err != nil {
+					return fmt.Errorf("%w: for storage %q", err, name)
+				}
+			}
+		}
+		return nil
+	}
 	if len(s.Storages) == 0 {
 		return fmt.Errorf("%w: storages config is empty", dom.ErrInvalidStorageConfig)
 	}

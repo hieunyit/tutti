@@ -82,6 +82,7 @@
     &__header {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
       min-height: 48px;
       padding: 10px var(--tt-card-padding);
@@ -97,6 +98,8 @@
     }
 
     &__meta {
+      flex: 1 1 200px;
+      min-width: 0;
       font-size: 12px;
       color: var(--tt-text-3);
     }

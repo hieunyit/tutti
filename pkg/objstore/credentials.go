@@ -55,6 +55,7 @@ const (
 type CredsService interface {
 	FindS3Credentials(storage, accessKey string) (user string, cred s3.CredentialsV4, err error)
 	MainStorage() string
+	S3Storages() map[string]s3.StorageAddress
 	Storages() map[string]dom.StorageType
 	GetS3Address(storage string) (s3.StorageAddress, error)
 	GetSwiftAddress(storage string) (swift.StorageAddress, error)
@@ -371,8 +372,28 @@ func (s *credsSvc) sameStorType(from, to string) error {
 	return nil
 }
 
+// MainStorage returns the configured main storage. Without a configured one it returns "main" only if a storage
+// with that exact name exists, otherwise "" (no guessing). It reads the atomic view and never takes managedMu, so it
+// does not block on PostgreSQL sync. Callers that capture the value once at startup (e.g. policy.NewService) must
+// treat "" as "not yet known" and re-resolve if needed.
 func (s *credsSvc) MainStorage() string {
-	return s.config.Main
+	if s.config != nil && s.config.Main != "" {
+		return s.config.Main
+	}
+	if view := s.view.Load(); view != nil {
+		if _, ok := view.types["main"]; ok {
+			return "main"
+		}
+	}
+	return ""
+}
+
+func (s *credsSvc) S3Storages() map[string]s3.StorageAddress {
+	view := s.view.Load()
+	if view == nil || view.s3 == nil {
+		return nil
+	}
+	return maps.Clone(view.s3)
 }
 
 func (s *credsSvc) ValidateReplicationID(id entity.UniversalReplicationID) error {

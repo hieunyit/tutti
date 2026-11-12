@@ -78,9 +78,9 @@
 
           <CTag
             size="small"
-            :type="storage.isMain ? 'success' : 'warning'"
+            type="info"
           >
-            {{ $t(storage.isMain ? 'mainStorage' : 'followerStorage') }}
+            {{ storage.provider || 'S3' }}
           </CTag>
         </CDescriptionItem>
       </CDescriptionList>

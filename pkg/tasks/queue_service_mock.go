@@ -18,6 +18,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 )
@@ -29,7 +32,7 @@ type QueueServiceMock struct {
 	Paused map[string]bool
 }
 
-func (q *QueueServiceMock) EnqueueTask(ctx context.Context, task any) error {
+func (q *QueueServiceMock) EnqueueTask(ctx context.Context, task any, opts ...asynq.Option) error {
 	return nil
 }
 
@@ -154,5 +157,9 @@ func (q *QueueServiceMock) Resume(ctx context.Context, queueName string) error {
 		return err
 	}
 	q.Paused[queueName] = false
+	return nil
+}
+
+func (q *QueueServiceMock) RedisClient() redis.Cmdable {
 	return nil
 }

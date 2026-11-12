@@ -48,14 +48,36 @@ const (
 )
 
 // Priority defines the priority of the queues from highest to lowest.
+// Live events (QueueEventsPrefix) are given high priority (80) over bulk copy (20)
+// and bulk listing (10), preventing heavy bulk migrations from starving live replication traffic.
 var Priority = map[string]int{
-	string(QueueAPI): 200, // highest priority
-	string(QueueMigrateListObjectsPrefix) + ":*": 100,
-	string(QueueDiff) + ":*":                     50,
+	string(QueueAPI):                             200, // highest priority for interactive operations
+	string(QueueEventsPrefix) + ":*":             80,  // live replication events: allocated dominant share during concurrent bulk
 	string(QueueDiffFix) + ":*":                  50,
-	string(QueueMigrateCopyObjectPrefix) + ":*":  10,
-	string(QueueEventsPrefix) + ":*":             5, // lowest priority
-	"*":                                          1, // fallback for legacy queues
+	string(QueueDiff) + ":*":                     40,
+	string(QueueMigrateCopyObjectPrefix) + ":*":  20,  // bulk migration copy
+	string(QueueMigrateListObjectsPrefix) + ":*": 10,  // bulk listing (controlled by pagination & backpressure)
+	"*":                                          1,   // fallback for legacy queues
+}
+
+// LivePriority defines priority for interactive API, live replication events, and diff fix queues.
+// When live queues are idle, it also processes bulk queues as fallback.
+var LivePriority = map[string]int{
+	string(QueueAPI):                             200,
+	string(QueueEventsPrefix) + ":*":             80,
+	string(QueueDiffFix) + ":*":                  50,
+	string(QueueDiff) + ":*":                     40,
+	string(QueueMigrateCopyObjectPrefix) + ":*":  20,
+	string(QueueMigrateListObjectsPrefix) + ":*": 10,
+	"*":                                          1,
+}
+
+// BulkPriority defines dedicated priorities exclusively for bulk migration copy and listing tasks,
+// ensuring bulk progress even when live event queues are continuously saturated.
+var BulkPriority = map[string]int{
+	string(QueueMigrateCopyObjectPrefix) + ":*":  20,
+	string(QueueMigrateListObjectsPrefix) + ":*": 10,
+	"*":                                          1,
 }
 
 var replicationQueuePrefixes = []Queue{QueueMigrateListObjectsPrefix, QueueMigrateCopyObjectPrefix, QueueEventsPrefix}

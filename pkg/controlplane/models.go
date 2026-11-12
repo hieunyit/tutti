@@ -233,3 +233,46 @@ type AuditFilter struct {
 	BeforeID int64
 	Limit    int
 }
+
+// SystemSettings holds dynamic cluster features, worker performance tuning, and operational parameters.
+type SystemSettings struct {
+	ID       string                 `json:"-"`
+	Features SystemFeaturesSettings `json:"features"`
+	Worker   SystemWorkerSettings   `json:"worker"`
+	Lock     SystemLockSettings     `json:"lock"`
+	Webhook  SystemWebhookSettings  `json:"webhook"`
+}
+
+type SystemFeaturesSettings struct {
+	Tagging           bool `json:"tagging"`
+	ACL               bool `json:"acl"`
+	Lifecycle         bool `json:"lifecycle"`
+	Policy            bool `json:"policy"`
+	PreserveACLGrants bool `json:"preserveACLGrants"`
+	Versioning        bool `json:"versioning"`
+}
+
+type SystemWorkerSettings struct {
+	Concurrency              int           `json:"concurrency"`
+	ShutdownTimeout          time.Duration `json:"shutdownTimeout"`
+	QueueUpdateInterval      time.Duration `json:"queueUpdateInterval"`
+	TaskCheckInterval        time.Duration `json:"taskCheckInterval"`
+	DelayedTaskCheckInterval time.Duration `json:"delayedTaskCheckInterval"`
+	SwiftRetryInterval       time.Duration `json:"swiftRetryInterval"`
+	PauseRetryInterval       time.Duration `json:"pauseRetryInterval"`
+	SwitchRetryInterval      time.Duration `json:"switchRetryInterval"`
+	BacklogHighWatermark     int           `json:"backlogHighWatermark"`
+	BacklogLowWatermark      int           `json:"backlogLowWatermark"`
+	BandwidthLimitBytes      int64         `json:"bandwidthLimitBytes"`
+	BufferBudgetBytes        int64         `json:"bufferBudgetBytes"`
+}
+
+type SystemLockSettings struct {
+	Overlap time.Duration `json:"overlap"`
+}
+
+type SystemWebhookSettings struct {
+	Enabled bool   `json:"enabled"`
+	BaseURL string `json:"baseUrl"`
+}
+

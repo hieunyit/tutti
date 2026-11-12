@@ -4,7 +4,7 @@ Tutti is a drop-in fork of Chorus (compatible protobuf package, gRPC service nam
 
 ## Renames
 
-- Go module: `github.com/clyso/chorus` -> `github.com/hieunyit/tutti` (imports, `go install` paths). Binary names (`worker`, `proxy`, `chorus`, `chorctl`) and the protobuf package/service names (`chorus.*`) are unchanged, so existing gRPC/REST clients keep working.
+- Go module: `github.com/clyso/chorus` -> `github.com/hieunyit/tutti` (imports, `go install` paths). The CLI binary `tuttictl` is renamed to `tuttictl`. The other binary names (`worker`, `proxy`, `chorus`) and the protobuf package/service names (`chorus.*`) are unchanged, so existing gRPC/REST clients keep working.
 - Redis: all existing keys are unchanged. Tutti only adds new `tutti:*` keys (below).
 
 ## Behavior changes

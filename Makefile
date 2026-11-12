@@ -85,9 +85,6 @@ worker: worker-bin
 tuttictl: tuttictl-bin
 	cd tools/tuttictl; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/tuttictl main.go
 
-.PHONY: chorctl
-chorctl: tuttictl
-
 .PHONY: chorus
 chorus: tutti
 
@@ -102,9 +99,6 @@ test: pretty test-tuttictl
 .PHONY: test-tuttictl
 test-tuttictl:
 	cd tools/tuttictl && go test ./...
-
-.PHONY: test-chorctl
-test-chorctl: test-tuttictl
 
 .PHONY: proto-gen
 proto-gen:

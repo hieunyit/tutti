@@ -65,7 +65,11 @@ type OutboxConfig struct {
 // WithDefaults fills zero values.
 func (c Config) WithDefaults() Config {
 	if c.Backend == "" {
-		c.Backend = BackendRedis
+		if c.Postgres.DSN != "" {
+			c.Backend = BackendPostgres
+		} else {
+			c.Backend = BackendRedis
+		}
 	}
 	p := &c.Postgres
 	if p.MaxConns <= 0 {

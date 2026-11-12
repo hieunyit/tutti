@@ -53,16 +53,19 @@
     {
       title: t('columnUserAlias'),
       key: 'alias',
+      width: 240,
       sorter: true,
     },
     {
       title: t('columnAccessKey'),
       key: 'accessKey',
+      minWidth: 260,
       sorter: true,
     },
     {
       title: t('columnActions'),
       key: 'actions',
+      width: 120,
     },
   ]);
 
@@ -191,7 +194,7 @@
     }
 
     &__table {
-      min-width: 600px;
+      min-width: 640px;
     }
 
     &__result {

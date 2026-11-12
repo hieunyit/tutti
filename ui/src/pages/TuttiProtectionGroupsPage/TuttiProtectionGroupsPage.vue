@@ -56,6 +56,8 @@
   function scopeText(group: ProtectionGroup): string {
     const kind = ProtectionGroupHelper.scopeKind(group);
 
+    if (kind === 'storage') return t('scopeStorage');
+
     if (kind === 'user') return t('scopeUser');
 
     const count = (group.buckets ?? []).length;
@@ -292,7 +294,14 @@
                   </RouterLink>
                 </td>
                 <td>
-                  <div>{{ group.user || EMPTY_VALUE }}</div>
+                  <div>
+                    {{
+                      group.user ||
+                      (ProtectionGroupHelper.scopeKind(group) === 'storage'
+                        ? t('scopeStorageTitle')
+                        : EMPTY_VALUE)
+                    }}
+                  </div>
                   <small class="tutti-protection-groups-page__sub">{{
                     scopeText(group)
                   }}</small>

@@ -1,11 +1,11 @@
 apiVersion: v2
-name: chorus
-description: Helm chart for Chorus S3 management software.
-keywords: ["S3", "Backup", "Replication", "Migration"]
-home: https://github.com/clyso/chorus
+name: tutti
+description: Helm chart for Tutti S3 Multi-Active Resilience & Management System
+keywords: ["S3", "Multi-Active", "Replication", "Failover", "Resilience"]
+home: https://github.com/hieunyit/tutti
 type: application
-version: 0.4.1
-appVersion: "v0.7.7"
+version: 1.0.0
+appVersion: "1.0.0"
 dependencies:
   - name: redis
     version: 23.1.3

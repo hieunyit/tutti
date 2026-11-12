@@ -95,10 +95,22 @@ func (s *Service) hashPassword(password string) (string, error) {
 	return string(h), nil
 }
 
-// ListUsers returns config and managed users sorted by name.
+// ListUsers returns database managed and config users sorted by name.
 func (s *Service) ListUsers(ctx context.Context) ([]UserInfo, error) {
 	if err := s.ready(); err != nil {
 		return nil, err
+	}
+	if s.conf.AllowManagedUsers {
+		managed, err := s.managed.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		res := make([]UserInfo, len(managed))
+		for i, m := range managed {
+			res[i] = infoFromManaged(m)
+		}
+		sort.Slice(res, func(i, j int) bool { return res[i].Username < res[j].Username })
+		return res, nil
 	}
 	res := make([]UserInfo, 0, len(s.users))
 	for _, u := range s.users {
@@ -129,8 +141,15 @@ func (s *Service) CreateUser(ctx context.Context, username, role, password strin
 	if !validRole(role) {
 		return UserInfo{}, "", fmt.Errorf("%w: role must be %q or %q", dom.ErrInvalidArg, RoleAdmin, RoleViewer)
 	}
-	if _, ok := s.users[username]; ok {
-		return UserInfo{}, "", fmt.Errorf("%w: console user %q is defined in config", dom.ErrAlreadyExists, username)
+	if s.managed != nil {
+		if _, err := s.managed.Get(ctx, username); err == nil {
+			return UserInfo{}, "", fmt.Errorf("%w: console user %q already exists", dom.ErrAlreadyExists, username)
+		}
+	}
+	if !s.conf.AllowManagedUsers {
+		if _, ok := s.users[username]; ok {
+			return UserInfo{}, "", fmt.Errorf("%w: console user %q is defined in config", dom.ErrAlreadyExists, username)
+		}
 	}
 	password, generated, err := s.passwordOrGenerate(username, password, generate)
 	if err != nil {
@@ -166,15 +185,26 @@ func (s *Service) passwordOrGenerate(username, password string, generate bool) (
 	return password, "", nil
 }
 
-// mutateManaged rejects config users and includes them in the atomic last-admin guard.
+// mutateManaged rejects pure config users and includes them in the atomic last-admin guard.
 func (s *Service) mutateManaged(ctx context.Context, username string,
 	fn func(*ManagedUser) (remove, checkOtherAdmin bool, err error)) error {
-	if _, ok := s.users[username]; ok {
-		return fmt.Errorf("%w: console user %q is defined in config and cannot be modified", dom.ErrFailedPrecondition, username)
+	isManaged := false
+	if s.managed != nil {
+		if _, err := s.managed.Get(ctx, username); err == nil {
+			isManaged = true
+		}
+	}
+	if !isManaged && !s.conf.AllowManagedUsers {
+		if _, ok := s.users[username]; ok {
+			return fmt.Errorf("%w: console user %q is defined in config and cannot be modified", dom.ErrFailedPrecondition, username)
+		}
 	}
 	configAdmins := 0
 	configNames := make([]string, 0, len(s.users))
 	for name, u := range s.users {
+		if (s.conf.AllowManagedUsers || isManaged) && name == username {
+			continue
+		}
 		configNames = append(configNames, name)
 		if u.Role == RoleAdmin {
 			configAdmins++

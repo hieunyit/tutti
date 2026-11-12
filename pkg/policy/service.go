@@ -62,6 +62,14 @@ func (r *policySvc) ControlPlane() controlplane.Store {
 	return r.cp
 }
 
+func (r *policySvc) SetMainStorage(mainStorage string) {
+	r.mainStorage = mainStorage
+}
+
+func (r *policySvc) MainStorage() string {
+	return r.mainStorage
+}
+
 // WithSharedAccount configures a predicate reporting whether requests of user on storage use the storage's
 // shared connection account (credential mode "connection"; the worker's bucket scope uses the same predicate).
 // When set, writes of such a user to a bucket that another identity's protection group manages on that storage

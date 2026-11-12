@@ -266,6 +266,7 @@ func newRepos(r *runner) controlplane.Repos {
 		FailoverEvents:     newFailoverEvents(r),
 		ProtectionGroups:   newProtectionGroups(r),
 		StorageTests:       newStorageTests(r),
+		SystemSettings:     newSystemSettings(r),
 		Audit:              &auditRepo{rt: r},
 	}
 }

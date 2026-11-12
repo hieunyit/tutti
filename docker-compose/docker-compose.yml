@@ -71,7 +71,7 @@ services:
         source: ./s3-credentials.yaml
         target: /bin/config/override.yaml
     ports:
-      - "9671:9671" # expose REST api for chorctl and web UI
+      - "9671:9671" # expose REST api for tuttictl and web UI
       - "9670:9670" # expose grpc management API
   # Chorus S3 proxy
   # Can be used capture data change and backup it with worker to another S3.
@@ -115,25 +115,3 @@ services:
     environment:
       # URL to worker REST API
       - "BACKEND_URL=http://worker:9671"
-  # start fake in-memory s3 endpoints. To enable run with fake profile: "docker-compose up --profile fake up"
-  fake-s3-main:
-    profiles:
-      - "fake"
-    build:
-      context: .
-      dockerfile: ./FakeS3Dockerfile
-    expose:
-      - 9000
-    ports:
-      - "9001:9000" # expose main s3 to host
-  fake-s3-follower:
-    profiles:
-      - "fake"
-    build:
-      context: .
-      dockerfile: ./FakeS3Dockerfile
-    expose:
-      - 9000
-    ports:
-      - "9002:9000" # expose follower s3 to host
-

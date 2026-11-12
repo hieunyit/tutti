@@ -221,6 +221,10 @@ type MigrateBucketListObjectsPayload struct {
 	Prefix string
 	replicationID
 	Versioned bool
+	// Iteration index for paginated listing checkpoints (0 for initial page)
+	Iteration int
+	// Backpressured indicates whether the producer paused due to high watermark and must drain below low watermark before resuming
+	Backpressured bool
 }
 
 type MigrateObjCopyPayload struct {

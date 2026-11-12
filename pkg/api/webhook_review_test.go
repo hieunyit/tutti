@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"testing"
 
 	"github.com/hieunyit/tutti/pkg/dom"
@@ -33,6 +34,11 @@ func (r *reviewWebhookReplication) Replicate(context.Context, string, tasks.Repl
 }
 
 func TestReviewWebhookMustNotACKWhenReplicationQueueUnavailable(t *testing.T) {
+	old := systemsettings.Current()
+	enabled := old
+	enabled.Webhook.Enabled = true
+	systemsettings.ApplySettings(enabled)
+	t.Cleanup(func() { systemsettings.ApplySettings(old) })
 	for _, kind := range []string{"s3", "swift"} {
 		t.Run(kind, func(t *testing.T) {
 			repl := &reviewWebhookReplication{}

@@ -2,7 +2,7 @@
 <script setup lang="ts">
   import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
+  import { NButton, NInput, NInputNumber, NSelect, NModal } from 'naive-ui';
   import PageHeader from '@/components/layout/PageHeader.vue';
   import SectionCard from '@/components/ui/SectionCard.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
@@ -135,6 +135,21 @@
     }
   }
 
+  const showAddGroupModal = ref(false);
+  const showDeleteGroupModal = ref(false);
+
+  const availableProxyGroups = computed(() => {
+    const set = new Set<string>();
+
+    proxies.value.forEach((p) => {
+      if (p.group && !groupsDraft.value[p.group]) {
+        set.add(p.group);
+      }
+    });
+
+    return Array.from(set);
+  });
+
   function addGroupOverride() {
     const trimmed = newGroupName.value.trim();
 
@@ -146,6 +161,14 @@
 
     editingScope.value = trimmed;
     newGroupName.value = '';
+    showAddGroupModal.value = false;
+  }
+
+  function confirmRemoveGroup() {
+    if (editingScope.value !== '__defaults__') {
+      removeGroupOverride(editingScope.value);
+      showDeleteGroupModal.value = false;
+    }
   }
 
   function removeGroupOverride(group: string) {
@@ -240,11 +263,7 @@
     return ov.health;
   }
 
-  function ensureFailover(ov: TuttiProxySettingsOverride) {
-    if (!ov.failover) ov.failover = {};
 
-    return ov.failover;
-  }
 
   async function saveFleetConfig() {
     savingFleet.value = true;
@@ -494,253 +513,248 @@
       :title="t('fleetConfig')"
       :subtitle="`${t('version')}: v${fleetConfig?.version ?? configVersion ?? 0} · ${t('fleetConfigHint')}`"
     >
-      <div class="phase-d__tab-row">
+      <div
+        class="phase-d__tab-row"
+        style="margin-bottom: 20px; align-items: center"
+      >
         <TabBar
           v-model="editingScope"
           :tabs="scopeTabs"
           :label="t('fleetConfig')"
         />
         <div class="phase-d__group-actions">
-          <NInput
-            v-model:value="newGroupName"
-            size="small"
-            :placeholder="t('groupName')"
-            style="width: 180px"
-            @keyup.enter="addGroupOverride"
-          />
           <NButton
             size="small"
+            type="primary"
             secondary
-            @click="addGroupOverride"
-            >{{ t('addGroup') }}</NButton
+            @click="showAddGroupModal = true"
           >
+            + Add Group Override
+          </NButton>
           <NButton
             v-if="editingScope !== '__defaults__'"
             size="small"
             type="error"
             secondary
-            @click="removeGroupOverride(editingScope)"
-            >{{ t('remove') }} ({{ editingScope }})</NButton
+            @click="showDeleteGroupModal = true"
           >
+            {{ t('remove') }} ({{ editingScope }})
+          </NButton>
         </div>
       </div>
 
-      <div class="phase-d__grid">
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('sync') }}</span>
-          <NSelect
-            :value="
-              activeDraft.replication?.sync?.enabled === undefined
-                ? ''
-                : String(activeDraft.replication.sync.enabled)
-            "
-            :options="boolOptions"
-            @update:value="
-              (val) =>
-                setBoolField(
-                  ensureSync(activeDraft) as Record<string, unknown>,
-                  'enabled',
-                  val,
-                )
-            "
-          />
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <!-- Subgroup 1: Replication & Sync Quorum -->
+        <div
+          class="phase-d__subcard"
+          style="border: 1px solid var(--tt-border); border-radius: 8px; padding: 16px; background-color: var(--tt-surface)"
+        >
+          <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--tt-text)">
+            Replication &amp; Sync Quorum
+          </h4>
+          <div class="phase-d__grid">
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('sync') }}</span>
+              <NSelect
+                :value="
+                  activeDraft.replication?.sync?.enabled === undefined
+                    ? ''
+                    : String(activeDraft.replication.sync.enabled)
+                "
+                :options="boolOptions"
+                @update:value="
+                  (val) =>
+                    setBoolField(
+                      ensureSync(activeDraft) as Record<string, unknown>,
+                      'enabled',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('writeQuorum') }}</span>
+              <NInputNumber
+                :value="activeDraft.replication?.sync?.writeQuorum ?? null"
+                :min="0"
+                :placeholder="t('inherit')"
+                clearable
+                style="width: 100%"
+                @update:value="
+                  (val) =>
+                    setNumVal(
+                      ensureSync(activeDraft) as Record<string, unknown>,
+                      'writeQuorum',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('syncTimeout') }}</span>
+              <NInput
+                :value="activeDraft.replication?.sync?.timeout ?? ''"
+                placeholder="30s"
+                clearable
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      ensureSync(activeDraft) as Record<string, unknown>,
+                      'timeout',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('onQuorumFailure') }}</span>
+              <NSelect
+                :value="activeDraft.replication?.sync?.onQuorumFailure ?? ''"
+                :options="quorumFailureOptions"
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      ensureSync(activeDraft) as Record<string, unknown>,
+                      'onQuorumFailure',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('onEventError') }}</span>
+              <NSelect
+                :value="activeDraft.replication?.onEventError ?? ''"
+                :options="eventErrorOptions"
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      ensureReplication(activeDraft) as Record<string, unknown>,
+                      'onEventError',
+                      val,
+                    )
+                "
+              />
+            </div>
+          </div>
         </div>
 
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('writeQuorum') }}</span>
-          <NInputNumber
-            :value="activeDraft.replication?.sync?.writeQuorum ?? null"
-            :min="0"
-            :placeholder="t('inherit')"
-            clearable
-            style="width: 100%"
-            @update:value="
-              (val) =>
-                setNumVal(
-                  ensureSync(activeDraft) as Record<string, unknown>,
-                  'writeQuorum',
-                  val,
-                )
-            "
-          />
+        <!-- Subgroup 2: Writer Fencing & Health Circuit Breaker -->
+        <div
+          class="phase-d__subcard"
+          style="border: 1px solid var(--tt-border); border-radius: 8px; padding: 16px; background-color: var(--tt-surface)"
+        >
+          <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--tt-text)">
+            Writer Fencing &amp; Resiliency
+          </h4>
+          <div class="phase-d__grid">
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('writerLease') }}</span>
+              <NInput
+                :value="activeDraft.writerLease ?? ''"
+                placeholder="30s"
+                clearable
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      activeDraft as Record<string, unknown>,
+                      'writerLease',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('failureThreshold') }}</span>
+              <NInputNumber
+                :value="activeDraft.health?.failureThreshold ?? null"
+                :min="1"
+                :placeholder="t('inherit')"
+                clearable
+                style="width: 100%"
+                @update:value="
+                  (val) =>
+                    setNumVal(
+                      ensureHealth(activeDraft) as Record<string, unknown>,
+                      'failureThreshold',
+                      val,
+                    )
+                "
+              />
+            </div>
+
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('openDuration') }}</span>
+              <NInput
+                :value="activeDraft.health?.openDuration ?? ''"
+                placeholder="30s"
+                clearable
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      ensureHealth(activeDraft) as Record<string, unknown>,
+                      'openDuration',
+                      val,
+                    )
+                "
+              />
+            </div>
+          </div>
         </div>
 
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('syncTimeout') }}</span>
-          <NInput
-            :value="activeDraft.replication?.sync?.timeout ?? ''"
-            placeholder="30s"
-            clearable
-            @update:value="
-              (val) =>
-                setStrField(
-                  ensureSync(activeDraft) as Record<string, unknown>,
-                  'timeout',
-                  val,
-                )
-            "
-          />
-        </div>
+        <!-- Subgroup 3: Network & Security -->
+        <div
+          class="phase-d__subcard"
+          style="border: 1px solid var(--tt-border); border-radius: 8px; padding: 16px; background-color: var(--tt-surface)"
+        >
+          <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--tt-text)">
+            Network &amp; Request Protection
+          </h4>
+          <div class="phase-d__grid">
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{ t('readHeaderTimeout') }}</span>
+              <NInput
+                :value="activeDraft.readHeaderTimeout ?? ''"
+                placeholder="10s"
+                clearable
+                @update:value="
+                  (val) =>
+                    setStrField(
+                      activeDraft as Record<string, unknown>,
+                      'readHeaderTimeout',
+                      val,
+                    )
+                "
+              />
+            </div>
 
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('onQuorumFailure') }}</span>
-          <NSelect
-            :value="activeDraft.replication?.sync?.onQuorumFailure ?? ''"
-            :options="quorumFailureOptions"
-            @update:value="
-              (val) =>
-                setStrField(
-                  ensureSync(activeDraft) as Record<string, unknown>,
-                  'onQuorumFailure',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('onEventError') }}</span>
-          <NSelect
-            :value="activeDraft.replication?.onEventError ?? ''"
-            :options="eventErrorOptions"
-            @update:value="
-              (val) =>
-                setStrField(
-                  ensureReplication(activeDraft) as Record<string, unknown>,
-                  'onEventError',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('failureThreshold') }}</span>
-          <NInputNumber
-            :value="activeDraft.health?.failureThreshold ?? null"
-            :min="1"
-            :placeholder="t('inherit')"
-            clearable
-            style="width: 100%"
-            @update:value="
-              (val) =>
-                setNumVal(
-                  ensureHealth(activeDraft) as Record<string, unknown>,
-                  'failureThreshold',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('openDuration') }}</span>
-          <NInput
-            :value="activeDraft.health?.openDuration ?? ''"
-            placeholder="30s"
-            clearable
-            @update:value="
-              (val) =>
-                setStrField(
-                  ensureHealth(activeDraft) as Record<string, unknown>,
-                  'openDuration',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('failover') }}</span>
-          <NSelect
-            :value="
-              activeDraft.failover?.enabled === undefined
-                ? ''
-                : String(activeDraft.failover.enabled)
-            "
-            :options="boolOptions"
-            @update:value="
-              (val) =>
-                setBoolField(
-                  ensureFailover(activeDraft) as Record<string, unknown>,
-                  'enabled',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('failoverAfter') }}</span>
-          <NInput
-            :value="activeDraft.failover?.after ?? ''"
-            placeholder="60s"
-            clearable
-            @update:value="
-              (val) =>
-                setStrField(
-                  ensureFailover(activeDraft) as Record<string, unknown>,
-                  'after',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{
-            t('requireSignedContentType')
-          }}</span>
-          <NSelect
-            :value="
-              activeDraft.requireSignedContentType === undefined
-                ? ''
-                : String(activeDraft.requireSignedContentType)
-            "
-            :options="boolOptions"
-            @update:value="
-              (val) =>
-                setBoolField(
-                  activeDraft as Record<string, unknown>,
-                  'requireSignedContentType',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('readHeaderTimeout') }}</span>
-          <NInput
-            :value="activeDraft.readHeaderTimeout ?? ''"
-            placeholder="10s"
-            clearable
-            @update:value="
-              (val) =>
-                setStrField(
-                  activeDraft as Record<string, unknown>,
-                  'readHeaderTimeout',
-                  val,
-                )
-            "
-          />
-        </div>
-
-        <div class="phase-d__field">
-          <span class="phase-d__label">{{ t('writerLease') }}</span>
-          <NInput
-            :value="activeDraft.writerLease ?? ''"
-            placeholder="30s"
-            clearable
-            @update:value="
-              (val) =>
-                setStrField(
-                  activeDraft as Record<string, unknown>,
-                  'writerLease',
-                  val,
-                )
-            "
-          />
+            <div class="phase-d__field">
+              <span class="phase-d__label">{{
+                t('requireSignedContentType')
+              }}</span>
+              <NSelect
+                :value="
+                  activeDraft.requireSignedContentType === undefined
+                    ? ''
+                    : String(activeDraft.requireSignedContentType)
+                "
+                :options="boolOptions"
+                @update:value="
+                  (val) =>
+                    setBoolField(
+                      activeDraft as Record<string, unknown>,
+                      'requireSignedContentType',
+                      val,
+                    )
+                "
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -756,7 +770,10 @@
         >
       </Callout>
 
-      <div class="phase-d__actions">
+      <div
+        class="phase-d__actions"
+        style="margin-top: 16px"
+      >
         <NButton
           type="primary"
           :loading="savingFleet"
@@ -770,6 +787,79 @@
         >
       </div>
     </SectionCard>
+
+    <NModal
+      v-model:show="showAddGroupModal"
+      preset="card"
+      title="Add Group Override"
+      style="width: 460px; max-width: 94vw"
+    >
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <p
+          class="phase-d__muted"
+          style="margin: 0; font-size: 13px"
+        >
+          Specify a proxy group name to override fleet settings for all proxies belonging to this group.
+        </p>
+        <div class="phase-d__field">
+          <span class="phase-d__label">Group Name</span>
+          <NInput
+            v-model:value="newGroupName"
+            placeholder="e.g. edge-nodes, eu-central"
+            @keyup.enter="addGroupOverride"
+          />
+        </div>
+        <div v-if="availableProxyGroups.length > 0">
+          <span
+            class="phase-d__label"
+            style="display: block; margin-bottom: 6px"
+          >Detected Proxy Groups:</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <NButton
+              v-for="grp in availableProxyGroups"
+              :key="grp"
+              size="tiny"
+              secondary
+              @click="newGroupName = grp"
+            >
+              {{ grp }}
+            </NButton>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px">
+          <NButton @click="showAddGroupModal = false">{{ t('cancel') }}</NButton>
+          <NButton
+            type="primary"
+            :disabled="!newGroupName.trim()"
+            @click="addGroupOverride"
+          >
+            Add Override
+          </NButton>
+        </div>
+      </div>
+    </NModal>
+
+    <NModal
+      v-model:show="showDeleteGroupModal"
+      preset="card"
+      title="Delete Group Override"
+      style="width: 440px; max-width: 94vw"
+    >
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <p style="margin: 0">
+          Are you sure you want to remove settings override for group <strong>{{ editingScope }}</strong>? Proxies in this group will inherit global defaults.
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <NButton @click="showDeleteGroupModal = false">{{ t('cancel') }}</NButton>
+          <NButton
+            type="error"
+            @click="confirmRemoveGroup"
+          >
+            Remove Override
+          </NButton>
+        </div>
+      </div>
+    </NModal>
     <Callout>{{ t('settingsHint') }}</Callout>
   </div>
 </template>

@@ -32,6 +32,8 @@ import type {
   TuttiProxyStatusListResponse,
   TuttiStatsHistory,
   TuttiStatsRange,
+  TuttiSystemSettings,
+  TuttiUpdateSystemSettingsRequest,
 } from '@/utils/types/tutti';
 import type {
   ConsoleUserCreateRequest,
@@ -329,5 +331,27 @@ export abstract class TuttiService {
       ApiHelper.getChorusAPIUrl('/tutti/console-users/delete'),
       { username },
     );
+  }
+
+  static async getSystemSettings(
+    signal?: AbortSignal,
+  ): Promise<TuttiSystemSettings> {
+    const { data } = await apiClient.get<TuttiSystemSettings>(
+      ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
+      { signal },
+    );
+
+    return data;
+  }
+
+  static async updateSystemSettings(
+    payload: TuttiUpdateSystemSettingsRequest,
+  ): Promise<TuttiSystemSettings> {
+    const { data } = await apiClient.put<TuttiSystemSettings>(
+      ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
+      payload,
+    );
+
+    return data;
   }
 }

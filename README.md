@@ -2,7 +2,7 @@
 
 ![banner](./docs/media/banner.png)
 
-Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the vendor-agnostic tool for backup, migration and routing of S3 and OpenStack Swift object storage, extended with resilience features ported from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4): it accepts the streaming uploads of `mc`/`minio-go`, never silently loses a replication event, can replicate synchronously with a write quorum, fails fast on dead storages with per-storage circuit breakers, and can automatically fail routing over to a replica. Everything is opt-in or upstream-compatible by default, and all Chorus features (replication, live migration, routing, diff check, `chorctl`, Web UI) are retained.
+Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the vendor-agnostic tool for backup, migration and routing of S3 and OpenStack Swift object storage, extended with resilience features ported from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4): it accepts the streaming uploads of `mc`/`minio-go`, never silently loses a replication event, can replicate synchronously with a write quorum, fails fast on dead storages with per-storage circuit breakers, and can automatically fail routing over to a replica. Everything is opt-in or upstream-compatible by default, and all Chorus features (replication, live migration, routing, diff check, `tuttictl`, Web UI) are retained.
 
 ## What Tutti adds to Chorus
 
@@ -14,14 +14,17 @@ Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the v
 | Synchronous replication with write quorum | `replication.sync.{enabled,writeQuorum,timeout,onQuorumFailure}` | off, `0` (all), `30s`, `fail` | A successful PUT confirms the configured number of copies; `X-Tutti-Replicas` reports the copies confirmed before the response. |
 | Circuit breakers and health checks | `health.{failureThreshold,openDuration}`, `storage.<name>.healthCheckInterval` | `3`, `30s`, `10s` | Requests to a dead storage fail in milliseconds instead of waiting for `httpTimeout`. |
 | Automatic failover | `failover.{enabled,checkInterval,after,maxEventLag}` + per-storage policies in Redis | off, `10s`, `60s`, `0` | Re-route users/buckets to an operator-approved, healthy replica when the main storage stays down. Failback is manual. |
-| Resilience API, `chorctl proxies` / `chorctl failover`, UI pages `/health` and `/failover` | n/a | n/a | See live breaker state and manage failover policies and events. |
+| Resilience API, `tuttictl proxies` / `tuttictl failover`, UI pages `/health` and `/failover` | n/a | n/a | See live breaker state and manage failover policies and events. |
 
 ## Tutti documentation
 
+- [Deployment Guide (Docker, K8s, VM)](./docs/tutti/deployment-guide.md): Complete setup and configuration instructions for Docker Compose, Kubernetes, and Linux VMs.
+- [Management & Resilience REST/gRPC API Reference](./docs/tutti/api.md): Complete API specifications with request/response schemas and curl examples.
 - [Configuration reference](./docs/tutti/configuration.md)
 - [Operations guide](./docs/tutti/operations.md): payload handling, 503 semantics, sync replication, breakers, failover and failback, multi-instance
-- [Resilience API, chorctl, Redis keys, metrics, UI](./docs/tutti/api.md)
-- [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md)
+- [Control-Plane Database & PostgreSQL Migration](./docs/tutti/control-plane-db.md)
+- [Protection Groups](./docs/tutti/protection-groups.md)
+- [Storage Accounts & Live Connection Testing](./docs/tutti/storage-accounts.md)
 - [Changelog](./CHANGELOG.md)
 
 ## What Chorus provides
@@ -36,7 +39,7 @@ Chorus enables:
  - Diff check to verify data integrity between storages.
  - Reduce downtime up to zero for switching to different storage provider.
 
-Listed features can be configured per S3 user and per bucket with [management CLI](./tools/chorctl), [REST](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/clyso/chorus/refs/heads/main/proto/gen/openapi/chorus/chorus.swagger.json)/[gRPC](./proto/chorus/chorus.proto) API, or [WebUI](./ui/). The Tutti additions to the API are in [proto/chorus/tutti.proto](./proto/chorus/tutti.proto).
+Listed features can be configured per S3 user and per bucket with [management CLI](./tools/tuttictl), [REST](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/clyso/chorus/refs/heads/main/proto/gen/openapi/chorus/chorus.swagger.json)/[gRPC](./proto/chorus/chorus.proto) API, or [WebUI](./ui/). The Tutti additions to the API are in [proto/chorus/tutti.proto](./proto/chorus/tutti.proto).
 
 ## Components
 [Chorus S3 Proxy](./service/proxy) service responsible for routing S3 requests and capturing data change events.
@@ -49,7 +52,7 @@ Communication between Proxy and Worker is done over work queue.
 For more details, see:
 - [Proxy](./service/proxy)
 - [Worker](./service/worker)
-- [Management CLI](./tools/chorctl)
+- [Management CLI](./tools/tuttictl)
 - [Web UI](./ui)
 - [Standalone](./service/standalone) - all-in-one binary. Local playground with zero dependencies.
 
@@ -163,11 +166,11 @@ Steps to add new API:
 2. Add corresponding mapping to [proto/http.yaml](./proto/http.yaml)
 3. Run `make proto-gen` to generate go client, server, and openapi definitions to [proto/gen](./proto/gen) directory.
 4. Implement new service or endpoint in [pkg/api](./pkg/api/)
-5. Support new API in [chorctl](./tools/chorctl) and [WebUI](./ui) clients.
+5. Support new API in [tuttictl](./tools/tuttictl) and [WebUI](./ui) clients.
 
 ## Relationship to Chorus
 
-Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH. Component names (`chorctl`, the `chorus` all-in-one binary, the `chorus.*` protobuf package) are unchanged to stay wire compatible with Chorus. Upstream documentation at [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview) applies to everything Tutti does not change; the differences are listed in [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md).
+Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH. Component names (`tuttictl`, the `chorus` all-in-one binary, the `chorus.*` protobuf package) are unchanged to stay wire compatible with Chorus. Upstream documentation at [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview) applies to everything Tutti does not change; the differences are listed in [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md).
 
 ## License
 

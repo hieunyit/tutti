@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-  import { NDropdown, NModal } from 'naive-ui';
+  import { NButton, NDropdown, NModal } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, h, ref } from 'vue';
   import { useRouter } from 'vue-router';
@@ -33,6 +33,7 @@
   const { username, role } = storeToRefs(auth);
   const isLoggingOut = ref(false);
   const showPassword = ref(false);
+  const showConfigNotice = ref(false);
 
   const roleLabel = computed(() =>
     role.value === AuthRole.ADMIN ? t('roleNameAdmin') : t('roleNameViewer'),
@@ -66,7 +67,6 @@
     {
       key: 'password',
       label: t('changePassword'),
-      disabled: auth.source !== 'managed',
     },
     { key: 'logout', label: t('logout'), disabled: isLoggingOut.value },
   ]);
@@ -83,7 +83,13 @@
   }
 
   function handleSelect(key: string) {
-    if (key === 'password') showPassword.value = true;
+    if (key === 'password') {
+      if (auth.source === 'config') {
+        showConfigNotice.value = true;
+      } else {
+        showPassword.value = true;
+      }
+    }
 
     if (key === 'logout') {
       handleLogout();
@@ -122,6 +128,29 @@
       v-if="showPassword"
       @changed="showPassword = false"
     />
+  </NModal>
+  <NModal
+    v-model:show="showConfigNotice"
+    preset="card"
+    :title="t('changePassword')"
+    style="width: 480px; max-width: 94vw"
+  >
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <p style="margin: 0; line-height: 1.5">
+        Account <strong>{{ username }}</strong> is defined in the static server configuration file (<code>worker config.yaml</code>).
+      </p>
+      <p style="margin: 0; font-size: 13px; color: var(--tt-text-3)">
+        Passwords for static configuration accounts cannot be modified via the web UI. To change this password, update the bcrypt password hash directly in the server configuration file and restart the worker.
+      </p>
+      <div style="display: flex; justify-content: flex-end; margin-top: 6px">
+        <NButton
+          type="primary"
+          @click="showConfigNotice = false"
+        >
+          {{ t('close') || 'Close' }}
+        </NButton>
+      </div>
+    </div>
   </NModal>
 </template>
 

@@ -40,11 +40,13 @@
   const entries = computed<SearchableItem<NavItem>[]>(() =>
     NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value).flatMap(
       (group) =>
-        group.items.map((item) => ({
-          item,
-          label: tGlobal(item.routeName),
-          group: t(`group.${group.id}`),
-        })),
+        group.items
+          .filter((item) => !item.adminOnly || isAdmin.value)
+          .map((item) => ({
+            item,
+            label: tGlobal(item.routeName),
+            group: t(`group.${group.id}`),
+          })),
     ),
   );
   const results = computed(() => filterSearchItems(query.value, entries.value));

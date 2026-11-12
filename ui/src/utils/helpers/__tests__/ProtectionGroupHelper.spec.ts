@@ -511,3 +511,34 @@ describe('ProtectionGroupHelper.parseWriter', () => {
     });
   });
 });
+
+describe('ProtectionGroupHelper.scopeKind', () => {
+  it('identifies bucket-level groups', () => {
+    expect(
+      ProtectionGroupHelper.scopeKind(
+        baseGroup({ user: 'alice', buckets: ['b1', 'b2'] }),
+      ),
+    ).toBe('buckets');
+    expect(
+      ProtectionGroupHelper.scopeKind(
+        baseGroup({ user: '', buckets: ['b1'] }),
+      ),
+    ).toBe('buckets');
+  });
+
+  it('identifies user-level groups', () => {
+    expect(
+      ProtectionGroupHelper.scopeKind(
+        baseGroup({ user: 'alice', buckets: [] }),
+      ),
+    ).toBe('user');
+  });
+
+  it('identifies storage-level groups', () => {
+    expect(
+      ProtectionGroupHelper.scopeKind(
+        baseGroup({ user: '', buckets: [] }),
+      ),
+    ).toBe('storage');
+  });
+});

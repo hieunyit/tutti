@@ -382,3 +382,13 @@ func Test_queueService_StopPurge(t *testing.T) {
 	r.NoError(err)
 	r.False(paused, "queue created after purge is not paused")
 }
+
+func TestQueuePriority(t *testing.T) {
+	r := require.New(t)
+	eventPriority := Priority[string(QueueEventsPrefix)+":*"]
+	copyPriority := Priority[string(QueueMigrateCopyObjectPrefix)+":*"]
+	listPriority := Priority[string(QueueMigrateListObjectsPrefix)+":*"]
+
+	r.Greater(eventPriority, copyPriority, "live replication events must have strictly higher priority than bulk copy")
+	r.Greater(copyPriority, listPriority, "bulk copy must have strictly higher priority than bulk listing")
+}

@@ -134,6 +134,12 @@ service Resilience {
 
   // ListAuditLog returns control-plane audit log entries matching the filter (newest first).
   rpc ListAuditLog(ListAuditLogRequest) returns (AuditLogList);
+
+  // GetSystemSettings returns dynamic cluster features, worker performance tuning, and operational parameters.
+  rpc GetSystemSettings(google.protobuf.Empty) returns (SystemSettings);
+
+  // UpdateSystemSettings updates dynamic cluster features, worker performance tuning, and operational parameters.
+  rpc UpdateSystemSettings(UpdateSystemSettingsRequest) returns (SystemSettings);
 }
 
 message CreateProxyAccountRequest {
@@ -887,3 +893,54 @@ message AuditLogList {
   bool enabled = 2;
   string backend = 3;
 }
+
+message SystemFeaturesSettings {
+  bool tagging = 1;
+  bool acl = 2;
+  bool lifecycle = 3;
+  bool policy = 4;
+  bool preserve_acl_grants = 5;
+  bool versioning = 6;
+}
+
+message SystemWorkerSettings {
+  int32 concurrency = 1;
+  google.protobuf.Duration shutdown_timeout = 2;
+  google.protobuf.Duration queue_update_interval = 3;
+  google.protobuf.Duration task_check_interval = 4;
+  google.protobuf.Duration delayed_task_check_interval = 5;
+  google.protobuf.Duration swift_retry_interval = 6;
+  google.protobuf.Duration pause_retry_interval = 7;
+  google.protobuf.Duration switch_retry_interval = 8;
+  int32 backlog_high_watermark = 9;
+  int32 backlog_low_watermark = 10;
+  int64 bandwidth_limit_bytes = 11;
+  int64 buffer_budget_bytes = 12;
+}
+
+message SystemLockSettings {
+  google.protobuf.Duration overlap = 1;
+}
+
+message SystemWebhookSettings {
+  bool enabled = 1;
+  string base_url = 2;
+}
+
+message SystemSettings {
+  int64 version = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  SystemFeaturesSettings features = 3;
+  SystemWorkerSettings worker = 4;
+  SystemLockSettings lock = 5;
+  SystemWebhookSettings webhook = 6;
+}
+
+message UpdateSystemSettingsRequest {
+  optional int64 expected_version = 1;
+  SystemFeaturesSettings features = 2;
+  SystemWorkerSettings worker = 3;
+  SystemLockSettings lock = 4;
+  SystemWebhookSettings webhook = 5;
+}
+

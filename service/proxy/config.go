@@ -253,7 +253,7 @@ func (c *Config) Validate() error {
 }
 
 func ValidateAuth(storage Storages, auth *auth.Config) error {
-	if len(storage.S3Storages()) == 0 {
+	if len(storage.S3Storages()) == 0 && !storage.DynamicCredentials.Enabled {
 		return nil
 	}
 	// S3 storages set: validate auth config
@@ -264,13 +264,13 @@ func ValidateAuth(storage Storages, auth *auth.Config) error {
 		return err
 	}
 	if auth.UseStorage != "" {
-		if _, ok := storage.Storages[auth.UseStorage]; !ok {
+		if _, ok := storage.Storages[auth.UseStorage]; !ok && !storage.DynamicCredentials.Enabled {
 			return fmt.Errorf("proxy config: auth UseStorage points to unknown storage")
 		}
 	}
 	if len(auth.Custom) != 0 {
 		for user := range auth.Custom {
-			if err := storage.Exists(storage.Main, user); err != nil {
+			if err := storage.Exists(storage.Main, user); err != nil && !storage.DynamicCredentials.Enabled {
 				return fmt.Errorf("proxy config: auth custom credentials unknown user %q", user)
 			}
 		}

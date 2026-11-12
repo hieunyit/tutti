@@ -262,6 +262,8 @@ func queue(ctx context.Context, pipe redis.Pipeliner, op RedisOp) error {
 		pipe.HIncrBy(ctx, op.Key, op.Field, 1)
 	case OpSnapshot:
 		pipe.Eval(ctx, bumpScript, []string{SnapshotVersionKey}, SnapshotChannel)
+	case OpPublish:
+		pipe.Publish(ctx, op.Key, op.Value)
 	default:
 		return fmt.Errorf("unknown outbox op %q", op.Op)
 	}

@@ -66,7 +66,10 @@ func CheckWebhookToken(ctx context.Context, token string) bool {
 	return ok
 }
 
-func checkWebhook(ctx context.Context, method, token string) error {
+func checkWebhook(ctx context.Context, method, token string, requireToken bool) error {
+	if token == "" && requireToken && strings.HasPrefix(method, webhookMethodPrefix) {
+		return status.Error(codes.Unauthenticated, "webhook api is not configured: set api.webhook.token")
+	}
 	if token == "" || !strings.HasPrefix(method, webhookMethodPrefix) {
 		return nil
 	}
@@ -76,16 +79,30 @@ func checkWebhook(ctx context.Context, method, token string) error {
 	return nil
 }
 
-// WebhookTokenInterceptors enforce token on /chorus.Webhook/* calls. With an empty token they are no-ops.
-func WebhookTokenInterceptors(token string) (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
+// WebhookRequireToken makes the interceptors reject every /chorus.Webhook/* call when no token is configured
+// (fail closed) instead of being no-ops.
+func WebhookRequireToken() WebhookOption { return func(o *webhookOpts) { o.require = true } }
+
+type webhookOpts struct{ require bool }
+
+// WebhookOption configures WebhookTokenInterceptors.
+type WebhookOption func(*webhookOpts)
+
+// WebhookTokenInterceptors enforce token on /chorus.Webhook/* calls. With an empty token they are no-ops unless
+// WebhookRequireToken is given.
+func WebhookTokenInterceptors(token string, opts ...WebhookOption) (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
+	var o webhookOpts
+	for _, f := range opts {
+		f(&o)
+	}
 	u := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, h grpc.UnaryHandler) (any, error) {
-		if err := checkWebhook(ctx, info.FullMethod, token); err != nil {
+		if err := checkWebhook(ctx, info.FullMethod, token, o.require); err != nil {
 			return nil, err
 		}
 		return h(ctx, req)
 	}
 	s := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, h grpc.StreamHandler) error {
-		if err := checkWebhook(ss.Context(), info.FullMethod, token); err != nil {
+		if err := checkWebhook(ss.Context(), info.FullMethod, token, o.require); err != nil {
 			return err
 		}
 		return h(srv, ss)

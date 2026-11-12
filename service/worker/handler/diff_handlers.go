@@ -29,6 +29,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
@@ -259,6 +260,7 @@ type DiffSvc struct {
 	fixRemoveSetStore *store.DiffFixRemoveSetStore
 	clients           objstore.Clients
 	queueSvc          tasks.QueueService
+	reconcileSF       singleflight.Group
 }
 
 func NewDiffSvc(redisClient redis.Cmdable, clients objstore.Clients, queueSvc tasks.QueueService) *DiffSvc {
@@ -399,6 +401,11 @@ func (r *DiffSvc) DeleteDiff(ctx context.Context, id entity.DiffID) error {
 		return fmt.Errorf("unable to make tokens out of diff id: %w", err)
 	}
 
+	if r.client != nil && len(tokens) > 0 {
+		_ = r.client.Del(ctx, "cc:reconciled:"+tokens[0], "cc:fix:error:"+tokens[0]).Err()
+		_ = r.client.Incr(ctx, "cc:diff:gen:"+tokens[0]).Err()
+	}
+
 	queues := []string{tasks.DiffQueue(id), tasks.DiffFixQueue(id)}
 	if err := r.queueSvc.Stop(ctx, queues...); err != nil {
 		return fmt.Errorf("unable to stop diff queues: %w", err)
@@ -527,7 +534,11 @@ func (r *DiffSvc) GetDiffStatus(ctx context.Context, id entity.DiffID) (entity.D
 func (r *DiffSvc) GetDiffReportEntries(ctx context.Context, id entity.DiffID, cursor uint64, pageSize uint64) (entity.DiffReportEntryPage, error) {
 	settings, _ := r.settingsStore.Get(ctx, id)
 	if !settings.IgnoreEtags {
-		_ = r.ReconcileInconclusiveMultipart(ctx, id, settings)
+		diffQueue := tasks.DiffQueue(id)
+		diffQueueStats, err := r.queueSvc.Stats(ctx, diffQueue)
+		if err == nil && diffQueueStats.Unprocessed == 0 {
+			_ = r.ReconcileInconclusiveMultipart(ctx, id, settings)
+		}
 	}
 
 	tokens, err := store.DiffIDToTokensConverter(id)
@@ -585,6 +596,8 @@ func isMultipartETag(etag string) bool {
 // compared (e.g. multipart upload with '-' part suffix vs singlepart upload). If all locations have
 // matching sizes and content SHA-256 digests, the entries represent identical content and are pruned
 // from the diff set so false inconsistencies are not reported.
+// Singleflight deduplicates concurrent reconciliation runs, generation keys ensure fresh runs on restart,
+// and filtering restricts in-memory buffers to multipart discrepancies (O(1) memory for standard diffs).
 func (r *DiffSvc) ReconcileInconclusiveMultipart(ctx context.Context, id entity.DiffID, settings entity.DiffSettings) error {
 	if r.clients == nil || r.client == nil || len(id.Locations) < 2 {
 		return nil
@@ -595,8 +608,46 @@ func (r *DiffSvc) ReconcileInconclusiveMultipart(ctx context.Context, id entity.
 		return err
 	}
 
-	reconciledKey := "cc:reconciled:" + tokens[0]
+	_, err, _ = r.reconcileSF.Do(tokens[0], func() (any, error) {
+		return nil, r.reconcileInconclusiveMultipartInner(ctx, id, settings, tokens)
+	})
+	return err
+}
+
+func (r *DiffSvc) reconcileInconclusiveMultipartInner(ctx context.Context, id entity.DiffID, settings entity.DiffSettings, tokens []string) error {
+	gen, _ := r.client.Get(ctx, "cc:diff:gen:"+tokens[0]).Int64()
+	reconciledKey := fmt.Sprintf("cc:reconciled:%s:%d", tokens[0], gen)
 	if val, _ := r.client.Get(ctx, reconciledKey).Result(); val == "1" {
+		return nil
+	}
+
+	// First pass: scan IDs to see if any multipart ETags exist across discrepancies.
+	// Only objects that have at least one multipart ETag need to be considered.
+	// This avoids allocating candidate maps and querying object sets for buckets where
+	// discrepancies are all standard single-PUT objects (O(1) memory for standard diffs).
+	multipartObjects := make(map[string]struct{})
+	pager := store.NewPager(0, 1000)
+	for {
+		idPage, err := r.setStore.GetIDs(ctx, pager, tokens...)
+		if err != nil {
+			return err
+		}
+		for _, sid := range idPage.Entries {
+			if isMultipartETag(sid.Etag) {
+				multipartObjects[sid.Object] = struct{}{}
+			}
+		}
+		if idPage.Next == 0 {
+			break
+		}
+		pager.From = idPage.Next
+	}
+
+	if len(multipartObjects) == 0 {
+		currentGen, _ := r.client.Get(ctx, "cc:diff:gen:"+tokens[0]).Int64()
+		if currentGen == gen {
+			_ = r.client.Set(ctx, reconciledKey, "1", 24*time.Hour).Err()
+		}
 		return nil
 	}
 
@@ -608,25 +659,32 @@ func (r *DiffSvc) ReconcileInconclusiveMultipart(ctx context.Context, id entity.
 	}
 
 	candidates := map[string]*candInfo{}
-	pager := store.NewPager(0, 500)
+	pager = store.NewPager(0, 500)
 	for {
 		idPage, err := r.setStore.GetIDs(ctx, pager, tokens...)
 		if err != nil {
 			return err
 		}
 
-		if len(idPage.Entries) > 0 {
+		var filteredEntries []entity.DiffSetID
+		for _, sid := range idPage.Entries {
+			if _, ok := multipartObjects[sid.Object]; ok {
+				filteredEntries = append(filteredEntries, sid)
+			}
+		}
+
+		if len(filteredEntries) > 0 {
 			exec := r.setStore.GroupExecutor()
 			execSetStore := r.setStore.WithExecutor(exec)
-			opResults := make([]store.OperationResult[[]entity.DiffSetEntry], 0, len(idPage.Entries))
-			for _, sid := range idPage.Entries {
+			opResults := make([]store.OperationResult[[]entity.DiffSetEntry], 0, len(filteredEntries))
+			for _, sid := range filteredEntries {
 				opResults = append(opResults, execSetStore.GetOp(ctx, sid))
 			}
 			if err := exec.Exec(ctx); err != nil {
 				return err
 			}
 
-			for idx, sid := range idPage.Entries {
+			for idx, sid := range filteredEntries {
 				objKey := sid.Object + "\x00" + strconv.FormatUint(sid.VersionIndex, 10)
 				cand := candidates[objKey]
 				if cand == nil {
@@ -711,13 +769,22 @@ func (r *DiffSvc) ReconcileInconclusiveMultipart(ctx context.Context, id entity.
 		_ = exec.Exec(ctx)
 	}
 
-	_ = r.client.Set(ctx, reconciledKey, "1", 24*time.Hour).Err()
+	currentGen, _ := r.client.Get(ctx, "cc:diff:gen:"+tokens[0]).Int64()
+	if currentGen == gen {
+		_ = r.client.Set(ctx, reconciledKey, "1", 24*time.Hour).Err()
+	}
 	return nil
 }
 
 func (r *DiffSvc) StartDiff(ctx context.Context, id entity.DiffID, settings entity.DiffSettings) error {
 	if err := r.RegisterDiff(ctx, id, settings); err != nil {
 		return fmt.Errorf("unable to register diff: %w", err)
+	}
+
+	tokens, err := store.DiffIDToTokensConverter(id)
+	if err == nil && len(tokens) > 0 && r.client != nil {
+		_ = r.client.Incr(ctx, "cc:diff:gen:"+tokens[0]).Err()
+		_ = r.client.Del(ctx, "cc:reconciled:"+tokens[0], "cc:fix:error:"+tokens[0]).Err()
 	}
 
 	taskLocations := make([]tasks.MigrateLocation, 0, len(id.Locations))
@@ -765,13 +832,24 @@ func (r *DiffSvc) FixDiff(ctx context.Context, id entity.DiffID, source entity.D
 		return fmt.Errorf("unable to get diff status: %w", err)
 	}
 	if !status.Check.Queue.Ready {
-		return errors.New("diff is not ready")
+		return fmt.Errorf("%w: diff is not ready", dom.ErrFailedPrecondition)
 	}
 	if status.Check.Consistent {
-		return errors.New("storages are consistent, nothing to do")
+		return fmt.Errorf("%w: storages are consistent, nothing to do", dom.ErrFailedPrecondition)
 	}
 	if status.FixQueue != nil {
-		return errors.New("diff fix already running")
+		if !status.FixQueue.Ready {
+			return fmt.Errorf("%w: diff fix already running", dom.ErrFailedPrecondition)
+		}
+		_ = r.queueSvc.Purge(ctx, tasks.DiffFixQueue(id))
+		tokens, err := store.DiffIDToTokensConverter(id)
+		if err == nil && len(tokens) > 0 && r.client != nil {
+			exec := r.idStore.GroupExecutor()
+			_ = r.fixCopySetStore.WithExecutor(exec).DropIDsOp(ctx, tokens...)
+			_ = r.fixRemoveSetStore.WithExecutor(exec).DropIDsOp(ctx, tokens...)
+			_ = exec.Exec(ctx)
+			_ = r.client.Del(ctx, "cc:fix:error:"+tokens[0]).Err()
+		}
 	}
 
 	sourceIdx := -1
@@ -787,7 +865,7 @@ func (r *DiffSvc) FixDiff(ctx context.Context, id entity.DiffID, source entity.D
 	}
 
 	if sourceIdx < 0 {
-		return errors.New("unable to determine source index")
+		return fmt.Errorf("%w: unable to determine source index", dom.ErrFailedPrecondition)
 	}
 
 	task := tasks.DiffFixCollectObjectsPayload{
@@ -931,6 +1009,9 @@ func (r *DiffSvc) CollectObjectsToFix(ctx context.Context, diffFixID entity.Diff
 		}
 
 		if hasRemove {
+			if r.client != nil && len(tokens) > 0 {
+				_ = r.client.Set(ctx, "cc:fix:error:"+tokens[0], "destructive diff fix requires fenced writes", 24*time.Hour).Err()
+			}
 			return fmt.Errorf("%w: destructive diff fix requires fenced writes: %w",
 				dom.ErrFailedPrecondition, asynq.SkipRetry)
 		}
@@ -963,6 +1044,10 @@ func (r *DiffSvc) RemoveDiffObjects(ctx context.Context, id entity.DiffFixID, lo
 		return nil
 	}
 
+	tokens, err := store.DiffIDToTokensConverter(id.DiffID)
+	if err == nil && len(tokens) > 0 && r.client != nil {
+		_ = r.client.Set(ctx, "cc:fix:error:"+tokens[0], "destructive diff fix requires fenced writes", 24*time.Hour).Err()
+	}
 	return fmt.Errorf("%w: destructive diff fix requires fenced writes: %w", dom.ErrFailedPrecondition, asynq.SkipRetry)
 }
 
@@ -987,30 +1072,26 @@ func (r *DiffSvc) EnsureObjectsDeleted(ctx context.Context, id entity.DiffFixID,
 			return fmt.Errorf("object %s is still present", object)
 		}
 
-		// TODO 1. add info about delete marker to stat
-		// 2. use stat instead of exist check
-		// No point to check here until fix is applied to Ceph
-		// if !exists && versioned {
-		// }
-
 		if _, err := r.fixRemoveSetStore.Remove(ctx, id, object); err != nil {
 			return fmt.Errorf("unable to remove object from fix set: %w", err)
 		}
 	}
 
-	objectsToCopy, err := r.fixCopySetStore.Get(ctx, id)
+	// Stream objectsToCopy in bounded batches to prevent unbounded memory consumption
+	err = r.fixCopySetStore.ForEach(ctx, id, 500, func(batch []entity.DiffFixCopyObject) error {
+		for _, object := range batch {
+			payload, err := makePayload(object.Name, object.IsDir)
+			if err != nil {
+				return fmt.Errorf("unable to make payload: %w", err)
+			}
+			if err := r.queueSvc.EnqueueTask(ctx, payload); err != nil {
+				return fmt.Errorf("unable to enqueue diff copy task: %w", err)
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("unable to get objects to copy: %w", err)
-	}
-
-	for _, object := range objectsToCopy {
-		payload, err := makePayload(object.Name, object.IsDir)
-		if err != nil {
-			return fmt.Errorf("unable to make payload: %w", err)
-		}
-		if err := r.queueSvc.EnqueueTask(ctx, payload); err != nil {
-			return fmt.Errorf("unable to enqueue diff copy task: %w", err)
-		}
+		return fmt.Errorf("unable to process objects to copy: %w", err)
 	}
 
 	if _, err := r.fixRemoveSetStore.Drop(ctx, id); err != nil {

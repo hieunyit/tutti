@@ -24,7 +24,7 @@ features:
   lifecycle: false # sync bucket Lifecycle
   policy: false # sync bucket Policies
 # Automatic failover (demo). Proxies act on failover policies only when enabled is true.
-# Failover also needs an enabled failover policy for the source storage (set via the Resilience API / chorctl / UI /failover).
+# Failover also needs an enabled failover policy for the source storage (set via the Resilience API / tuttictl / UI /failover).
 failover:
   enabled: true
   checkInterval: 5s # how often the controller evaluates conditions

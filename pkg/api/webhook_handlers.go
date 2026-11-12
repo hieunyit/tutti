@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
@@ -31,6 +33,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
 	"github.com/hieunyit/tutti/pkg/replication"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
@@ -59,6 +62,9 @@ type webhookHandlers struct {
 }
 
 func (h *webhookHandlers) SwiftEvents(ctx context.Context, req *pb.SwiftEventsRequest) (*emptypb.Empty, error) {
+	if !systemsettings.Current().Webhook.Enabled {
+		return nil, status.Error(codes.Unavailable, "webhook is disabled")
+	}
 	logger := zerolog.Ctx(ctx)
 
 	storType, ok := h.credsSvc.Storages()[req.Storage]
@@ -166,6 +172,9 @@ func swiftEventToTask(evt *pb.SwiftEvent) (tasks.ReplicationTask, error) {
 }
 
 func (h *webhookHandlers) S3Notifications(ctx context.Context, req *pb.S3NotificationRequest) (*emptypb.Empty, error) {
+	if !systemsettings.Current().Webhook.Enabled {
+		return nil, status.Error(codes.Unavailable, "webhook is disabled")
+	}
 	logger := zerolog.Ctx(ctx)
 
 	storType, ok := h.credsSvc.Storages()[req.Storage]

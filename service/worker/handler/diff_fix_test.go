@@ -210,3 +210,101 @@ func TestDiff_MultipartReconciliation(t *testing.T) {
 	require.False(t, status2.Check.Consistent, "genuinely differing content must remain inconsistent")
 }
 
+func TestDiff_MultipartReconciliation_RestartInvalidatesCache(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+
+	ctx := t.Context()
+	locSource := entity.DiffLocation{Storage: "primary", Bucket: "b1"}
+	locDest := entity.DiffLocation{Storage: "replica", Bucket: "b2"}
+	diffID := entity.DiffID{Locations: []entity.DiffLocation{locSource, locDest}}
+
+	contentV1 := []byte("v1-content-data")
+	clients := &testClients{
+		storages: map[string]*testCommon{
+			"primary": {files: map[string][]byte{"b1/obj-mp": contentV1}},
+			"replica": {files: map[string][]byte{"b2/obj-mp": contentV1}},
+		},
+	}
+	qMock := &tasks.QueueServiceMock{
+		Queues: map[string]int{tasks.DiffQueue(diffID): 0},
+	}
+
+	diffSvc := NewDiffSvc(rc, clients, qMock)
+	settings := entity.NewDiffSettings("alice", false, false, false)
+	require.NoError(t, diffSvc.StartDiff(ctx, diffID, settings))
+
+	setStore := store.NewDiffSetStore(rc)
+	sizeV1 := uint64(len(contentV1))
+	id1 := entity.NewEtagDiffSetID(diffID, "obj-mp", sizeV1, "etag-v1-1")
+	id2 := entity.NewEtagDiffSetID(diffID, "obj-mp", sizeV1, "etag-v1-single")
+	require.NoError(t, setStore.Add(ctx, id1, entity.NewDiffSetEntry(locSource, false), 2))
+	require.NoError(t, setStore.Add(ctx, id2, entity.NewDiffSetEntry(locDest, false), 2))
+
+	status, err := diffSvc.GetDiffStatus(ctx, diffID)
+	require.NoError(t, err)
+	require.True(t, status.Check.Consistent, "v1 should reconcile as consistent")
+
+	// Update both storages to contentV2
+	contentV2 := []byte("v2-new-content-longer-data")
+	clients.storages["primary"].files["b1/obj-mp"] = contentV2
+	clients.storages["replica"].files["b2/obj-mp"] = contentV2
+
+	// Restart diff
+	require.NoError(t, diffSvc.RestartDiff(ctx, diffID))
+	qMock.Queues[tasks.DiffQueue(diffID)] = 0
+
+	// Re-add new diff discrepancies for contentV2
+	sizeV2 := uint64(len(contentV2))
+	id3 := entity.NewEtagDiffSetID(diffID, "obj-mp", sizeV2, "etag-v2-1")
+	id4 := entity.NewEtagDiffSetID(diffID, "obj-mp", sizeV2, "etag-v2-single")
+	require.NoError(t, setStore.Add(ctx, id3, entity.NewDiffSetEntry(locSource, false), 2))
+	require.NoError(t, setStore.Add(ctx, id4, entity.NewDiffSetEntry(locDest, false), 2))
+
+	statusAfterRestart, err := diffSvc.GetDiffStatus(ctx, diffID)
+	require.NoError(t, err)
+	require.True(t, statusAfterRestart.Check.Consistent, "after restart, new generation must reconcile freshly and not report false diff")
+}
+
+func TestDiffFix_Lifecycle_ArchivedQueueDoesNotHang(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rc.Close() })
+
+	ctx := t.Context()
+	locSource := entity.DiffLocation{Storage: "primary", Bucket: "b1"}
+	locDest := entity.DiffLocation{Storage: "replica", Bucket: "b2"}
+	diffID := entity.DiffID{Locations: []entity.DiffLocation{locSource, locDest}}
+
+	clients := &testClients{
+		storages: map[string]*testCommon{
+			"primary": {files: map[string][]byte{"b1/obj": []byte("src")}},
+			"replica": {files: map[string][]byte{"b2/obj": []byte("dst")}},
+		},
+	}
+	qMock := &tasks.QueueServiceMock{
+		Queues: map[string]int{
+			tasks.DiffQueue(diffID):    0,
+			tasks.DiffFixQueue(diffID): 0, // 0 unprocessed (archived task)
+		},
+	}
+
+	diffSvc := NewDiffSvc(rc, clients, qMock)
+	settings := entity.NewDiffSettings("alice", false, false, false)
+	require.NoError(t, diffSvc.StartDiff(ctx, diffID, settings))
+
+	setStore := store.NewDiffSetStore(rc)
+	idDiff := entity.NewEtagDiffSetID(diffID, "obj", 3, "etag-diff")
+	require.NoError(t, setStore.Add(ctx, idDiff, entity.NewDiffSetEntry(locSource, false), 2))
+
+	status, err := diffSvc.GetDiffStatus(ctx, diffID)
+	require.NoError(t, err)
+	require.False(t, status.Check.Consistent)
+	require.NotNil(t, status.FixQueue)
+	require.True(t, status.FixQueue.Ready, "fix queue with 0 active tasks must be ready, not hanging")
+
+	// Calling FixDiff again when previous fix is ready should purge previous queue and succeed
+	require.NoError(t, diffSvc.FixDiff(ctx, diffID, locSource, dom.S3))
+}
+

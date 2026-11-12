@@ -134,6 +134,7 @@ func fromCPUser(u controlplane.ConsoleUser) ManagedUser {
 
 // Get returns the user or dom.ErrNotFound.
 func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, error) {
+	var pgErr error
 	if s.cp != nil {
 		if u, ok := s.cached(username); ok {
 			return u, nil
@@ -147,6 +148,7 @@ func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, erro
 		if !controlplane.IsUnavailable(err) || s.rdb == nil {
 			return ManagedUser{}, err
 		}
+		pgErr = err
 		zerolog.Ctx(ctx).Warn().Err(err).Str("username", username).Msg("console users: PostgreSQL get failed, falling back to Redis")
 	}
 	raw, err := s.rdb.HGet(ctx, ConsoleUsersKey, username).Result()
@@ -161,6 +163,11 @@ func (s *UserStore) Get(ctx context.Context, username string) (ManagedUser, erro
 		return ManagedUser{}, fmt.Errorf("console users: decode %q: %w", username, err)
 	}
 	u.Username = username
+	// The Redis projection can be stale, so a revoked/demoted admin could be revived from it.
+	// Fail closed for admins while PostgreSQL is unavailable; other users may fall back.
+	if pgErr != nil && u.Role == RoleAdmin {
+		return ManagedUser{}, fmt.Errorf("console users: admin %q not served from stale Redis projection while PostgreSQL is unavailable: %w", username, pgErr)
+	}
 	return u, nil
 }
 

@@ -26,10 +26,10 @@
   const {
     isForAllBuckets,
     isBucketsAlreadyRequested,
-    selectedUser,
     validator,
   } = storeToRefs(useTuttiAddReplicationStore());
-  const { initBucketsList, getBucketsList } = useTuttiAddReplicationStore();
+  const { initBucketsList, getBucketsList } =
+    useTuttiAddReplicationStore();
 
   const { t } = useI18n({
     messages: i18nAddReplication,
@@ -70,7 +70,7 @@
           name="basic-demo"
           @change="isForAllBuckets = true"
         >
-          {{ t('bucketsAllOption', { user: selectedUser }) }}
+          {{ t('bucketsAllOption') }}
         </CRadio>
       </div>
 

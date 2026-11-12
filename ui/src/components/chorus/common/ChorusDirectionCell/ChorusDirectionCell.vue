@@ -70,18 +70,21 @@
   @use '@/styles/utils' as utils;
 
   .chorus-direction-cell {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: utils.unit(2);
+    min-width: 0;
+    max-width: 100%;
 
     @include utils.mobile {
       flex-direction: column;
     }
 
     &__location {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: utils.unit(1);
+      min-width: 0;
     }
 
     &__arrow {

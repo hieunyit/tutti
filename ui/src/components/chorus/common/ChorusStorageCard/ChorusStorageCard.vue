@@ -18,7 +18,6 @@
   import {
     CDescriptionItem,
     CDescriptionList,
-    CTag,
   } from '@clyso/clyso-ui-kit';
   import { computed } from 'vue';
   import type { RouteLocationRaw } from 'vue-router';
@@ -104,15 +103,6 @@
       <div class="chorus-storage-card__header">
         <div class="chorus-storage-card__header-left">
           <ChorusStorageProvider :storage-provider="storage.provider" />
-        </div>
-        <div class="chorus-storage-card__header-right">
-          <CTag
-            size="tiny"
-            class="chorus-storage-card__storage-tag"
-            :type="storage.isMain ? 'success' : 'warning'"
-          >
-            {{ $t(storage.isMain ? 'mainStorage' : 'followerStorage') }}
-          </CTag>
         </div>
       </div>
 

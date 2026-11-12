@@ -19,6 +19,9 @@ const (
 	KeyFailoverPolicies    = "tutti:failover-policies"
 	KeyFailoverEventPrefix = "tutti:failover:"
 	KeyProtectionGroups    = "tutti:protection:groups"
+	KeySystemSettings      = "tutti:system-settings"
+	KeySystemSettingsVersion = "tutti:system-settings:version"
+	SystemSettingsChannel  = "tutti:system-settings:changed"
 
 	// SnapshotVersionKey and SnapshotChannel are pkg/policy.SnapshotVersionKey / SnapshotChannel.
 	SnapshotVersionKey = "tutti:cfg:version"
@@ -41,6 +44,7 @@ const (
 	OpIncr     = "incr"     // INCR key (version counters)
 	OpHIncr    = "hincr"    // HINCRBY key field 1 (version field of the dynamic credentials hash)
 	OpSnapshot = "snapshot" // INCR tutti:cfg:version; PUBLISH tutti:cfg:changed <version> (proxy snapshot)
+	OpPublish  = "publish"  // PUBLISH key value
 )
 
 // RedisOp is one projection step stored in an outbox entry.

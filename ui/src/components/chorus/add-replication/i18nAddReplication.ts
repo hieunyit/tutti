@@ -19,7 +19,7 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     pageDescription:
-      'Choose a source and destination storage, a user and the buckets to replicate. Existing objects are copied first, then changes are kept in sync.',
+      'Choose a source and destination storage and the buckets to replicate. Existing objects are copied first, then changes are kept in sync.',
     backToReplication: 'Replication',
     breadcrumbAddReplication: 'Add Replication',
     addReplicationTitle: 'Add replication',
@@ -27,16 +27,13 @@ export default <I18nMessages>{
     step1Description: 'Select storage to replicate from',
     step2Title: 'Destination Storage',
     step2Description: 'Select storage to replicate to',
-    step3Title: 'User',
-    step3Description: 'Select the user whose buckets are replicated',
-    step4Title: 'Buckets',
-    step4Description: 'Select buckets for replication',
+    step3Title: 'Buckets',
+    step3Description: 'Select buckets for replication',
     nextAction: 'Next',
     addReplicationAction: 'Add Replication',
     fromStorageStepTitle: 'Select Source storage for replication:',
     alertTitle: 'Please notice!',
-    alertDescription:
-      'Currently only Main storage can be selected as Source storage.',
+    alertDescription: '',
     toStorageStepTitle: 'Select Destination storage for replication:',
     addReplicationError:
       'An error occurred while preparing the Add Replication form. Please try again.',
@@ -53,7 +50,7 @@ export default <I18nMessages>{
     usersLoadError: 'The user list could not be loaded.',
     bucketsStepTitle: 'Select buckets for replication:',
     bucketsSelectOption: 'Replicate selected buckets',
-    bucketsAllOption: 'Replicate all buckets of {user} (including future ones)',
+    bucketsAllOption: 'Replicate all buckets on source storage (including future ones)',
     columnName: 'Bucket',
     columnStatus: 'Status',
     searchBuckets: 'Search buckets',
@@ -65,7 +62,7 @@ export default <I18nMessages>{
       'An error occurred while processing the list of buckets. Please try again.',
     noResultsTitle: 'No Buckets found',
     noResultsText:
-      'There is no buckets available for replication on {storage} storage for {user} user.',
+      'There are no buckets available for replication on {storage} storage.',
     filterNoResultsTitle: 'No Buckets found',
     filterNoResultsText: 'There is no buckets matching your search query.',
     filterNoResultsAction: 'Reset search',
@@ -77,7 +74,7 @@ export default <I18nMessages>{
       'You are about to create the following Replication:',
     confirmReplicationPositive: 'Create Replication',
     confirmReplicationNegative: 'Cancel',
-    summaryAllBuckets: 'All buckets of {user} (including future ones)',
+    summaryAllBuckets: 'All buckets on {fromStorage} (including future ones)',
     createReplicationSuccess:
       'Replication(s) were successfully created. You should be able to see them at the top of the list.',
     createReplicationError:
@@ -86,7 +83,7 @@ export default <I18nMessages>{
   },
   [I18nLocale.DE]: {
     pageDescription:
-      'Wählen Sie Quell- und Zielspeicher, einen Benutzer und die zu replizierenden Buckets. Vorhandene Objekte werden zuerst kopiert, danach werden Änderungen synchron gehalten.',
+      'Wählen Sie Quell- und Zielspeicher und die zu replizierenden Buckets. Vorhandene Objekte werden zuerst kopiert, danach werden Änderungen synchron gehalten.',
     backToReplication: 'Replikation',
     breadcrumbAddReplication: 'Replikation hinzufügen',
     addReplicationTitle: 'Replikation hinzufügen',
@@ -96,17 +93,13 @@ export default <I18nMessages>{
     step2Title: 'Zielspeicher',
     step2Description:
       'Wählen Sie den Speicher aus, in den repliziert werden soll',
-    step3Title: 'Benutzer',
-    step3Description:
-      'Wählen Sie den Benutzer, dessen Buckets repliziert werden',
-    step4Title: 'Buckets',
-    step4Description: 'Wählen Sie Buckets für die Replikation aus',
+    step3Title: 'Buckets',
+    step3Description: 'Wählen Sie Buckets für die Replikation aus',
     nextAction: 'Weiter',
     addReplicationAction: 'Replikation hinzufügen',
     fromStorageStepTitle: 'Quellspeicher für die Replikation auswählen:',
     alertTitle: 'Bitte beachten!',
-    alertDescription:
-      'Derzeit kann nur der Hauptspeicher als Quellspeicher ausgewählt werden.',
+    alertDescription: '',
     toStorageStepTitle: 'Zielspeicher für die Replikation auswählen:',
     addReplicationError:
       'Beim Vorbereiten des Replikationsformulars ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
@@ -125,7 +118,7 @@ export default <I18nMessages>{
     bucketsStepTitle: 'Buckets für die Replikation auswählen:',
     bucketsSelectOption: 'Ausgewählte Buckets replizieren',
     bucketsAllOption:
-      'Alle Buckets von {user} replizieren (einschließlich zukünftiger)',
+      'Alle Buckets auf dem Quellspeicher replizieren (einschließlich zukünftiger)',
     columnName: 'Bucket',
     columnStatus: 'Status',
     searchBuckets: 'Buckets suchen',
@@ -137,7 +130,7 @@ export default <I18nMessages>{
       'Beim Verarbeiten der Bucket-Liste ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     noResultsTitle: 'Keine Buckets gefunden',
     noResultsText:
-      'Es sind keine Buckets zur Replikation im Speicher {storage} für den Benutzer {user} verfügbar.',
+      'Es sind keine Buckets zur Replikation im Speicher {storage} verfügbar.',
     filterNoResultsTitle: 'Keine Buckets gefunden',
     filterNoResultsText:
       'Es gibt keine Buckets, die Ihrer Suchanfrage entsprechen.',
@@ -150,7 +143,7 @@ export default <I18nMessages>{
       'Sie sind dabei, die folgende Replikation zu erstellen:',
     confirmReplicationPositive: 'Replikation erstellen',
     confirmReplicationNegative: 'Abbrechen',
-    summaryAllBuckets: 'Alle Buckets von {user} (einschließlich zukünftiger)',
+    summaryAllBuckets: 'Alle Buckets auf {fromStorage} (einschließlich zukünftiger)',
     createReplicationSuccess:
       'Die Replikation(en) wurden erfolgreich erstellt. Sie sollten sie oben in der Liste sehen können.',
     createReplicationError:

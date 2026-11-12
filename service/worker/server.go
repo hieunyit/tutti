@@ -20,9 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"sort"
 	"time"
+
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hibiken/asynq"
@@ -53,6 +54,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/rpc"
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/util"
@@ -105,11 +107,13 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 
 	var cpStore controlplane.Store
+	var pgStore *pg.Store
 	var cpPublisher *pg.Publisher
 	if conf.ControlPlane.WithDefaults().Backend == controlplane.BackendPostgres {
 		// Lazy: the worker must start (and serve Redis-backed config) even when PostgreSQL is down at boot. Until the
 		// database answers the store is read-only and reads fall back to the Redis projection; readiness is retried below.
-		pgStore, err := pg.OpenLazy(ctx, conf.ControlPlane)
+		var err error
+		pgStore, err = pg.OpenLazy(ctx, conf.ControlPlane)
 		if err != nil {
 			return fmt.Errorf("unable to open control-plane postgres store: %w", err)
 		}
@@ -139,6 +143,82 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		logger.Info().Bool("read_only", conf.ControlPlane.ReadOnly).Bool("ready", pgStore.Ready()).Msg("control-plane postgres configured")
 	}
 
+	// Load dynamic system and worker settings from database / Redis projection
+	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
+		systemsettings.ApplySettings(*loadedSettings)
+		if loadedSettings.Worker.Concurrency > 0 {
+			conf.Concurrency = loadedSettings.Worker.Concurrency
+		}
+		if loadedSettings.Worker.ShutdownTimeout > 0 {
+			conf.ShutdownTimeout = loadedSettings.Worker.ShutdownTimeout
+		}
+		if loadedSettings.Worker.QueueUpdateInterval > 0 && conf.Worker != nil {
+			conf.Worker.QueueUpdateInterval = loadedSettings.Worker.QueueUpdateInterval
+		}
+		if loadedSettings.Worker.TaskCheckInterval > 0 && conf.Worker != nil {
+			conf.Worker.TaskCheckInterval = loadedSettings.Worker.TaskCheckInterval
+		}
+		if loadedSettings.Worker.DelayedTaskCheckInterval > 0 && conf.Worker != nil {
+			conf.Worker.DelayedTaskCheckInterval = loadedSettings.Worker.DelayedTaskCheckInterval
+		}
+		if loadedSettings.Worker.SwiftRetryInterval > 0 && conf.Worker != nil {
+			conf.Worker.SwiftRetryInterval = loadedSettings.Worker.SwiftRetryInterval
+		}
+		if loadedSettings.Worker.PauseRetryInterval > 0 && conf.Worker != nil {
+			conf.Worker.PauseRetryInterval = loadedSettings.Worker.PauseRetryInterval
+		}
+		if loadedSettings.Worker.SwitchRetryInterval > 0 && conf.Worker != nil {
+			conf.Worker.SwitchRetryInterval = loadedSettings.Worker.SwitchRetryInterval
+		}
+		if loadedSettings.Lock.Overlap > 0 && conf.Lock != nil {
+			conf.Lock.Overlap = loadedSettings.Lock.Overlap
+		}
+		conf.Api.Webhook.Enabled = loadedSettings.Webhook.Enabled
+		conf.Api.Webhook.BaseURL = loadedSettings.Webhook.BaseURL
+		logger.Info().Int("concurrency", conf.Concurrency).Msg("loaded dynamic system & worker settings from database")
+	} else {
+		// Seed database with settings from config.yaml on first boot
+		initialSettings := controlplane.SystemSettings{
+			ID: "system",
+			Features: controlplane.SystemFeaturesSettings{
+				Tagging:           conf.Features.Tagging,
+				ACL:               conf.Features.ACL,
+				Lifecycle:         conf.Features.Lifecycle,
+				Policy:            conf.Features.Policy,
+				PreserveACLGrants: conf.Features.PreserveACLGrants,
+				Versioning:        conf.Features.Versioning,
+			},
+			Worker: controlplane.SystemWorkerSettings{
+				Concurrency:              conf.Concurrency,
+				BacklogHighWatermark:     api.DefaultSystemSettings().Worker.BacklogHighWatermark,
+				BacklogLowWatermark:      api.DefaultSystemSettings().Worker.BacklogLowWatermark,
+				BandwidthLimitBytes:      api.DefaultSystemSettings().Worker.BandwidthLimitBytes,
+				BufferBudgetBytes:        api.DefaultSystemSettings().Worker.BufferBudgetBytes,
+				ShutdownTimeout:          conf.ShutdownTimeout,
+				QueueUpdateInterval:      conf.Worker.QueueUpdateInterval,
+				TaskCheckInterval:        conf.Worker.TaskCheckInterval,
+				DelayedTaskCheckInterval: conf.Worker.DelayedTaskCheckInterval,
+				SwiftRetryInterval:       conf.Worker.SwiftRetryInterval,
+				PauseRetryInterval:       conf.Worker.PauseRetryInterval,
+				SwitchRetryInterval:      conf.Worker.SwitchRetryInterval,
+			},
+			Lock: controlplane.SystemLockSettings{
+				Overlap: conf.Lock.Overlap,
+			},
+			Webhook: controlplane.SystemWebhookSettings{
+				Enabled: conf.Api.Webhook.Enabled,
+				BaseURL: conf.Api.Webhook.BaseURL,
+			},
+		}
+		if pgStore != nil && pgStore.Ready() {
+			if _, cerr := cpStore.Repos().SystemSettings.Create(ctx, initialSettings); cerr == nil {
+				logger.Info().Msg("seeded initial system settings in control-plane postgres")
+			}
+		}
+		systemsettings.ApplySettings(initialSettings)
+	}
+	systemsettings.Watch(ctx, confRedis, cpStore, logger)
+
 	credsOpts := []objstore.CredsSvcOption{objstore.WithManagedStorages(confRedis)}
 	if cpStore != nil {
 		credsOpts = append(credsOpts, objstore.WithControlPlane(cpStore))
@@ -163,7 +243,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	if err != nil {
 		return err
 	}
-	policySvc := policy.NewService(confRedis, queueSvc, conf.Storage.Main).WithControlPlane(cpStore)
+	policySvc := policy.NewService(confRedis, queueSvc, credsSvc.MainStorage()).WithControlPlane(cpStore)
 
 	limiter := ratelimit.New(appRedis, nil)
 	limiter.SetLookup(credsSvc.RateLimit)
@@ -204,43 +284,110 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	redis.SetLogger(stdLogger)
 
 	defaultRetry := fallbackRetryDelay(conf.Worker.CustomErrRetryInterval)
-	srv := asynq.NewServer(
-		queueRedis,
-		asynq.Config{
-			ShutdownTimeout: conf.ShutdownTimeout,
-			Concurrency:     conf.Concurrency,
-			IsFailure: func(err error) bool {
-				var rlErr *dom.ErrRateLimitExceeded
-				return !errors.As(err, &rlErr)
+
+	// Partition concurrency to dedicate capacity for bulk migration tasks,
+	// ensuring bulk progress even under continuous live event load (F4).
+	// When totalConcurrency == 1, a single unified server pool processes all queues with
+	// strict priority, strictly capping worker concurrency to 1 slot (R4).
+	totalConcurrency := conf.Concurrency
+	if totalConcurrency < 1 {
+		totalConcurrency = 10
+	}
+
+	errorHandler := asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
+		retried, _ := asynq.GetRetryCount(ctx)
+		maxRetry, _ := asynq.GetMaxRetry(ctx)
+		taskID, _ := asynq.GetTaskID(ctx)
+		queue, _ := asynq.GetQueueName(ctx)
+		taskLogger := zerolog.Ctx(ctx).With().Str("task_type", task.Type()).Str("task_id", taskID).Str("task_queue", queue).Int("task_max_retry", maxRetry).Int("task_retried", retried).Logger()
+		if retried >= maxRetry {
+			taskLogger.Error().RawJSON("task_payload", task.Payload()).Err(err).Msg("process task failed. task will be dropped")
+			return
+		}
+		var rlErr *dom.ErrRateLimitExceeded
+		if errors.As(err, &rlErr) {
+			taskLogger.Debug().Err(err).Msg("process task failed due to the rate limit")
+			return
+		}
+		taskLogger.Warn().Err(err).Msg("process task failed. task will be retried")
+	})
+
+	isFailureFunc := func(err error) bool {
+		var rlErr *dom.ErrRateLimitExceeded
+		return !errors.As(err, &rlErr)
+	}
+
+	var singleSrv *asynq.Server
+	var liveSrv *asynq.Server
+	var bulkSrv *asynq.Server
+
+	if totalConcurrency == 1 {
+		singleSrv = asynq.NewServer(
+			queueRedis,
+			asynq.Config{
+				ShutdownTimeout:            conf.ShutdownTimeout,
+				Concurrency:                1,
+				IsFailure:                  isFailureFunc,
+				RetryDelayFunc:             retryDelayFunc(defaultRetry),
+				ErrorHandler:               errorHandler,
+				Logger:                     stdLogger,
+				LogLevel:                   asynq.LogLevel(zerolog.GlobalLevel() + 1),
+				Queues:                     tasks.LivePriority,
+				StrictPriority:             true,
+				DynamicQueues:              true,
+				DynamicQueueUpdateInterval: conf.Worker.QueueUpdateInterval,
+				TaskCheckInterval:          conf.Worker.TaskCheckInterval,
+				DelayedTaskCheckInterval:   conf.Worker.DelayedTaskCheckInterval,
 			},
-			RetryDelayFunc: retryDelayFunc(defaultRetry),
-			ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
-				retried, _ := asynq.GetRetryCount(ctx)
-				maxRetry, _ := asynq.GetMaxRetry(ctx)
-				taskID, _ := asynq.GetTaskID(ctx)
-				queue, _ := asynq.GetQueueName(ctx)
-				taskLogger := zerolog.Ctx(ctx).With().Str("task_type", task.Type()).Str("task_id", taskID).Str("task_queue", queue).Int("task_max_retry", maxRetry).Int("task_retried", retried).Logger()
-				if retried >= maxRetry {
-					taskLogger.Error().RawJSON("task_payload", task.Payload()).Err(err).Msg("process task failed. task will be dropped")
-					return
-				}
-				var rlErr *dom.ErrRateLimitExceeded
-				if errors.As(err, &rlErr) {
-					taskLogger.Debug().Err(err).Msg("process task failed due to the rate limit")
-					return
-				}
-				taskLogger.Warn().Err(err).Msg("process task failed. task will be retried")
-			}),
-			Logger:                     stdLogger,
-			LogLevel:                   asynq.LogLevel(zerolog.GlobalLevel() + 1),
-			Queues:                     tasks.Priority,
-			StrictPriority:             true,
-			DynamicQueues:              true,
-			DynamicQueueUpdateInterval: conf.Worker.QueueUpdateInterval,
-			TaskCheckInterval:          conf.Worker.TaskCheckInterval,
-			DelayedTaskCheckInterval:   conf.Worker.DelayedTaskCheckInterval,
-		},
-	)
+		)
+	} else {
+		bulkConcurrency := totalConcurrency * 2 / 10
+		if bulkConcurrency < 1 {
+			bulkConcurrency = 1
+		}
+		liveConcurrency := totalConcurrency - bulkConcurrency
+		if liveConcurrency < 1 {
+			liveConcurrency = 1
+		}
+
+		liveSrv = asynq.NewServer(
+			queueRedis,
+			asynq.Config{
+				ShutdownTimeout:            conf.ShutdownTimeout,
+				Concurrency:                liveConcurrency,
+				IsFailure:                  isFailureFunc,
+				RetryDelayFunc:             retryDelayFunc(defaultRetry),
+				ErrorHandler:               errorHandler,
+				Logger:                     stdLogger,
+				LogLevel:                   asynq.LogLevel(zerolog.GlobalLevel() + 1),
+				Queues:                     tasks.LivePriority,
+				StrictPriority:             true,
+				DynamicQueues:              true,
+				DynamicQueueUpdateInterval: conf.Worker.QueueUpdateInterval,
+				TaskCheckInterval:          conf.Worker.TaskCheckInterval,
+				DelayedTaskCheckInterval:   conf.Worker.DelayedTaskCheckInterval,
+			},
+		)
+
+		bulkSrv = asynq.NewServer(
+			queueRedis,
+			asynq.Config{
+				ShutdownTimeout:            conf.ShutdownTimeout,
+				Concurrency:                bulkConcurrency,
+				IsFailure:                  isFailureFunc,
+				RetryDelayFunc:             retryDelayFunc(defaultRetry),
+				ErrorHandler:               errorHandler,
+				Logger:                     stdLogger,
+				LogLevel:                   asynq.LogLevel(zerolog.GlobalLevel() + 1),
+				Queues:                     tasks.BulkPriority,
+				StrictPriority:             true,
+				DynamicQueues:              true,
+				DynamicQueueUpdateInterval: conf.Worker.QueueUpdateInterval,
+				TaskCheckInterval:          conf.Worker.TaskCheckInterval,
+				DelayedTaskCheckInterval:   conf.Worker.DelayedTaskCheckInterval,
+			},
+		)
+	}
 
 	// mux maps a type to a handler
 	mux := asynq.NewServeMux()
@@ -264,7 +411,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	logger.Info().Msg("registered common workers")
 
 	// S3 workers
-	if len(conf.Storage.S3Storages()) != 0 {
+	if len(credsSvc.S3Storages()) != 0 || credsSvc.ManagedStoragesEnabled() {
 		mux.HandleFunc(tasks.TypeBucketCreate, workerSvc.HandleBucketCreate)
 		mux.HandleFunc(tasks.TypeBucketDelete, workerSvc.HandleBucketDelete)
 		mux.HandleFunc(tasks.TypeBucketSyncTags, workerSvc.HandleBucketTags)
@@ -374,11 +521,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			storages = append(storages, name)
 		}
 		sort.Strings(storages)
-		return protectiongroups.UnprotectedOptions{Storages: storages, MainStorage: conf.Storage.Main, Users: users,
+		return protectiongroups.UnprotectedOptions{Storages: storages, MainStorage: credsSvc.MainStorage(), Users: users,
 			Groups: groupStore.List, Policies: failoverStore.ListFailoverPolicies}
 	}
 	migrator := &protectiongroups.Migrator{Service: groupService, Policies: failoverStore, Source: policySvc,
-		MainStorage: conf.Storage.Main, Users: users, Log: logger,
+		MainStorage: credsSvc.MainStorage(), Users: users, Log: logger,
 		Electorate: func(ctx context.Context) []string {
 			list, err := proxystatus.List(ctx, confRedis)
 			if err != nil {
@@ -432,15 +579,31 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 
 	err = server.Add("queue_workers", func(ctx context.Context) error {
-		err := srv.Start(mux)
-		if err != nil {
-			return err
+		if singleSrv != nil {
+			if err := singleSrv.Start(mux); err != nil {
+				return err
+			}
+		} else {
+			if err := liveSrv.Start(mux); err != nil {
+				return err
+			}
+			if err := bulkSrv.Start(mux); err != nil {
+				liveSrv.Stop()
+				return err
+			}
 		}
 		<-ctx.Done()
 		return nil
 	}, func(_ context.Context) error {
-		srv.Stop()
-		srv.Shutdown()
+		if singleSrv != nil {
+			singleSrv.Stop()
+			singleSrv.Shutdown()
+		} else {
+			liveSrv.Stop()
+			bulkSrv.Stop()
+			liveSrv.Shutdown()
+			bulkSrv.Shutdown()
+		}
 		return nil
 	})
 	if err != nil {
@@ -466,6 +629,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Api.Webhook.Enabled {
 			webhookConf = &conf.Api.Webhook
 		}
+		policyOpts = append(policyOpts, api.WithPolicyWebhook(func() api.WebhookConfig {
+			current := systemsettings.Current().Webhook
+			return api.WebhookConfig{Enabled: current.Enabled, BaseURL: current.BaseURL}
+		}))
 		policyHandler := api.PolicyHandlers(credsSvc, clientRegistry, queueSvc, policySvc, versionSvc, objectListStateStore, bucketListStateStore, notifications.NewService(clientRegistry), replicationStatusLocker, userLocker, webhookConf, policyOpts...)
 
 		webhookSharesMainPort := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort <= 0
@@ -482,7 +649,17 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if err != nil {
 			return err
 		}
-		webhookTokenUnary, webhookTokenStream := auth.WebhookTokenInterceptors(conf.Api.Webhook.Token)
+		if authSvc.Enabled() {
+			if err := authSvc.EnsureAdmin(ctx); err != nil {
+				logger.Warn().Err(err).Msg("unable to ensure admin console user in database")
+			}
+		}
+		// webhook not enabled at boot but possibly enabled at runtime via dynamic settings: never serve it unauthenticated.
+		var webhookTokenOpts []auth.WebhookOption
+		if !conf.Api.Webhook.Enabled {
+			webhookTokenOpts = append(webhookTokenOpts, auth.WebhookRequireToken())
+		}
+		webhookTokenUnary, webhookTokenStream := auth.WebhookTokenInterceptors(conf.Api.Webhook.Token, webhookTokenOpts...)
 		if !authSvc.Enabled() {
 			logger.Warn().Msg("management api is enabled WITHOUT authentication (api.auth.enabled=false): anyone who can reach the api ports has full admin access")
 		}
@@ -512,15 +689,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)),
 			api.WithStorageLocker(storageLocker), api.WithControlPlane(cpStore, conf.ControlPlane))
 
-		webhookEnabled := conf.Api.Webhook.Enabled
-		webhookOnSeparatePorts := webhookEnabled && conf.Api.Webhook.GrpcPort > 0
+		webhookOnSeparatePorts := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort > 0
 
-		var webhookHandler pb.WebhookServer
-		if webhookEnabled {
-			swiftReplSvc := replication.NewSwift(queueSvc, policySvc)
-			s3ReplSvc := replication.NewS3(queueSvc, versionSvc, policySvc)
-			webhookHandler = api.WebhookHandlers(credsSvc, policySvc, swiftReplSvc, s3ReplSvc)
-		}
+		swiftReplSvc := replication.NewSwift(queueSvc, policySvc)
+		s3ReplSvc := replication.NewS3(queueSvc, versionSvc, policySvc)
+		webhookHandler := api.WebhookHandlers(credsSvc, policySvc, swiftReplSvc, s3ReplSvc)
 
 		registerServices := func(srv *grpc.Server) {
 			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker, api.WithFailoverMigration(migrator, unprotectedOpts)))
@@ -528,7 +701,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
 			pb.RegisterResilienceServer(srv, resilienceHandler)
-			if webhookEnabled && !webhookOnSeparatePorts {
+			if !webhookOnSeparatePorts {
 				pb.RegisterWebhookServer(srv, webhookHandler)
 			}
 		}
@@ -561,12 +734,24 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			if err := pb.RegisterProtectionGroupsHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
 			}
-			if webhookEnabled && !webhookOnSeparatePorts {
+			if !webhookOnSeparatePorts {
 				if err := pb.RegisterWebhookHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 					return err
 				}
 			}
 			return nil
+		}, func(ctx context.Context) error {
+			if err := appRedis.Ping(ctx).Err(); err != nil {
+				return err
+			}
+			if err := confRedis.Ping(ctx).Err(); err != nil {
+				return err
+			}
+			queue := queueSvc.RedisClient()
+			if queue == nil {
+				return fmt.Errorf("queue Redis unavailable")
+			}
+			return queue.Ping(ctx).Err()
 		})
 		if err != nil {
 			return err

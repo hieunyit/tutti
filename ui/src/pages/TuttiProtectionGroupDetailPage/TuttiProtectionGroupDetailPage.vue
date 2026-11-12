@@ -98,6 +98,12 @@
   const scopeLine = computed(() => {
     if (!group.value) return '';
 
+    const kind = ProtectionGroupHelper.scopeKind(group.value);
+
+    if (kind === 'storage') {
+      return `${t('scopeStorageTitle')} · ${t('scopeStorage')}`;
+    }
+
     const buckets = group.value.buckets ?? [];
     const scope = buckets.length ? buckets.join(', ') : t('scopeAllBuckets');
 

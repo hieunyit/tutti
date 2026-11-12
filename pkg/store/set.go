@@ -119,6 +119,38 @@ func (r *RedisIDKeySet[ID, V]) Remove(ctx context.Context, id ID, values ...V) (
 	return r.RemoveOp(ctx, id, values...).Get()
 }
 
+// ForEach iterates through elements of the set in batches using SSCAN to bound memory usage.
+func (r *RedisIDKeySet[ID, V]) ForEach(ctx context.Context, id ID, count int64, fn func([]V) error) error {
+	key, err := r.MakeKey(id)
+	if err != nil {
+		return fmt.Errorf("unable to make key: %w", err)
+	}
+	var cursor uint64
+	for {
+		members, nextCursor, err := r.client.SScan(ctx, key, cursor, "", count).Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				return nil
+			}
+			return err
+		}
+		if len(members) > 0 {
+			values, err := r.deserializer.ConvertMulti(members)
+			if err != nil {
+				return fmt.Errorf("unable to deserialize result: %w", err)
+			}
+			if err := fn(values); err != nil {
+				return err
+			}
+		}
+		if nextCursor == 0 {
+			break
+		}
+		cursor = nextCursor
+	}
+	return nil
+}
+
 func (r *RedisIDKeySet[ID, V]) IsMemberOp(ctx context.Context, id ID, value V) OperationResult[bool] {
 	key, err := r.MakeKey(id)
 	if err != nil {

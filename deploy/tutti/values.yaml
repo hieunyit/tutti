@@ -31,7 +31,7 @@ serviceAccount:
 # DYNAMIC CREDENTIALS
 # =============================================================================
 # Manage storage credentials via API instead of config files
-# When enabled, credentials can be added/updated via chorctl set-user command
+# When enabled, credentials can be added/updated via tuttictl set-user command
 dynamicCredentials:
   enabled: false
   disableEncryption: false
@@ -281,7 +281,7 @@ worker:
     port: 9670
     annotations: {}
 
-  # REST API service (for chorctl and web UI)
+  # REST API service (for tuttictl and web UI)
   restService:
     type: ClusterIP
     port: 9671

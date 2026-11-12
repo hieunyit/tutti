@@ -30,6 +30,7 @@ interface AuthState {
   isInitialized: boolean;
   /** null = unknown */
   authEnabled: boolean | null;
+  initError: boolean;
   token: string | null;
   username: string | null;
   role: AuthRole | null;
@@ -50,6 +51,7 @@ function getInitialState(): AuthState {
   return {
     isInitialized: false,
     authEnabled: null,
+    initError: false,
     token: AuthTokenHelper.get(),
     username: null,
     role: null,
@@ -68,7 +70,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** With auth disabled everybody has full access (legacy behaviour). */
   const isAuthenticated = computed(
-    () => state.authEnabled === false || state.token !== null,
+    () =>
+      state.authEnabled === false ||
+      (state.authEnabled === true && state.token !== null),
   );
   /** Single source of truth for every mutating UI action. */
   const canWrite = computed(
@@ -105,6 +109,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function init(force = false): Promise<void> {
     if (state.isInitialized && !force) return;
 
+    state.initError = false;
+
     try {
       applyMe(await AuthService.me());
     } catch (e) {
@@ -115,9 +121,11 @@ export const useAuthStore = defineStore('auth', () => {
       } else if (axios.isAxiosError(e) && e.response?.status === 404) {
         state.authEnabled = false;
       } else {
-        // backend unreachable: keep going, API calls will surface the error;
-        // a stored token keeps the session assumption.
-        state.authEnabled = state.token !== null ? true : false;
+        // A network failure does not mean authentication is disabled.
+        // Retain the token for retry, but do not present stale admin controls.
+        state.authEnabled = null;
+        state.role = null;
+        state.initError = true;
       }
     } finally {
       state.isInitialized = true;
@@ -142,6 +150,7 @@ export const useAuthStore = defineStore('auth', () => {
       state.username = res.username;
       state.role = res.role;
       state.authEnabled = true;
+      state.initError = false;
 
       // the login response does not say: /auth/me does
       try {

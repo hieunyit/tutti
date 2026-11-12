@@ -38,10 +38,7 @@
 
 <template>
   <div class="chorus-storage-tag">
-    <CTooltip
-      :delay="500"
-      :disabled="!props.tooltip"
-    >
+    <CTooltip :delay="500">
       <template #trigger>
         <CTag
           :bordered="false"
@@ -59,13 +56,34 @@
               :name="props.iconName"
             />
           </template>
-          {{ props.storageName }}
+          <span class="chorus-storage-tag__text">{{ props.storageName }}</span>
         </CTag>
       </template>
       <span class="chorus-storage-tag__storage-tooltip">
-        <strong>{{ props.storageName }}</strong
-        >: {{ props.tooltip }}
+        <strong>{{ props.storageName }}</strong>
+        <template v-if="props.tooltip">: {{ props.tooltip }}</template>
       </span>
     </CTooltip>
   </div>
 </template>
+
+<style lang="scss" scoped>
+  .chorus-storage-tag {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+
+    &__storage-name {
+      max-width: 150px;
+    }
+
+    &__text {
+      display: inline-block;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+  }
+</style>

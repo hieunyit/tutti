@@ -61,31 +61,43 @@
   >(() => [
     {
       type: 'selection',
+      width: 44,
     },
     {
       title: t('columnDirection'),
       key: 'direction',
+      width: 190,
+      minWidth: 180,
     },
     {
       title: t('columnBucket'),
       key: 'bucket',
+      width: 260,
+      minWidth: 240,
     },
     {
       title: t('columnProgress'),
       key: 'progress',
+      width: 150,
+      minWidth: 140,
     },
     {
       title: t('columnStatus'),
       key: 'status',
+      width: 160,
+      minWidth: 150,
       sorter: true,
     },
     {
       title: t('columnConfigs'),
       key: 'configs',
+      width: 270,
+      minWidth: 260,
     },
     {
       title: t('columnActions'),
       key: 'actions',
+      width: 140,
     },
   ]);
 
@@ -213,7 +225,7 @@
     }
 
     &__table {
-      min-width: 850px;
+      min-width: 1220px;
     }
 
     &__result {

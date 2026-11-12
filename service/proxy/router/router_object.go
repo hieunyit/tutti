@@ -132,12 +132,12 @@ func (r *s3Router) deleteObjects(req *http.Request) (resp *http.Response, taskLi
 
 	if reqBody.Quiet {
 		// quiet mode: filter request objects by response errors
-		errSet := make(map[string]struct{}, len(respBody.Error))
+		errSet := make(map[objectID]struct{}, len(respBody.Error))
 		for _, delErr := range respBody.Error {
-			errSet[delErr.Key] = struct{}{}
+			errSet[objectID{Key: delErr.Key, VersionID: delErr.VersionID}] = struct{}{}
 		}
 		for _, object := range reqBody.Objects {
-			if _, ok := errSet[object.Key]; ok {
+			if _, ok := errSet[object]; ok {
 				continue
 			}
 			taskList = append(taskList, &tasks.ObjectSyncPayload{

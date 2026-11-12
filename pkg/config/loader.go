@@ -20,19 +20,70 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+var envVarPattern = regexp.MustCompile(`\$\{([a-zA-Z0-9_]+)\}`)
+
+// Expand only braced placeholders in parsed scalar values. Literal dollar signs
+// (including bcrypt hashes) and the contents of secrets are never parsed as YAML.
+func expandStringEnv(s string) (string, error) {
+	var missing string
+	expanded := envVarPattern.ReplaceAllStringFunc(s, func(m string) string {
+		name := m[2 : len(m)-1]
+		val, ok := os.LookupEnv(name)
+		if !ok {
+			missing = name
+		}
+		return val
+	})
+	if missing != "" {
+		return "", fmt.Errorf("required environment variable %s is not set", missing)
+	}
+	return expanded, nil
+}
+
+func expandEnvInAny(v any) (any, error) {
+	switch val := v.(type) {
+	case string:
+		return expandStringEnv(val)
+	case map[string]any:
+		for k, item := range val {
+			expanded, err := expandEnvInAny(item)
+			if err != nil {
+				return nil, fmt.Errorf("config field %s: %w", k, err)
+			}
+			val[k] = expanded
+		}
+	case []any:
+		for i, item := range val {
+			expanded, err := expandEnvInAny(item)
+			if err != nil {
+				return nil, err
+			}
+			val[i] = expanded
+		}
+	}
+	return v, nil
+}
+
 func readYAMLMap(r io.Reader) (map[string]any, error) {
 	var m map[string]any
 	if err := yaml.NewDecoder(r).Decode(&m); err != nil {
+		if err == io.EOF {
+			return make(map[string]any), nil
+		}
 		return nil, err
 	}
 	if m == nil {
 		m = make(map[string]any)
+	}
+	if _, err := expandEnvInAny(m); err != nil {
+		return nil, err
 	}
 	return m, nil
 }

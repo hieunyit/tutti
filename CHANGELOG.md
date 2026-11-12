@@ -10,7 +10,7 @@ First Tutti release: a fork of [Chorus](https://github.com/clyso/chorus) (base c
 - Proxy: optional synchronous replication on the write path (`replication.sync.{enabled,writeQuorum,timeout,onQuorumFailure}`), `X-Tutti-Replicas` response header (`178745f`).
 - Proxy: per-storage circuit breakers fed by periodic health probes and real traffic; fail-fast `503` for unavailable storages; `health.{failureThreshold,openDuration}`, `storage.<name>.healthCheckInterval`; metrics `storage_available`, `storage_breaker_transitions_total` (`5949da2`).
 - Proxy: optional automatic failover with operator-defined policies and ordered targets (`failover.*`), Redis lock so one proxy acts, failover events, metric `failover_total` (`a5e56fb`).
-- API: `Resilience` gRPC/REST service (`/tutti/proxies`, `/tutti/failover/policies`, `/tutti/failover/events`), `chorctl proxies` and `chorctl failover policies|events`, proxy status published to Redis (`95084c2`).
+- API: `Resilience` gRPC/REST service (`/tutti/proxies`, `/tutti/failover/policies`, `/tutti/failover/events`), `tuttictl proxies` and `tuttictl failover policies|events`, proxy status published to Redis (`95084c2`).
 - UI: Tutti branding, Storage health (`/health`) and Failover (`/failover`) pages (`5be1f60`).
 - Tests and CI: resilience e2e suite against MinIO (`test/resilience`), `go test -race` unit job, UI job (`1ca8525`).
 
@@ -29,7 +29,7 @@ First Tutti release: a fork of [Chorus](https://github.com/clyso/chorus) (base c
 ### Known limitations
 
 - No automatic failback; see [manual failback](./docs/tutti/operations.md#manual-failback).
-- Failover policies cannot be set with `chorctl`; use REST/gRPC or the UI.
+- Failover policies cannot be set with `tuttictl`; use REST/gRPC or the UI.
 - Swift storages are not health-probed.
 
 ### License

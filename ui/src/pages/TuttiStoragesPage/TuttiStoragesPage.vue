@@ -159,11 +159,6 @@
                   class="storages-page__name"
                   :to="detail(row.name)"
                   >{{ row.name }}</RouterLink
-                >
-                <StatusTag
-                  v-if="row.isMain"
-                  variant="info"
-                  >{{ t('main') }}</StatusTag
                 ><small>{{ row.address }}</small
                 ><small>{{
                   source(row.name) === 'managed' ? t('managed') : t('config')

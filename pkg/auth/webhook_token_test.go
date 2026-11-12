@@ -107,3 +107,67 @@ func codeOf(err error) codes.Code {
 	st, _ := status.FromError(err)
 	return st.Code()
 }
+
+func webhookServerOpts(t *testing.T, token string, opts ...WebhookOption) *grpc.ClientConn {
+	t.Helper()
+	u, s := WebhookTokenInterceptors(token, opts...)
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(u), grpc.ChainStreamInterceptor(s))
+	pb.RegisterWebhookServer(srv, pb.UnimplementedWebhookServer{})
+	pb.RegisterChorusServer(srv, pb.UnimplementedChorusServer{})
+	go func() { _ = srv.Serve(lis) }()
+	t.Cleanup(srv.Stop)
+	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close() })
+	return conn
+}
+
+func TestWebhookRequireToken(t *testing.T) {
+	ctx := context.Background()
+	bearer := func(tok string) context.Context {
+		return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+tok)
+	}
+	call := func(c context.Context, conn *grpc.ClientConn) codes.Code {
+		_, err := pb.NewWebhookClient(conn).S3Notifications(c, &pb.S3NotificationRequest{})
+		return codeOf(err)
+	}
+
+	t.Run("no token configured fails closed", func(t *testing.T) {
+		conn := webhookServerOpts(t, "", WebhookRequireToken())
+		require.Equal(t, codes.Unauthenticated, call(ctx, conn))
+		require.Equal(t, codes.Unauthenticated, call(bearer("anything"), conn))
+		// non-webhook services are unaffected
+		_, err := pb.NewChorusClient(conn).GetStorages(ctx, nil)
+		require.NotEqual(t, codes.Unauthenticated, codeOf(err))
+	})
+
+	t.Run("token configured behaves normally", func(t *testing.T) {
+		conn := webhookServerOpts(t, testWebhookToken, WebhookRequireToken())
+		require.Equal(t, codes.Unauthenticated, call(ctx, conn))
+		require.Equal(t, codes.Unauthenticated, call(bearer("nope"), conn))
+		require.Equal(t, codes.Unimplemented, call(bearer(testWebhookToken), conn))
+	})
+
+	t.Run("without option empty token is a no-op", func(t *testing.T) {
+		conn := webhookServerOpts(t, "")
+		require.Equal(t, codes.Unimplemented, call(ctx, conn))
+	})
+
+	t.Run("stream interceptor fails closed", func(t *testing.T) {
+		_, s := WebhookTokenInterceptors("", WebhookRequireToken())
+		called := false
+		h := func(any, grpc.ServerStream) error { called = true; return nil }
+		err := s(nil, fakeCtxStream{ctx: ctx}, &grpc.StreamServerInfo{FullMethod: "/chorus.Webhook/S3Notifications"}, h)
+		require.Equal(t, codes.Unauthenticated, codeOf(err))
+		require.False(t, called)
+	})
+}
+
+type fakeCtxStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (f fakeCtxStream) Context() context.Context { return f.ctx }

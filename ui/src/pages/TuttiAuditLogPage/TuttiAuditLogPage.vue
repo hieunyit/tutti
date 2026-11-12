@@ -551,6 +551,14 @@
   }
 
   function toggleExpand(entry: AuditLogEntry) {
+    // Expanded rows share the wide table's horizontal scroll area. On a narrow
+    // screen use the existing dialog so both snapshots remain readable.
+    if (window.matchMedia('(max-width: 639px)').matches) {
+      modalEntry.value = entry;
+
+      return;
+    }
+
     const next = new Set(expandedIds.value);
     const key = rowKey(entry);
 
@@ -936,6 +944,7 @@
                       </CButton>
                       <CButton
                         size="small"
+                        :aria-label="t('openModal')"
                         @click="modalEntry = entry"
                       >
                         <template #icon>
@@ -1336,7 +1345,7 @@
 
     &__diff-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
       gap: 14px;
     }
 
@@ -1407,7 +1416,9 @@
 
       > div {
         display: inline-flex;
+        flex-wrap: wrap;
         align-items: center;
+        min-width: 0;
         gap: 6px;
       }
     }

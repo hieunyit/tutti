@@ -19,18 +19,21 @@
   import { TuttiService } from '@/services/TuttiService';
   import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
+  import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import { useQueryTab } from '@/utils/composables/useQueryTab';
   import { UserHelper } from '@/utils/helpers/UserHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
+  import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
   import { RouteName } from '@/utils/types/router';
   const props = defineProps<{ name: string }>();
   const { t } = useI18n({ messages });
   const store = useTuttiUsersStore();
   const keys = useTuttiAccessPolicyStore();
+  const protectionStore = useTuttiProtectionStore();
   const router = useRouter();
   const tab = useQueryTab(
-    ['credentials', 'keys', 'permissions', 'policies'] as const,
+    ['credentials', 'keys', 'permissions'] as const,
     'credentials',
   );
   const user = computed(() => store.find(props.name));
@@ -40,6 +43,59 @@
   const isConfig = computed(
     () => user.value?.storages?.some((s) => s.source === 'config') ?? false,
   );
+
+  const userBuckets = computed(() => user.value?.policy?.buckets ?? []);
+  const isWildcardBuckets = computed(
+    () => userBuckets.value.length === 0 || userBuckets.value.includes('*'),
+  );
+
+  const relatedProtectionGroups = computed(() => {
+    const allGroups = protectionStore.groups;
+    const uName = props.name;
+    const bList = userBuckets.value;
+
+    return allGroups.filter((g) => {
+      if (g.user === uName) return true;
+
+      if (isWildcardBuckets.value) return true;
+
+      if ((g.buckets ?? []).length > 0) {
+        return (g.buckets ?? []).some((b) => bList.includes(b));
+      }
+
+      return false;
+    });
+  });
+
+  const accessibleStorages = computed(() => {
+    if (!user.value?.storages) return [];
+
+    const allowedStorageNames = new Set<string>();
+
+    for (const group of relatedProtectionGroups.value) {
+      if (group.primary) allowedStorageNames.add(group.primary);
+
+      for (const m of group.members ?? []) {
+        if (m) allowedStorageNames.add(m);
+      }
+    }
+
+    return user.value.storages.filter((entry) => {
+      const mode = UserHelper.modeOf(entry);
+
+      if (mode === 'override') return true;
+
+      if (mode === 'missing') return false;
+
+      if (isWildcardBuckets.value) return mode === 'connection-account';
+
+      return (
+        allowedStorageNames.has(entry.storage) &&
+        mode === 'connection-account'
+      );
+    });
+  });
+
   const error = ref('');
   const busy = ref(false);
   const showDelete = ref(false);
@@ -63,11 +119,10 @@
         : 0,
     },
     { value: 'permissions', label: t('permission') },
-    { value: 'policies', label: t('replications') },
   ]);
 
   async function load() {
-    await Promise.all([store.load(), keys.init()]);
+    await Promise.all([store.load(), keys.init(), protectionStore.refresh()]);
   }
   onMounted(load);
   watch(
@@ -235,22 +290,9 @@
     >
     <template v-if="user"
       ><div class="phase-d__actions">
-        <StatusTag
-          :variant="UserHelper.isIncomplete(user) ? 'warning' : 'success'"
-          >{{
-            t(UserHelper.isIncomplete(user) ? 'incomplete' : 'configured')
-          }}</StatusTag
-        ><StatusTag>{{ t(isConfig ? 'config' : 'managed') }}</StatusTag>
+        <StatusTag variant="success">{{ t('active') }}</StatusTag>
+        <StatusTag>{{ t(isConfig ? 'config' : 'managed') }}</StatusTag>
       </div>
-      <Callout
-        v-if="UserHelper.isIncomplete(user)"
-        tone="warning"
-        >{{
-          t('missing', {
-            storages: UserHelper.missingStorages(user).join(', '),
-          })
-        }}</Callout
-      >
       <TabBar
         v-model="tab"
         :label="name"
@@ -266,7 +308,10 @@
         >
           {{ t('credentialHint') }}
         </p>
-        <table class="phase-d__table">
+        <table
+          v-if="accessibleStorages.length"
+          class="phase-d__table"
+        >
           <thead>
             <tr>
               <th>{{ t('storages') }}</th>
@@ -278,7 +323,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="entry in user.storages"
+              v-for="entry in accessibleStorages"
               :key="entry.storage"
             >
               <td>
@@ -288,8 +333,6 @@
                     params: { storageName: entry.storage },
                   }"
                   >{{ entry.storage }}</RouterLink
-                ><small v-if="entry.storage === store.mainStorage">
-                  · {{ t('main') }}</small
                 >
               </td>
               <td>
@@ -357,7 +400,14 @@
               </td>
             </tr>
           </tbody>
-        </table></SectionCard
+        </table>
+        <div
+          v-else
+          style="padding: 24px; text-align: center"
+          class="phase-d__muted"
+        >
+          No storage credentials or protection group access assigned to this user.
+        </div></SectionCard
       >
       <SectionCard
         v-else-if="tab === 'keys'"
@@ -369,36 +419,129 @@
         />
         <p v-else>{{ t('keyHint') }}</p></SectionCard
       >
-      <SectionCard
+      <div
         v-else-if="tab === 'permissions'"
-        :title="t('permission')"
-        ><div class="phase-d__stack">
-          <strong>{{ user.policy?.permission || 'read-write' }}</strong
-          ><code>{{ user.policy?.buckets?.join(', ') || '*' }}</code
-          ><WriteGate
-            ><NButton @click="showPolicy = true">{{
-              t('editPolicy')
-            }}</NButton></WriteGate
-          >
-        </div></SectionCard
+        style="display: flex; flex-direction: column; gap: 16px"
       >
-      <SectionCard
-        v-else
-        :title="t('replications')"
-        ><p>{{ t('relatedHint') }}</p>
-        <div class="phase-d__actions">
-          <RouterLink
-            :to="{ name: RouteName.CHORUS_REPLICATION, query: { user: name } }"
-            >{{ t('replications') }}</RouterLink
-          ><RouterLink
-            :to="{
-              name: RouteName.CHORUS_ROUTING_POLICIES,
-              query: { user: name },
-            }"
-            >{{ t('routings') }}</RouterLink
+        <SectionCard :title="t('permission')">
+          <div class="phase-d__stack">
+            <div>
+              <p
+                class="phase-d__muted"
+                style="margin-bottom: 8px"
+              >
+                S3 Access Policy specifies the operations (Read/Write) this user's credentials can perform on specific buckets.
+              </p>
+              <div style="display: flex; align-items: center; gap: 12px">
+                <StatusTag :variant="user.policy?.permission === 'read-only' ? 'info' : 'success'">
+                  {{ user.policy?.permission || 'read-write' }}
+                </StatusTag>
+                <span>Buckets: <code>{{ user.policy?.buckets?.join(', ') || '*' }}</code></span>
+                <span
+                  v-if="isWildcardBuckets"
+                  class="phase-d__muted"
+                >(Access to all current and future buckets)</span>
+              </div>
+            </div>
+            <WriteGate>
+              <NButton @click="showPolicy = true">{{
+                t('editPolicy')
+              }}</NButton>
+            </WriteGate>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Protection Groups Coverage"
+          flush
+        >
+          <div style="padding: 16px 16px 8px">
+            <p
+              class="phase-d__muted"
+              style="margin: 0"
+            >
+              When this user writes or reads objects through Tutti Proxy, requests are protected, fenced, and replicated according to the Protection Groups covering those buckets.
+            </p>
+          </div>
+          <table
+            v-if="relatedProtectionGroups.length"
+            class="phase-d__table"
           >
-        </div></SectionCard
-      >
+            <thead>
+              <tr>
+                <th>Protection Group</th>
+                <th>Scope Kind</th>
+                <th>Primary Storage</th>
+                <th>Covered Buckets</th>
+                <th>Health Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="group in relatedProtectionGroups"
+                :key="group.id"
+              >
+                <td>
+                  <RouterLink
+                    :to="{
+                      name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
+                      params: { id: group.id },
+                    }"
+                  >
+                    <strong>{{ group.id }}</strong>
+                  </RouterLink>
+                </td>
+                <td>
+                  <StatusTag variant="info">
+                    {{
+                      ProtectionGroupHelper.scopeKind(group) === 'storage'
+                        ? 'Storage-level'
+                        : ProtectionGroupHelper.scopeKind(group) === 'buckets'
+                          ? 'Bucket-level'
+                          : 'User-level'
+                    }}
+                  </StatusTag>
+                </td>
+                <td>
+                  <strong>{{ group.primary }}</strong>
+                </td>
+                <td>
+                  <code>{{ (group.buckets && group.buckets.length > 0) ? group.buckets.join(', ') : '–' }}</code>
+                </td>
+                <td>
+                  <StatusTag
+                    :variant="
+                      ProtectionGroupHelper.stateVariant(
+                        ProtectionGroupHelper.displayState(group),
+                      )
+                    "
+                  >
+                    {{ ProtectionGroupHelper.displayState(group) }}
+                  </StatusTag>
+                </td>
+                <td>
+                  <RouterLink
+                    :to="{
+                      name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
+                      params: { id: group.id },
+                    }"
+                  >
+                    View Group
+                  </RouterLink>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div
+            v-else
+            style="padding: 24px; text-align: center"
+            class="phase-d__muted"
+          >
+            No Protection Groups currently assigned to this user.
+          </div>
+        </SectionCard>
+      </div>
     </template>
     <NModal
       :show="editStorage !== null"

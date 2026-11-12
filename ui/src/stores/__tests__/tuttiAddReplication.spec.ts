@@ -79,61 +79,52 @@ beforeEach(() => {
   });
 });
 
-describe('chorusAddReplicationStore user step', () => {
-  it('has the user step and never picks a user by itself', async () => {
+describe('tuttiAddReplicationStore', () => {
+  it('has 3 storage-to-storage steps without manual user step', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
 
-    expect(AddReplicationStepName.USER).toBe(3);
-    expect(store.stepsCount).toBe(4);
-    expect(store.users.map((u: { name: string }) => u.name)).toEqual([
-      'alice',
-      'bob',
-    ]);
-    expect(store.selectedUser).toBeNull();
+    expect(AddReplicationStepName.FROM_STORAGE).toBe(1);
+    expect(AddReplicationStepName.TO_STORAGE).toBe(2);
+    expect(AddReplicationStepName.BUCKETS).toBe(3);
+    expect(store.stepsCount).toBe(3);
+    expect(store.selectedUser).toBe('alice');
   });
 
-  it('reports the credential mode per storage and blocks users without credentials', async () => {
+  it('loads buckets using background tenant user', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
-
-    expect(store.userModeOn('alice', 'backup')).toBe('connection-account');
-    expect(store.userModeOn('nobody', 'backup')).toBe('unknown');
-
-    store.selectedUser = 'alice';
-    expect(store.isSelectedUserUsable).toBe(true);
-    store.selectedUser = 'bob';
-    expect(store.isSelectedUserUsable).toBe(false);
-  });
-
-  it('loads buckets for the selected user only', async () => {
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    await store.getBucketsList();
-    expect(chorus.getBucketsForReplication).not.toHaveBeenCalled();
-
-    store.selectedUser = 'alice';
     await store.getBucketsList();
     expect(chorus.getBucketsForReplication).toHaveBeenCalledWith(
-      expect.objectContaining({ user: 'alice', fromStorage: 'main' }),
+      expect.objectContaining({ user: 'alice', fromStorage: 'main', toStorage: 'backup' }),
     );
   });
 
-  it('creates the replication for the selected user and nothing without one', async () => {
+  it('creates the replication for the background tenant user', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
     store.isForAllBuckets = true;
     await store.createReplication();
-    expect(chorus.addReplication).not.toHaveBeenCalled();
-
-    store.selectedUser = 'alice';
-    await store.createReplication();
     expect(chorus.addReplication).toHaveBeenCalledWith({
       id: { user: 'alice', fromStorage: 'main', toStorage: 'backup' },
+    });
+  });
+
+  it('allows operator to explicitly change the replication tenant user', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    expect(store.selectedUser).toBe('alice');
+
+    await store.selectUser('bob');
+    expect(store.selectedUser).toBe('bob');
+    store.isForAllBuckets = true;
+    await store.createReplication();
+    expect(chorus.addReplication).toHaveBeenCalledWith({
+      id: { user: 'bob', fromStorage: 'main', toStorage: 'backup' },
     });
   });
 });
