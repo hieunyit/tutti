@@ -52,7 +52,10 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
-	serverAddress := ":" + strconv.Itoa(conf.GrpcPort)
+	// The gateway dials its own in-process gRPC listener. "passthrough" skips the DNS resolver, which otherwise
+	// resolves an empty host and looks up TXT service-config records, stalling the first call of every service
+	// (~8s) when the container DNS is slow.
+	serverAddress := "passthrough:///:" + strconv.Itoa(conf.GrpcPort)
 
 	// Register all handlers
 	err = register(ctx, mux, serverAddress, opts)
