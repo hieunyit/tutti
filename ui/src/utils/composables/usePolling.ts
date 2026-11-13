@@ -23,13 +23,27 @@
  * - While `document.hidden` no tick is scheduled/executed; when the tab
  *   becomes visible again one refresh runs at once and the cadence resumes.
  * - `stop()` cancels the loop and resolves once any in-flight tick settled.
+ * - Adaptive back-off: a tick slower than `slowMs` (default 1 s) doubles the
+ *   delay up to `maxMs` (default 60 s); fast ticks halve it back toward `ms`.
  */
+export interface PollingOptions {
+  /** a tick taking longer than this doubles the interval */
+  slowMs?: number;
+  /** upper bound of the backed-off interval */
+  maxMs?: number;
+}
+
 export function usePolling() {
   let generation = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inflight: Promise<unknown> | null = null;
-  let current: { fn: () => Promise<unknown> | unknown; ms: number } | null =
-    null;
+  let current: {
+    fn: () => Promise<unknown> | unknown;
+    ms: number;
+    delay: number;
+    slowMs: number;
+    maxMs: number;
+  } | null = null;
   let listening = false;
 
   const isHidden = () => typeof document !== 'undefined' && document.hidden;
@@ -58,7 +72,18 @@ export function usePolling() {
     timer = setTimeout(() => {
       timer = null;
       void run(gen).catch(() => undefined);
-    }, current.ms);
+    }, current.delay);
+  }
+
+  function adapt(duration: number) {
+    if (!current) return;
+
+    const { ms, slowMs, maxMs } = current;
+
+    current.delay =
+      duration > slowMs
+        ? Math.min(Math.max(current.delay, ms) * 2, Math.max(maxMs, ms))
+        : Math.max(ms, Math.floor(current.delay / 2));
   }
 
   async function run(gen: number) {
@@ -72,6 +97,7 @@ export function usePolling() {
     }
 
     const { fn } = current;
+    const startedAt = Date.now();
     const request = invoke(fn);
 
     inflight = request;
@@ -82,6 +108,8 @@ export function usePolling() {
       if (inflight === request) {
         inflight = null;
       }
+
+      if (gen === generation) adapt(Date.now() - startedAt);
 
       schedule(gen);
     }
@@ -128,11 +156,18 @@ export function usePolling() {
   async function start(
     fn: () => Promise<unknown> | unknown,
     ms: number,
+    options: PollingOptions = {},
   ): Promise<void> {
     const previous = stop();
     const gen = generation;
 
-    current = { fn, ms };
+    current = {
+      fn,
+      ms,
+      delay: ms,
+      slowMs: options.slowMs ?? 1000,
+      maxMs: options.maxMs ?? 60_000,
+    };
     listen();
 
     // wait for a tick of the previous loop that is still running
@@ -145,6 +180,7 @@ export function usePolling() {
     }
 
     // the first run is executed even if the tab is hidden (explicit request)
+    const startedAt = Date.now();
     const request = invoke(fn);
 
     inflight = request;
@@ -156,6 +192,8 @@ export function usePolling() {
         inflight = null;
       }
 
+      if (gen === generation) adapt(Date.now() - startedAt);
+
       schedule(gen);
     }
   }
@@ -164,5 +202,7 @@ export function usePolling() {
     start,
     stop,
     isRunning: () => current !== null,
+    /** current delay between ticks (backed off when ticks are slow) */
+    currentDelay: () => current?.delay ?? null,
   };
 }

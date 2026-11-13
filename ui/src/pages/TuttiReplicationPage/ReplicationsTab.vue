@@ -34,6 +34,7 @@
   import ReplicationStatusCell from '@/components/chorus/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
   import ReplicationsFilters from '@/components/chorus/replications/ReplicationsFilters/ReplicationsFilters.vue';
   import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
+  import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import {
@@ -62,7 +63,7 @@
     page,
   } = storeToRefs(store);
 
-  const search = ref('');
+  const { search, debounced: debouncedSearch } = useDebouncedSearch();
   const bulkDeleteOpen = ref(false);
   const selectedKeys = ref<string[]>([]);
 
@@ -78,7 +79,7 @@
   });
 
   const rows = computed<Row[]>(() => {
-    const needle = search.value.trim().toLowerCase();
+    const needle = debouncedSearch.value.trim().toLowerCase();
 
     if (!needle) return computedReplications.value;
 

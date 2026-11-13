@@ -37,6 +37,7 @@
   import DiffReportsFilters from '@/components/chorus/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
   import DiffReportsStatusCell from '@/components/chorus/diff-reports/DiffReportsStatusCell/DiffReportsStatusCell.vue';
   import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
+  import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
@@ -61,7 +62,7 @@
   } = storeToRefs(store);
   const { createNotification } = useTuttiNotification();
 
-  const search = ref('');
+  const { search, debounced: debouncedSearch } = useDebouncedSearch();
   const selectedKeys = ref<string[]>([]);
   const bulkDeleteOpen = ref(false);
   const bulkRestartOpen = ref(false);
@@ -78,7 +79,7 @@
   });
 
   const rows = computed<Row[]>(() => {
-    const needle = search.value.trim().toLowerCase();
+    const needle = debouncedSearch.value.trim().toLowerCase();
     // reports created via CLI (not two locations) stay listed so they can be
     // seen and deleted; they just have no direction/bucket to show
     const all = computedReports.value;

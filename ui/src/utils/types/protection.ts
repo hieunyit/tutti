@@ -73,6 +73,8 @@ export interface ProtectionGroupStatus {
 
 export interface ProtectionGroupListResponse {
   groups?: ProtectionGroup[];
+  /** same objects as the per-id GET, same order as `groups` (new backend) */
+  statuses?: ProtectionGroupStatus[];
 }
 
 export interface ProtectionGroupCreateRequest {

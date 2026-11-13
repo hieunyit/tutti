@@ -30,6 +30,13 @@ export abstract class RuntimeStorageHelper {
     return Number.isFinite(seconds) && seconds <= 315576000000 ? seconds : null;
   }
 
+  /** `userCount` of the summary list, else the length of the full users array */
+  static userCountOf(storage: Pick<RuntimeStorage, 'userCount' | 'users'>) {
+    return typeof storage.userCount === 'number'
+      ? storage.userCount
+      : (storage.users?.length ?? 0);
+  }
+
   static copy(storage: RuntimeStorage): RuntimeStorage {
     return JSON.parse(JSON.stringify(storage)) as RuntimeStorage;
   }

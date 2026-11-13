@@ -33,6 +33,7 @@ import type { AddId } from '@/utils/types/helper';
 import { ChorusService } from '@/services/ChorusService';
 import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
 import i18nReplications from '@/components/chorus/replications/i18nReplications';
+import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
 
 interface ChorusReplicationsState {
@@ -102,6 +103,7 @@ export const useTuttiReplicationsStore = defineStore(
   () => {
     const state = reactive<ChorusReplicationsState>(getInitialState());
     const polling = usePolling();
+    const changes = createChangeDetector();
 
     const { createNotification, removeNotification } = useNotification();
 
@@ -208,6 +210,8 @@ export const useTuttiReplicationsStore = defineStore(
     async function getReplications() {
       const res = await ChorusService.getReplications();
 
+      if (!changes.hasChanged(res)) return;
+
       state.replications = (res.replications ?? []).map((replication) => ({
         ...replication,
         idStr: getChorusReplicationId(replication.id),
@@ -216,6 +220,7 @@ export const useTuttiReplicationsStore = defineStore(
     }
 
     async function startReplicationPolling() {
+      changes.reset();
       await polling.start(getReplications, POLL_INTERVAL_MS);
     }
 

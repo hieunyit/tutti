@@ -138,7 +138,7 @@ export abstract class StoragesPageHelper {
         requestsPerSecond,
         errorPercent: StoragesPageHelper.errorPercent(name, reporting),
         users: {
-          count: configured.length,
+          count: storage.userCount ?? configured.length,
           missing: missing.map((u) => u.name),
         },
         replication: {

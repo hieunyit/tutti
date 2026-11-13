@@ -83,7 +83,8 @@ describe('usePolling', () => {
     expect(fn).toHaveBeenCalledTimes(2);
 
     resolveSlow();
-    await vi.advanceTimersByTimeAsync(1000);
+    // the slow tick backed the interval off to 2 s
+    await vi.advanceTimersByTimeAsync(2000);
     expect(fn).toHaveBeenCalledTimes(3);
     await polling.stop();
   });
@@ -135,5 +136,54 @@ describe('usePolling', () => {
     expect(first).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledTimes(4);
     await polling.stop();
+  });
+
+  describe('adaptive back-off', () => {
+    const slowTick = (ms: number) => () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      });
+
+    it('doubles the interval after a slow tick up to 60 s and restores it', async () => {
+      let duration = 1500;
+      const fn = vi.fn(() => slowTick(duration)());
+      const polling = usePolling();
+      const first = polling.start(fn, 5000);
+
+      await vi.advanceTimersByTimeAsync(1500);
+      await first;
+      expect(polling.currentDelay()).toBe(10_000);
+
+      // next tick only after 10 s
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(fn).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fn).toHaveBeenCalledTimes(2);
+
+      for (let i = 0; i < 6; i++) {
+        await vi.advanceTimersByTimeAsync(60_000 + 1500);
+      }
+
+      expect(polling.currentDelay()).toBe(60_000);
+
+      duration = 10;
+
+      for (let i = 0; i < 6; i++) {
+        await vi.advanceTimersByTimeAsync(60_010);
+      }
+
+      expect(polling.currentDelay()).toBe(5000);
+      await polling.stop();
+    });
+
+    it('keeps the base interval when ticks are fast', async () => {
+      const fn = vi.fn().mockResolvedValue(undefined);
+      const polling = usePolling();
+
+      await polling.start(fn, 1000);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(polling.currentDelay()).toBe(1000);
+      await polling.stop();
+    });
   });
 });

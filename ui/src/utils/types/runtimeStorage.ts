@@ -19,6 +19,8 @@ export interface RuntimeStorage {
   isMain?: boolean;
   /** per-user overrides only */
   users?: { user: string; accessKeyId: string; source: string }[];
+  /** summary list (`includeUsers=false`): count instead of the users array */
+  userCount?: number;
   references?: string[];
   createdAt?: string;
   updatedAt?: string;

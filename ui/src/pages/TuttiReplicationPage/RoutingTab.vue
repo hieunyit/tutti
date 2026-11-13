@@ -35,6 +35,7 @@
   import RoutingPolicyStorageCell from '@/components/chorus/routing-policies/RoutingPolicyStorageCell/RoutingPolicyStorageCell.vue';
   import RoutingPolicyEditModal from '@/components/chorus/routing-policies/RoutingPolicyEditModal/RoutingPolicyEditModal.vue';
   import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
+  import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import type { RoutingPolicy } from '@/utils/types/chorus';
@@ -56,7 +57,7 @@
   } = storeToRefs(store);
   const { createNotification } = useTuttiNotification();
 
-  const search = ref('');
+  const { search, debounced: debouncedSearch } = useDebouncedSearch();
   const selectedKeys = ref<string[]>([]);
   const bulkDeleteOpen = ref(false);
   const editing = ref<RoutingPolicy | null>(null);
@@ -73,7 +74,7 @@
   });
 
   const rows = computed<RoutingPolicy[]>(() => {
-    const needle = search.value.trim().toLowerCase();
+    const needle = debouncedSearch.value.trim().toLowerCase();
 
     if (!needle) return computedRoutingPolicies.value;
 

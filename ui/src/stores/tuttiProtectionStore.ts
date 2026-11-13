@@ -20,6 +20,8 @@ import { computed, reactive, toRefs } from 'vue';
 import { ChorusService } from '@/services/ChorusService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
 import { TuttiService } from '@/services/TuttiService';
+import { usePolling } from '@/utils/composables/usePolling';
+import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
 import type {
   ProtectionGroup,
@@ -29,6 +31,7 @@ import type {
 } from '@/utils/types/protection';
 
 export const PROTECTION_POLL_MS = 5000;
+const LEGACY_STATUS_REFRESH_MS = 30_000;
 
 interface ProtectionState {
   isLoading: boolean;
@@ -86,8 +89,12 @@ export function backendMessage(error: unknown): string | null {
 
 export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
   const state = reactive<ProtectionState>(getInitialState());
-  let timer: ReturnType<typeof setInterval> | null = null;
+  const polling = usePolling();
+  const changes = createChangeDetector();
   let requestId = 0;
+  /** old backend only: when the per-id statuses were last fetched */
+  let legacyFetchedAt = 0;
+  let legacyGroupsKey = '';
 
   const summary = computed(() =>
     ProtectionGroupHelper.summary(state.groups, state.statuses),
@@ -95,6 +102,40 @@ export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
   const attentionCount = computed(() =>
     ProtectionGroupHelper.attentionCount(state.groups, state.statuses),
   );
+
+  /**
+   * Old backend without `statuses` in the list: per-id Get, but only on the
+   * first load, when the set of groups changed, or at most every 30 s - never
+   * on every poll tick. Returns null to keep the statuses already shown.
+   */
+  async function legacyStatuses(
+    groups: ProtectionGroup[],
+  ): Promise<Record<string, ProtectionGroupStatus> | null> {
+    const key = groups.map((group) => group.id).join('\u0000');
+    const due =
+      !state.isLoaded ||
+      key !== legacyGroupsKey ||
+      Date.now() - legacyFetchedAt >= LEGACY_STATUS_REFRESH_MS;
+
+    if (!due) return null;
+
+    const statuses: Record<string, ProtectionGroupStatus> = {};
+
+    // best effort per group: a failing Get leaves that row without health
+    await Promise.all(
+      groups.map(async (group) => {
+        try {
+          statuses[group.id] = await ProtectionGroupService.get(group.id);
+        } catch {
+          /* status unknown */
+        }
+      }),
+    );
+    legacyGroupsKey = key;
+    legacyFetchedAt = Date.now();
+
+    return statuses;
+  }
 
   async function refresh() {
     const id = (requestId += 1);
@@ -107,24 +148,34 @@ export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
         ProtectionGroupService.getAutomaticFreeze().catch(() => null),
       ]);
       const groups = list.groups ?? [];
-      const statuses: Record<string, ProtectionGroupStatus> = {};
+      const listed = list.statuses;
+      let statuses: Record<string, ProtectionGroupStatus> | null = null;
 
-      // best effort per group: a failing Get leaves that row without health
-      await Promise.all(
-        groups.map(async (group) => {
-          try {
-            statuses[group.id] = await ProtectionGroupService.get(group.id);
-          } catch {
-            /* status unknown */
-          }
-        }),
-      );
+      if (Array.isArray(listed) && listed.length === groups.length) {
+        // new backend: the list carries every status, in `groups` order
+        const byId: Record<string, ProtectionGroupStatus> = {};
+
+        groups.forEach((group, index) => {
+          const status = listed[index];
+
+          if (status) byId[group.id] = status;
+        });
+        statuses = byId;
+      } else {
+        statuses = await legacyStatuses(groups);
+      }
 
       if (id !== requestId) return;
 
-      state.groups = groups;
-      state.statuses = statuses;
-      state.automaticFrozen = frozen;
+      // unchanged poll: keep the existing reactive objects
+      if (changes.hasChanged({ groups, statuses, frozen })) {
+        state.groups = groups;
+
+        if (statuses) state.statuses = statuses;
+
+        state.automaticFrozen = frozen;
+      }
+
       state.hasError = false;
       state.isLoaded = true;
       state.lastUpdated = Date.now();
@@ -252,20 +303,15 @@ export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
 
   function startPolling(tick: () => Promise<unknown> = refresh) {
     stopPolling();
-    tick().catch(() => undefined);
-    timer = setInterval(() => {
-      if (typeof document === 'undefined' || !document.hidden) {
-        tick().catch(() => undefined);
-      }
-    }, PROTECTION_POLL_MS);
+    changes.reset();
+    legacyFetchedAt = 0;
+    legacyGroupsKey = '';
+    polling.start(tick, PROTECTION_POLL_MS).catch(() => undefined);
   }
 
   function stopPolling() {
     requestId += 1;
-
-    if (timer !== null) clearInterval(timer);
-
-    timer = null;
+    polling.stop().catch(() => undefined);
   }
 
   function resetDetail() {

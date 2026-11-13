@@ -1,7 +1,7 @@
 <!-- Copyright © 2026 hieunyit. Licensed under the GNU Affero General Public License, Version 3.0. -->
 <script setup lang="ts">
   import { NButton } from 'naive-ui';
-  import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
+  import { computed, onBeforeMount, onBeforeUnmount, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import {
@@ -19,6 +19,7 @@
   import { useTuttiStoragesStore } from '@/stores/tuttiStoragesStore';
   import { useNow } from '@/utils/composables/useNow';
   import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
+  import { RuntimeStorageHelper } from '@/utils/helpers/RuntimeStorageHelper';
   import { StoragesPageHelper } from '@/utils/helpers/StoragesPageHelper';
   import { RouteName } from '@/utils/types/router';
 
@@ -55,7 +56,9 @@
     {
       key: 'users',
       label: t('users'),
-      badge: storage.value?.users?.length ?? 0,
+      badge: storage.value
+        ? RuntimeStorageHelper.userCountOf(storage.value)
+        : 0,
     },
     { key: 'settings', label: t('settings') },
   ]);
@@ -91,6 +94,20 @@
           storage.value.source === 'managed' ? t('managed') : t('config')
         }`
       : '',
+  );
+
+  const storageUsers = computed(
+    () => store.storageUsers[props.storageName] ?? [],
+  );
+
+  // the list is the light form: users are fetched when the tab is opened
+  watch(
+    () => tab.value === 'users' && store.isLoaded,
+    (open) => {
+      if (open)
+        store.loadStorageUsers(props.storageName).catch(() => undefined);
+    },
+    { immediate: true },
   );
 
   onBeforeMount(store.startPolling);
@@ -148,7 +165,7 @@
       />
       <StorageUsersTab
         v-else-if="tab === 'users'"
-        :users="storage.users ?? []"
+        :users="storageUsers"
       />
       <StorageSettings
         v-else-if="tab === 'settings'"
