@@ -22,29 +22,27 @@
   import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
   import { i18n } from '@/i18n';
-  import { NAV_GROUPS, type NavItem } from '@/utils/constants/navigation';
+  import { NAV_GROUPS } from '@/utils/constants/navigation';
   import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
-  import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
   import { RouteName } from '@/utils/types/router';
 
-  i18n.global.mergeLocaleMessage('en', {
-    [AUDIT_LOG_ROUTE_NAME]: 'Audit log',
-  });
-  i18n.global.mergeLocaleMessage('de', {
-    [AUDIT_LOG_ROUTE_NAME]: 'Audit-Protokoll',
-  });
+  // Vietnamese menu labels (routes.ts only carries en/de).
   i18n.global.mergeLocaleMessage('vi', {
-    [AUDIT_LOG_ROUTE_NAME]: 'Nhật ký kiểm toán',
+    [RouteName.TUTTI_DASHBOARD]: 'Bảng điều khiển',
+    [RouteName.CHORUS_STORAGES]: 'Storages',
+    [RouteName.TUTTI_PROXIES]: 'Proxies',
+    [RouteName.TUTTI_PROTECTION_GROUPS]: 'Nhóm bảo vệ',
+    [RouteName.CHORUS_REPLICATION]: 'Sao chép',
+    [RouteName.TUTTI_USERS]: 'S3 users',
+    [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy accounts',
+    [RouteName.TUTTI_CONSOLE_USERS]: 'Người dùng console',
     [RouteName.TUTTI_SYSTEM_SETTINGS]: 'Cấu hình hệ thống',
+    [RouteName.TUTTI_AUDIT_LOG]: 'Nhật ký kiểm toán',
+    [RouteName.TUTTI_DOCS]: 'Tài liệu',
+    [RouteName.TUTTI_API_REFERENCE]: 'Tham chiếu API',
   });
-
-  const AUDIT_NAV_ITEM: NavItem = {
-    routeName: AUDIT_LOG_ROUTE_NAME as unknown as RouteName,
-    iconPath:
-      'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 7h6m-6 4h4',
-  };
 
   const props = defineProps<{
     /** icon-only rail (desktop only) */
@@ -62,32 +60,16 @@
   const route = useRoute();
   const badges = useNavBadges();
   const { isAdmin } = storeToRefs(useAuthStore());
+
+  // Viewers see neither admin-only items nor admin-only groups (Console
+  // users, System settings, Audit log); the router guard blocks the URLs.
   const groups = computed(() =>
-    NAV_GROUPS.map((group) => {
-      const filteredItems = group.items.filter(
-        (item) => !item.adminOnly || isAdmin.value,
-      );
-
-      if (group.id !== 'administration') {
-        return !group.adminOnly || isAdmin.value
-          ? { ...group, items: filteredItems }
-          : { ...group, items: [] };
-      }
-
-      const baseItems = isAdmin.value ? filteredItems : [];
-      const hasAudit = baseItems.some(
-        (item) => String(item.routeName) === AUDIT_LOG_ROUTE_NAME,
-      );
-
-      return {
+    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value)
+      .map((group) => ({
         ...group,
-        // the audit log is admin-only on the server (ListAuditLog), so viewers must not see it
-        items:
-          hasAudit || !isAdmin.value
-            ? baseItems
-            : [...baseItems, AUDIT_NAV_ITEM],
-      };
-    }).filter((group) => group.items.length > 0),
+        items: group.items.filter((item) => !item.adminOnly || isAdmin.value),
+      }))
+      .filter((group) => group.items.length > 0),
   );
 
   const isRail = computed(() => Boolean(props.collapsed) && !props.isDrawer);
@@ -104,7 +86,7 @@
   >
     <RouterLink
       class="app-sidebar__brand"
-      :to="{ name: RouteName.CHORUS_HOME }"
+      :to="{ name: RouteName.TUTTI_DASHBOARD }"
       aria-label="Tutti"
       @click="emit('navigate')"
     >

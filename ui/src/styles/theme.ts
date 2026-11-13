@@ -24,6 +24,11 @@ const FONT_FAMILY = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
 const FONT_FAMILY_MONO =
   "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace";
 
+// --tt-radius-control / --tt-radius-card / --tt-radius-modal
+const RADIUS_CONTROL = '6px';
+const RADIUS_CARD = '10px';
+const RADIUS_MODAL = '14px';
+
 function build(palette: {
   primary: string;
   primaryHover: string;
@@ -52,8 +57,16 @@ function build(palette: {
       fontFamilyMono: FONT_FAMILY_MONO,
       fontWeight: '400',
       fontWeightStrong: '600',
-      borderRadius: '8px',
-      borderRadiusSmall: '6px',
+      borderRadius: RADIUS_CONTROL,
+      borderRadiusSmall: '4px',
+      fontSize: '14px',
+      fontSizeSmall: '13px',
+      fontSizeTiny: '12px',
+      fontSizeLarge: '16px',
+      fontSizeHuge: '20px',
+      cubicBezierEaseInOut: 'cubic-bezier(0.2, 0, 0, 1)',
+      heightMedium: '36px',
+      heightSmall: '32px',
       baseColor: '#FFFFFF',
       primaryColor: palette.primary,
       primaryColorHover: palette.primaryHover,
@@ -118,13 +131,19 @@ function build(palette: {
       color: palette.card,
       colorModal: palette.card,
       borderColor: palette.border,
-      borderRadius: '12px',
+      borderRadius: RADIUS_CARD,
     },
     Dialog: {
-      borderRadius: '14px',
+      borderRadius: RADIUS_MODAL,
     },
     Modal: {
-      borderRadius: '14px',
+      borderRadius: RADIUS_MODAL,
+    },
+    Drawer: {
+      color: palette.card,
+    },
+    Popover: {
+      borderRadius: RADIUS_CONTROL,
     },
     DataTable: {
       thColor: palette.subtle,
@@ -137,16 +156,26 @@ function build(palette: {
       borderColor: palette.borderSubtle,
       fontSizeMedium: '13px',
       fontSizeSmall: '13px',
-      borderRadius: '12px',
+      borderRadius: RADIUS_CARD,
+      // 20px line + padding: 44px comfortable (medium), 32px compact (small)
+      tdPaddingMedium: '12px 16px',
+      tdPaddingSmall: '6px 12px',
     },
     Input: {
-      borderRadius: '8px',
+      borderRadius: RADIUS_CONTROL,
       heightMedium: '36px',
     },
     Select: {
       peers: {
-        InternalSelection: { borderRadius: '8px', heightMedium: '36px' },
+        InternalSelection: {
+          borderRadius: RADIUS_CONTROL,
+          heightMedium: '36px',
+        },
       },
+    },
+    Skeleton: {
+      color: palette.subtle,
+      colorEnd: palette.border,
     },
     Tag: {
       borderRadius: '6px',

@@ -53,6 +53,8 @@ const ICONS = {
   failover: 'M12 2l9 4v6c0 5-3.8 9.4-9 10-5.2-.6-9-5-9-10V6zM9 12l2 2 4-4',
   protection: 'M12 2l9 4v6c0 5-3.8 9.4-9 10-5.2-.6-9-5-9-10V6zM8 12h8M12 8v8',
   diff: 'M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 3v18',
+  audit:
+    'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 7h6m-6 4h4',
   key: 'M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z',
   docs: 'M4 4h11l5 5v11H4zM15 4v5h5M8 13h8M8 17h6',
   api: 'M8 6l-6 6 6 6M16 6l6 6-6 6M14 4l-4 16',
@@ -60,17 +62,20 @@ const ICONS = {
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.4-2.8l1.8-1.2-1.8-3.1-2.1.7a7.2 7.2 0 0 0-1.7-1L15.3 5h-3.6l-.3 2.6a7.2 7.2 0 0 0-1.7 1l-2.1-.7-1.8 3.1 1.8 1.2a7.4 7.4 0 0 0 0 2l-1.8 1.2 1.8 3.1 2.1-.7a7.2 7.2 0 0 0 1.7 1l.3 2.6h3.6l.3-2.6a7.2 7.2 0 0 0 1.7-1l2.1.7 1.8-3.1-1.8-1.2c.1-.7.1-1.3 0-2z',
 } as const;
 
-/** Sidebar structure; labels come from i18n (group: nav.group.<id>, item: route name). */
+/**
+ * Sidebar structure (spec section 2): 5 groups, 10 items. Labels come from
+ * i18n (group: nav.group.<id>, item: the route name). Docs and the API
+ * reference are not in the sidebar; they open from the topbar Help menu.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'overview',
     items: [
       {
-        routeName: RouteName.CHORUS_HOME,
+        routeName: RouteName.TUTTI_DASHBOARD,
         iconPath: ICONS.dashboard,
         badgeKey: 'attention',
       },
-      { routeName: RouteName.CHORUS_MONITORING, iconPath: ICONS.monitoring },
     ],
   },
   {
@@ -89,11 +94,6 @@ export const NAV_GROUPS: NavGroup[] = [
         badgeKey: 'protection',
       },
       { routeName: RouteName.CHORUS_REPLICATION, iconPath: ICONS.replication },
-      {
-        routeName: RouteName.CHORUS_ROUTING_POLICIES,
-        iconPath: ICONS.routing,
-      },
-      { routeName: RouteName.CHORUS_DIFF_REPORTS, iconPath: ICONS.diff },
     ],
   },
   {
@@ -119,18 +119,17 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         routeName: RouteName.TUTTI_AUDIT_LOG,
-        iconPath: 'M9 3H5v18h14V3h-4M9 3v4h6V3zM8 12h8M8 16h8',
+        iconPath: ICONS.audit,
         adminOnly: true,
       },
     ],
   },
-  {
-    id: 'help',
-    items: [
-      { routeName: RouteName.TUTTI_DOCS, iconPath: ICONS.docs },
-      { routeName: RouteName.TUTTI_API_REFERENCE, iconPath: ICONS.api },
-    ],
-  },
+];
+
+/** Topbar Help menu entries (also offered by the quick search). */
+export const HELP_ITEMS: NavItem[] = [
+  { routeName: RouteName.TUTTI_DOCS, iconPath: ICONS.docs },
+  { routeName: RouteName.TUTTI_API_REFERENCE, iconPath: ICONS.api },
 ];
 
 export const SIDEBAR_MOBILE_BREAKPOINT = 960;

@@ -14,28 +14,25 @@
  *  limitations under the License.
  */
 
-import type { RouteRecordRaw } from 'vue-router';
+import type { LocationQuery, RouteLocation, RouteRecordRaw } from 'vue-router';
 import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 import { RouteName } from '@/utils/types/router';
-const ChorusHomePage = () => import('@/pages/TuttiHomePage/TuttiHomePage.vue');
+// WP1: swap this single line for the new Dashboard page (spec 4.1); until
+// then /dashboard renders the existing home page.
+const TuttiDashboardPage = () =>
+  import('@/pages/TuttiHomePage/TuttiHomePage.vue');
 const DashboardView = () =>
   import('@/components/dashboard/DashboardView/DashboardView.vue');
 const TuttiStoragesPage = () =>
   import('@/pages/TuttiStoragesPage/TuttiStoragesPage.vue');
-const ChorusMonitoringPage = () =>
-  import('@/pages/TuttiMonitoringPage/TuttiMonitoringPage.vue');
 const ChorusReplicationPage = () =>
   import('@/pages/TuttiReplicationPage/TuttiReplicationPage.vue');
 const ChorusAddReplicationPage = () =>
   import('@/pages/TuttiAddReplicationPage/TuttiAddReplicationPage.vue');
 const TuttiStorageDetailPage = () =>
   import('@/pages/TuttiStorageDetailsPage/TuttiStorageDetailsPage.vue');
-const ChorusRoutingPoliciesPage = () =>
-  import('@/pages/TuttiRoutingPoliciesPage/TuttiRoutingPoliciesPage.vue');
 const ChorusAddRoutingPolicyPage = () =>
   import('@/pages/TuttiAddRoutingPolicyPage/TuttiAddRoutingPolicyPage.vue');
-const ChorusDiffReportsPage = () =>
-  import('@/pages/TuttiDiffReportsPage/TuttiDiffReportsPage.vue');
 const ChorusAddDiffReportPage = () =>
   import('@/pages/TuttiAddDiffReportPage/TuttiAddDiffReportPage.vue');
 const ChorusDiffReportDetailPage = () =>
@@ -65,6 +62,36 @@ const TuttiSystemSettingsPage = () =>
 const DocsPage = () => import('@/pages/DocsPage.vue');
 const LoginPage = () => import('@/pages/LoginPage/LoginPage.vue');
 
+/** Old URL -> new route, keeping the query; `extra` is merged on top. */
+function keepQuery(name: RouteName, extra: LocationQuery = {}) {
+  return (to: RouteLocation) => ({
+    name,
+    query: { ...to.query, ...extra },
+    hash: to.hash,
+  });
+}
+
+/**
+ * /diff-reports/detail?from=..&to=.. (and ?id=..) -> /replication/diff/:id.
+ * The whole query is kept (the detail store still reads from/to); the id is
+ * ?id when given, else "<from>~<to>", which identifies a diff report.
+ */
+function diffDetailRedirect(to: RouteLocation) {
+  const { id, from, to: target } = to.query;
+  let detailId = 'report';
+
+  if (typeof id === 'string' && id !== '') detailId = id;
+  else if (typeof from === 'string' && typeof target === 'string')
+    detailId = `${from}~${target}`;
+
+  return {
+    name: RouteName.TUTTI_REPLICATION_DIFF_DETAIL,
+    params: { id: detailId },
+    query: to.query,
+    hash: to.hash,
+  };
+}
+
 export const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -79,13 +106,13 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: DashboardView,
-    redirect: { name: RouteName.CHORUS_HOME },
+    redirect: keepQuery(RouteName.TUTTI_DASHBOARD),
     children: [
       {
-        path: 'home',
-        meta: { navGroup: 'overview', navSection: RouteName.CHORUS_HOME },
-        name: RouteName.CHORUS_HOME,
-        component: ChorusHomePage,
+        path: 'dashboard',
+        meta: { navGroup: 'overview', navSection: RouteName.TUTTI_DASHBOARD },
+        name: RouteName.TUTTI_DASHBOARD,
+        component: TuttiDashboardPage,
       },
       {
         path: 'replication',
@@ -107,31 +134,32 @@ export const routes: RouteRecordRaw[] = [
         component: ChorusAddReplicationPage,
       },
       {
-        path: 'diff-reports',
-        meta: {
-          navGroup: 'dataProtection',
-          navSection: RouteName.CHORUS_DIFF_REPORTS,
-        },
-        name: RouteName.CHORUS_DIFF_REPORTS,
-        component: ChorusDiffReportsPage,
-      },
-      {
-        path: 'diff-reports/add',
+        path: 'replication/routing/add',
         meta: {
           requiresWrite: true,
           navGroup: 'dataProtection',
-          navSection: RouteName.CHORUS_DIFF_REPORTS,
+          navSection: RouteName.CHORUS_REPLICATION,
+        },
+        name: RouteName.CHORUS_ADD_ROUTING_POLICY,
+        component: ChorusAddRoutingPolicyPage,
+      },
+      {
+        path: 'replication/diff/add',
+        meta: {
+          requiresWrite: true,
+          navGroup: 'dataProtection',
+          navSection: RouteName.CHORUS_REPLICATION,
         },
         name: RouteName.CHORUS_ADD_DIFF_REPORT,
         component: ChorusAddDiffReportPage,
       },
       {
-        path: 'diff-reports/detail',
+        path: 'replication/diff/:id',
         meta: {
           navGroup: 'dataProtection',
-          navSection: RouteName.CHORUS_DIFF_REPORTS,
+          navSection: RouteName.CHORUS_REPLICATION,
         },
-        name: RouteName.CHORUS_DIFF_REPORT_DETAIL,
+        name: RouteName.TUTTI_REPLICATION_DIFF_DETAIL,
         component: ChorusDiffReportDetailPage,
       },
       {
@@ -146,35 +174,6 @@ export const routes: RouteRecordRaw[] = [
         name: RouteName.CHORUS_STORAGE_DETAILS,
         component: TuttiStorageDetailPage,
         props: true,
-      },
-      {
-        path: 'monitoring',
-        meta: { navGroup: 'overview', navSection: RouteName.CHORUS_MONITORING },
-        name: RouteName.CHORUS_MONITORING,
-        component: ChorusMonitoringPage,
-      },
-      {
-        path: 'routing-policies',
-        meta: {
-          navGroup: 'dataProtection',
-          navSection: RouteName.CHORUS_ROUTING_POLICIES,
-        },
-        name: RouteName.CHORUS_ROUTING_POLICIES,
-        component: ChorusRoutingPoliciesPage,
-      },
-      {
-        path: 'routing-policies/add',
-        meta: {
-          requiresWrite: true,
-          navGroup: 'dataProtection',
-          navSection: RouteName.CHORUS_ROUTING_POLICIES,
-        },
-        name: RouteName.CHORUS_ADD_ROUTING_POLICY,
-        component: ChorusAddRoutingPolicyPage,
-      },
-      {
-        path: 'health',
-        redirect: { name: RouteName.CHORUS_STORAGES },
       },
       {
         path: 'proxies',
@@ -209,7 +208,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'console-users',
         meta: {
           requiresAdmin: true,
-          navGroup: 'administration',
+          navGroup: 'access',
           navSection: RouteName.TUTTI_CONSOLE_USERS,
         },
         name: RouteName.TUTTI_CONSOLE_USERS,
@@ -220,7 +219,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           requiresAdmin: true,
           navGroup: 'administration',
-          navSection: AUDIT_LOG_ROUTE_NAME as unknown as RouteName,
+          navSection: RouteName.TUTTI_AUDIT_LOG,
         },
         name: AUDIT_LOG_ROUTE_NAME,
         component: TuttiAuditLogPage,
@@ -236,10 +235,6 @@ export const routes: RouteRecordRaw[] = [
         component: TuttiSystemSettingsPage,
       },
       {
-        path: 'access-keys',
-        redirect: { name: RouteName.TUTTI_PROXY_ACCOUNTS },
-      },
-      {
         path: 'proxy-accounts',
         meta: {
           navGroup: 'access',
@@ -247,10 +242,6 @@ export const routes: RouteRecordRaw[] = [
         },
         name: RouteName.TUTTI_PROXY_ACCOUNTS,
         component: TuttiProxyAccountsPage,
-      },
-      {
-        path: 'failover',
-        redirect: { name: RouteName.TUTTI_PROTECTION_GROUPS },
       },
       {
         path: 'protection-groups',
@@ -283,6 +274,54 @@ export const routes: RouteRecordRaw[] = [
         name: RouteName.TUTTI_DOCS,
         component: DocsPage,
       },
+
+      // Old URLs (spec section 2). Each keeps its query string; the old route
+      // names stay on the redirect records so `{ name }` links keep working.
+      {
+        path: 'home',
+        name: RouteName.CHORUS_HOME,
+        redirect: keepQuery(RouteName.TUTTI_DASHBOARD),
+      },
+      {
+        path: 'monitoring',
+        name: RouteName.CHORUS_MONITORING,
+        redirect: keepQuery(RouteName.TUTTI_DASHBOARD, { tab: 'metrics' }),
+      },
+      {
+        path: 'health',
+        redirect: keepQuery(RouteName.TUTTI_PROXIES),
+      },
+      {
+        path: 'routing-policies',
+        name: RouteName.CHORUS_ROUTING_POLICIES,
+        redirect: keepQuery(RouteName.CHORUS_REPLICATION, { tab: 'routing' }),
+      },
+      {
+        path: 'routing-policies/add',
+        redirect: keepQuery(RouteName.CHORUS_ADD_ROUTING_POLICY),
+      },
+      {
+        path: 'diff-reports',
+        name: RouteName.CHORUS_DIFF_REPORTS,
+        redirect: keepQuery(RouteName.CHORUS_REPLICATION, { tab: 'diff' }),
+      },
+      {
+        path: 'diff-reports/add',
+        redirect: keepQuery(RouteName.CHORUS_ADD_DIFF_REPORT),
+      },
+      {
+        path: 'diff-reports/detail',
+        name: RouteName.CHORUS_DIFF_REPORT_DETAIL,
+        redirect: diffDetailRedirect,
+      },
+      {
+        path: 'failover',
+        redirect: keepQuery(RouteName.TUTTI_PROTECTION_GROUPS),
+      },
+      {
+        path: 'access-keys',
+        redirect: keepQuery(RouteName.TUTTI_PROXY_ACCOUNTS),
+      },
       {
         // the old credentials page: credentials now live on the user pages
         name: RouteName.CHORUS_SET_CREDENTIAL,
@@ -303,6 +342,7 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: { name: RouteName.CHORUS_HOME },
+    // a path (not a name) so the unmatched pathMatch param is dropped
+    redirect: '/dashboard',
   },
 ];

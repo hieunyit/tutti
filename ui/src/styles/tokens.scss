@@ -23,16 +23,52 @@
   --tt-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --tt-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
+  // type scale (12/13/14/16/20/24) and at most three weights
+  --tt-text-xs: 12px;
+  --tt-text-sm: 13px;
+  --tt-text-md: 14px;
+  --tt-text-lg: 16px;
+  --tt-text-xl: 20px;
+  --tt-text-2xl: 24px;
+  --tt-weight-regular: 400;
+  --tt-weight-medium: 500;
+  --tt-weight-strong: 600;
+
+  // 4/8px spacing grid
+  --tt-space-1: 4px;
+  --tt-space-2: 8px;
+  --tt-space-3: 12px;
+  --tt-space-4: 16px;
+  --tt-space-5: 20px;
+  --tt-space-6: 24px;
+  --tt-space-7: 32px;
+  --tt-space-8: 40px;
+
+  // radius: 6px control, 10px card, 14px modal
   --tt-radius-tag: 6px;
-  --tt-radius-control: 8px;
-  --tt-radius-card: 12px;
-  --tt-radius-dialog: 14px;
+  --tt-radius-control: 6px;
+  --tt-radius-card: 10px;
+  --tt-radius-modal: 14px;
+  --tt-radius-dialog: var(--tt-radius-modal);
   --tt-radius-pill: 999px;
 
   --tt-page-padding: 24px;
   --tt-card-padding: 16px;
+  --tt-content-max: 1280px;
+  --tt-measure: 72ch;
+  --tt-topbar-height: 56px;
+
+  // table density: comfortable (default) and compact
+  --tt-row-comfortable: 44px;
+  --tt-row-compact: 32px;
+
+  // motion: opacity/transform only; zeroed for prefers-reduced-motion below
+  --tt-duration-fast: 120ms;
+  --tt-duration: 200ms;
+  --tt-ease: cubic-bezier(0.2, 0, 0, 1);
 
   --tt-bg-app: #f5f7fa;
+  --tt-bg: var(--tt-bg-app);
   --tt-surface: #ffffff;
   --tt-subtle: #f9fafb;
   --tt-border: #e4e7ec;
@@ -46,6 +82,9 @@
   --tt-code-bg: #f2f4f7;
   --tt-hover: rgba(16, 24, 40, 0.05);
   --tt-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  // elevation is border first; this soft shadow is for popover/drawer/modal only
+  --tt-shadow-overlay: 0 8px 24px rgba(16, 24, 40, 0.16);
+  --tt-overlay: rgba(16, 24, 40, 0.45);
 
   --tt-accent: #2952cc;
   --tt-accent-hover: #1d3c99;
@@ -100,6 +139,7 @@
 
 body.color-scheme-dark {
   --tt-bg-app: #0b1220;
+  --tt-bg: var(--tt-bg-app);
   --tt-surface: #111a2e;
   --tt-subtle: #16213a;
   --tt-border: #24314d;
@@ -113,6 +153,8 @@ body.color-scheme-dark {
   --tt-code-bg: #16213a;
   --tt-hover: rgba(255, 255, 255, 0.06);
   --tt-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --tt-shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --tt-overlay: rgba(0, 0, 0, 0.6);
 
   --tt-accent: #6e95ff;
   --tt-accent-hover: #8fadff;
@@ -209,6 +251,14 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  body.color-scheme-dark {
+    --tt-duration-fast: 0ms;
+    --tt-duration: 0ms;
+  }
 }
 
 // visible keyboard focus everywhere

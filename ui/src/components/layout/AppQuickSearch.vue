@@ -21,7 +21,11 @@
   import { useI18n } from 'vue-i18n';
   import i18nLayout from './i18nLayout';
   import { useAuthStore } from '@/stores/authStore';
-  import { NAV_GROUPS, type NavItem } from '@/utils/constants/navigation';
+  import {
+    HELP_ITEMS,
+    NAV_GROUPS,
+    type NavItem,
+  } from '@/utils/constants/navigation';
   import {
     filterSearchItems,
     type SearchableItem,
@@ -37,8 +41,8 @@
   const isOpen = ref(false);
   const activeIndex = ref(0);
 
-  const entries = computed<SearchableItem<NavItem>[]>(() =>
-    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value).flatMap(
+  const entries = computed<SearchableItem<NavItem>[]>(() => [
+    ...NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value).flatMap(
       (group) =>
         group.items
           .filter((item) => !item.adminOnly || isAdmin.value)
@@ -48,7 +52,16 @@
             group: t(`group.${group.id}`),
           })),
     ),
-  );
+    ...HELP_ITEMS.map((item) => ({
+      item,
+      label: tGlobal(item.routeName),
+      group: t('group.help'),
+    })),
+  ]);
+  const isMac =
+    typeof navigator !== 'undefined' &&
+    /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const shortcutLabel = isMac ? '⌘K' : 'Ctrl K';
   const results = computed(() => filterSearchItems(query.value, entries.value));
   const listId = 'quick-search-list';
 
@@ -122,6 +135,18 @@
   }
 
   function onGlobalKeydown(event: KeyboardEvent) {
+    // Ctrl/Cmd+K works everywhere, "/" only outside text fields
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      event.key.toLowerCase() === 'k'
+    ) {
+      event.preventDefault();
+      nextTick(() => input.value?.focus());
+
+      return;
+    }
+
     if (
       event.key === '/' &&
       !event.ctrlKey &&
@@ -177,6 +202,7 @@
           isOpen && results.length > 0 ? `${listId}-${activeIndex}` : undefined
         "
         :aria-label="t('searchLabel')"
+        :aria-keyshortcuts="isMac ? 'Meta+K /' : 'Control+K /'"
         :placeholder="t('searchPlaceholder')"
         @focus="open"
         @input="onInput"
@@ -185,7 +211,7 @@
       <kbd
         class="quick-search__key"
         aria-hidden="true"
-        >/</kbd
+        >{{ shortcutLabel }}</kbd
       >
     </label>
 
@@ -283,7 +309,7 @@
       background-color: var(--tt-surface);
       border: 1px solid var(--tt-border);
       border-radius: var(--tt-radius-control);
-      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.18);
+      box-shadow: var(--tt-shadow-overlay);
     }
 
     &__option {

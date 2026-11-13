@@ -37,3 +37,50 @@ describe('quick search permissions', () => {
     wrapper.unmount();
   });
 });
+
+describe('quick search entries', () => {
+  function mountSearch() {
+    return mount(AppQuickSearch, {
+      attachTo: document.body,
+      global: {
+        plugins: [
+          createI18n({ legacy: false, locale: 'en', messages: routes }),
+        ],
+      },
+    });
+  }
+
+  it('hides System settings and Audit log from viewers', async () => {
+    const auth = useAuthStore();
+
+    auth.authEnabled = true;
+    auth.role = AuthRole.VIEWER;
+    const wrapper = mountSearch();
+
+    for (const query of ['System settings', 'Audit log']) {
+      await wrapper.get('input').setValue(query);
+      expect(wrapper.findAll('[role="option"]')).toHaveLength(0);
+    }
+
+    wrapper.unmount();
+  });
+
+  it('offers the docs pages from the Help menu', async () => {
+    const wrapper = mountSearch();
+
+    await wrapper.get('input').setValue('API reference');
+    expect(wrapper.findAll('[role="option"]')).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it('focuses on Ctrl+K', async () => {
+    const wrapper = mountSearch();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }),
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement).toBe(wrapper.get('input').element);
+    wrapper.unmount();
+  });
+});

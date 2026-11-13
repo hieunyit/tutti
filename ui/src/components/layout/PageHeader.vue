@@ -15,6 +15,7 @@
   -->
 
 <script setup lang="ts">
+  // Legacy page header; new pages use PageShell from '@/components/kit'.
   defineProps<{
     title: string;
     description?: string;
@@ -69,7 +70,7 @@
 
 <style lang="scss" scoped>
   .page-header {
-    margin-bottom: 20px;
+    margin-bottom: var(--tt-space-5);
 
     &__row {
       display: flex;
@@ -88,9 +89,9 @@
 
     &__title {
       margin: 0;
-      font-size: 24px;
+      font-size: var(--tt-text-2xl);
       line-height: 32px;
-      font-weight: 700;
+      font-weight: var(--tt-weight-strong);
       color: var(--tt-text);
     }
 
@@ -99,7 +100,7 @@
       font-size: 14px;
       line-height: 20px;
       color: var(--tt-text-2);
-      max-width: 72ch;
+      max-width: var(--tt-measure);
     }
 
     &__live {
