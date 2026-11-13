@@ -54,7 +54,9 @@ export const useTuttiHealthStore = defineStore('tuttiHealth', () => {
   function startPolling() {
     stopPolling();
     loadProxies(true);
-    state.timer = setInterval(() => loadProxies(), HEALTH_REFRESH_INTERVAL_MS);
+    state.timer = setInterval(() => {
+      if (typeof document === 'undefined' || !document.hidden) loadProxies();
+    }, HEALTH_REFRESH_INTERVAL_MS);
   }
 
   function stopPolling() {

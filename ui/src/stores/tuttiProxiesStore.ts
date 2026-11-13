@@ -60,7 +60,9 @@ export const useTuttiProxiesStore = defineStore('tuttiProxies', () => {
     stopPolling();
     polling.value = true;
     load();
-    timer = setInterval(load, ms);
+    timer = setInterval(() => {
+      if (typeof document === 'undefined' || !document.hidden) load();
+    }, ms);
   }
 
   return {

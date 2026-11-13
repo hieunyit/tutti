@@ -17,6 +17,7 @@
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { useRoute } from 'vue-router';
+import { usePolling } from '@/utils/composables/usePolling';
 import type { DiffReport, DiffReportLocation } from '@/utils/types/chorus';
 import { ChorusService } from '@/services/ChorusService';
 import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
@@ -29,8 +30,6 @@ interface ChorusDiffReportDetailState {
   isNotFound: boolean;
   locations: DiffReportLocation[];
   report: DiffReport | null;
-  pollingRequest: Promise<unknown> | null;
-  pollingTimeout: number | null;
 }
 
 const POLL_INTERVAL_MS = 5000;
@@ -43,8 +42,6 @@ function getInitialState(): ChorusDiffReportDetailState {
     isNotFound: false,
     locations: [],
     report: null,
-    pollingRequest: null,
-    pollingTimeout: null,
   };
 }
 
@@ -52,6 +49,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
   'chorusDiffReportDetail',
   () => {
     const state = reactive<ChorusDiffReportDetailState>(getInitialState());
+    const polling = usePolling();
     const route = useRoute();
 
     state.locations = DiffReportsHelper.parseQueryParamsToLocations(
@@ -84,14 +82,9 @@ export const useTuttiDiffReportDetailStore = defineStore(
       }
     }
 
-    async function startPolling() {
-      stopPolling();
-      const currentGen = generation;
-
+    async function pollOnce(currentGen: number) {
       try {
-        state.pollingRequest = getDiffReport(currentGen);
-
-        await state.pollingRequest;
+        await getDiffReport(currentGen);
 
         if (currentGen === generation) {
           state.hasError = false;
@@ -103,6 +96,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
 
         if (ErrorHelper.getStatusCode(e) === 404) {
           state.isNotFound = true;
+          void polling.stop();
 
           return;
         }
@@ -111,30 +105,20 @@ export const useTuttiDiffReportDetailStore = defineStore(
           state.hasError = true;
         }
 
-        // Transient error (e.g. 503): schedule next poll attempt instead of killing the polling loop
-        state.pollingTimeout = window.setTimeout(startPolling, POLL_INTERVAL_MS);
-
-        return;
-      } finally {
-        if (currentGen === generation) {
-          state.pollingRequest = null;
-        }
+        // Transient error (e.g. 503): the polling loop keeps going
       }
+    }
 
-      if (currentGen !== generation) {
-        return;
-      }
+    async function startPolling() {
+      stopPolling();
+      const currentGen = generation;
 
-      state.pollingTimeout = window.setTimeout(startPolling, POLL_INTERVAL_MS);
+      await polling.start(() => pollOnce(currentGen), POLL_INTERVAL_MS);
     }
 
     function stopPolling() {
       generation++;
-
-      if (state.pollingTimeout) {
-        clearTimeout(state.pollingTimeout);
-        state.pollingTimeout = null;
-      }
+      void polling.stop();
     }
 
     async function initDiffReportDetailsPage() {

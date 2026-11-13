@@ -20,6 +20,7 @@ import type {
   DataTablePaginationObject,
   DataTableSortState,
 } from '@clyso/clyso-ui-kit';
+import { usePolling } from '@/utils/composables/usePolling';
 import type { DiffReport } from '@/utils/types/chorus';
 import { DiffReportStatusFilter } from '@/utils/types/chorus';
 import type { AddId } from '@/utils/types/helper';
@@ -33,8 +34,6 @@ interface ChorusDiffReportsState {
   sorter: DataTableSortState | null;
   page: number;
   pageSize: number;
-  pollingRequest: Promise<unknown> | null;
-  pollingTimeout: number | null;
 
   selectedReportIds: string[];
   isDeleteSelectedProcessing: boolean;
@@ -56,8 +55,6 @@ function getInitialState(): ChorusDiffReportsState {
     sorter: null,
     page: 1,
     pageSize: PAGE_SIZES[0],
-    pollingRequest: null,
-    pollingTimeout: null,
 
     selectedReportIds: [],
     isDeleteSelectedProcessing: false,
@@ -71,6 +68,7 @@ function getInitialState(): ChorusDiffReportsState {
 
 export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   const state = reactive<ChorusDiffReportsState>(getInitialState());
+  const polling = usePolling();
 
   const hasNoData = computed<boolean>(() => state.reports.length === 0);
 
@@ -242,41 +240,11 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   }
 
   async function startPolling() {
-    try {
-      await stopPolling();
-
-      state.pollingRequest = getDiffReports();
-
-      await state.pollingRequest;
-    } finally {
-      state.pollingRequest = null;
-      state.pollingTimeout = window.setTimeout(startPolling, POLL_INTERVAL_MS);
-    }
+    await polling.start(getDiffReports, POLL_INTERVAL_MS);
   }
 
   async function stopPolling() {
-    let error: Error | null = null;
-
-    if (state.pollingRequest) {
-      try {
-        await state.pollingRequest;
-      } catch (e) {
-        error = e as Error;
-      } finally {
-        state.pollingRequest = null;
-      }
-    }
-
-    if (!state.pollingTimeout) {
-      return;
-    }
-
-    clearTimeout(state.pollingTimeout);
-    state.pollingTimeout = null;
-
-    if (error) {
-      throw error;
-    }
+    await polling.stop();
   }
 
   async function initDiffReportPage() {

@@ -35,15 +35,15 @@ import { LocalStorageItem } from '@/utils/types/localStorage';
 import type { ChorusReplication } from '@/utils/types/chorus';
 import type { TuttiProxyStatus, TuttiStatsRange } from '@/utils/types/tutti';
 
-/** Live values: one small request every 2 s (the proxies publish every 2 s). */
-export const MONITORING_POLL_INTERVAL_MS = 2_000;
+/** Live values: one small request every 5 s (paused while the tab is hidden). */
+export const MONITORING_POLL_INTERVAL_MS = 5_000;
 /** History is refetched now and then so the charts stay in sync. */
 export const MONITORING_HISTORY_REFRESH_MS = 30_000;
 export const MONITORING_REPLICATION_INTERVAL_MS = 30_000;
 /** A replication with lag > 0 for this many consecutive polls is flagged. */
 export const MONITORING_LAG_WARN_POLLS = 3;
 /** A poll still running after this long is abandoned for a fresh one. */
-const POLL_STUCK_MS = 10_000;
+const POLL_STUCK_MS = 20_000;
 
 export interface MonitoringProxy {
   appId: string;

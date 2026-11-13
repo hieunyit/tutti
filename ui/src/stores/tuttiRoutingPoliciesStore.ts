@@ -18,6 +18,7 @@ import { type DataTablePaginationObject } from '@clyso/clyso-ui-kit';
 import type { DataTableSortState } from 'naive-ui';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
+import { usePolling } from '@/utils/composables/usePolling';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
 import {
@@ -38,8 +39,6 @@ interface ChorusRoutingPoliciesState {
   sorter: DataTableSortState | null;
   page: number;
   pageSize: number;
-  pollingRequest: Promise<unknown> | null;
-  pollingTimeout: number | null;
   selectedRoutingPolicyIds: string[];
   isDeleteSelectedProcessing: boolean;
 
@@ -62,8 +61,6 @@ function getInitialState(): ChorusRoutingPoliciesState {
     sorter: null,
     page: 1,
     pageSize: PAGE_SIZES[0],
-    pollingRequest: null,
-    pollingTimeout: null,
     selectedRoutingPolicyIds: [],
     isDeleteSelectedProcessing: false,
 
@@ -80,6 +77,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
   'chorusRoutingPolicies',
   () => {
     const state = reactive<ChorusRoutingPoliciesState>(getInitialState());
+    const polling = usePolling();
 
     const { t } = useStoreI18n({
       messages: i18nRoutingPolicies,
@@ -172,44 +170,11 @@ export const useTuttiRoutingPoliciesStore = defineStore(
     }
 
     async function startRoutingPoliciesPolling() {
-      try {
-        await stopRoutingPoliciesPolling();
-
-        state.pollingRequest = getRoutingPolicies();
-
-        await state.pollingRequest;
-      } finally {
-        state.pollingRequest = null;
-        state.pollingTimeout = window.setTimeout(
-          startRoutingPoliciesPolling,
-          POLL_INTERVAL_MS,
-        );
-      }
+      await polling.start(getRoutingPolicies, POLL_INTERVAL_MS);
     }
 
     async function stopRoutingPoliciesPolling() {
-      let error: Error | null = null;
-
-      if (state.pollingRequest) {
-        try {
-          await state.pollingRequest;
-        } catch (e) {
-          error = e as Error;
-        } finally {
-          state.pollingRequest = null;
-        }
-      }
-
-      if (!state.pollingTimeout) {
-        return;
-      }
-
-      clearTimeout(state.pollingTimeout);
-      state.pollingTimeout = null;
-
-      if (error) {
-        throw error;
-      }
+      await polling.stop();
     }
 
     async function initRoutingPoliciesPage() {

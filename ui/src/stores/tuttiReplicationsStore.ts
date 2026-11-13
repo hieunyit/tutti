@@ -21,6 +21,7 @@ import type {
   DataTableSortState,
 } from '@clyso/clyso-ui-kit';
 import { useNotification } from '@clyso/clyso-ui-kit';
+import { usePolling } from '@/utils/composables/usePolling';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
   ChorusReplication,
@@ -41,8 +42,6 @@ interface ChorusReplicationsState {
   sorter: DataTableSortState | null;
   page: number;
   pageSize: number;
-  pollingRequest: Promise<unknown> | null;
-  pollingTimeout: number | null;
 
   selectedReplicationIds: string[];
   isResumeSelectedProcessing: boolean;
@@ -84,8 +83,6 @@ function getInitialState(): ChorusReplicationsState {
     sorter: null,
     page: 1,
     pageSize: PAGE_SIZES[0],
-    pollingRequest: null,
-    pollingTimeout: null,
     selectedReplicationIds: [],
     isResumeSelectedProcessing: false,
     isPauseSelectedProcessing: false,
@@ -104,6 +101,7 @@ export const useTuttiReplicationsStore = defineStore(
   'chorusReplications',
   () => {
     const state = reactive<ChorusReplicationsState>(getInitialState());
+    const polling = usePolling();
 
     const { createNotification, removeNotification } = useNotification();
 
@@ -218,44 +216,11 @@ export const useTuttiReplicationsStore = defineStore(
     }
 
     async function startReplicationPolling() {
-      try {
-        await stopReplicationPolling();
-
-        state.pollingRequest = getReplications();
-
-        await state.pollingRequest;
-      } finally {
-        state.pollingRequest = null;
-        state.pollingTimeout = window.setTimeout(
-          startReplicationPolling,
-          POLL_INTERVAL_MS,
-        );
-      }
+      await polling.start(getReplications, POLL_INTERVAL_MS);
     }
 
     async function stopReplicationPolling() {
-      let error: Error | null = null;
-
-      if (state.pollingRequest) {
-        try {
-          await state.pollingRequest;
-        } catch (e) {
-          error = e as Error;
-        } finally {
-          state.pollingRequest = null;
-        }
-      }
-
-      if (!state.pollingTimeout) {
-        return;
-      }
-
-      clearTimeout(state.pollingTimeout);
-      state.pollingTimeout = null;
-
-      if (error) {
-        throw error;
-      }
+      await polling.stop();
     }
 
     async function initReplicationsPage() {
