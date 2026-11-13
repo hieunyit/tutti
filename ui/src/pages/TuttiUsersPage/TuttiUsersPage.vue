@@ -1,185 +1,225 @@
 <!-- Copyright © 2026 hieunyit. Licensed under AGPL-3.0. -->
 <script setup lang="ts">
-  import { computed, onMounted, ref } from 'vue';
+  import { computed, h, onMounted, ref } from 'vue';
+  import { RouterLink } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { NButton, NInput } from 'naive-ui';
-  import PageHeader from '@/components/layout/PageHeader.vue';
+  import { NButton, type DataTableColumns } from 'naive-ui';
+  import {
+    Callout,
+    DataTable,
+    EmptyBlock,
+    FilterBar,
+    PageShell,
+    SegmentedFilter,
+    StatusBadge,
+  } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import SectionCard from '@/components/ui/SectionCard.vue';
-  import StatusTag from '@/components/ui/StatusTag.vue';
-  import EmptyState from '@/components/ui/EmptyState.vue';
-  import Callout from '@/components/ui/Callout.vue';
-  import TabBar from '@/components/tutti/common/TabBar.vue';
-  import messages from '@/components/tutti/users/i18nManagement';
+  import messages from '@/components/tutti/users/i18nAccess';
   import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
   import { UserHelper } from '@/utils/helpers/UserHelper';
   import { RouteName } from '@/utils/types/router';
+  import type { S3User } from '@/utils/types/users';
+
   const { t } = useI18n({ messages });
   const store = useTuttiUsersStore();
   const search = ref('');
-  const tab = ref('all');
+  const segment = ref('all');
+
   const visible = computed(() =>
     store.users.filter(
       (user) =>
-        user.name.toLowerCase().includes(search.value.toLowerCase()) &&
-        (tab.value !== 'incomplete' || UserHelper.isIncomplete(user)),
+        user.name.toLowerCase().includes(search.value.trim().toLowerCase()) &&
+        (segment.value !== 'incomplete' || UserHelper.isIncomplete(user)),
     ),
   );
+  const filtered = computed(
+    () => search.value.trim() !== '' || segment.value !== 'all',
+  );
+  const state = computed(() => {
+    if (store.hasError) return 'error' as const;
+
+    return store.isLoaded ? ('ready' as const) : ('loading' as const);
+  });
+
+  function clearFilters() {
+    search.value = '';
+    segment.value = 'all';
+  }
+
+  function keyCount(user: S3User) {
+    return (
+      (user.accessKeys?.static ?? 0) +
+      (user.accessKeys?.dynamicActive ?? 0) +
+      (user.accessKeys?.dynamicDisabled ?? 0)
+    );
+  }
+
+  const columns = computed<DataTableColumns<S3User>>(() => [
+    {
+      title: t('user'),
+      key: 'name',
+      sorter: 'default',
+      render: (user) =>
+        h(
+          RouterLink,
+          {
+            to: {
+              name: RouteName.TUTTI_USER_DETAIL,
+              params: { name: user.name },
+            },
+          },
+          () => h('strong', user.name),
+        ),
+    },
+    {
+      title: t('status'),
+      key: 'status',
+      render: (user) =>
+        UserHelper.isIncomplete(user)
+          ? h(StatusBadge, {
+              tone: 'warning',
+              label: t('statusIncomplete'),
+            })
+          : h(StatusBadge, { tone: 'success', label: t('statusComplete') }),
+    },
+    {
+      title: t('credentials'),
+      key: 'credentials',
+      render: (user) => {
+        const parts = UserHelper.credentialParts(user).filter(
+          (p) => p.kind !== 'missing',
+        );
+
+        return parts.length
+          ? parts.map((part) => h('div', UserHelper.credentialText(part, t)))
+          : '–';
+      },
+    },
+    {
+      title: t('permission'),
+      key: 'permission',
+      render: (user) =>
+        h('div', [
+          user.policy?.permission ?? 'read-write',
+          h(
+            'div',
+            { class: 'users-mono' },
+            user.policy?.buckets?.join(', ') || '*',
+          ),
+        ]),
+    },
+    {
+      title: t('keys'),
+      key: 'keys',
+      align: 'right',
+      render: (user) => String(keyCount(user)),
+    },
+    {
+      title: t('source'),
+      key: 'source',
+      render: (user) =>
+        t(
+          user.storages?.some((s) => s.source === 'config')
+            ? 'config'
+            : 'managed',
+        ),
+    },
+  ]);
 
   onMounted(() => store.load());
 </script>
 
 <template>
-  <div class="phase-d">
-    <PageHeader
-      :title="t('users')"
-      :description="t('usersHint')"
-      ><template #actions
-        ><NButton
-          :loading="store.isLoading"
-          @click="store.load()"
-          >{{ t('refresh') }}</NButton
-        ><WriteGate
-          ><RouterLink :to="{ name: RouteName.TUTTI_USER_CREATE }"
-            ><NButton type="primary">{{ t('createUser') }}</NButton></RouterLink
-          ></WriteGate
-        ></template
-      ></PageHeader
-    >
+  <PageShell
+    :title="t('users')"
+    :description="t('usersHint')"
+    :state="state"
+    @retry="store.load()"
+  >
+    <template #actions>
+      <NButton
+        :loading="store.isLoading"
+        @click="store.load()"
+        >{{ t('refresh') }}</NButton
+      >
+      <WriteGate>
+        <RouterLink :to="{ name: RouteName.TUTTI_USER_CREATE }">
+          <NButton type="primary">{{ t('createUser') }}</NButton>
+        </RouterLink>
+      </WriteGate>
+    </template>
+
     <Callout
       v-if="!store.dynamicEnabled"
       tone="warning"
       >{{ t('notConfigured') }}</Callout
     >
-    <Callout
-      v-if="store.hasError"
-      tone="danger"
-      >{{ t('error') }}
-      <NButton
-        text
-        @click="store.load()"
-        >{{ t('retry') }}</NButton
-      ></Callout
-    >
-    <SectionCard
-      :title="t('users')"
-      flush
-    >
-      <div
-        class="phase-d__toolbar"
-        style="padding: 16px"
-      >
-        <NInput
-          v-model:value="search"
-          class="phase-d__input"
-          :placeholder="t('search')"
-          :aria-label="t('search')"
-        /><TabBar
-          v-model="tab"
-          :label="t('users')"
-          :tabs="[
-            { value: 'all', label: t('all'), count: store.users.length },
-            {
-              value: 'incomplete',
-              label: t('incomplete'),
-              count: store.incompleteUsers.length,
-            },
-          ]"
-        />
-      </div>
-      <table
-        v-if="visible.length"
-        class="phase-d__table"
-      >
-        <thead>
-          <tr>
-            <th>{{ t('user') }}</th>
-            <th>{{ t('credentials') }}</th>
-            <th>{{ t('permission') }}</th>
-            <th>{{ t('keys') }}</th>
-            <th>{{ t('source') }}</th>
-            <th>{{ t('actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="user in visible"
-            :key="user.name"
-          >
-            <td>
-              <RouterLink
-                :to="{
-                  name: RouteName.TUTTI_USER_DETAIL,
-                  params: { name: user.name },
-                }"
-                ><strong>{{ user.name }}</strong></RouterLink
-              >
-            </td>
-            <td>
-              <div class="phase-d__actions">
-                <StatusTag
-                  v-for="part in UserHelper.credentialParts(user).filter(
-                    (p) => p.kind !== 'missing',
-                  )"
-                  :key="part.kind"
-                  :variant="
-                    part.kind === 'connection-account'
-                      ? 'success'
-                      : 'info'
-                  "
-                  >{{ UserHelper.credentialText(part, t) }}</StatusTag
-                >
-                <span
-                  v-if="
-                    !UserHelper.credentialParts(user).some(
-                      (p) => p.kind !== 'missing',
-                    )
-                  "
-                  class="phase-d__muted"
-                  >–</span
-                >
-              </div>
-            </td>
-            <td>
-              {{ user.policy?.permission ?? 'read-write' }}
-              <div class="phase-d__muted">
-                {{ user.policy?.buckets?.join(', ') || '*' }}
-              </div>
-            </td>
-            <td>
-              {{
-                (user.accessKeys?.static ?? 0) +
-                (user.accessKeys?.dynamicActive ?? 0) +
-                (user.accessKeys?.dynamicDisabled ?? 0)
-              }}
-            </td>
-            <td>
-              {{
-                t(
-                  user.storages?.some((s) => s.source === 'config')
-                    ? 'config'
-                    : 'managed',
-                )
-              }}
-            </td>
-            <td>
-              <RouterLink
-                :to="{
-                  name: RouteName.TUTTI_USER_DETAIL,
-                  params: { name: user.name },
-                }"
-                >{{ t('credentials') }}</RouterLink
-              >
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <EmptyState
-        v-else-if="!store.isLoading"
-        :text="t(store.users.length ? 'noMatches' : 'emptyUsers')"
+    <div class="users-toolbar">
+      <FilterBar
+        v-model:search="search"
+        :search-label="t('searchLabel')"
+        :search-placeholder="t('search')"
+        @clear="clearFilters"
       />
-    </SectionCard>
-  </div>
+      <SegmentedFilter
+        v-model="segment"
+        :label="t('users')"
+        :options="[
+          { value: 'all', label: t('all'), count: store.users.length },
+          {
+            value: 'incomplete',
+            label: t('incomplete'),
+            count: store.incompleteUsers.length,
+          },
+        ]"
+      />
+    </div>
+    <DataTable
+      :columns="columns"
+      :rows="visible"
+      :loading="store.isLoading"
+      :row-key="(user: S3User) => user.name"
+      @retry="store.load()"
+    >
+      <template #empty>
+        <EmptyBlock
+          v-if="filtered"
+          :title="t('noMatchesTitle')"
+          :description="t('noMatchesHint')"
+        >
+          <NButton @click="clearFilters">{{ t('clearFilters') }}</NButton>
+        </EmptyBlock>
+        <EmptyBlock
+          v-else
+          :title="t('emptyUsersTitle')"
+          :description="t('emptyUsers')"
+        >
+          <WriteGate>
+            <RouterLink :to="{ name: RouteName.TUTTI_USER_CREATE }">
+              <NButton type="primary">{{ t('createUser') }}</NButton>
+            </RouterLink>
+          </WriteGate>
+        </EmptyBlock>
+      </template>
+    </DataTable>
+  </PageShell>
 </template>
 
-<style lang="scss" src="@/components/tutti/users/phaseD.scss"></style>
+<style lang="scss" scoped>
+  .users-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--tt-space-3);
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--tt-space-4);
+  }
+</style>
+
+<style lang="scss">
+  .users-mono {
+    font-family: var(--tt-mono);
+    font-size: var(--tt-text-xs);
+    color: var(--tt-text-3);
+  }
+</style>

@@ -15,13 +15,11 @@
   -->
 
 <script setup lang="ts">
-  import { CButton } from '@clyso/clyso-ui-kit';
-  import { NCheckbox, NModal } from 'naive-ui';
+  import { NButton, NModal } from 'naive-ui';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nAccounts from './i18nAccounts';
-  import Callout from '@/components/ui/Callout.vue';
-  import CopyField from '@/components/ui/CopyField.vue';
+  import { Callout, CopyValue } from '@/components/kit';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
@@ -99,16 +97,9 @@
       v-if="secret"
       class="secret-modal"
     >
-      <Callout
-        tone="warning"
-        class="secret-modal__warning"
-      >
-        {{ t('secretWarning') }}
-      </Callout>
-
       <div class="secret-modal__field">
         <span class="secret-modal__label">{{ t('secretAccessKeyId') }}</span>
-        <CopyField
+        <CopyValue
           :value="secret.accessKeyId"
           :label="t('secretAccessKeyId')"
         />
@@ -116,10 +107,12 @@
 
       <div class="secret-modal__field">
         <span class="secret-modal__label">{{ t('secretSecret') }}</span>
-        <CopyField
+        <CopyValue
+          :key="secret.accessKeyId"
           :value="secret.secretAccessKey ?? ''"
           :label="t('secretSecret')"
-          secret
+          one-time
+          @acknowledged="stored = $event"
         />
       </div>
 
@@ -131,29 +124,25 @@
       </Callout>
 
       <div class="secret-modal__env">
-        <CButton
+        <NButton
           secondary
           @click="downloadEnv"
         >
           {{ t('secretDownloadEnv') }}
-        </CButton>
+        </NButton>
         <span class="secret-modal__hint">{{ t('secretEnvHint') }}</span>
       </div>
-
-      <NCheckbox v-model:checked="stored">
-        {{ t('secretStored') }}
-      </NCheckbox>
     </div>
 
     <template #footer>
       <div class="secret-modal__footer">
-        <CButton
+        <NButton
           type="primary"
           :disabled="!stored"
           @click="emit('close')"
         >
           {{ t('secretConfirm') }}
-        </CButton>
+        </NButton>
       </div>
     </template>
   </NModal>
