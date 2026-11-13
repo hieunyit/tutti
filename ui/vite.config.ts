@@ -41,6 +41,26 @@ export default defineConfig({
   build: {
     outDir: 'build',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split the stable framework code out of the entry so it caches
+        // across releases. Lazy libraries (swagger-ui, chart.js) are not
+        // listed on purpose: they stay in their own on-demand chunks.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+
+          if (
+            /node_modules\/(vue|@vue|vue-router|pinia|vue-i18n|@intlify)\//.test(
+              id,
+            )
+          ) {
+            return 'vendor-vue';
+          }
+
+          return undefined;
+        },
+      },
+    },
   },
   plugins: [
     vue({
