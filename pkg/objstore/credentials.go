@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -77,6 +78,11 @@ type CredsService interface {
 	// ListOverrideUsers lists the users that have their own credentials on the storage. ListUsers additionally lists
 	// all Tutti identities if the storage has a connection account.
 	ListOverrideUsers(storage string) []string
+	// AllOverrideUsers is the union of ListOverrideUsers over every storage, in one pass over the credential cache.
+	AllOverrideUsers() map[string]struct{}
+	// StoragesWithOverrideUser returns the storages on which the user has its own credentials (config or dynamic),
+	// i.e. those whose ListOverrideUsers contains the user, in one pass over the credential cache.
+	StoragesWithOverrideUser(user string) map[string]struct{}
 	// Identities lists the users recorded as Tutti identities (users may have no storage credentials at all).
 	Identities() []string
 	HasIdentity(user string) bool
@@ -314,6 +320,62 @@ func (s *credsSvc) ListUsers(storage string) []string {
 		}
 	}
 	return users
+}
+
+// AllOverrideUsers is the union of listOverrideUsers over every storage, computed in one pass over the credential
+// cache instead of one pass per storage.
+func (s *credsSvc) AllOverrideUsers() map[string]struct{} {
+	view := s.view.Load()
+	out := map[string]struct{}{}
+	for _, conf := range s.config.Storages {
+		for _, u := range conf.UserList() {
+			out[u] = struct{}{}
+		}
+	}
+	if !s.config.DynamicCredentials.Enabled {
+		return out
+	}
+	s.RLock()
+	defer s.RUnlock()
+	for cacheKey := range s.s3Creds {
+		if st, u := cacheKeyToCreds(cacheKey); view.types[st] == dom.S3 {
+			out[u] = struct{}{}
+		}
+	}
+	for cacheKey := range s.swiftCreds {
+		if st, u := cacheKeyToCreds(cacheKey); view.types[st] == dom.Swift {
+			out[u] = struct{}{}
+		}
+	}
+	return out
+}
+
+// StoragesWithOverrideUser is the set of storages whose ListOverrideUsers contains user, computed in one pass over the
+// credential cache instead of one pass per storage.
+func (s *credsSvc) StoragesWithOverrideUser(user string) map[string]struct{} {
+	view := s.view.Load()
+	out := map[string]struct{}{}
+	for st, conf := range s.config.Storages {
+		if slices.Contains(conf.UserList(), user) {
+			out[st] = struct{}{}
+		}
+	}
+	if !s.config.DynamicCredentials.Enabled {
+		return out
+	}
+	s.RLock()
+	defer s.RUnlock()
+	for cacheKey := range s.s3Creds {
+		if st, u := cacheKeyToCreds(cacheKey); u == user && view.types[st] == dom.S3 {
+			out[st] = struct{}{}
+		}
+	}
+	for cacheKey := range s.swiftCreds {
+		if st, u := cacheKeyToCreds(cacheKey); u == user && view.types[st] == dom.Swift {
+			out[st] = struct{}{}
+		}
+	}
+	return out
 }
 
 func (s *credsSvc) listOverrideUsers(storage string) []string {

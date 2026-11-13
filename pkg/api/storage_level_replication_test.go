@@ -446,6 +446,6 @@ func TestAddReplicationSameUserDifferentSourceKeepsFirstSource(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"b1": "main"}, src)
 	require.Equal(t, 1, e.queue.count())
-	// a different real user stays independent
-	require.NoError(t, e.addUser(t, "bob", "b", "c", "b1"))
+	// a different real user stays independent (alice's other bucket and bob's b1 from the same routing source)
+	require.NoError(t, e.addUser(t, "bob", "main", "b", "b1"))
 }

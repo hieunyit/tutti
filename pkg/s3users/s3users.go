@@ -27,6 +27,10 @@ type Credentials interface {
 	MainStorage() string
 	Storages() map[string]dom.StorageType
 	ListUsers(storage string) []string
+	// StoragesWithOverrideUser is the set of storages on which the user has its own credentials (one cache pass).
+	// AllOverrideUsers is the union of the users with own credentials over all storages (one cache pass).
+	AllOverrideUsers() map[string]struct{}
+	StoragesWithOverrideUser(user string) map[string]struct{}
 	HasUser(storage, user string) error
 	GetS3Credentials(storage, user string) (s3.CredentialsV4, error)
 	ResolveS3Credentials(storage, user string) (s3.CredentialsV4, objstore.CredMode, error)
@@ -194,10 +198,9 @@ func (m *Manager) CheckPolicyDeletable(user string) error {
 func (m *Manager) List(ctx context.Context) (*Listing, error) {
 	storages := m.storageNames()
 	names := map[string]struct{}{}
-	for _, st := range storages {
-		for _, u := range m.Creds.ListUsers(st) {
-			names[u] = struct{}{}
-		}
+	// every identity is added below, so the connection-account part of ListUsers adds nothing: one cache pass
+	for u := range m.Creds.AllOverrideUsers() {
+		names[u] = struct{}{}
 	}
 	for _, u := range m.Creds.Identities() {
 		names[u] = struct{}{}
@@ -446,14 +449,21 @@ func (m *Manager) createLocked(ctx context.Context, req CreateRequest) (*CreateR
 			return nil, err
 		}
 	}
+	// same result as scanning ListUsers(st) of every storage, without one credential-cache scan per storage: the user
+	// is listed on a storage when it has own credentials there, or is a Tutti identity and the storage has a
+	// connection account.
+	withCreds := m.Creds.StoragesWithOverrideUser(req.Name)
+	isIdentity := m.Creds.HasIdentity(req.Name)
 	for _, st := range m.storageNames() {
-		for _, u := range m.Creds.ListUsers(st) {
-			if u == req.Name {
-				return nil, fmt.Errorf("%w: s3 user %q already exists (storage %q)", dom.ErrAlreadyExists, req.Name, st)
-			}
+		_, listed := withCreds[st]
+		if !listed && isIdentity {
+			_, listed = m.Creds.ConnectionAccount(st)
+		}
+		if listed {
+			return nil, fmt.Errorf("%w: s3 user %q already exists (storage %q)", dom.ErrAlreadyExists, req.Name, st)
 		}
 	}
-	if m.Creds.HasIdentity(req.Name) {
+	if isIdentity {
 		return nil, fmt.Errorf("%w: s3 user %q already exists", dom.ErrAlreadyExists, req.Name)
 	}
 	if req.Policy == nil {

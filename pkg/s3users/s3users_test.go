@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -46,6 +47,7 @@ type fakeCreds struct {
 	storages map[string]dom.StorageType
 	conn     map[string]objstore.ConnectionInfo
 	idents   map[string]bool
+	scans    int // ListUsers calls: each is one scan of the credential cache in the real service
 }
 
 type blockingCreds struct {
@@ -84,9 +86,42 @@ func (f *fakeCreds) HasUser(st, u string) error {
 	}
 	return nil
 }
+func (f *fakeCreds) AllOverrideUsers() map[string]struct{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]struct{}{}
+	for _, m := range f.config {
+		for u := range m {
+			out[u] = struct{}{}
+		}
+	}
+	for _, m := range f.dyn {
+		for u := range m {
+			out[u] = struct{}{}
+		}
+	}
+	return out
+}
+func (f *fakeCreds) StoragesWithOverrideUser(u string) map[string]struct{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]struct{}{}
+	for st, m := range f.config {
+		if _, ok := m[u]; ok {
+			out[st] = struct{}{}
+		}
+	}
+	for st, m := range f.dyn {
+		if _, ok := m[u]; ok {
+			out[st] = struct{}{}
+		}
+	}
+	return out
+}
 func (f *fakeCreds) ListUsers(st string) []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.scans++
 	var r []string
 	for u := range f.config[st] {
 		r = append(r, u)
@@ -526,4 +561,31 @@ func TestDeleteCredentials_UsesUserLock(t *testing.T) {
 	require.Error(t, err, "blocked while another mutation holds the user lock")
 	require.Contains(t, f.dyn["main"], "user3")
 	close(release)
+}
+
+// TestCreate_ManyStoragesNoPerStorageScan: creating a user must not scan the credential cache once per storage
+// (ListUsers per storage re-sorted all identities each time: ~4 ms -> ~130 ms with 100 storages).
+func TestCreate_ManyStoragesNoPerStorageScan(t *testing.T) {
+	f := newFake(true)
+	f.conn = map[string]objstore.ConnectionInfo{}
+	f.idents = map[string]bool{}
+	for i := 0; i < 100; i++ {
+		st := fmt.Sprintf("st%03d", i)
+		f.storages[st] = dom.S3
+		f.dyn[st] = map[string]s3.CredentialsV4{}
+		f.conn[st] = objstore.ConnectionInfo{}
+	}
+	for i := 0; i < 200; i++ {
+		f.idents[fmt.Sprintf("existing%03d", i)] = true
+	}
+	m := newManager(t, f)
+	pol := &accesspolicy.Policy{Permission: accesspolicy.ReadOnly, Buckets: []string{"*"}}
+	_, err := m.Create(context.Background(), CreateRequest{Name: "fresh", Credentials: both[:1], Policy: pol})
+	require.NoError(t, err)
+	require.Zero(t, f.scans, "duplicate check must not call ListUsers per storage")
+
+	// duplicate detection is unchanged: identity + connection account names the first connection-account storage in sorted order
+	_, err = m.Create(context.Background(), CreateRequest{Name: "existing007", Credentials: both[:1], Policy: pol})
+	require.ErrorIs(t, err, dom.ErrAlreadyExists)
+	require.Contains(t, err.Error(), `s3 user "existing007" already exists (storage "st000")`)
 }
