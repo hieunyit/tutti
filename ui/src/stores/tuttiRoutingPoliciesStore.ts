@@ -19,6 +19,7 @@ import type { DataTableSortState } from 'naive-ui';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { usePolling } from '@/utils/composables/usePolling';
+import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
 import {
@@ -78,6 +79,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
   () => {
     const state = reactive<ChorusRoutingPoliciesState>(getInitialState());
     const polling = usePolling();
+    const changes = createChangeDetector();
 
     const { t } = useStoreI18n({
       messages: i18nRoutingPolicies,
@@ -152,6 +154,8 @@ export const useTuttiRoutingPoliciesStore = defineStore(
         state.routingPoliciesRequestOptions,
       );
 
+      if (!changes.hasChanged(res)) return;
+
       const routingPolicies: RoutingPolicy[] = [
         ...res.userRoutings.map((userPolicy) => ({
           ...userPolicy,
@@ -170,6 +174,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
     }
 
     async function startRoutingPoliciesPolling() {
+      changes.reset();
       await polling.start(getRoutingPolicies, POLL_INTERVAL_MS);
     }
 

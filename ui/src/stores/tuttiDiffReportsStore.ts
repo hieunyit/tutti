@@ -21,6 +21,7 @@ import type {
   DataTableSortState,
 } from '@clyso/clyso-ui-kit';
 import { usePolling } from '@/utils/composables/usePolling';
+import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import type { DiffReport } from '@/utils/types/chorus';
 import { DiffReportStatusFilter } from '@/utils/types/chorus';
 import type { AddId } from '@/utils/types/helper';
@@ -69,6 +70,7 @@ function getInitialState(): ChorusDiffReportsState {
 export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   const state = reactive<ChorusDiffReportsState>(getInitialState());
   const polling = usePolling();
+  const changes = createChangeDetector();
 
   const hasNoData = computed<boolean>(() => state.reports.length === 0);
 
@@ -233,6 +235,8 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   async function getDiffReports() {
     const res = await ChorusService.getDiffReports();
 
+    if (!changes.hasChanged(res)) return;
+
     state.reports = (res.checks ?? []).map((report) => ({
       ...report,
       idStr: DiffReportsHelper.getDiffReportId(report.locations),
@@ -240,6 +244,7 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   }
 
   async function startPolling() {
+    changes.reset();
     await polling.start(getDiffReports, POLL_INTERVAL_MS);
   }
 
