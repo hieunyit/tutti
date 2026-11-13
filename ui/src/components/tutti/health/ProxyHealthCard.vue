@@ -15,11 +15,11 @@
   -->
 
 <script setup lang="ts">
-  import { CTile } from '@clyso/clyso-ui-kit';
-  import { NDataTable, NTag, type DataTableColumns } from 'naive-ui';
+  import { type DataTableColumns } from 'naive-ui';
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nHealth from './i18nHealth';
+  import { DataTable, StatusBadge } from '@/components/kit';
   import {
     EMPTY_DATE_TEXT,
     formatDateTime,
@@ -42,23 +42,18 @@
       title: t('columnStatus'),
       key: 'available',
       render: (row) =>
-        h(
-          NTag,
-          {
-            type: !row.available
-              ? 'error'
-              : row.lastError
-                ? 'warning'
-                : 'success',
-            size: 'small',
-          },
-          () =>
-            !row.available
-              ? t('unavailable')
-              : row.lastError
-                ? t('availableWarning')
-                : t('available'),
-        ),
+        h(StatusBadge, {
+          tone: !row.available
+            ? 'danger'
+            : row.lastError
+              ? 'warning'
+              : 'success',
+          label: !row.available
+            ? t('unavailable')
+            : row.lastError
+              ? t('availableWarning')
+              : t('available'),
+        }),
     },
     {
       title: t('columnFailures'),
@@ -107,19 +102,20 @@
 </script>
 
 <template>
-  <CTile class="proxy-health-card">
-    <template #title> {{ t('proxy') }}: {{ proxy.appId }} </template>
-
+  <section class="proxy-health-card">
+    <h3 class="proxy-health-card__title">
+      {{ t('proxy') }}: {{ proxy.appId }}
+    </h3>
     <p class="proxy-health-card__meta">
       <span v-if="proxy.address">{{ proxy.address }} · </span>
       {{ t('updatedAt') }}: {{ relative(proxy.updatedAt) }} ·
       {{ t('startedAt') }}: {{ relative(proxy.startedAt) }}
     </p>
 
-    <NDataTable
+    <DataTable
       :columns="columns"
-      :data="proxy.storages ?? []"
-      :bordered="false"
+      :rows="proxy.storages ?? []"
+      :loading="false"
       :row-key="(row: TuttiStorageHealth) => row.name"
     />
 
@@ -134,38 +130,51 @@
         <dd>{{ value }}</dd>
       </div>
     </dl>
-  </CTile>
+  </section>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .proxy-health-card {
+    padding: var(--tt-space-4);
+    border: 1px solid var(--tt-border);
+    border-radius: var(--tt-radius-card);
+    background-color: var(--tt-surface);
+
+    &__title {
+      margin: 0;
+      font-size: var(--tt-text-md);
+      font-weight: var(--tt-weight-strong);
+      color: var(--tt-text);
+    }
+
     &__meta {
-      margin: 0 0 utils.unit(4);
-      opacity: 0.7;
+      margin: var(--tt-space-1) 0 var(--tt-space-4);
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-3);
     }
 
     &__settings-title {
-      margin: utils.unit(6) 0 utils.unit(2);
+      margin: var(--tt-space-5) 0 var(--tt-space-2);
+      font-size: var(--tt-text-sm);
+      font-weight: var(--tt-weight-strong);
     }
 
     &__settings {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: utils.unit(3) utils.unit(6);
+      gap: var(--tt-space-3) var(--tt-space-6);
       margin: 0;
     }
 
     &__setting {
       dt {
-        opacity: 0.7;
-        font-size: 12px;
+        color: var(--tt-text-3);
+        font-size: var(--tt-text-xs);
       }
 
       dd {
         margin: 0;
-        font-weight: 500;
+        font-weight: var(--tt-weight-medium);
       }
     }
   }

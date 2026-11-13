@@ -16,11 +16,15 @@
     original?: RuntimeStorage;
     readonly?: boolean;
     showName?: boolean;
+    /** render only one group of fields (settings page); default: all */
+    group?: 'all' | 'endpoint' | 'timing' | 'limits';
   }>();
   const emit = defineEmits<{
     (e: 'update:modelValue', value: RuntimeStorage): void;
   }>();
   const { t } = useI18n({ messages: i18nStorages });
+  const shows = (name: 'endpoint' | 'timing' | 'limits') =>
+    (props.group ?? 'all') === 'all' || props.group === name;
   const providers = [
     { label: 'MinIO', value: 'Minio' },
     { label: 'Ceph', value: 'Ceph' },
@@ -87,6 +91,7 @@
 <template>
   <div class="storage-form">
     <NFormItem
+      v-if="shows('endpoint')"
       :label="t('tls')"
       :feedback="t('tlsHint')"
       ><NCheckbox
@@ -101,7 +106,7 @@
       ></NFormItem
     >
     <NFormItem
-      v-if="showName"
+      v-if="showName && shows('endpoint')"
       :label="t('name')"
       :feedback="t('nameHint')"
       ><NInput
@@ -111,6 +116,7 @@
         @update:value="set('name', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('endpoint')"
       :label="t('provider')"
       :feedback="changed('provider')"
       ><NSelect
@@ -120,6 +126,7 @@
         @update:value="set('provider', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('endpoint')"
       class="storage-form__wide"
       :label="t('endpoint')"
       :feedback="changed('address')"
@@ -130,6 +137,7 @@
         @update:value="set('address', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('endpoint')"
       :label="t('region')"
       :feedback="changed('defaultRegion')"
       ><NInput
@@ -138,6 +146,7 @@
         @update:value="set('defaultRegion', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('timing')"
       :label="t('timeout')"
       :feedback="changed('httpTimeout') || t('durationHint')"
       ><NInput
@@ -146,6 +155,7 @@
         @update:value="set('httpTimeout', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('timing')"
       :label="t('interval')"
       :feedback="changed('healthCheckInterval') || t('durationHint')"
       ><NInput
@@ -154,6 +164,7 @@
         @update:value="set('healthCheckInterval', $event)"
     /></NFormItem>
     <NFormItem
+      v-if="shows('limits')"
       :label="t('rate')"
       :feedback="rateChanged()"
       ><div class="storage-form__rate">

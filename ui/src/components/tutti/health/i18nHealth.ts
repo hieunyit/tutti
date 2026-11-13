@@ -13,10 +13,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
-
-export default <I18nMessages>{
-  [I18nLocale.EN]: {
+// Plain locale codes (en, de, vi) keep this file free of the UI kit bundle.
+export default <Record<string, Record<string, string>>>{
+  en: {
     pageDescription:
       'Live availability of every storage as seen by each proxy, with the effective proxy settings.',
     title: 'Storage health',
@@ -52,7 +51,7 @@ export default <I18nMessages>{
     yes: 'yes',
     no: 'no',
   },
-  [I18nLocale.DE]: {
+  de: {
     pageDescription:
       'Aktuelle Verfügbarkeit jedes Speichers aus Sicht der einzelnen Proxys, mit den wirksamen Proxy-Einstellungen.',
     title: 'Speicher-Zustand',
@@ -87,5 +86,41 @@ export default <I18nMessages>{
     off: 'aus',
     yes: 'ja',
     no: 'nein',
+  },
+  vi: {
+    pageDescription:
+      'Tình trạng từng storage theo góc nhìn của mỗi proxy, kèm cấu hình đang áp dụng.',
+    title: 'Sức khỏe storage',
+    refresh: 'Làm mới',
+    proxy: 'Proxy',
+    startedAt: 'Khởi động',
+    updatedAt: 'Báo cáo gần nhất',
+    emptyTitle: 'Chưa có dữ liệu proxy',
+    empty:
+      'Chưa có proxy nào báo trạng thái trong 30 giây qua. Kiểm tra proxy đang chạy và kết nối được tới Redis.',
+    errorTitle: 'Không tải được sức khỏe storage',
+    errorText: 'Không tải được trạng thái của các proxy.',
+    retry: 'Thử lại',
+    columnStorage: 'Storage',
+    columnStatus: 'Trạng thái',
+    columnFailures: 'Số lần lỗi liên tiếp',
+    columnLastError: 'Lỗi gần nhất',
+    columnLastChange: 'Thay đổi gần nhất',
+    available: 'Sẵn sàng',
+    availableWarning: 'Sẵn sàng, có cảnh báo',
+    unavailable: 'Không khả dụng',
+    settingsTitle: 'Cấu hình đang áp dụng',
+    syncReplication: 'Sao chép đồng bộ',
+    writeQuorum: 'Write quorum',
+    syncTimeout: 'Timeout đồng bộ',
+    onQuorumFailure: 'Khi quorum thất bại',
+    failover: 'Failover tự động',
+    failureThreshold: 'Ngưỡng lỗi sức khỏe',
+    openDuration: 'Thời gian mở breaker',
+    requireSignedContentType: 'Yêu cầu Content-Type đã ký',
+    on: 'bật',
+    off: 'tắt',
+    yes: 'có',
+    no: 'không',
   },
 };
