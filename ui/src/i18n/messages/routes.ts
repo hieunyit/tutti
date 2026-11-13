@@ -22,7 +22,7 @@ type Routes = {
   [k in RouteName]: string;
 };
 
-const routes: I18nMessages<Routes> = {
+const routes: I18nMessages<Routes> & { vi: Routes } = {
   [I18nLocale.EN]: {
     [RouteName.LOGIN]: 'Login',
     [RouteName.TUTTI_DASHBOARD]: 'Dashboard',
@@ -84,6 +84,37 @@ const routes: I18nMessages<Routes> = {
     [AUDIT_LOG_ROUTE_NAME]: 'Audit-Protokoll',
     [RouteName.TUTTI_DOCS]: 'Dokumentation',
     [RouteName.TUTTI_API_REFERENCE]: 'API-Referenz',
+  },
+  vi: {
+    [RouteName.LOGIN]: 'Đăng nhập',
+    [RouteName.TUTTI_DASHBOARD]: 'Bảng điều khiển',
+    [RouteName.CHORUS_HOME]: 'Bảng điều khiển',
+    [RouteName.CHORUS_STORAGES]: 'Storages',
+    [RouteName.CHORUS_STORAGE_DETAILS]: 'Chi tiết storage',
+    [RouteName.CHORUS_SET_CREDENTIAL]: 'Credential của storage',
+    [RouteName.CHORUS_REPLICATION]: 'Sao chép',
+    [RouteName.CHORUS_ADD_REPLICATION]: 'Thêm replication',
+    [RouteName.CHORUS_MONITORING]: 'Giám sát',
+    [RouteName.CHORUS_ROUTING_POLICIES]: 'Routing policy',
+    [RouteName.CHORUS_ADD_ROUTING_POLICY]: 'Thêm routing policy',
+    [RouteName.CHORUS_DIFF_REPORTS]: 'Báo cáo diff',
+    [RouteName.CHORUS_ADD_DIFF_REPORT]: 'Thêm báo cáo diff',
+    [RouteName.CHORUS_DIFF_REPORT_DETAIL]: 'Chi tiết báo cáo diff',
+    [RouteName.TUTTI_REPLICATION_DIFF_DETAIL]: 'Báo cáo diff',
+    [RouteName.TUTTI_PROXIES]: 'Proxies',
+    [RouteName.TUTTI_USERS]: 'S3 users',
+    [RouteName.TUTTI_USER_CREATE]: 'Tạo user',
+    [RouteName.TUTTI_USER_DETAIL]: 'Chi tiết user',
+    [RouteName.TUTTI_CONSOLE_USERS]: 'Người dùng console',
+    [RouteName.TUTTI_CHANGE_PASSWORD]: 'Đổi mật khẩu',
+    [RouteName.TUTTI_FAILOVER]: 'Failover',
+    [RouteName.TUTTI_PROTECTION_GROUPS]: 'Nhóm bảo vệ',
+    [RouteName.TUTTI_PROTECTION_GROUP_DETAIL]: 'Nhóm bảo vệ',
+    [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy accounts',
+    [RouteName.TUTTI_SYSTEM_SETTINGS]: 'Cấu hình hệ thống',
+    [AUDIT_LOG_ROUTE_NAME]: 'Nhật ký kiểm toán',
+    [RouteName.TUTTI_DOCS]: 'Tài liệu',
+    [RouteName.TUTTI_API_REFERENCE]: 'Tham chiếu API',
   },
 };
 

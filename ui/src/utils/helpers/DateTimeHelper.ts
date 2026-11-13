@@ -24,9 +24,13 @@ export const EMPTY_DATE_TEXT = '–';
 const MIN_VALID_TIME = Date.UTC(1971, 0, 1);
 
 function intlLocale(locale?: string): string {
-  return (locale ?? String(i18n.global.locale.value)) === 'de'
-    ? 'de-DE'
-    : 'en-GB';
+  const current = locale ?? String(i18n.global.locale.value);
+
+  if (current === 'de') return 'de-DE';
+
+  if (current === 'vi') return 'vi-VN';
+
+  return 'en-GB';
 }
 
 /** Parses the input; returns null for null/empty/zero/invalid values. */

@@ -21,8 +21,9 @@
    * (change password, sign out).
    */
   import { storeToRefs } from 'pinia';
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { CLanguageSelect } from '@clyso/clyso-ui-kit';
+  import { NSelect } from 'naive-ui';
   import AppBreadcrumbs from './AppBreadcrumbs.vue';
   import AppQuickSearch from './AppQuickSearch.vue';
   import AppThemeToggle from './AppThemeToggle.vue';
@@ -31,6 +32,7 @@
   import AuthUserMenu from '@/components/auth/AuthUserMenu.vue';
   import { useAuthStore } from '@/stores/authStore';
   import { useI18nStore } from '@/stores/i18nStore';
+  import { APP_LOCALE_LABELS } from '@/i18n/locales';
   import { ENV_LABEL, HAS_LANG_SELECT } from '@/utils/constants/env';
 
   defineProps<{
@@ -44,7 +46,13 @@
   }>();
 
   const { t } = useI18n({ messages: i18nLayout });
-  const { locale } = storeToRefs(useI18nStore());
+  const { locale, localeList } = storeToRefs(useI18nStore());
+  const localeOptions = computed(() =>
+    localeList.value.map((value) => ({
+      value,
+      label: APP_LOCALE_LABELS[value],
+    })),
+  );
   const { setLocale } = useI18nStore();
   const { showUserMenu } = storeToRefs(useAuthStore());
 </script>
@@ -87,9 +95,14 @@
     >
 
     <div class="app-topbar__controls">
-      <CLanguageSelect
+      <NSelect
         v-if="HAS_LANG_SELECT"
+        class="app-topbar__lang"
+        size="small"
         :value="locale"
+        :options="localeOptions"
+        :consistent-menu-width="false"
+        :aria-label="t('languageLabel')"
         @update:value="setLocale"
       />
       <HelpMenu />
@@ -101,6 +114,10 @@
 
 <style lang="scss" scoped>
   .app-topbar {
+    &__lang {
+      width: 120px;
+    }
+
     display: flex;
     align-items: center;
     flex-wrap: wrap;

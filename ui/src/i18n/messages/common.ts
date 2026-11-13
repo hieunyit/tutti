@@ -43,4 +43,17 @@ export default <I18nMessages>{
     user: 'Benutzer',
     buckets: 'Buckets',
   },
+  vi: {
+    mainStorage: 'Chính',
+    followerStorage: 'Follower',
+    address: 'Địa chỉ',
+    allGood: 'mọi thứ ổn',
+    downAt: 'ngừng hoạt động lúc',
+    errorTitle: 'Lỗi',
+    successTitle: 'Thành công',
+    errorAction: 'Thử lại',
+    direction: 'Hướng',
+    user: 'User',
+    buckets: 'Bucket',
+  },
 };

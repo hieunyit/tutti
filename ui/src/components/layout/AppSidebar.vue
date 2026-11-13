@@ -21,28 +21,11 @@
   import { useI18n } from 'vue-i18n';
   import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
-  import { i18n } from '@/i18n';
   import { NAV_GROUPS } from '@/utils/constants/navigation';
   import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
   import { APP_VERSION } from '@/utils/constants/env';
   import { RouteName } from '@/utils/types/router';
-
-  // Vietnamese menu labels (routes.ts only carries en/de).
-  i18n.global.mergeLocaleMessage('vi', {
-    [RouteName.TUTTI_DASHBOARD]: 'Bảng điều khiển',
-    [RouteName.CHORUS_STORAGES]: 'Storages',
-    [RouteName.TUTTI_PROXIES]: 'Proxies',
-    [RouteName.TUTTI_PROTECTION_GROUPS]: 'Nhóm bảo vệ',
-    [RouteName.CHORUS_REPLICATION]: 'Sao chép',
-    [RouteName.TUTTI_USERS]: 'S3 users',
-    [RouteName.TUTTI_PROXY_ACCOUNTS]: 'Proxy accounts',
-    [RouteName.TUTTI_CONSOLE_USERS]: 'Người dùng console',
-    [RouteName.TUTTI_SYSTEM_SETTINGS]: 'Cấu hình hệ thống',
-    [RouteName.TUTTI_AUDIT_LOG]: 'Nhật ký kiểm toán',
-    [RouteName.TUTTI_DOCS]: 'Tài liệu',
-    [RouteName.TUTTI_API_REFERENCE]: 'Tham chiếu API',
-  });
 
   const props = defineProps<{
     /** icon-only rail (desktop only) */

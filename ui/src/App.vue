@@ -21,27 +21,38 @@
     CDialogProvider,
     CNotificationProvider,
   } from '@clyso/clyso-ui-kit';
-  import { toRefs } from 'vue';
+  import { computed, toRefs } from 'vue';
+  import { NConfigProvider, dateViVN, viVN } from 'naive-ui';
+  import { toKitLocale } from '@/i18n/locales';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
   import { DARK_THEME_OVERRIDES, LIGHT_THEME_OVERRIDES } from '@/styles/theme';
 
   const { locale } = toRefs(useI18nStore());
   const { colorScheme } = toRefs(useColorSchemeStore());
+  // ui-kit only knows en/de; Naive UI gets the vi locale from the inner provider.
+  const kitLocale = computed(() => toKitLocale(locale.value));
+  const isVi = computed(() => locale.value === 'vi');
 </script>
 
 <template>
   <CConfigProvider
     class="app"
     :color-scheme="colorScheme"
-    :locale="locale"
+    :locale="kitLocale"
     :custom-light-theme="LIGHT_THEME_OVERRIDES"
     :custom-dark-theme="DARK_THEME_OVERRIDES"
   >
-    <RouterView />
+    <NConfigProvider
+      :locale="isVi ? viVN : undefined"
+      :date-locale="isVi ? dateViVN : undefined"
+      abstract
+    >
+      <RouterView />
 
-    <CDialogProvider />
-    <CNotificationProvider />
+      <CDialogProvider />
+      <CNotificationProvider />
+    </NConfigProvider>
   </CConfigProvider>
 </template>
 

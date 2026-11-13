@@ -42,6 +42,7 @@ export default <I18nMessages>{
     helpDocs: 'Documentation',
     helpApi: 'API reference',
     topbarLabel: 'Top bar',
+    languageLabel: 'Language',
     authDisabledBanner:
       'Sign-in is disabled: anyone who can reach this console has admin access. Enable api.auth in the worker config.',
     authDisabledLink: 'Read the documentation',
@@ -88,6 +89,7 @@ export default <I18nMessages>{
     helpDocs: 'Dokumentation',
     helpApi: 'API-Referenz',
     topbarLabel: 'Kopfleiste',
+    languageLabel: 'Sprache',
     authDisabledBanner:
       'Die Anmeldung ist deaktiviert: Jeder, der diese Konsole erreichen kann, hat Administratorzugriff. Aktivieren Sie api.auth in der Worker-Konfiguration.',
     authDisabledLink: 'Dokumentation lesen',
@@ -134,6 +136,7 @@ export default <I18nMessages>{
     helpDocs: 'Tài liệu',
     helpApi: 'Tham chiếu API',
     topbarLabel: 'Thanh trên',
+    languageLabel: 'Ngôn ngữ',
     authDisabledBanner:
       'Đăng nhập đang tắt: bất kỳ ai truy cập được console này đều có quyền admin. Bật api.auth trong cấu hình worker.',
     authDisabledLink: 'Đọc tài liệu',

@@ -16,35 +16,36 @@
 
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
-import { I18N_DEFAULT_LOCALE, I18nLocale } from '@clyso/clyso-ui-kit';
+import { I18N_DEFAULT_LOCALE } from '@clyso/clyso-ui-kit';
 import { i18n } from '@/i18n';
+import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import LocalStorageHelper from '@/utils/helpers/LocalStorageHelper';
 import { LocalStorageItem } from '@/utils/types/localStorage';
 
 export const useI18nStore = defineStore('i18n', () => {
-  const locale = computed<I18nLocale>(
-    () => i18n.global.locale.value as I18nLocale,
+  const locale = computed<AppLocale>(
+    () => i18n.global.locale.value as AppLocale,
   );
-  const localeList = computed(() => Object.values(I18nLocale));
+  const localeList = computed<AppLocale[]>(() => APP_LOCALES);
 
-  function updateLocaleValue(newLocale: I18nLocale) {
-    i18n.global.locale.value = newLocale;
+  function updateLocaleValue(newLocale: AppLocale) {
+    (i18n.global.locale as { value: string }).value = newLocale;
   }
 
-  function setLocale(newLocale: I18nLocale) {
+  function setLocale(newLocale: AppLocale) {
     updateLocaleValue(newLocale);
     LocalStorageHelper.set(LocalStorageItem.I18N_LOCALE, newLocale);
   }
 
   function initLocale() {
-    const restoredLocale: I18nLocale =
-      LocalStorageHelper.get<I18nLocale>(LocalStorageItem.I18N_LOCALE) ||
-      (navigator.language.slice(0, 2) as I18nLocale);
+    const restoredLocale: AppLocale =
+      LocalStorageHelper.get<AppLocale>(LocalStorageItem.I18N_LOCALE) ||
+      (navigator.language.slice(0, 2) as AppLocale);
 
     updateLocaleValue(
       localeList.value.includes(restoredLocale)
         ? restoredLocale
-        : I18N_DEFAULT_LOCALE,
+        : (I18N_DEFAULT_LOCALE as AppLocale),
     );
   }
 

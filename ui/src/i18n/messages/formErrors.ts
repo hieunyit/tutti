@@ -23,4 +23,7 @@ export default <I18nMessages>{
   [I18nLocale.DE]: {
     required: '{field} ist erforderlich',
   },
+  vi: {
+    required: '{field} là bắt buộc',
+  },
 };
