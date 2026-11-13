@@ -62,7 +62,7 @@ func (r *policySvc) ListScopeOwners(ctx context.Context) ([]replscope.Owner, err
 				buckets = append(buckets, b.ToBucket)
 			}
 		}
-		owners = append(owners, replscope.Owner{Kind: "replication", ID: key, Scope: replscope.ReplicationScope(id.FromStorage(), id.ToStorage(), buckets)})
+		owners = append(owners, replscope.Owner{Kind: "replication", ID: key, Scope: replscope.ReplicationScope(id.FromStorage(), id.ToStorage(), buckets).WithUser(id.User())})
 	}
 	return owners, nil
 }

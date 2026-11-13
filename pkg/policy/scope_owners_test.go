@@ -54,9 +54,9 @@ func TestListScopeOwnersIncludesGroupsAndPolicies(t *testing.T) {
 	id := idStr(entity.UniversalFromUserReplication(storageLevel))
 	r.Equal(replscope.Owner{Kind: "replication", ID: id, Scope: replscope.ReplicationScope("a", "b", nil)}, byID[id])
 	id = idStr(entity.UniversalFromUserReplication(userLevel))
-	r.Equal(replscope.ReplicationScope("main", "f", nil), byID[id].Scope)
+	r.Equal(replscope.ReplicationScope("main", "f", nil).WithUser("bob"), byID[id].Scope)
 	id = idStr(entity.UniversalFromBucketReplication(userBucket))
-	r.Equal(replscope.ReplicationScope("main", "c", []string{"x"}), byID[id].Scope)
+	r.Equal(replscope.ReplicationScope("main", "c", []string{"x"}).WithUser("alice"), byID[id].Scope)
 	id = idStr(entity.UniversalFromBucketReplication(storageBucket))
 	r.Equal(replscope.ReplicationScope("d", "e", []string{"y", "z"}), byID[id].Scope)
 	_, ok := byID[managed.AsString()]

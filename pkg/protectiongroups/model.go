@@ -303,7 +303,7 @@ func (g Group) Covers(user, bucket string) bool {
 // Scope is the replication scope of the group for the shared conflict rule: every ordered pair of members (a
 // switchover can make any member the source) and the group's buckets (none = all buckets).
 func (g Group) Scope() replscope.Scope {
-	return replscope.GroupScope(g.Members, g.Buckets)
+	return replscope.GroupScope(g.Members, g.Buckets).WithUser(g.User)
 }
 
 // GroupOwners returns the scope owners of the groups for replscope.Check.

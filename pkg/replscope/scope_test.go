@@ -66,3 +66,33 @@ func TestGroupScope(t *testing.T) {
 	s = GroupScope([]string{"A", "B"}, []string{"x"})
 	require.False(t, s.AllBuckets)
 }
+
+func TestConflicts_Users(t *testing.T) {
+	u := func(user string, s Scope) Scope { return s.WithUser(user) }
+	tests := []struct {
+		name string
+		a, b Scope
+		want bool
+	}{
+		{"alice ALL vs bob ALL", u("alice", rs("A", "B")), u("bob", rs("A", "B")), false},
+		{"alice ALL vs bob explicit", u("alice", rs("A", "B")), u("bob", rs("A", "B", "x")), false},
+		{"alice x vs bob x", u("alice", rs("A", "B", "x")), u("bob", rs("A", "B", "x")), true},
+		{"alice x vs bob y", u("alice", rs("A", "B", "x")), u("bob", rs("A", "B", "y")), false},
+		{"alice x vs bob x other edge", u("alice", rs("A", "B", "x")), u("bob", rs("C", "D", "x")), false},
+		{"storage-level ALL vs alice ALL", rs("A", "B"), u("alice", rs("A", "B")), true},
+		{"storage-level ALL vs alice x", rs("A", "B"), u("alice", rs("A", "B", "x")), true},
+		{"alice ALL vs alice ALL", u("alice", rs("A", "B")), u("alice", rs("A", "B")), true},
+		{"alice ALL vs alice x", u("alice", rs("A", "B")), u("alice", rs("A", "B", "x")), true},
+		{"group alice vs bob ALL", u("alice", GroupScope([]string{"A", "B"}, nil)), u("bob", rs("A", "B")), false},
+		{"group alice vs alice ALL", u("alice", GroupScope([]string{"A", "B"}, nil)), u("alice", rs("B", "A")), true},
+		{"group no user vs bob ALL", GroupScope([]string{"A", "B"}, nil), u("bob", rs("A", "B")), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, _, _ := Conflicts(tt.a, tt.b)
+			require.Equal(t, tt.want, got)
+			got, _, _, _ = Conflicts(tt.b, tt.a)
+			require.Equal(t, tt.want, got, "symmetric")
+		})
+	}
+}

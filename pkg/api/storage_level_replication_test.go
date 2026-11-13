@@ -82,18 +82,20 @@ func (q *slQueue) count() int {
 
 type slCommon struct {
 	objstore.Common
-	buckets []string
+	buckets  []string
+	onExists func(ctx context.Context, bucket string)
 }
 
 func (c slCommon) ListBuckets(context.Context) ([]string, error) { return c.buckets, nil }
 
 type slClients struct {
 	objstore.Clients
-	buckets []string
+	buckets  []string
+	onExists func(ctx context.Context, bucket string)
 }
 
 func (c slClients) AsCommon(_ context.Context, _, _ string) (objstore.Common, error) {
-	return slCommon{buckets: c.buckets}, nil
+	return slCommon{buckets: c.buckets, onExists: c.onExists}, nil
 }
 
 type slEnv struct {
@@ -105,12 +107,17 @@ type slEnv struct {
 
 func newSLEnv(t *testing.T, conn map[string]bool, buckets ...string) *slEnv {
 	t.Helper()
+	return newSLEnvHook(t, conn, nil, buckets...)
+}
+
+func newSLEnvHook(t *testing.T, conn map[string]bool, onExists func(context.Context, string), buckets ...string) *slEnv {
+	t.Helper()
 	mr := miniredis.RunT(t)
 	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
 	q := &slQueue{}
 	policySvc := policy.NewService(rc, q, "main")
-	h := PolicyHandlers(slCreds{conn: conn}, slClients{buckets: buckets}, q, policySvc, meta.NewVersionService(rc),
+	h := PolicyHandlers(slCreds{conn: conn}, slClients{buckets: buckets, onExists: onExists}, q, policySvc, meta.NewVersionService(rc),
 		store.NewMigrationObjectListStateStore(rc), store.NewMigrationBucketListStateStore(rc), nil,
 		store.NewReplicationStatusLocker(rc, time.Second), store.NewUserLocker(rc, time.Second), nil,
 		WithPolicyScopeLocker(replscope.NewRedisLocker(rc)))
@@ -319,7 +326,12 @@ func (*slQueue) UnprocessedCount(context.Context, bool, ...string) (int, error) 
 	return 0, nil
 }
 
-func (slCommon) BucketExists(context.Context, string) (bool, error) { return true, nil }
+func (c slCommon) BucketExists(ctx context.Context, bucket string) (bool, error) {
+	if c.onExists != nil {
+		c.onExists(ctx, bucket)
+	}
+	return true, nil
+}
 
 // reason returns the error text the API puts into the ErrorInfo detail.
 func reason(err error) string {
@@ -334,3 +346,38 @@ func reason(err error) string {
 type slBackend struct{ pg.Backend }
 
 func (slBackend) Validate(context.Context, pg.Group, bool) error { return nil }
+
+// TestScopeLockNotHeldDuringBucketExists proves the network call BucketExists runs before the scope lock: while one
+// AddReplication is blocked in it, another AddReplication on a different bucket completes.
+func TestScopeLockNotHeldDuringBucketExists(t *testing.T) {
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	e := newSLEnvHook(t, allConn, func(_ context.Context, bucket string) {
+		if bucket == "slow" {
+			close(entered)
+			<-release
+		}
+	})
+	slowDone := make(chan error, 1)
+	go func() { slowDone <- e.add(t, "main", "a", "slow") }()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("slow AddReplication did not reach BucketExists")
+	}
+	// the scope lock must be free now
+	unlock, err := replscope.NewRedisLocker(e.rc).Lock(t.Context())
+	require.NoError(t, err)
+	unlock()
+	fastDone := make(chan error, 1)
+	go func() { fastDone <- e.add(t, "main", "b", "fast") }()
+	select {
+	case err := <-fastDone:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("second AddReplication blocked while the first is in BucketExists: scope lock is held")
+	}
+	close(release)
+	require.NoError(t, <-slowDone)
+	require.Len(t, e.owners(t), 2)
+}

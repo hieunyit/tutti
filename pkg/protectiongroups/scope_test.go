@@ -41,6 +41,10 @@ func TestGroupReplicationsEmptyUser(t *testing.T) {
 func TestGroupScope(t *testing.T) {
 	g := Group{ID: "g", Members: []string{"a", "b", "c"}, Buckets: []string{"x"}}
 	require.Equal(t, replscope.GroupScope([]string{"a", "b", "c"}, []string{"x"}), g.Scope())
+	require.Equal(t, "", g.Scope().User, "group without user is storage-level")
+	gu := Group{ID: "gu", User: "alice", Members: []string{"a", "b"}}
+	require.Equal(t, "alice", gu.Scope().User)
+	require.Equal(t, replscope.GroupScope([]string{"a", "b"}, nil).WithUser("alice"), gu.Scope())
 	owners := GroupOwners([]Group{g})
 	require.Equal(t, []replscope.Owner{{Kind: "group", ID: "g", Scope: g.Scope()}}, owners)
 }

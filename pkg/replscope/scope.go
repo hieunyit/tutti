@@ -28,6 +28,14 @@ type Scope struct {
 	Edges      []Edge
 	Buckets    []string // ignored when AllBuckets
 	AllBuckets bool
+	// User is the real user whose buckets the scope covers; empty means storage-level (every bucket of the storage).
+	User string
+}
+
+// WithUser returns a copy of the scope attributed to a real user (empty = storage-level).
+func (s Scope) WithUser(user string) Scope {
+	s.User = user
+	return s
 }
 
 // Owner is an existing object that owns a Scope.
@@ -100,8 +108,16 @@ func firstBucket(bs []string) (string, bool) {
 }
 
 // Conflicts reports whether two scopes overlap, with the first offending bucket and edges (ea from a, eb from b).
+// Two scopes of different real users overlap only on explicitly listed common buckets: "all buckets" of a real
+// user means only that user's buckets. A storage-level scope (empty User) covers every bucket of the storage.
 func Conflicts(a, b Scope) (conflict bool, bucket string, ea, eb Edge) {
-	bucket, ok := commonBucket(a, b)
+	var ok bool
+	if a.User != "" && b.User != "" && a.User != b.User {
+		if a.AllBuckets || b.AllBuckets {
+			return false, "", Edge{}, Edge{}
+		}
+	}
+	bucket, ok = commonBucket(a, b)
 	if !ok {
 		return false, "", Edge{}, Edge{}
 	}
