@@ -87,6 +87,18 @@ func (h *resilienceHandlers) runtimeStoragePb(ctx context.Context, name string) 
 	return h.runtimeStoragePbWithTests(ctx, name, tests)
 }
 func (h *resilienceHandlers) runtimeStoragePbWithTests(ctx context.Context, name string, tests map[string]string) (*pb.RuntimeStorage, error) {
+	return h.runtimeStoragePbBulk(ctx, name, tests, nil, true, -1)
+}
+
+// overrideUserIndex is implemented by the credentials service: bulk, single-pass reads of the user->storage mapping.
+type overrideUserIndex interface {
+	OverrideUserCounts() map[string]int
+	OverrideUsersByStorage() map[string][]string
+}
+
+// runtimeStoragePbBulk builds one storage. users is the precomputed users of the storage (nil: ask the service),
+// withUsers embeds them, count >= 0 is the precomputed user count (otherwise derived from the users).
+func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name string, tests map[string]string, users []string, withUsers bool, count int) (*pb.RuntimeStorage, error) {
 	c := h.runtimeStorages
 	a, err := c.GetS3Address(name)
 	if err != nil {
@@ -105,15 +117,24 @@ func (h *resilienceHandlers) runtimeStoragePbWithTests(ctx context.Context, name
 	out.ConnectionAccount = h.connectionInfoPb(c, name)
 	out.LegacyCredentials = !out.ConnectionAccount.Configured
 	out.LastTest = testResultFromJSON(tests[name])
-	users := c.ListOverrideUsers(name)
-	sort.Strings(users)
-	for _, u := range users {
-		cr, err := c.GetS3Credentials(name, u)
-		if err != nil {
-			return nil, err
+	if withUsers {
+		if users == nil {
+			users = c.ListOverrideUsers(name)
 		}
-		out.Users = append(out.Users, &pb.RuntimeStorageUser{User: u, AccessKeyId: cr.AccessKeyID, Source: c.CredentialSource(name, u)})
+		users = append([]string(nil), users...)
+		sort.Strings(users)
+		count = len(users)
+		for _, u := range users {
+			cr, err := c.GetS3Credentials(name, u)
+			if err != nil {
+				return nil, err
+			}
+			out.Users = append(out.Users, &pb.RuntimeStorageUser{User: u, AccessKeyId: cr.AccessKeyID, Source: c.CredentialSource(name, u)})
+		}
+	} else if count < 0 {
+		count = len(c.ListOverrideUsers(name))
 	}
+	out.UserCount = uint32(count)
 	if h.runtimeRefs != nil {
 		out.References, err = h.runtimeRefs(ctx, name)
 		if err != nil {
@@ -122,7 +143,10 @@ func (h *resilienceHandlers) runtimeStoragePbWithTests(ctx context.Context, name
 	}
 	return out, nil
 }
-func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, _ *emptypb.Empty) (*pb.RuntimeStorageList, error) {
+// ListRuntimeStorages lists the S3 storages. includeUsers (default true) embeds every user of every storage; with
+// includeUsers=false each storage carries only userCount. The user->storage mapping is read in one pass for the whole
+// list, never once per storage.
+func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, req *pb.ListRuntimeStoragesRequest) (*pb.RuntimeStorageList, error) {
 	c, err := h.storageManager()
 	if err != nil {
 		return nil, err
@@ -139,8 +163,31 @@ func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, _ *emptypb
 	if err != nil {
 		return nil, err
 	}
+	withUsers := req == nil || req.IncludeUsers == nil || *req.IncludeUsers
+	idx, bulk := c.(overrideUserIndex)
+	var byStorage map[string][]string
+	var counts map[string]int
+	if bulk {
+		if withUsers {
+			byStorage = idx.OverrideUsersByStorage()
+		} else {
+			counts = idx.OverrideUserCounts()
+		}
+	}
 	for _, n := range names {
-		s, err := h.runtimeStoragePbWithTests(ctx, n, tests)
+		var users []string
+		count := -1
+		if bulk {
+			if withUsers {
+				users = byStorage[n]
+				if users == nil {
+					users = []string{}
+				}
+			} else {
+				count = counts[n]
+			}
+		}
+		s, err := h.runtimeStoragePbBulk(ctx, n, tests, users, withUsers, count)
 		if err != nil {
 			return nil, err
 		}

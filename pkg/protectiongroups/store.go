@@ -3,6 +3,7 @@ package protectiongroups
 
 import (
 	"context"
+	"math/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -237,7 +238,7 @@ func (s *Store) healRedis(ctx context.Context, g Group) error {
 	if err != nil {
 		return err
 	}
-	err = s.Redis.Watch(ctx, func(tx *redis.Tx) error {
+	err = s.watch(ctx, func(tx *redis.Tx) error {
 		docs, err := tx.HGetAll(ctx, GroupsKey).Result()
 		if err != nil {
 			return err
@@ -391,7 +392,7 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 			return err
 		}
 	}
-	err := s.Redis.Watch(ctx, func(tx *redis.Tx) error {
+	err := s.watch(ctx, func(tx *redis.Tx) error {
 		docs, err := tx.HGetAll(ctx, GroupsKey).Result()
 		if err != nil {
 			return err
@@ -509,7 +510,7 @@ func (s *Store) Delete(ctx context.Context, g Group) error {
 	if s.controlPlaneReadOnly() {
 		return controlplane.ErrReadOnly
 	}
-	err := s.Redis.Watch(ctx, func(tx *redis.Tx) error {
+	err := s.watch(ctx, func(tx *redis.Tx) error {
 		raw, err := tx.HGet(ctx, GroupsKey, g.ID).Result()
 		if errors.Is(err, redis.Nil) {
 			return dom.ErrNotFound
@@ -805,7 +806,7 @@ func SharedGroupFields(ctx context.Context, r redis.Cmdable, storage, bucket str
 // EnsureIndex rebuilds the scope index when it is missing or of an older format (groups written by an older
 // version or after Redis loss).
 func (s *Store) EnsureIndex(ctx context.Context) error {
-	return s.Redis.Watch(ctx, func(tx *redis.Tx) error {
+	return s.watch(ctx, func(tx *redis.Tx) error {
 		v, err := tx.HGet(ctx, ScopeIndexKey, indexVersionField).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return err
@@ -832,6 +833,28 @@ func (s *Store) EnsureIndex(ctx context.Context) error {
 
 func (s *Store) ActiveWriters(ctx context.Context, id string) (int64, error) {
 	return s.Redis.HLen(ctx, writerKey(id)).Result()
+}
+
+// ActiveWritersBatch returns ActiveWriters of every id (same order) in one Redis round trip.
+func (s *Store) ActiveWritersBatch(ctx context.Context, ids []string) ([]int64, error) {
+	out := make([]int64, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	cmds := make([]*redis.IntCmd, len(ids))
+	_, err := s.Redis.Pipelined(ctx, func(p redis.Pipeliner) error {
+		for i, id := range ids {
+			cmds[i] = p.HLen(ctx, writerKey(id))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for i, c := range cmds {
+		out[i] = c.Val()
+	}
+	return out, nil
 }
 func writerKey(id string) string { return "tutti:protection:writers:" + id }
 func (s *Store) AutomaticFrozen(ctx context.Context) (bool, error) {
@@ -943,4 +966,25 @@ func proxyMayStillWrite(w writerRecord, reports []proxystatus.Status, now time.T
 		}
 	}
 	return false
+}
+
+// watchAttempts bounds the optimistic-lock retries of watch.
+const watchAttempts = 8
+
+// watch runs a WATCH transaction and retries it, with jittered backoff, while another writer touched a watched key
+// (redis.TxFailedErr). The closures only read watched state and rebuild their result on every run, so a retry is safe.
+func (s *Store) watch(ctx context.Context, fn func(tx *redis.Tx) error, keys ...string) error {
+	var err error
+	for i := 0; i < watchAttempts; i++ {
+		if err = s.Redis.Watch(ctx, fn, keys...); !errors.Is(err, redis.TxFailedErr) {
+			return err
+		}
+		wait := time.Duration(5+rand.Intn(10*(i+1))) * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+	return err
 }

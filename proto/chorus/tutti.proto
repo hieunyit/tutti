@@ -11,7 +11,7 @@ option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
 // Resilience exposes the high-availability state of the proxies (circuit breaker status and effective
 // settings) and manages automatic failover policies and the history of performed failovers.
 service Resilience {
-  rpc ListRuntimeStorages(google.protobuf.Empty) returns (RuntimeStorageList);
+  rpc ListRuntimeStorages(ListRuntimeStoragesRequest) returns (RuntimeStorageList);
   rpc CreateRuntimeStorage(CreateRuntimeStorageRequest) returns (RuntimeStorage);
   rpc UpdateRuntimeStorage(UpdateRuntimeStorageRequest) returns (RuntimeStorage);
   rpc DeleteRuntimeStorage(RuntimeStorageName) returns (google.protobuf.Empty);
@@ -717,10 +717,18 @@ message RuntimeStorage {
  google.protobuf.Timestamp last_forced_save_at = 18;
  // True if the storage has no connection account: it only works with per-user credentials.
  bool legacy_credentials = 19;
+ // Number of users with their own credentials on the storage. Always filled by ListRuntimeStorages.
+ uint32 user_count = 20;
 }
 message RuntimeStorageRateLimit { bool enabled = 1; int32 rpm = 2; bool include_metadata_api = 3; }
 message RuntimeStorageUser { string user = 1; string access_key_id = 2; string source = 3; }
 message RuntimeStorageCredential { string user = 1; string access_key_id = 2; string secret_access_key = 3; }
+// ListRuntimeStoragesRequest is wire-compatible with google.protobuf.Empty. Query: GET /tutti/storages?includeUsers=false.
+message ListRuntimeStoragesRequest {
+  // Default true (unset): each storage embeds its users. false: users is omitted and only user_count is set, which keeps
+  // the call cheap with many users.
+  optional bool include_users = 1;
+}
 message RuntimeStorageList { repeated RuntimeStorage storages = 1; string main_storage = 2; bool managed_storages_enabled = 3; }
 message CreateRuntimeStorageRequest {
   RuntimeStorage storage = 1;

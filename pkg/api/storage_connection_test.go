@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/dom"
@@ -87,7 +86,7 @@ func TestCreateStorageWithConnectionAccountRunsTestAndStoresIt(t *testing.T) {
 	require.Equal(t, "admin", updated.LastForcedSaveBy)
 
 	// listing and GetRuntimeStorage expose connection account and last test
-	l, err := h.ListRuntimeStorages(ctx, &emptypb.Empty{})
+	l, err := h.ListRuntimeStorages(ctx, &pb.ListRuntimeStoragesRequest{})
 	require.NoError(t, err)
 	byName := map[string]*pb.RuntimeStorage{}
 	for _, s := range l.Storages {

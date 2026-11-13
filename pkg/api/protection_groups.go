@@ -82,26 +82,30 @@ func groupFromPB(p *pb.ProtectionGroup) (pg.Group, error) {
 	return pg.Group{ID: p.Id, User: p.User, Buckets: p.Buckets, Members: p.Members, Copies: int(p.Copies), MaxEventLag: int(p.MaxEventLag), Mode: p.Mode, After: p.After.AsDuration(), Electorate: p.Electorate, MaxSwitchesPerHour: int(p.MaxSwitchesPerHour), Primary: p.Primary, Revision: p.Revision}, nil
 }
 func (h *protectionHandlers) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProtectionGroupList, error) {
-	groups, err := h.service.Store.List(ctx)
+	sts, err := h.service.StatusAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 	out := &pb.ProtectionGroupList{}
-	for _, g := range groups {
-		out.Groups = append(out.Groups, groupToPB(g))
+	for _, st := range sts {
+		out.Groups = append(out.Groups, groupToPB(st.Group))
+		out.Statuses = append(out.Statuses, statusToPB(st))
 	}
 	return out, nil
+}
+func statusToPB(st pg.Status) *pb.ProtectionGroupStatus {
+	out := &pb.ProtectionGroupStatus{Group: groupToPB(st.Group), HealthyCopies: int32(st.HealthyCopies), ActiveWriters: st.ActiveWriters}
+	for _, m := range st.Members {
+		out.Members = append(out.Members, &pb.ProtectionGroupMemberStatus{Storage: m.Storage, Available: m.Available, Initialized: m.Initialized, EventLag: int32(m.EventLag), Current: m.Current})
+	}
+	return out
 }
 func (h *protectionHandlers) Get(ctx context.Context, r *pb.ProtectionGroupID) (*pb.ProtectionGroupStatus, error) {
 	st, err := h.service.Status(ctx, r.GetId())
 	if err != nil {
 		return nil, err
 	}
-	out := &pb.ProtectionGroupStatus{Group: groupToPB(st.Group), HealthyCopies: int32(st.HealthyCopies), ActiveWriters: st.ActiveWriters}
-	for _, m := range st.Members {
-		out.Members = append(out.Members, &pb.ProtectionGroupMemberStatus{Storage: m.Storage, Available: m.Available, Initialized: m.Initialized, EventLag: int32(m.EventLag), Current: m.Current})
-	}
-	return out, nil
+	return statusToPB(st), nil
 }
 func (h *protectionHandlers) Create(ctx context.Context, r *pb.CreateProtectionGroupRequest) (*pb.ProtectionGroup, error) {
 	g, err := groupFromPB(r.GetGroup())

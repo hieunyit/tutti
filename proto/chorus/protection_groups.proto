@@ -57,7 +57,11 @@ message ProtectionGroupMemberStatus {
 message ProtectionGroupStatus {
  ProtectionGroup group=1;repeated ProtectionGroupMemberStatus members=2;int32 healthy_copies=3;int64 active_writers=4;
 }
-message ProtectionGroupList { repeated ProtectionGroup groups=1; }
+message ProtectionGroupList {
+ repeated ProtectionGroup groups=1;
+ // Same objects as Get returns, in the same order as groups, computed in one batched pass.
+ repeated ProtectionGroupStatus statuses=2;
+}
 message CreateProtectionGroupRequest { ProtectionGroup group=1;bool adopt_existing=2; }
 message ProtectionGroupSwitchRequest { string id=1;string target=2; }
 message ProtectionAutomaticFreeze { bool frozen=1; }

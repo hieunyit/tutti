@@ -485,8 +485,10 @@ func (x *ProtectionGroupStatus) GetActiveWriters() int64 {
 }
 
 type ProtectionGroupList struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Groups        []*ProtectionGroup     `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Groups []*ProtectionGroup     `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	// Same objects as Get returns, in the same order as groups, computed in one batched pass.
+	Statuses      []*ProtectionGroupStatus `protobuf:"bytes,2,rep,name=statuses,proto3" json:"statuses,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -524,6 +526,13 @@ func (*ProtectionGroupList) Descriptor() ([]byte, []int) {
 func (x *ProtectionGroupList) GetGroups() []*ProtectionGroup {
 	if x != nil {
 		return x.Groups
+	}
+	return nil
+}
+
+func (x *ProtectionGroupList) GetStatuses() []*ProtectionGroupStatus {
+	if x != nil {
+		return x.Statuses
 	}
 	return nil
 }
@@ -1279,9 +1288,10 @@ const file_chorus_protection_groups_proto_rawDesc = "" +
 	"\x05group\x18\x01 \x01(\v2\x17.chorus.ProtectionGroupR\x05group\x12=\n" +
 	"\amembers\x18\x02 \x03(\v2#.chorus.ProtectionGroupMemberStatusR\amembers\x12%\n" +
 	"\x0ehealthy_copies\x18\x03 \x01(\x05R\rhealthyCopies\x12%\n" +
-	"\x0eactive_writers\x18\x04 \x01(\x03R\ractiveWriters\"F\n" +
+	"\x0eactive_writers\x18\x04 \x01(\x03R\ractiveWriters\"\x81\x01\n" +
 	"\x13ProtectionGroupList\x12/\n" +
-	"\x06groups\x18\x01 \x03(\v2\x17.chorus.ProtectionGroupR\x06groups\"t\n" +
+	"\x06groups\x18\x01 \x03(\v2\x17.chorus.ProtectionGroupR\x06groups\x129\n" +
+	"\bstatuses\x18\x02 \x03(\v2\x1d.chorus.ProtectionGroupStatusR\bstatuses\"t\n" +
 	"\x1cCreateProtectionGroupRequest\x12-\n" +
 	"\x05group\x18\x01 \x01(\v2\x17.chorus.ProtectionGroupR\x05group\x12%\n" +
 	"\x0eadopt_existing\x18\x02 \x01(\bR\radoptExisting\"F\n" +
@@ -1400,47 +1410,48 @@ var file_chorus_protection_groups_proto_depIdxs = []int32{
 	1,  // 3: chorus.ProtectionGroupStatus.group:type_name -> chorus.ProtectionGroup
 	3,  // 4: chorus.ProtectionGroupStatus.members:type_name -> chorus.ProtectionGroupMemberStatus
 	1,  // 5: chorus.ProtectionGroupList.groups:type_name -> chorus.ProtectionGroup
-	1,  // 6: chorus.CreateProtectionGroupRequest.group:type_name -> chorus.ProtectionGroup
-	17, // 7: chorus.ProtectionWriters.writers:type_name -> chorus.ProtectionWriters.WritersEntry
-	18, // 8: chorus.ProtectionWriters.workers:type_name -> chorus.ProtectionWriters.WorkersEntry
-	1,  // 9: chorus.FailoverMigrationScope.group:type_name -> chorus.ProtectionGroup
-	12, // 10: chorus.FailoverMigrationPlan.scopes:type_name -> chorus.FailoverMigrationScope
-	13, // 11: chorus.FailoverMigrationResult.plan:type_name -> chorus.FailoverMigrationPlan
-	12, // 12: chorus.FailoverMigrationResult.uncovered:type_name -> chorus.FailoverMigrationScope
-	15, // 13: chorus.UnprotectedScopeList.scopes:type_name -> chorus.UnprotectedScope
-	21, // 14: chorus.ProtectionGroups.List:input_type -> google.protobuf.Empty
-	0,  // 15: chorus.ProtectionGroups.Get:input_type -> chorus.ProtectionGroupID
-	6,  // 16: chorus.ProtectionGroups.Create:input_type -> chorus.CreateProtectionGroupRequest
-	1,  // 17: chorus.ProtectionGroups.Update:input_type -> chorus.ProtectionGroup
-	0,  // 18: chorus.ProtectionGroups.Delete:input_type -> chorus.ProtectionGroupID
-	7,  // 19: chorus.ProtectionGroups.Switchover:input_type -> chorus.ProtectionGroupSwitchRequest
-	0,  // 20: chorus.ProtectionGroups.AbortSwitch:input_type -> chorus.ProtectionGroupID
-	8,  // 21: chorus.ProtectionGroups.SetAutomaticFreeze:input_type -> chorus.ProtectionAutomaticFreeze
-	21, // 22: chorus.ProtectionGroups.GetAutomaticFreeze:input_type -> google.protobuf.Empty
-	0,  // 23: chorus.ProtectionGroups.ListWriters:input_type -> chorus.ProtectionGroupID
-	10, // 24: chorus.ProtectionGroups.ClearWriter:input_type -> chorus.ProtectionWriterClearRequest
-	11, // 25: chorus.ProtectionGroups.PlanFailoverMigration:input_type -> chorus.FailoverMigrationRequest
-	11, // 26: chorus.ProtectionGroups.ApplyFailoverMigration:input_type -> chorus.FailoverMigrationRequest
-	21, // 27: chorus.ProtectionGroups.ListUnprotectedScopes:input_type -> google.protobuf.Empty
-	5,  // 28: chorus.ProtectionGroups.List:output_type -> chorus.ProtectionGroupList
-	4,  // 29: chorus.ProtectionGroups.Get:output_type -> chorus.ProtectionGroupStatus
-	1,  // 30: chorus.ProtectionGroups.Create:output_type -> chorus.ProtectionGroup
-	1,  // 31: chorus.ProtectionGroups.Update:output_type -> chorus.ProtectionGroup
-	21, // 32: chorus.ProtectionGroups.Delete:output_type -> google.protobuf.Empty
-	21, // 33: chorus.ProtectionGroups.Switchover:output_type -> google.protobuf.Empty
-	21, // 34: chorus.ProtectionGroups.AbortSwitch:output_type -> google.protobuf.Empty
-	21, // 35: chorus.ProtectionGroups.SetAutomaticFreeze:output_type -> google.protobuf.Empty
-	8,  // 36: chorus.ProtectionGroups.GetAutomaticFreeze:output_type -> chorus.ProtectionAutomaticFreeze
-	9,  // 37: chorus.ProtectionGroups.ListWriters:output_type -> chorus.ProtectionWriters
-	21, // 38: chorus.ProtectionGroups.ClearWriter:output_type -> google.protobuf.Empty
-	13, // 39: chorus.ProtectionGroups.PlanFailoverMigration:output_type -> chorus.FailoverMigrationPlan
-	14, // 40: chorus.ProtectionGroups.ApplyFailoverMigration:output_type -> chorus.FailoverMigrationResult
-	16, // 41: chorus.ProtectionGroups.ListUnprotectedScopes:output_type -> chorus.UnprotectedScopeList
-	28, // [28:42] is the sub-list for method output_type
-	14, // [14:28] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	4,  // 6: chorus.ProtectionGroupList.statuses:type_name -> chorus.ProtectionGroupStatus
+	1,  // 7: chorus.CreateProtectionGroupRequest.group:type_name -> chorus.ProtectionGroup
+	17, // 8: chorus.ProtectionWriters.writers:type_name -> chorus.ProtectionWriters.WritersEntry
+	18, // 9: chorus.ProtectionWriters.workers:type_name -> chorus.ProtectionWriters.WorkersEntry
+	1,  // 10: chorus.FailoverMigrationScope.group:type_name -> chorus.ProtectionGroup
+	12, // 11: chorus.FailoverMigrationPlan.scopes:type_name -> chorus.FailoverMigrationScope
+	13, // 12: chorus.FailoverMigrationResult.plan:type_name -> chorus.FailoverMigrationPlan
+	12, // 13: chorus.FailoverMigrationResult.uncovered:type_name -> chorus.FailoverMigrationScope
+	15, // 14: chorus.UnprotectedScopeList.scopes:type_name -> chorus.UnprotectedScope
+	21, // 15: chorus.ProtectionGroups.List:input_type -> google.protobuf.Empty
+	0,  // 16: chorus.ProtectionGroups.Get:input_type -> chorus.ProtectionGroupID
+	6,  // 17: chorus.ProtectionGroups.Create:input_type -> chorus.CreateProtectionGroupRequest
+	1,  // 18: chorus.ProtectionGroups.Update:input_type -> chorus.ProtectionGroup
+	0,  // 19: chorus.ProtectionGroups.Delete:input_type -> chorus.ProtectionGroupID
+	7,  // 20: chorus.ProtectionGroups.Switchover:input_type -> chorus.ProtectionGroupSwitchRequest
+	0,  // 21: chorus.ProtectionGroups.AbortSwitch:input_type -> chorus.ProtectionGroupID
+	8,  // 22: chorus.ProtectionGroups.SetAutomaticFreeze:input_type -> chorus.ProtectionAutomaticFreeze
+	21, // 23: chorus.ProtectionGroups.GetAutomaticFreeze:input_type -> google.protobuf.Empty
+	0,  // 24: chorus.ProtectionGroups.ListWriters:input_type -> chorus.ProtectionGroupID
+	10, // 25: chorus.ProtectionGroups.ClearWriter:input_type -> chorus.ProtectionWriterClearRequest
+	11, // 26: chorus.ProtectionGroups.PlanFailoverMigration:input_type -> chorus.FailoverMigrationRequest
+	11, // 27: chorus.ProtectionGroups.ApplyFailoverMigration:input_type -> chorus.FailoverMigrationRequest
+	21, // 28: chorus.ProtectionGroups.ListUnprotectedScopes:input_type -> google.protobuf.Empty
+	5,  // 29: chorus.ProtectionGroups.List:output_type -> chorus.ProtectionGroupList
+	4,  // 30: chorus.ProtectionGroups.Get:output_type -> chorus.ProtectionGroupStatus
+	1,  // 31: chorus.ProtectionGroups.Create:output_type -> chorus.ProtectionGroup
+	1,  // 32: chorus.ProtectionGroups.Update:output_type -> chorus.ProtectionGroup
+	21, // 33: chorus.ProtectionGroups.Delete:output_type -> google.protobuf.Empty
+	21, // 34: chorus.ProtectionGroups.Switchover:output_type -> google.protobuf.Empty
+	21, // 35: chorus.ProtectionGroups.AbortSwitch:output_type -> google.protobuf.Empty
+	21, // 36: chorus.ProtectionGroups.SetAutomaticFreeze:output_type -> google.protobuf.Empty
+	8,  // 37: chorus.ProtectionGroups.GetAutomaticFreeze:output_type -> chorus.ProtectionAutomaticFreeze
+	9,  // 38: chorus.ProtectionGroups.ListWriters:output_type -> chorus.ProtectionWriters
+	21, // 39: chorus.ProtectionGroups.ClearWriter:output_type -> google.protobuf.Empty
+	13, // 40: chorus.ProtectionGroups.PlanFailoverMigration:output_type -> chorus.FailoverMigrationPlan
+	14, // 41: chorus.ProtectionGroups.ApplyFailoverMigration:output_type -> chorus.FailoverMigrationResult
+	16, // 42: chorus.ProtectionGroups.ListUnprotectedScopes:output_type -> chorus.UnprotectedScopeList
+	29, // [29:43] is the sub-list for method output_type
+	15, // [15:29] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_chorus_protection_groups_proto_init() }

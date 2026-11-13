@@ -2121,6 +2121,15 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "includeUsers",
+            "description": "Default true (unset): each storage embeds its users. false: users is omitted and only user_count is set, which keeps\nthe call cheap with many users.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
         "tags": [
           "Resilience"
         ]
@@ -3963,6 +3972,14 @@
             "type": "object",
             "$ref": "#/definitions/chorusProtectionGroup"
           }
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusProtectionGroupStatus"
+          },
+          "description": "Same objects as Get returns, in the same order as groups, computed in one batched pass."
         }
       }
     },
@@ -4808,6 +4825,11 @@
         "legacyCredentials": {
           "type": "boolean",
           "description": "True if the storage has no connection account: it only works with per-user credentials."
+        },
+        "userCount": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of users with their own credentials on the storage. Always filled by ListRuntimeStorages."
         }
       },
       "description": "RuntimeStorage contains connection settings and metadata, never credentials secrets."
