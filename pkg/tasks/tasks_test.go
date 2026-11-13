@@ -17,6 +17,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -70,6 +71,29 @@ func TestQueueNameForEmptyUserDistinct(t *testing.T) {
 		id, err := entity.UniversalIDFromString(strings.TrimPrefix(qe, string(prefix)+":"))
 		if err != nil || id != empty {
 			t.Fatalf("queue name does not parse back: %v %v", id, err)
+		}
+	}
+}
+
+// Diff payloads carry their own User string; an empty user (storage-level pair) encodes with a valid task id
+// and queue and keeps the empty user through the JSON payload.
+func TestDiffPayloadsEmptyUser(t *testing.T) {
+	locs := []MigrateLocation{{Storage: "s1", Bucket: "b"}, {Storage: "s2", Bucket: "b"}}
+	for _, payload := range []any{
+		DiffPayload{Locations: locs},
+		DiffListObjectsPayload{Locations: locs},
+		DiffListVersionsPayload{Locations: locs},
+		DiffFixCollectObjectsPayload{Locations: locs},
+		DiffFixRemoveObjectsPayload{Locations: locs},
+		DiffFixEnsureObjectsRemovedPayload{Locations: locs},
+	} {
+		task, err := EncodeAny(t.Context(), payload)
+		if err != nil {
+			t.Fatalf("%T: %v", payload, err)
+		}
+		var got struct{ User string }
+		if err := json.Unmarshal(task.Payload(), &got); err != nil || got.User != "" {
+			t.Fatalf("%T: user %q err %v", payload, got.User, err)
 		}
 	}
 }

@@ -145,3 +145,30 @@ func TestUserIDFromNotificationID(t *testing.T) {
 		})
 	}
 }
+
+// An empty user (storage-level replication) must round-trip and never be confused with a real user, whatever
+// dashes the user or bucket names contain.
+func TestUserIDFromNotificationID_EmptyUser(t *testing.T) {
+	buckets := []string{"bucket", "bucket-name", "my-bucket-x", "b--c", "a---b"}
+	for _, bucket := range buckets {
+		got, err := UserIDFromNotificationID(notificationID("", bucket))
+		if err != nil || got != "" {
+			t.Errorf("empty user, bucket %q: got %q, err %v", bucket, got, err)
+		}
+	}
+	// ids of a real user never decode to the empty user (including users starting with a dash)
+	for _, user := range []string{"u", "-u", "a-b"} {
+		for _, bucket := range buckets {
+			got, err := UserIDFromNotificationID(notificationID(user, bucket))
+			if err != nil || got != user {
+				t.Errorf("user %q, bucket %q: got %q, err %v", user, bucket, got, err)
+			}
+		}
+	}
+	if notificationID("", "bucket") == notificationID("x", "bucket") {
+		t.Error("empty user id must differ from a real user id")
+	}
+	if topicName("") == topicName("x") || topicName("") == "chorus-" || topicName("") == "chorus--x" {
+		t.Errorf("unexpected storage-level topic name %q", topicName(""))
+	}
+}
