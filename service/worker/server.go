@@ -51,6 +51,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
+	"github.com/hieunyit/tutti/pkg/replscope"
 	"github.com/hieunyit/tutti/pkg/rpc"
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/store"
@@ -275,7 +276,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		ValidateCredentials: protectiongroups.CredentialValidator(credsSvc, accessPolicyStore),
 		ValidateLegacyFailover: protectiongroups.LegacyFailoverValidator(
 			failover.NewStore(confRedis, nil).WithControlPlane(cpStore).ListFailoverPolicies),
-		Reports: func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) }}
+		Reports:     func(ctx context.Context) ([]proxystatus.Status, error) { return proxystatus.List(ctx, confRedis) },
+		ScopeOwners: policySvc.ListScopeOwners, ScopeLocker: replscope.NewRedisLocker(confRedis)}
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 
 	workerSvc.SetBucketScope(bucketScope)

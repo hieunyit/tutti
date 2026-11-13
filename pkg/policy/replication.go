@@ -289,20 +289,23 @@ func (r *policySvc) validateUserReplicationCreationRepo(ctx context.Context, rep
 	if routeTo != policy.FromStorage {
 		return fmt.Errorf("%w: unable to create user %s replication from %s because it is different from routing %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, routeTo)
 	}
-	bucketPolicyExists, err := r.hasBucketReplicationForUserRepo(ctx, repos.Replications, policy.User)
-	if err != nil {
-		return fmt.Errorf("unable to check existing bucket replications: %w", err)
-	}
-	if bucketPolicyExists {
-		return fmt.Errorf("%w: unable to create user replication when there are existing bucket replications", dom.ErrInvalidArg)
-	}
-	bucketRoutings, err := repos.Routing.ListBucketRoutes(ctx, policy.User)
-	if err != nil {
-		return fmt.Errorf("unable to get bucket routings for user replication: %w", err)
-	}
-	for bucket, routeTo := range bucketRoutings {
-		if routeTo != policy.FromStorage {
-			return fmt.Errorf("%w: unable to create user %s replication from %s because bucket %s is routed to %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, bucket, routeTo)
+	if policy.User != "" {
+		// per-user exclusivity and routing apply to a real user only, never to storage-level replications
+		bucketPolicyExists, err := r.hasBucketReplicationForUserRepo(ctx, repos.Replications, policy.User)
+		if err != nil {
+			return fmt.Errorf("unable to check existing bucket replications: %w", err)
+		}
+		if bucketPolicyExists {
+			return fmt.Errorf("%w: unable to create user replication when there are existing bucket replications", dom.ErrInvalidArg)
+		}
+		bucketRoutings, err := repos.Routing.ListBucketRoutes(ctx, policy.User)
+		if err != nil {
+			return fmt.Errorf("unable to get bucket routings for user replication: %w", err)
+		}
+		for bucket, routeTo := range bucketRoutings {
+			if routeTo != policy.FromStorage {
+				return fmt.Errorf("%w: unable to create user %s replication from %s because bucket %s is routed to %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, bucket, routeTo)
+			}
 		}
 	}
 	userSwitch, err := r.userReplicationSwitchStore.Get(ctx, policy.User)
@@ -348,22 +351,25 @@ func (r *policySvc) ValidateUserReplicationCreation(ctx context.Context, policy 
 	if routeTo != policy.FromStorage {
 		return fmt.Errorf("%w: unable to create user %s replication from %s because it is different from routing %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, routeTo)
 	}
-	// check if there are existing bucket replications for this user
-	bucketPolicyExists, err := r.hasBucketReplicationForUser(ctx, policy.User)
-	if err != nil {
-		return fmt.Errorf("unable to check existing bucket replications: %w", err)
-	}
-	if bucketPolicyExists {
-		return fmt.Errorf("%w: unable to create user replication when there are existing bucket replications", dom.ErrInvalidArg)
-	}
-	// bucket routing overrides user routing: writes to bucket routed elsewhere would bypass replication
-	bucketRoutings, err := r.bucketRoutingStore.ListRoutesOp(ctx, policy.User).Get()
-	if err != nil {
-		return fmt.Errorf("unable to get bucket routings for user replication: %w", err)
-	}
-	for bucket, routeTo := range bucketRoutings {
-		if routeTo != policy.FromStorage {
-			return fmt.Errorf("%w: unable to create user %s replication from %s because bucket %s is routed to %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, bucket, routeTo)
+	if policy.User != "" {
+		// per-user exclusivity and routing apply to a real user only, never to storage-level replications
+		// check if there are existing bucket replications for this user
+		bucketPolicyExists, err := r.hasBucketReplicationForUser(ctx, policy.User)
+		if err != nil {
+			return fmt.Errorf("unable to check existing bucket replications: %w", err)
+		}
+		if bucketPolicyExists {
+			return fmt.Errorf("%w: unable to create user replication when there are existing bucket replications", dom.ErrInvalidArg)
+		}
+		// bucket routing overrides user routing: writes to bucket routed elsewhere would bypass replication
+		bucketRoutings, err := r.bucketRoutingStore.ListRoutesOp(ctx, policy.User).Get()
+		if err != nil {
+			return fmt.Errorf("unable to get bucket routings for user replication: %w", err)
+		}
+		for bucket, routeTo := range bucketRoutings {
+			if routeTo != policy.FromStorage {
+				return fmt.Errorf("%w: unable to create user %s replication from %s because bucket %s is routed to %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, bucket, routeTo)
+			}
 		}
 	}
 
@@ -390,8 +396,10 @@ func (r *policySvc) AddUserReplicationPolicy(ctx context.Context, policy entity.
 			}
 			uid := entity.UniversalFromUserReplication(policy)
 			cpID := toCPReplicationID(uid)
-			if err := repos.Routing.Set(ctx, policy.User, "", policy.FromStorage); err != nil {
-				return err
+			if policy.User != "" { // storage-level replications are not bound to routing
+				if err := repos.Routing.Set(ctx, policy.User, "", policy.FromStorage); err != nil {
+					return err
+				}
 			}
 			if err := repos.Replications.Add(ctx, cpID, toCPStatus(entity.StatusFromOptions(opts))); err != nil {
 				return err
@@ -407,8 +415,10 @@ func (r *policySvc) AddUserReplicationPolicy(ctx context.Context, policy entity.
 	}
 	uid := entity.UniversalFromUserReplication(policy)
 	tx := r.userReplicationPolicyStore.TxExecutor()
-	// 1. set explicit user-level routing
-	_ = r.userRoutingStore.WithExecutor(tx).SetOp(ctx, policy.User, policy.FromStorage)
+	// 1. set explicit user-level routing (storage-level replications are not bound to routing)
+	if policy.User != "" {
+		_ = r.userRoutingStore.WithExecutor(tx).SetOp(ctx, policy.User, policy.FromStorage)
+	}
 	// 2. add replication policy
 	_ = r.userReplicationPolicyStore.WithExecutor(tx).AddOp(ctx, policy)
 	// 3. add replication status
@@ -526,12 +536,15 @@ func (r *policySvc) validateBucketReplicationCreationRepo(ctx context.Context, r
 	if routeTo != policy.FromStorage {
 		return fmt.Errorf("%w: unable to create bucket %s replication from %s because it is different from routing %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, routeTo)
 	}
-	userReplicationExists, err := r.hasUserReplicationRepo(ctx, repos.Replications, policy.User)
-	if err != nil {
-		return fmt.Errorf("unable to check existing user replications: %w", err)
-	}
-	if userReplicationExists {
-		return fmt.Errorf("%w: unable to create bucket replication when there are existing user replications", dom.ErrInvalidArg)
+	if policy.User != "" {
+		// per-user exclusivity applies to a real user only
+		userReplicationExists, err := r.hasUserReplicationRepo(ctx, repos.Replications, policy.User)
+		if err != nil {
+			return fmt.Errorf("unable to check existing user replications: %w", err)
+		}
+		if userReplicationExists {
+			return fmt.Errorf("%w: unable to create bucket replication when there are existing user replications", dom.ErrInvalidArg)
+		}
 	}
 	userSwitch, err := r.bucketReplicationSwitchStore.Get(ctx, policy.LookupID())
 	switch {
@@ -583,13 +596,15 @@ func (r *policySvc) ValidateBucketReplicationCreation(ctx context.Context, polic
 	if routeTo != policy.FromStorage {
 		return fmt.Errorf("%w: unable to create bucket %s replication from %s because it is different from routing %s", dom.ErrInvalidArg, policy.User, policy.FromStorage, routeTo)
 	}
-	// check if there are existing user replications for this user
-	userReplicationExists, err := r.hasUserReplication(ctx, policy.User)
-	if err != nil {
-		return fmt.Errorf("unable to check existing user replications: %w", err)
-	}
-	if userReplicationExists {
-		return fmt.Errorf("%w: unable to create bucket replication when there are existing user replications", dom.ErrInvalidArg)
+	// check if there are existing user replications for this user (a real user only, never storage-level)
+	if policy.User != "" {
+		userReplicationExists, err := r.hasUserReplication(ctx, policy.User)
+		if err != nil {
+			return fmt.Errorf("unable to check existing user replications: %w", err)
+		}
+		if userReplicationExists {
+			return fmt.Errorf("%w: unable to create bucket replication when there are existing user replications", dom.ErrInvalidArg)
+		}
 	}
 
 	// check if replication switch already exists
@@ -624,8 +639,10 @@ func (r *policySvc) AddBucketReplicationPolicy(ctx context.Context, policy entit
 			}
 			uid := entity.UniversalFromBucketReplication(policy)
 			cpID := toCPReplicationID(uid)
-			if err := repos.Routing.Set(ctx, policy.User, policy.FromBucket, policy.FromStorage); err != nil {
-				return err
+			if policy.User != "" { // storage-level replications are not bound to routing
+				if err := repos.Routing.Set(ctx, policy.User, policy.FromBucket, policy.FromStorage); err != nil {
+					return err
+				}
 			}
 			if err := repos.Replications.Add(ctx, cpID, toCPStatus(entity.StatusFromOptions(opts))); err != nil {
 				return err
@@ -646,8 +663,10 @@ func (r *policySvc) AddBucketReplicationPolicy(ctx context.Context, policy entit
 	}
 	uid := entity.UniversalFromBucketReplication(policy)
 	tx := r.bucketReplicationPolicyStore.TxExecutor()
-	// 1. set explicit bucket-level routing
-	_ = r.bucketRoutingStore.WithExecutor(tx).SetOp(ctx, policy.RoutingID(), policy.FromStorage)
+	// 1. set explicit bucket-level routing (storage-level replications are not bound to routing)
+	if policy.User != "" {
+		_ = r.bucketRoutingStore.WithExecutor(tx).SetOp(ctx, policy.RoutingID(), policy.FromStorage)
+	}
 	// 2. add replication policy
 	_ = r.bucketReplicationPolicyStore.WithExecutor(tx).AddOp(ctx, policy)
 	// 3. add replication status
@@ -755,15 +774,13 @@ func (r *policySvc) DeleteBucketReplication(ctx context.Context, policy entity.B
 
 func (r *policySvc) listBucketStatuses(ctx context.Context, user string) (map[entity.BucketReplicationPolicy]entity.ReplicationStatus, error) {
 	if r.cp != nil {
-		if user == "" {
-			return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
-		}
+		// ListStatuses("") lists every user: the empty user (storage-level) is filtered below
 		cpStatuses, err := r.cp.Repos().Replications.ListStatuses(ctx, user)
 		if err == nil {
 			redisStatuses, _ := r.bucketReplicationStatusStore.List(ctx, user)
 			statuses := make(map[entity.BucketReplicationPolicy]entity.ReplicationStatus)
 			for id, st := range cpStatuses {
-				if id.IsUserLevel() {
+				if id.IsUserLevel() || id.User != user {
 					continue
 				}
 				bp := entity.BucketReplicationPolicy{

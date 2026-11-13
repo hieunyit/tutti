@@ -229,7 +229,7 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
 	// If request scope is in a protection group and has no user replications,
-	// attach the group's infrastructure replications running under ServiceUser.
+	// attach the group's storage-level replications (empty user, connection accounts).
 	if groupID != "" && len(data.replications) == 0 {
 		if grepls := r.groupReplications(ctx, groupID, routeTo, bucket); len(grepls) > 0 {
 			data.replications = grepls
@@ -241,7 +241,7 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 		return nil, err
 	}
 	for _, repl := range data.replications {
-		if repl.User() == protectiongroups.ServiceUser {
+		if repl.IsStorageLevel() {
 			if _, ok := data.generations[repl]; !ok || data.generations[repl] == 0 {
 				if gen, gErr := r.replicationGenerationStore.Get(ctx, repl); gErr == nil {
 					data.generations[repl] = gen
@@ -510,7 +510,6 @@ func (r *policySvc) groupReplications(ctx context.Context, groupID, primary, buc
 		}
 		if bucket != "" {
 			out = append(out, entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{
-				User:        protectiongroups.ServiceUser,
 				FromStorage: primary,
 				ToStorage:   m,
 				FromBucket:  bucket,
@@ -518,7 +517,6 @@ func (r *policySvc) groupReplications(ctx context.Context, groupID, primary, buc
 			}))
 		} else {
 			out = append(out, entity.UniversalFromUserReplication(entity.UserReplicationPolicy{
-				User:        protectiongroups.ServiceUser,
 				FromStorage: primary,
 				ToStorage:   m,
 			}))

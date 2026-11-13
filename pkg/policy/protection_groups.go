@@ -24,10 +24,10 @@ func (r *policySvc) ProtectionBackend() protectiongroups.Backend { return &prote
 func (b *protectionBackend) Validate(ctx context.Context, g protectiongroups.Group, adopt bool) error {
 	p := b.p
 	if g.User == "" {
-		// Infrastructure group: runs under ServiceUser using storage connection accounts.
+		// Infrastructure group: storage-level replications (empty user) using storage connection accounts.
 		if p.sharedAccount != nil {
 			for _, m := range g.Members {
-				if !p.sharedAccount(m, protectiongroups.ServiceUser) {
+				if !p.sharedAccount(m, "") {
 					return fmt.Errorf("%w: storage %s has no connection account; protection group requires connection accounts on all members", dom.ErrFailedPrecondition, m)
 				}
 			}
@@ -40,7 +40,7 @@ func (b *protectionBackend) Validate(ctx context.Context, g protectiongroups.Gro
 		if err != nil && !errors.Is(err, dom.ErrNotFound) {
 			return err
 		}
-		br, err := p.ListBucketReplicationsInfo(ctx, protectiongroups.ServiceUser)
+		br, err := p.ListBucketReplicationsInfo(ctx, "")
 		if err != nil && !errors.Is(err, dom.ErrNotFound) {
 			return err
 		}
@@ -56,15 +56,23 @@ func (b *protectionBackend) Validate(ctx context.Context, g protectiongroups.Gro
 			}
 			return nil
 		}
+		// Only storage-level replications between members belong to the group's topology (adoptable or
+		// conflicting); any other overlap is refused by the shared conflict rule (replscope).
+		between := func(from, to string) bool {
+			return slices.Contains(g.Members, from) && slices.Contains(g.Members, to)
+		}
 		for id, st := range ur {
-			if id.User == protectiongroups.ServiceUser {
+			if id.User == "" && between(id.FromStorage, id.ToStorage) {
 				if err := check(entity.UniversalFromUserReplication(id), st); err != nil {
 					return err
 				}
 			}
 		}
 		for id, st := range br {
-			if len(g.Buckets) == 0 || g.Covers(protectiongroups.ServiceUser, id.FromBucket) {
+			if !between(id.FromStorage, id.ToStorage) {
+				continue
+			}
+			if len(g.Buckets) == 0 || g.Covers("", id.FromBucket) {
 				if err := check(entity.UniversalFromBucketReplication(id), st); err != nil {
 					return err
 				}

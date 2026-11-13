@@ -9,6 +9,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
+	"github.com/hieunyit/tutti/pkg/replscope"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/rs/zerolog"
 	"slices"
@@ -43,6 +44,49 @@ type Service struct {
 	// ValidateLegacyFailover rejects a group over storages used by an enabled legacy failover policy.
 	ValidateLegacyFailover func(context.Context, Group) error
 	Now                    func() time.Time
+	// ScopeOwners lists every object that covers buckets (groups and replications) for the shared conflict rule
+	// (replscope); nil disables the cross-object check (group-vs-group overlap is still refused by Store.Save).
+	ScopeOwners func(context.Context) ([]replscope.Owner, error)
+	// ScopeLocker serializes the conflict check and the write with every other creation path.
+	ScopeLocker replscope.Locker
+}
+
+// lockScope takes the global scope lock and refuses g when its scope conflicts with another group or
+// replication (replscope.Check, ignoring the group ignoreID and the replications g itself manages). On success
+// the caller writes the group and then calls unlock; keep that critical section short (the lock is not renewed).
+func (s *Service) lockScope(ctx context.Context, g Group, ignoreID string) (unlock func(), err error) {
+	unlock = func() {}
+	if s.ScopeOwners == nil {
+		return unlock, nil
+	}
+	if s.ScopeLocker != nil {
+		if unlock, err = s.ScopeLocker.Lock(ctx); err != nil {
+			return nil, err
+		}
+	}
+	owners, err := s.ScopeOwners(ctx)
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	own := map[string]bool{}
+	for _, m := range g.Members {
+		for _, id := range g.Replications(m) {
+			own[id.AsString()] = true
+		}
+	}
+	others := owners[:0:0]
+	for _, o := range owners {
+		if o.Kind == "replication" && own[o.ID] {
+			continue
+		}
+		others = append(others, o)
+	}
+	if c := replscope.Check(g.Scope(), others, ignoreID); c != nil {
+		unlock()
+		return nil, c
+	}
+	return unlock, nil
 }
 
 func (s *Service) now() time.Time {
@@ -109,6 +153,11 @@ func (s *Service) create(ctx context.Context, g Group, adopt, skipLegacy bool) (
 		if err := s.Backend.Validate(ctx, g, adopt); err != nil {
 			return err
 		}
+		unlock, err := s.lockScope(ctx, g, "")
+		if err != nil {
+			return err
+		}
+		defer unlock()
 		if adopt {
 			for _, id := range g.Replications(g.Primary) {
 				if _, err := s.Backend.Replication(ctx, id); errors.Is(err, dom.ErrNotFound) {
@@ -154,6 +203,11 @@ func (s *Service) Update(ctx context.Context, input Group) (Group, error) {
 		if err = g.Validate(); err != nil {
 			return err
 		}
+		unlock, err := s.lockScope(ctx, g, g.ID)
+		if err != nil {
+			return err
+		}
+		defer unlock()
 		err = s.Store.Save(ctx, &g)
 		result = g
 		return err
