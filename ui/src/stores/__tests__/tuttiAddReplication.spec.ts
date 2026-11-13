@@ -21,7 +21,9 @@ import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
 import { AddReplicationStepName } from '@/utils/types/chorus';
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const push = vi.hoisted(() => vi.fn());
+
+vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/i18n/useStoreI18n', () => ({
   useStoreI18n: () => ({ t: (key: string) => key }),
 }));
@@ -98,7 +100,11 @@ describe('tuttiAddReplicationStore', () => {
     await store.initAddReplicationPage();
     await store.getBucketsList();
     expect(chorus.getBucketsForReplication).toHaveBeenCalledWith(
-      expect.objectContaining({ user: 'alice', fromStorage: 'main', toStorage: 'backup' }),
+      expect.objectContaining({
+        user: 'alice',
+        fromStorage: 'main',
+        toStorage: 'backup',
+      }),
     );
   });
 
@@ -126,5 +132,29 @@ describe('tuttiAddReplicationStore', () => {
     expect(chorus.addReplication).toHaveBeenCalledWith({
       id: { user: 'bob', fromStorage: 'main', toStorage: 'backup' },
     });
+  });
+
+  it('stays on the wizard and reports failure when every request fails', async () => {
+    chorus.addReplication!.mockRejectedValue(new Error('boom'));
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.isForAllBuckets = true;
+    const created = await store.createReplication();
+
+    expect(created).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    expect(store.isSubmitting).toBe(false);
+  });
+
+  it('navigates away and reports success when a request succeeds', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.isForAllBuckets = true;
+    const created = await store.createReplication();
+
+    expect(created).toBe(true);
+    expect(push).toHaveBeenCalledTimes(1);
   });
 });

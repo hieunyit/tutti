@@ -49,7 +49,7 @@ describe('StatusBadge', () => {
 
 describe('DataTable', () => {
   const columns = [{ key: 'name', title: 'Name' }];
-  const rowKey = (row: { name: string }) => row.name;
+  const rowKey = (row: Record<string, unknown>) => String(row.name);
 
   it('shows ErrorBlock with retry when error is set', async () => {
     const wrapper = mount(DataTable, {

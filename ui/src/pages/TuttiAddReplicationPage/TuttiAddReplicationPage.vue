@@ -124,8 +124,9 @@
   ]);
 
   async function finish() {
-    await store.createReplication();
-    clearWizardDraft(DRAFT_KEY);
+    const created = await store.createReplication();
+
+    if (created) clearWizardDraft(DRAFT_KEY);
   }
 
   function startOver() {

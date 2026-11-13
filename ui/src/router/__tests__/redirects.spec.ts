@@ -14,15 +14,23 @@
  *  limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
 import {
   createMemoryHistory,
   createRouter,
   type RouteRecordRaw,
 } from 'vue-router';
+import authGuard from '../guards/auth-guard';
 import { routes } from '../routes';
+import { AuthService } from '@/services/AuthService';
+import { AuthRole } from '@/utils/types/auth';
 import { RouteName } from '@/utils/types/router';
+
+vi.mock('@/services/AuthService', () => ({
+  AuthService: { login: vi.fn(), logout: vi.fn(), me: vi.fn() },
+}));
 
 const Stub = defineComponent({ render: () => null });
 
@@ -69,6 +77,7 @@ describe('old URLs redirect to the new routes (spec section 2)', () => {
     ['/diff-reports', '/replication', { tab: 'diff' }],
     ['/diff-reports/add', '/replication/diff/add', {}],
     ['/failover', '/protection-groups', {}],
+    ['/access-keys', '/proxy-accounts', {}],
     ['/', '/dashboard', {}],
   ])('%s -> %s keeps the query', async (from, to, extra) => {
     const route = await land(`${from}?keep=1&other=x`);
@@ -148,4 +157,61 @@ describe('new routes', () => {
       expect(router.resolve({ name }).meta.requiresAdmin).toBe(true);
     }
   });
+});
+
+describe('legacy credentials URL', () => {
+  it('/storages/s1/credentials/alice opens the user page', async () => {
+    const route = await land('/storages/s1/credentials/alice');
+
+    expect(route.name).toBe(RouteName.TUTTI_USER_DETAIL);
+    expect(route.params.name).toBe('alice');
+  });
+
+  it('/storages/s1/credentials opens the storage users tab', async () => {
+    const route = await land('/storages/s1/credentials');
+
+    expect(route.name).toBe(RouteName.CHORUS_STORAGE_DETAILS);
+    expect(route.params.storageName).toBe('s1');
+    expect(route.query).toEqual({ tab: 'users' });
+  });
+});
+
+describe('viewer cannot reach admin pages by URL', () => {
+  const me = AuthService.me as unknown as ReturnType<typeof vi.fn>;
+
+  async function landAs(role: AuthRole, path: string) {
+    window.sessionStorage.setItem('tutti.auth.token', 't');
+    setActivePinia(createPinia());
+    me.mockResolvedValue({ authEnabled: true, username: 'u', role });
+
+    const router = makeRouter();
+
+    router.beforeEach(authGuard);
+    await router.push(path);
+
+    return router.currentRoute.value;
+  }
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    vi.resetAllMocks();
+  });
+
+  it.each(['/console-users', '/system-settings', '/audit-log'])(
+    'redirects a viewer away from %s',
+    async (path) => {
+      const route = await landAs(AuthRole.VIEWER, path);
+
+      expect(route.path).toBe('/dashboard');
+    },
+  );
+
+  it.each(['/console-users', '/system-settings', '/audit-log'])(
+    'lets an admin open %s',
+    async (path) => {
+      const route = await landAs(AuthRole.ADMIN, path);
+
+      expect(route.path).toBe(path);
+    },
+  );
 });

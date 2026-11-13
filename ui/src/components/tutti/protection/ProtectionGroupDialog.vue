@@ -17,23 +17,19 @@
 <script setup lang="ts">
   import {
     NButton,
-    NCheckbox,
     NForm,
     NFormItem,
-    NInput,
     NInputNumber,
     NModal,
     NRadio,
     NSpace,
     NSelect,
-    NTag,
   } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nProtection from './i18nProtection';
   import Callout from '@/components/ui/Callout.vue';
-  import StatusTag from '@/components/ui/StatusTag.vue';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import type {
@@ -44,8 +40,8 @@
 
   const props = defineProps<{
     show: boolean;
-    /** group being edited; null/undefined means create mode */
-    group?: ProtectionGroup | null;
+    /** group being edited */
+    group: ProtectionGroup;
   }>();
 
   const emit = defineEmits<{
@@ -55,16 +51,12 @@
 
   const { t } = useI18n({ messages: i18nProtection });
   const store = useTuttiProtectionStore();
-  const { storageNames, proxyIds } = storeToRefs(store);
+  const { proxyIds } = storeToRefs(store);
 
   const form = ref<ProtectionGroupForm>(ProtectionGroupHelper.emptyForm());
-  const bucketInput = ref('');
-  const selectedStorage = ref<string | null>(null);
   const showErrors = ref(false);
   const isSaving = ref(false);
   const backendError = ref<string | null>(null);
-
-  const isEdit = computed(() => !!props.group);
 
   watch(
     () => props.show,
@@ -72,11 +64,7 @@
       if (!show) return;
 
       store.loadOptions();
-      form.value = props.group
-        ? ProtectionGroupHelper.groupToForm(props.group)
-        : ProtectionGroupHelper.emptyForm();
-      bucketInput.value = '';
-      selectedStorage.value = null;
+      form.value = ProtectionGroupHelper.groupToForm(props.group);
       showErrors.value = false;
       backendError.value = null;
       isSaving.value = false;
@@ -85,7 +73,7 @@
   );
 
   const errors = computed<ProtectionFormError[]>(() =>
-    ProtectionGroupHelper.validate(form.value, isEdit.value),
+    ProtectionGroupHelper.validate(form.value, true),
   );
 
   function errorText(...codes: ProtectionFormError[]): string | undefined {
@@ -96,67 +84,11 @@
     return found ? t(found) : undefined;
   }
 
-  const availableStorageOptions = computed(() =>
-    storageNames.value
-      .filter((name) => !form.value.members.includes(name))
-      .map((name) => ({ label: name, value: name })),
-  );
-
   const proxyOptions = computed(() =>
     proxyIds.value.map((id) => ({ label: id, value: id })),
   );
 
-  function addBucket() {
-    const trimmed = bucketInput.value.trim();
-
-    if (!trimmed) return;
-
-    form.value.buckets = [...form.value.buckets, trimmed];
-    bucketInput.value = '';
-  }
-
-  function removeBucket(index: number) {
-    form.value.buckets = form.value.buckets.filter((_, i) => i !== index);
-  }
-
-  function addMemberStorage() {
-    if (!selectedStorage.value) return;
-
-    form.value.members = ProtectionGroupHelper.addMember(
-      form.value.members,
-      selectedStorage.value,
-    );
-    form.value.copies = ProtectionGroupHelper.clampCopies(
-      form.value.copies,
-      form.value.members.length,
-    );
-    selectedStorage.value = null;
-  }
-
-  function moveMember(index: number, dir: -1 | 1) {
-    form.value.members = ProtectionGroupHelper.moveMember(
-      form.value.members,
-      index,
-      dir,
-    );
-  }
-
-  function removeMemberStorage(storage: string) {
-    form.value.members = ProtectionGroupHelper.removeMember(
-      form.value.members,
-      storage,
-    );
-    form.value.copies = ProtectionGroupHelper.clampCopies(
-      form.value.copies,
-      form.value.members.length,
-    );
-  }
-
   async function submit() {
-    if (!isEdit.value && bucketInput.value.trim() !== '') {
-      addBucket();
-    }
-
     showErrors.value = true;
     backendError.value = null;
 
@@ -164,10 +96,7 @@
 
     isSaving.value = true;
 
-    const err =
-      isEdit.value && props.group
-        ? await store.updateGroup(props.group, form.value)
-        : await store.createGroup(form.value);
+    const err = await store.updateGroup(props.group, form.value);
 
     isSaving.value = false;
 
@@ -186,9 +115,7 @@
   <NModal
     :show="show"
     preset="card"
-    :title="
-      isEdit ? t('dialogEdit', { id: group?.id ?? '' }) : t('dialogCreate')
-    "
+    :title="t('dialogEdit', { id: group.id })"
     :closable="!isSaving"
     :mask-closable="!isSaving"
     :style="{ width: 'min(640px, calc(100vw - 32px))' }"
@@ -199,136 +126,9 @@
       label-placement="top"
       @submit.prevent="submit"
     >
-      <Callout
-        v-if="isEdit"
-        tone="info"
-      >
+      <Callout tone="info">
         {{ t('immutableNote') }}
       </Callout>
-
-      <template v-else>
-        <NFormItem
-          :label="t('fieldId')"
-          :validation-status="
-            errorText('ID_REQUIRED', 'ID_INVALID') ? 'error' : undefined
-          "
-          :feedback="errorText('ID_REQUIRED', 'ID_INVALID') ?? t('fieldIdHelp')"
-        >
-          <NInput
-            v-model:value="form.id"
-            :disabled="isSaving"
-          />
-        </NFormItem>
-
-        <NFormItem
-          :label="t('fieldBuckets')"
-          :validation-status="errorText('BUCKET_INVALID') ? 'error' : undefined"
-          :feedback="errorText('BUCKET_INVALID') ?? t('fieldBucketsHelp')"
-        >
-          <div class="protection-dialog__stack">
-            <div
-              v-if="form.buckets.length > 0"
-              class="protection-dialog__tags"
-            >
-              <span
-                v-for="(bucket, index) in form.buckets"
-                :key="`${bucket}-${index}`"
-                class="protection-dialog__tag-item"
-              >
-                <NTag round>{{ bucket }}</NTag>
-                <NButton
-                  size="tiny"
-                  :disabled="isSaving"
-                  :aria-label="t('remove')"
-                  @click="removeBucket(index)"
-                >
-                  ✕
-                </NButton>
-              </span>
-            </div>
-            <div class="protection-dialog__inline">
-              <NInput
-                v-model:value="bucketInput"
-                :placeholder="t('fieldBucketsPlaceholder')"
-                :disabled="isSaving"
-                @keydown.enter.prevent="addBucket"
-              />
-            </div>
-          </div>
-        </NFormItem>
-
-        <NFormItem
-          :label="t('fieldMembers')"
-          :validation-status="errorText('MEMBERS_MIN') ? 'error' : undefined"
-          :feedback="errorText('MEMBERS_MIN') ?? t('fieldMembersHelp')"
-        >
-          <div class="protection-dialog__stack">
-            <p
-              v-if="form.members.length === 0"
-              class="protection-dialog__empty"
-            >
-              {{ t('fieldMembersEmpty') }}
-            </p>
-            <div
-              v-for="(member, index) in form.members"
-              :key="member"
-              class="protection-dialog__member"
-            >
-              <NTag round>{{ index + 1 }}</NTag>
-              <span class="protection-dialog__member-name">{{ member }}</span>
-              <StatusTag
-                v-if="index === 0"
-                variant="info"
-                no-dot
-                :label="t('primaryMark')"
-              />
-              <NButton
-                size="tiny"
-                :disabled="isSaving || index === 0"
-                :aria-label="t('moveUp')"
-                :title="t('moveUp')"
-                @click="moveMember(index, -1)"
-              >
-                ↑
-              </NButton>
-              <NButton
-                size="tiny"
-                :disabled="isSaving || index === form.members.length - 1"
-                :aria-label="t('moveDown')"
-                :title="t('moveDown')"
-                @click="moveMember(index, 1)"
-              >
-                ↓
-              </NButton>
-              <NButton
-                size="tiny"
-                :disabled="isSaving"
-                :aria-label="t('remove')"
-                :title="t('remove')"
-                @click="removeMemberStorage(member)"
-              >
-                ✕
-              </NButton>
-            </div>
-            <div class="protection-dialog__inline">
-              <NSelect
-                v-model:value="selectedStorage"
-                :options="availableStorageOptions"
-                :placeholder="t('fieldMembersAdd')"
-                :disabled="isSaving"
-                filterable
-                tag
-              />
-              <NButton
-                :disabled="isSaving || !selectedStorage"
-                @click="addMemberStorage"
-              >
-                {{ t('fieldMembersAdd') }}
-              </NButton>
-            </div>
-          </div>
-        </NFormItem>
-      </template>
 
       <div class="protection-dialog__grid">
         <NFormItem
@@ -434,21 +234,6 @@
           />
         </NFormItem>
       </div>
-
-      <NFormItem
-        v-if="!isEdit"
-        :show-label="false"
-      >
-        <div class="protection-dialog__adopt">
-          <NCheckbox
-            v-model:checked="form.adoptExisting"
-            :disabled="isSaving"
-          >
-            {{ t('fieldAdopt') }}
-          </NCheckbox>
-          <p class="protection-dialog__adopt-help">{{ t('fieldAdoptHelp') }}</p>
-        </div>
-      </NFormItem>
 
       <Callout
         v-if="backendError"

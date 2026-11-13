@@ -4,7 +4,7 @@
   import { storeToRefs } from 'pinia';
   import { computed, h, onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { RouterLink } from 'vue-router';
+  import { RouterLink, useRouter } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import {
     DataTable,
@@ -75,9 +75,9 @@
     ),
   );
 
-  const detail = (name: string) => ({
+  const detail = (storageName: string) => ({
     name: RouteName.CHORUS_STORAGE_DETAILS,
-    params: { storageName: name },
+    params: { storageName },
   });
   const healthTone = (status: string): StatusTone =>
     status === 'available'
@@ -116,6 +116,7 @@
     ]);
   }
 
+  const router = useRouter();
   const columns = computed<DataTableColumns<StorageRow>>(() => [
     {
       title: t('name'),
@@ -321,7 +322,9 @@
         :rows="filtered"
         :loading="isLoading && !store.isLoaded"
         :row-key="(row: StorageRow) => row.name"
+        row-clickable
         @retry="store.refresh()"
+        @row-click="(row: StorageRow) => router.push(detail(row.name))"
       >
         <template #empty>
           <EmptyBlock :title="t('empty')">

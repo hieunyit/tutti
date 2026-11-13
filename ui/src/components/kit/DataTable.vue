@@ -45,18 +45,22 @@
       density?: 'comfortable' | 'compact';
       /** rows per page; paging only shows when there are more rows */
       pageSize?: number;
+      /** when true, clicking a row emits `rowClick` (and shows a pointer) */
+      rowClickable?: boolean;
     }>(),
     {
       error: undefined,
       selectable: false,
       density: undefined,
       pageSize: 20,
+      rowClickable: false,
     },
   );
 
   const emit = defineEmits<{
     (e: 'retry'): void;
     (e: 'select', keys: string[]): void;
+    (e: 'rowClick', row: T): void;
   }>();
 
   const { t } = useI18n({ messages: i18nKit });
@@ -95,6 +99,24 @@
   function setChecked(keys: (string | number)[]) {
     checked.value = keys.map(String);
     emit('select', checked.value);
+  }
+
+  function rowProps(row: T) {
+    if (!props.rowClickable) return {};
+
+    return {
+      class: 'kit-table__row--clickable',
+      onClick: (ev: MouseEvent) => {
+        // ignore clicks on interactive children (buttons, links, checkboxes, menus)
+        const target = ev.target as HTMLElement | null;
+
+        if (target?.closest('a,button,input,label,.n-dropdown,.n-checkbox')) {
+          return;
+        }
+
+        emit('rowClick', row);
+      },
+    };
   }
 
   function clear() {
@@ -154,6 +176,7 @@
           :checked-row-keys="checked"
           :pagination="pagination"
           :size="effectiveDensity === 'compact' ? 'small' : 'medium'"
+          :row-props="rowProps"
           :bordered="false"
           :single-line="true"
           @update:checked-row-keys="setChecked"
@@ -194,6 +217,10 @@
     &__scroll {
       overflow-x: auto;
       max-width: 100%;
+    }
+
+    :deep(.kit-table__row--clickable) {
+      cursor: pointer;
     }
 
     &--comfortable :deep(.n-data-table-td) {

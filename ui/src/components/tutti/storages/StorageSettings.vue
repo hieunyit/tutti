@@ -356,34 +356,6 @@
       font-size: 13px;
     }
 
-    &__facts {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px 16px;
-      margin: 0;
-
-      dt {
-        color: var(--tt-text-3);
-        font-size: 12px;
-      }
-
-      dd {
-        margin: 2px 0 0;
-        overflow-wrap: anywhere;
-      }
-
-      small {
-        display: block;
-        color: var(--tt-text-3);
-      }
-    }
-
-    &__link {
-      display: inline-block;
-      margin-top: 12px;
-      color: var(--tt-accent);
-    }
-
     &__unsaved {
       margin-right: auto;
       align-self: center;
@@ -393,11 +365,6 @@
 
     &__success {
       color: var(--tt-success);
-    }
-
-    &__error {
-      color: var(--tt-danger);
-      overflow-wrap: anywhere;
     }
 
     li {

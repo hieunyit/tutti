@@ -133,11 +133,17 @@ export const useTuttiAddReplicationStore = defineStore(
     function prepareForm() {
       state.selectedFromStorage = state.storages[0] ?? null;
       state.selectedToStorage =
-        state.storages.find((s) => s.name !== state.selectedFromStorage?.name) ??
+        state.storages.find(
+          (s) => s.name !== state.selectedFromStorage?.name,
+        ) ??
         state.storages[1] ??
         null;
-      const queryUser = router?.currentRoute?.value?.query?.user as string | undefined;
-      const matchingUser = queryUser ? state.users.find((u) => u.name === queryUser) : undefined;
+      const queryUser = router?.currentRoute?.value?.query?.user as
+        | string
+        | undefined;
+      const matchingUser = queryUser
+        ? state.users.find((u) => u.name === queryUser)
+        : undefined;
 
       state.selectedUser =
         matchingUser?.name ||
@@ -158,8 +164,12 @@ export const useTuttiAddReplicationStore = defineStore(
 
     async function getBucketsList() {
       if (!state.selectedUser) {
-        const queryUser = router?.currentRoute?.value?.query?.user as string | undefined;
-        const matchingUser = queryUser ? state.users.find((u) => u.name === queryUser) : undefined;
+        const queryUser = router?.currentRoute?.value?.query?.user as
+          | string
+          | undefined;
+        const matchingUser = queryUser
+          ? state.users.find((u) => u.name === queryUser)
+          : undefined;
 
         state.selectedUser =
           matchingUser?.name ||
@@ -168,10 +178,7 @@ export const useTuttiAddReplicationStore = defineStore(
           '';
       }
 
-      if (
-        !state.selectedFromStorage ||
-        !state.selectedToStorage
-      ) {
+      if (!state.selectedFromStorage || !state.selectedToStorage) {
         return;
       }
 
@@ -263,7 +270,8 @@ export const useTuttiAddReplicationStore = defineStore(
       },
     );
 
-    async function createReplication() {
+    /** resolves true when at least one replication was created */
+    async function createReplication(): Promise<boolean> {
       const {
         selectedToStorage,
         selectedFromStorage,
@@ -284,7 +292,7 @@ export const useTuttiAddReplicationStore = defineStore(
         !selectedFromStorage ||
         (!selectedBuckets.length && !isForAllBuckets)
       ) {
-        return;
+        return false;
       }
 
       state.isSubmitting = true;
@@ -323,8 +331,12 @@ export const useTuttiAddReplicationStore = defineStore(
         }),
       );
 
-      router.push({ name: RouteName.CHORUS_REPLICATION });
       state.isSubmitting = false;
+
+      // on total failure stay on the wizard so the draft is not lost
+      if (successList.length > 0) {
+        router.push({ name: RouteName.CHORUS_REPLICATION });
+      }
 
       if (errorList.length !== 0) {
         const content = errorList.map(([id, reason]) => {
@@ -339,6 +351,8 @@ export const useTuttiAddReplicationStore = defineStore(
       if (successList.length !== 0) {
         showCreateSuccess();
       }
+
+      return successList.length > 0;
     }
 
     const { createNotification } = useNotification();

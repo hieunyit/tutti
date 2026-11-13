@@ -18,7 +18,6 @@ import { describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import StatusTag from '../StatusTag.vue';
 import Callout from '../Callout.vue';
-import KpiCard from '../KpiCard.vue';
 import {
   EMPTY_VALUE,
   calloutRole,
@@ -100,18 +99,5 @@ describe('Callout', () => {
     expect(
       mount(Callout, { props: { tone: 'warning' } }).attributes('role'),
     ).toBe('status');
-  });
-});
-
-describe('KpiCard', () => {
-  it('renders label, value, sub and tone', () => {
-    const wrapper = mount(KpiCard, {
-      props: { label: 'Lag', value: '1,284', sub: 'events', tone: 'warning' },
-    });
-
-    expect(wrapper.text()).toContain('Lag');
-    expect(wrapper.text()).toContain('1,284');
-    expect(wrapper.text()).toContain('events');
-    expect(wrapper.find('.tt-kpi__value--warning').exists()).toBe(true);
   });
 });

@@ -18,7 +18,6 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import 'virtual:svg-icons-register';
 import '@/styles/styles.scss';
-import { ColorScheme } from '@clyso/clyso-ui-kit';
 import { useI18nStore } from '@/stores/i18nStore';
 import { useColorSchemeStore } from '@/stores/colorSchemeStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -77,4 +76,4 @@ const i18nStore = useI18nStore();
 const colorSchemeStore = useColorSchemeStore();
 
 i18nStore.initLocale();
-colorSchemeStore.initColorScheme(ColorScheme.DARK);
+colorSchemeStore.initColorScheme();
