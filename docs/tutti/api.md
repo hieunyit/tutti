@@ -43,15 +43,15 @@ Authenticates a console user against the PostgreSQL control-plane database or st
 - **Response (`200 OK`)**:
   ```json
   {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "username": "admin",
-      "role": "admin",
-      "source": "managed",
-      "mustChangePassword": false
-    }
+    "token": "9u1x...opaque-session-token",
+    "expiresAt": "2026-11-13T08:30:00Z",
+    "maxExpiresAt": "2026-11-14T08:00:00Z",
+    "serverTime": "2026-11-13T08:00:00Z",
+    "username": "admin",
+    "role": "admin"
   }
   ```
+  `expiresAt` is the idle expiry now (`sessionIdleTimeout`, default 30m, after the last login or refresh); `maxExpiresAt` is the absolute cap (`sessionMaxLifetime`, default 24h, after login). All times are RFC3339 UTC; `serverTime` lets clients correct clock skew.
 - **Error Codes**:
   - `401 Unauthorized`: Invalid credentials, account disabled, or failed attempt count returned (`remainingAttempts`).
   - `429 Too Many Requests`: Account throttled after excessive failed attempts.
@@ -70,9 +70,29 @@ Returns current identity, assigned role (`admin` or `viewer`), and password chan
     "username": "admin",
     "role": "admin",
     "source": "managed",
-    "mustChangePassword": false
+    "mustChangePassword": false,
+    "authEnabled": true,
+    "expiresAt": "2026-11-13T08:30:00Z",
+    "maxExpiresAt": "2026-11-14T08:00:00Z",
+    "serverTime": "2026-11-13T08:10:00Z"
   }
   ```
+  This call never extends the session.
+
+### 1.3.1 Refresh Session (`POST /auth/refresh`)
+Extends the session to `min(sessionIdleTimeout, time left until the absolute cap)` from now. This is the only call that extends a session; ordinary API calls and `/auth/me` do not, so background polling cannot keep an idle session alive. The token does not change. Allowed while `mustChangePassword` is true.
+- **Headers**: `Authorization: Bearer <token>` (no body)
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "expiresAt": "2026-11-13T08:40:00Z",
+    "maxExpiresAt": "2026-11-14T08:00:00Z",
+    "serverTime": "2026-11-13T08:10:00Z"
+  }
+  ```
+- **Error Codes**:
+  - `401 Unauthorized`: Token invalid or expired, or the absolute cap was reached.
+  - `429 Too Many Requests`: More than 6 refreshes per minute for the token; see the `Retry-After` header.
 
 ### 1.4 Change Own Password (`POST /auth/password`)
 Allows an authenticated console user to change their own password in PostgreSQL.

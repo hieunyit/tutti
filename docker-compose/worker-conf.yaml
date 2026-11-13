@@ -6,7 +6,8 @@ api:
   # Console accounts & passwords are fully managed and stored in PostgreSQL (console_users table).
   auth:
     enabled: true
-    sessionTTL: 12h
+    # sessionIdleTimeout: 30m  # end session after this long without a refresh (default 30m)
+    # sessionMaxLifetime: 24h  # absolute cap from login (default 24h); legacy sessionTTL is used as this when unset
     allowManagedUsers: true
 log:
   json: false # false for dev console logger, true - json log for prod to export to Grafana&Loki.

@@ -64,12 +64,15 @@ Console users sign in to the worker management API and the UI. They come from tw
 api:
   auth:
     enabled: true
-    sessionTTL: 12h
+    sessionIdleTimeout: 30m   # session ends after this long without POST /auth/refresh (default 30m)
+    sessionMaxLifetime: 24h   # absolute cap from login; refresh never extends past it (default 24h)
     users:            # at least one is required; keep an admin here so the system is always administrable
       - username: admin
         passwordHash: "$2b$12$..."
         role: admin
 ```
+
+`sessionTTL` is deprecated: when `sessionMaxLifetime` is unset, `sessionTTL` is used as the maximum lifetime (the idle timeout stays 30m, or the `sessionTTL` if that is shorter). `sessionMaxLifetime` must not be shorter than `sessionIdleTimeout`. Only the console's `POST /auth/refresh` extends a session (the UI calls it on real user activity); ordinary API calls and polling do not. Sessions created before an upgrade keep working until their existing expiry.
 
 Passwords of managed users must be 12-72 bytes and are stored as bcrypt (cost 12). Sessions live in the meta DB (`redis.metaDB`). With `api.auth.enabled: false` the console users API returns failed precondition (`sign-in is disabled`).
 
