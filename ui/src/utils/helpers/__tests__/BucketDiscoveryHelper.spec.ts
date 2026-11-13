@@ -18,7 +18,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BucketDiscoveryHelper } from '../BucketDiscoveryHelper';
 import { ChorusService } from '@/services/ChorusService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
-import { TuttiService } from '@/services/TuttiService';
 import { StorageProvider } from '@/utils/types/chorus';
 import type { ProtectionGroupListResponse } from '@/utils/types/protection';
 
@@ -34,24 +33,10 @@ vi.mock('@/services/ProtectionGroupService', () => ({
     list: vi.fn(),
   },
 }));
-vi.mock('@/services/TuttiService', () => ({
-  TuttiService: { getUsers: vi.fn() },
-}));
 
 describe('BucketDiscoveryHelper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(TuttiService.getUsers).mockResolvedValue({
-      users: [
-        {
-          name: 'u1',
-          storages: [
-            { storage: 'st1', configured: true },
-            { storage: 'st2', configured: true },
-          ],
-        },
-      ],
-    });
   });
 
   it('discovers buckets across protection groups and storages', async () => {
@@ -142,9 +127,44 @@ describe('BucketDiscoveryHelper', () => {
     ]);
   });
 
-  it('does not send a guessed tenant when no user can access the storage', async () => {
-    vi.mocked(TuttiService.getUsers).mockResolvedValueOnce({ users: [] });
-    await BucketDiscoveryHelper.discoverStorageBuckets(['st1']);
-    expect(ChorusService.getBucketsForReplication).not.toHaveBeenCalled();
+  it('lists buckets without a user and includes covered buckets', async () => {
+    vi.mocked(ProtectionGroupService.list).mockResolvedValue({ groups: [] });
+    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+      storages: [
+        { name: 'st1', isMain: true, address: '', credentials: [] },
+        { name: 'st2', isMain: false, address: '', credentials: [] },
+      ],
+    } as never);
+    vi.mocked(ChorusService.getBucketsForReplication).mockResolvedValue({
+      buckets: ['b1'],
+      replicatedBuckets: [],
+      coveredBuckets: [{ bucket: 'b2', ownerKind: 'group', ownerId: 'g1' }],
+    });
+
+    const items = await BucketDiscoveryHelper.discoverStorageBuckets(['st1']);
+
+    expect(items).toEqual([
+      { bucket: 'b1', storage: 'st1' },
+      { bucket: 'b2', storage: 'st1' },
+    ]);
+
+    const request = vi.mocked(ChorusService.getBucketsForReplication).mock
+      .calls[0]![0];
+
+    expect('user' in request).toBe(false);
+  });
+
+  it('passes an explicit user through when the caller has one', async () => {
+    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+      storages: [{ name: 'st1', isMain: true }],
+    } as never);
+    vi.mocked(ChorusService.getBucketsForReplication).mockResolvedValue({
+      buckets: [],
+      replicatedBuckets: [],
+    });
+    await BucketDiscoveryHelper.discoverStorageBuckets(['st1'], 'u1');
+    expect(ChorusService.getBucketsForReplication).toHaveBeenCalledWith(
+      expect.objectContaining({ user: 'u1' }),
+    );
   });
 });

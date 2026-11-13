@@ -31,7 +31,9 @@
   );
 
   const users = computed(() =>
-    replications.value.map((replication) => replication.id.user),
+    replications.value
+      .map((replication) => replication.id.user)
+      .filter((user): user is string => !!user),
   );
 </script>
 

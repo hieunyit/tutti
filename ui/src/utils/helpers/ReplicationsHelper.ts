@@ -82,6 +82,16 @@ export abstract class ReplicationsHelper {
   }
 
   /**
+   * What a row is about: its bucket, else its real user, else "A → B" for a
+   * storage-level replication (empty user).
+   */
+  static getSubjectLabel(replication: ChorusReplication): string {
+    const { fromBucket, user } = replication.id;
+
+    return fromBucket || user || this.getDirectionPairString(replication);
+  }
+
+  /**
    * Returns the bucket pair string (e.g. "from → to") for a given replication.
    * Returns an empty string for user replications as they have no bucket pair.
    */

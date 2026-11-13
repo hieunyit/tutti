@@ -14,22 +14,22 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiAddReplicationStore } from '../tuttiAddReplicationStore';
-import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
+import { ChorusService } from '@/services/ChorusService';
 import { AddReplicationStepName } from '@/utils/types/chorus';
-
-type UsersResponse = {
-  users: { storages: { mode: string }[] }[];
-};
 
 const push = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/i18n/useStoreI18n', () => ({
-  useStoreI18n: () => ({ t: (key: string) => key }),
+  useStoreI18n: () => ({
+    t: (key: string, params?: Record<string, string>) =>
+      params ? `${key} ${Object.values(params).join(' ')}` : key,
+  }),
 }));
 vi.mock('@clyso/clyso-ui-kit', () => ({
   I18nLocale: { EN: 'en', DE: 'de' },
@@ -51,6 +51,21 @@ type Mocks = Record<string, ReturnType<typeof vi.fn>>;
 const chorus = ChorusService as unknown as Required<Mocks>;
 const tutti = TuttiService as unknown as Required<Mocks>;
 
+function conflictError(reason: string) {
+  return new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 409,
+    data: {
+      code: 6,
+      details: [
+        {
+          '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+          reason,
+        },
+      ],
+    },
+  } as never);
+}
+
 beforeEach(() => {
   setActivePinia(createPinia());
   vi.clearAllMocks();
@@ -63,121 +78,138 @@ beforeEach(() => {
   chorus.getBucketsForReplication!.mockResolvedValue({
     buckets: ['b1'],
     replicatedBuckets: [],
+    coveredBuckets: [],
   });
   chorus.addReplication!.mockResolvedValue({});
-  tutti.getUsers!.mockResolvedValue({
-    users: [
-      {
-        name: 'alice',
-        storages: [
-          { storage: 'main', configured: true, mode: 'override' },
-          { storage: 'backup', configured: false, mode: 'connection-account' },
-        ],
-      },
-      {
-        name: 'bob',
-        storages: [
-          { storage: 'main', configured: true, mode: 'override' },
-          { storage: 'backup', configured: false, mode: 'missing' },
-        ],
-      },
-    ],
-  });
 });
 
 describe('tuttiAddReplicationStore', () => {
-  it('has 3 storage-to-storage steps without manual user step', async () => {
+  it('has 3 steps and neither asks for nor discovers a user', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
 
-    expect(AddReplicationStepName.FROM_STORAGE).toBe(1);
-    expect(AddReplicationStepName.TO_STORAGE).toBe(2);
     expect(AddReplicationStepName.BUCKETS).toBe(3);
     expect(store.stepsCount).toBe(3);
-    expect(store.selectedUser).toBe('alice');
+    expect('selectedUser' in store).toBe(false);
+    expect('users' in store).toBe(false);
+    expect('eligibleUsers' in store).toBe(false);
+    expect(tutti.getUsers).not.toHaveBeenCalled();
   });
 
-  it('loads buckets using background tenant user', async () => {
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    await store.getBucketsList();
-    expect(chorus.getBucketsForReplication).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user: 'alice',
-        fromStorage: 'main',
-        toStorage: 'backup',
-      }),
-    );
-  });
-
-  it('creates the replication for the background tenant user', async () => {
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    store.isForAllBuckets = true;
-    await store.createReplication();
-    expect(chorus.addReplication).toHaveBeenCalledWith({
-      id: { user: 'alice', fromStorage: 'main', toStorage: 'backup' },
-    });
-  });
-
-  it('allows operator to explicitly change the replication tenant user', async () => {
-    const response = await (
-      tutti.getUsers as unknown as () => Promise<UsersResponse>
-    )();
-
-    response.users[1]!.storages[1]!.mode = 'connection-account';
-    tutti.getUsers!.mockResolvedValueOnce(response);
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    expect(store.selectedUser).toBe('alice');
-
-    await store.selectUser('bob');
-    expect(store.selectedUser).toBe('bob');
-    store.isForAllBuckets = true;
-    await store.createReplication();
-    expect(chorus.addReplication).toHaveBeenCalledWith({
-      id: { user: 'bob', fromStorage: 'main', toStorage: 'backup' },
-    });
-  });
-
-  it('does not list buckets or create a replication for a user missing destination credentials', async () => {
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    await store.selectUser('bob');
-    expect(store.isSelectedUserUsable).toBe(false);
-    expect(store.hasBucketsError).toBe(true);
-    expect(chorus.getBucketsForReplication).not.toHaveBeenCalled();
-    store.isForAllBuckets = true;
-    expect(await store.createReplication()).toBe(false);
-    expect(chorus.addReplication).not.toHaveBeenCalled();
-  });
-
-  it('selects an eligible user rather than the first incomplete user', async () => {
-    const response = await (
-      tutti.getUsers as unknown as () => Promise<UsersResponse>
-    )();
-
-    response.users.reverse();
-    tutti.getUsers!.mockResolvedValueOnce(response);
-    const store = useTuttiAddReplicationStore();
-
-    await store.initAddReplicationPage();
-    expect(store.selectedUser).toBe('alice');
-  });
-
-  it('does not invent a user alias if user discovery fails', async () => {
-    tutti.getUsers!.mockRejectedValueOnce(new Error('offline'));
+  it('lists buckets without a user', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
     await store.initBucketsList();
-    expect(store.selectedUser).toBeNull();
-    expect(chorus.getBucketsForReplication).not.toHaveBeenCalled();
+
+    const request = chorus.getBucketsForReplication!.mock.calls[0]![0];
+
+    expect(request).toEqual({
+      fromStorage: 'main',
+      toStorage: 'backup',
+      showReplicated: true,
+    });
+    expect('user' in request).toBe(false);
+    expect(store.bucketsList).toEqual(['b1']);
+  });
+
+  it('exposes covered buckets as disabled rows with the owner as reason', async () => {
+    chorus.getBucketsForReplication!.mockResolvedValue({
+      buckets: ['b1'],
+      replicatedBuckets: [],
+      coveredBuckets: [
+        { bucket: 'b2', ownerKind: 'group', ownerId: 'g1' },
+        { bucket: 'b3', ownerKind: 'replication', ownerId: 'main:backup' },
+      ],
+    });
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    await store.initBucketsList();
+
+    expect(store.coveredRows).toHaveLength(2);
+    expect(store.coveredRows[0]).toMatchObject({ name: 'b2' });
+    expect(store.coveredRows[0]!.reason).toContain('group');
+    expect(store.coveredRows[0]!.reason).toContain('g1');
+    expect(store.coveredRows[1]!.reason).toContain('replication');
+    expect(store.isAllBucketsDisabled).toBe(true);
+    expect(store.allBucketsDisabledReason).toContain('g1');
+  });
+
+  it('keeps all-buckets mode available when nothing is covered', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    await store.initBucketsList();
+
+    expect(store.isAllBucketsDisabled).toBe(false);
+  });
+
+  it('does not create an all-buckets replication when a bucket is covered', async () => {
+    chorus.getBucketsForReplication!.mockResolvedValue({
+      buckets: [],
+      coveredBuckets: [{ bucket: 'b2', ownerKind: 'group', ownerId: 'g1' }],
+    });
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    await store.initBucketsList();
+    store.isForAllBuckets = true;
+
+    expect(await store.createReplication()).toBe(false);
+    expect(chorus.addReplication).not.toHaveBeenCalled();
+  });
+
+  it('creates the replication with an id that has no user', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.isForAllBuckets = true;
+    await store.createReplication();
+
+    const request = chorus.addReplication!.mock.calls[0]![0];
+
+    expect(request).toEqual({
+      id: { fromStorage: 'main', toStorage: 'backup' },
+    });
+    expect('user' in request.id).toBe(false);
+  });
+
+  it('creates one bucket-level replication per selected bucket without a user', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.selectedBuckets = ['b1'];
+    await store.createReplication();
+
+    expect(chorus.addReplication).toHaveBeenCalledWith({
+      id: {
+        fromStorage: 'main',
+        toStorage: 'backup',
+        fromBucket: 'b1',
+        toBucket: 'b1',
+      },
+    });
+  });
+
+  it('shows the server reason on a 409 and keeps the draft', async () => {
+    const reason =
+      'bucket "b1" on main->backup is already covered by group "g1"';
+
+    chorus.addReplication!.mockRejectedValue(conflictError(reason));
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.selectedBuckets = ['b1'];
+    const created = await store.createReplication();
+
+    expect(created).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    expect(store.createError).toContain(reason);
+    expect(store.selectedBuckets).toEqual(['b1']);
+    expect(store.selectedFromStorage?.name).toBe('main');
+    expect(store.isSubmitting).toBe(false);
   });
 
   it('stays on the wizard and reports failure when every request fails', async () => {
@@ -190,10 +222,29 @@ describe('tuttiAddReplicationStore', () => {
 
     expect(created).toBe(false);
     expect(push).not.toHaveBeenCalled();
+    expect(store.createError).not.toBe('');
+    expect(store.isForAllBuckets).toBe(true);
     expect(store.isSubmitting).toBe(false);
   });
 
-  it('navigates away and reports success when a request succeeds', async () => {
+  it('keeps only the failed buckets selected after a partial failure', async () => {
+    chorus.addReplication!.mockImplementation(
+      async ({ id }: { id: { fromBucket?: string } }) => {
+        if (id.fromBucket === 'b2') throw new Error('boom');
+      },
+    );
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.selectedBuckets = ['b1', 'b2'];
+    const created = await store.createReplication();
+
+    expect(created).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    expect(store.selectedBuckets).toEqual(['b2']);
+  });
+
+  it('navigates away and reports success when every request succeeds', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
@@ -201,6 +252,7 @@ describe('tuttiAddReplicationStore', () => {
     const created = await store.createReplication();
 
     expect(created).toBe(true);
+    expect(store.createError).toBe('');
     expect(push).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,6 +22,7 @@
     WizardShell,
     type WizardStep,
   } from '@/components/kit';
+  import { Callout } from '@/components/kit';
   import ChorusWizardPage from '@/components/chorus/common/ChorusWizardPage/ChorusWizardPage.vue';
   import FromStorageFormStep from '@/components/chorus/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
   import ToStorageFormStep from '@/components/chorus/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
@@ -36,7 +37,6 @@
   interface ReplicationDraft {
     from: string | null;
     to: string | null;
-    user: string | null;
     buckets: string[];
     all: boolean;
   }
@@ -49,12 +49,11 @@
     storages,
     selectedFromStorage,
     selectedToStorage,
-    selectedUser,
     selectedBuckets,
     isForAllBuckets,
     isSubmitting,
     bucketsRequestOptions,
-    isSelectedUserUsable,
+    createError,
   } = storeToRefs(store);
 
   const ready = computed(
@@ -66,14 +65,12 @@
     initial: () => ({
       from: null,
       to: null,
-      user: null,
       buckets: [],
       all: false,
     }),
     snapshot: () => ({
       from: selectedFromStorage.value?.name ?? null,
       to: selectedToStorage.value?.name ?? null,
-      user: selectedUser.value,
       buckets: [...selectedBuckets.value],
       all: isForAllBuckets.value,
     }),
@@ -85,14 +82,11 @@
 
       if (to && to.name !== from?.name) selectedToStorage.value = to;
 
-      if (draft.user) selectedUser.value = draft.user;
-
       isForAllBuckets.value = draft.all;
 
-      if (from && to && draft.user && draft.buckets.length) {
+      if (from && to && draft.buckets.length) {
         // marks the bucket list as requested, so opening step 3 keeps the choice
         bucketsRequestOptions.value = {
-          user: draft.user,
           fromStorage: from.name,
           toStorage: to.name,
           showReplicated: true,
@@ -119,9 +113,7 @@
     {
       key: 'buckets',
       label: t('stepBuckets'),
-      valid:
-        isSelectedUserUsable.value &&
-        (isForAllBuckets.value || selectedBuckets.value.length > 0),
+      valid: isForAllBuckets.value || selectedBuckets.value.length > 0,
     },
     { key: 'confirm', label: t('stepConfirm'), valid: true },
   ]);
@@ -154,6 +146,13 @@
     :error-text="t('wizardLoadError')"
     @retry="store.initAddReplicationPage()"
   >
+    <Callout
+      v-if="createError"
+      tone="danger"
+      class="add-replication-error"
+      role="alert"
+      >{{ createError }}</Callout
+    >
     <WizardShell
       :steps="steps"
       :draft-key="DRAFT_KEY"
@@ -177,3 +176,9 @@
     </WizardShell>
   </ChorusWizardPage>
 </template>
+
+<style lang="scss" scoped>
+  .add-replication-error {
+    margin-bottom: 16px;
+  }
+</style>
