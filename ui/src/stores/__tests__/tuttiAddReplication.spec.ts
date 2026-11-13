@@ -244,6 +244,31 @@ describe('tuttiAddReplicationStore', () => {
     expect(store.selectedBuckets).toEqual(['b2']);
   });
 
+  it('creates the replications one at a time so they do not contend for the storage locks', async () => {
+    let running = 0;
+    let maxRunning = 0;
+    const order: string[] = [];
+
+    chorus.addReplication!.mockImplementation(
+      async ({ id }: { id: { fromBucket?: string } }) => {
+        running += 1;
+        maxRunning = Math.max(maxRunning, running);
+        order.push(id.fromBucket ?? '');
+        await Promise.resolve();
+        await Promise.resolve();
+        running -= 1;
+      },
+    );
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    store.selectedBuckets = ['b1', 'b2', 'b3'];
+    await store.createReplication();
+
+    expect(maxRunning).toBe(1);
+    expect(order).toEqual(['b1', 'b2', 'b3']);
+  });
+
   it('navigates away and reports success when every request succeeds', async () => {
     const store = useTuttiAddReplicationStore();
 

@@ -269,22 +269,21 @@ export const useTuttiAddReplicationStore = defineStore(
             toBucket: bucket,
           }));
 
-      await Promise.all(
-        replicationIds.map(async (replicationId) => {
-          try {
-            await ChorusService.addReplication({
-              id: replicationId,
-            });
-            successList.push(replicationId);
-          } catch (error: unknown) {
-            const reason =
-              ErrorHelper.getReason(error) ||
-              t('createReplicationErrorUnknown');
+      // One at a time: every request takes the same two storage locks (10 s acquire timeout), so parallel
+      // requests would make the later ones fail with "storage is being modified; retry".
+      for (const replicationId of replicationIds) {
+        try {
+          await ChorusService.addReplication({
+            id: replicationId,
+          });
+          successList.push(replicationId);
+        } catch (error: unknown) {
+          const reason =
+            ErrorHelper.getReason(error) || t('createReplicationErrorUnknown');
 
-            errorList.push([replicationId, reason]);
-          }
-        }),
-      );
+          errorList.push([replicationId, reason]);
+        }
+      }
 
       state.isSubmitting = false;
 
