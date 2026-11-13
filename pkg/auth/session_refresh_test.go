@@ -277,3 +277,39 @@ func TestHTTPRefreshAllowedWhenMustChangePassword(t *testing.T) {
 	mx.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestOwnPasswordChangeKeepsOriginalCap(t *testing.T) {
+	ctx := context.Background()
+	svc, clk, _ := newClockSvc(t, sessConf(t))
+	_, _, err := svc.CreateUser(ctx, "dave", RoleViewer, goodPw, false)
+	require.NoError(t, err)
+	started := clk.Now()
+	a, err := svc.Login(ctx, "dave", goodPw, "1.2.3.4")
+	require.NoError(t, err)
+	b, err := svc.Login(ctx, "dave", goodPw, "1.2.3.4")
+	require.NoError(t, err)
+	for clk.Now().Sub(started) < 23*time.Hour+40*time.Minute {
+		clk.Advance(20 * time.Minute)
+		_, err = svc.Refresh(ctx, a.Token)
+		require.NoError(t, err)
+	}
+	require.NoError(t, svc.ChangeOwnPassword(ctx, a.Token, goodPw, "another-good-password", "1.2.3.4"))
+	_, err = svc.Authenticate(ctx, b.Token)
+	require.ErrorIs(t, err, ErrInvalidSession, "other session revoked")
+	_, err = svc.Authenticate(ctx, a.Token)
+	require.NoError(t, err, "own session continues")
+
+	st, err := svc.Refresh(ctx, a.Token)
+	require.NoError(t, err)
+	require.Equal(t, started.Add(24*time.Hour), st.MaxExpiresAt)
+	require.Equal(t, started.Add(24*time.Hour), st.ExpiresAt, "cap not restarted by the password change")
+}
+
+func TestLegacySessionWithoutStartedAtUsesCreatedAt(t *testing.T) {
+	s := &Service{conf: sessConf(t)}
+	created := time.Date(2026, 11, 13, 8, 0, 0, 0, time.UTC)
+	st := s.Times(&Session{CreatedAt: created}, created.Add(time.Hour))
+	require.Equal(t, created.Add(24*time.Hour), st.MaxExpiresAt)
+	st = s.Times(&Session{CreatedAt: created.Add(time.Hour), StartedAt: created}, created.Add(2*time.Hour))
+	require.Equal(t, created.Add(24*time.Hour), st.MaxExpiresAt)
+}

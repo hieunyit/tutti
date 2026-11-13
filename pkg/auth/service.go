@@ -76,6 +76,9 @@ type Session struct {
 	Username  string    `json:"username"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"createdAt"`
+	// StartedAt is the original login time and the only anchor of the absolute cap; restamp keeps it
+	// while CreatedAt moves. Sessions stored before it existed use CreatedAt.
+	StartedAt time.Time `json:"startedAt,omitempty"`
 	// LastActiveAt is the last login or refresh. Sessions stored before it existed use CreatedAt.
 	LastActiveAt time.Time `json:"lastActiveAt,omitempty"`
 
@@ -106,12 +109,20 @@ func (s *Service) Times(sess *Session, now time.Time) SessionTimes {
 	if last.Before(sess.CreatedAt) {
 		last = sess.CreatedAt
 	}
-	maxAt := sess.CreatedAt.Add(s.conf.MaxLifetime())
+	maxAt := sess.capAnchor().Add(s.conf.MaxLifetime())
 	exp := last.Add(s.conf.IdleTimeout())
 	if exp.After(maxAt) {
 		exp = maxAt
 	}
 	return SessionTimes{ExpiresAt: exp.UTC(), MaxExpiresAt: maxAt.UTC(), ServerTime: now.UTC()}
+}
+
+// capAnchor is the time the absolute cap counts from.
+func (sess *Session) capAnchor() time.Time {
+	if sess.StartedAt.IsZero() {
+		return sess.CreatedAt
+	}
+	return sess.StartedAt
 }
 
 // sessionTTL is min(idle, absolute remaining) for a session created at createdAt.
@@ -444,7 +455,7 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 	token := base64.RawURLEncoding.EncodeToString(buf)
 	now := s.now().UTC()
 	ttl := s.sessionTTL(now, now)
-	data, err := json.Marshal(Session{Username: u.Username, Role: u.Role, CreatedAt: now, LastActiveAt: now})
+	data, err := json.Marshal(Session{Username: u.Username, Role: u.Role, CreatedAt: now, StartedAt: now, LastActiveAt: now})
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +498,7 @@ func (s *Service) Refresh(ctx context.Context, token string) (*SessionTimes, err
 		return nil, ErrRefreshRateLimited
 	}
 	now := s.now().UTC()
-	ttl := s.sessionTTL(sess.CreatedAt, now)
+	ttl := s.sessionTTL(sess.capAnchor(), now)
 	if ttl <= 0 {
 		_ = s.rdb.Del(ctx, sessionPrefix+hashed).Err()
 		return nil, ErrInvalidSession

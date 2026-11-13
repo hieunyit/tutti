@@ -327,6 +327,8 @@ func (s *Service) ChangeOwnPassword(ctx context.Context, token, current, newPass
 		return err
 	}
 	// Keep the caller signed in: re-stamp its session so it is not older than the password change.
+	// StartedAt is kept (set from the old CreatedAt for legacy sessions) so the absolute cap does not restart.
+	sess.StartedAt = sess.capAnchor()
 	sess.CreatedAt = now
 	return s.restamp(ctx, token, sess)
 }
