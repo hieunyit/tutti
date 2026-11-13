@@ -53,6 +53,8 @@ function dayEnd(day: string): number {
 
 export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
   const filters = reactive<AuditFilterState>(emptyFilters());
+  /** filters of the last applied query: paging must not follow live edits */
+  const applied = reactive<AuditFilterState>(emptyFilters());
   const backend = ref('postgres');
   const readOnly = ref(false);
   /** display-language override for the page's vi/en toggle; null = follow app */
@@ -61,12 +63,12 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
   const cursor = useAuditCursor<AuditLogEntry>(
     async (beforeId) => {
       const response = await AuditLogService.list({
-        family: filters.family || undefined,
-        entityKey: filters.entityKey.trim() || undefined,
-        actor: filters.actor.trim() || undefined,
-        action: filters.action.trim() || undefined,
+        family: applied.family || undefined,
+        entityKey: applied.entityKey.trim() || undefined,
+        actor: applied.actor.trim() || undefined,
+        action: applied.action.trim() || undefined,
         beforeId,
-        limit: filters.limit,
+        limit: applied.limit,
       });
       const entries = response.entries ?? [];
       const last = entries[entries.length - 1];
@@ -77,7 +79,7 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
       return {
         items: entries,
         next:
-          entries.length >= filters.limit &&
+          entries.length >= applied.limit &&
           last &&
           last.id !== undefined &&
           last.id !== ''
@@ -121,13 +123,22 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
   );
 
   function applyFilters() {
+    Object.assign(applied, filters);
+
+    return cursor.refresh({ discardOnError: true });
+  }
+
+  function refresh() {
+    Object.assign(applied, filters);
+
     return cursor.refresh();
   }
 
   function resetFilters() {
     Object.assign(filters, emptyFilters());
+    Object.assign(applied, filters);
 
-    return cursor.refresh();
+    return cursor.refresh({ discardOnError: true });
   }
 
   function toggleLocale(current: string) {
@@ -146,7 +157,7 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
     hasOlder: cursor.hasOlder,
     hasActiveFilters,
     loadFailed,
-    refresh: cursor.refresh,
+    refresh,
     loadOlder: cursor.loadOlder,
     loadNewer: cursor.loadNewer,
     applyFilters,

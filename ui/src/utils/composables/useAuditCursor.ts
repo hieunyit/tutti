@@ -68,6 +68,7 @@ export function useAuditCursor<T>(
     cursor: string | undefined,
     apply: (page: AuditCursorPage<T>) => void,
     restart = false,
+    discardOnError = false,
   ) {
     if (restart) generation += 1;
 
@@ -82,7 +83,16 @@ export function useAuditCursor<T>(
 
       if (mine === generation) apply(page);
     } catch (e) {
-      if (mine === generation) error.value = messageOf(e);
+      if (mine === generation) {
+        error.value = messageOf(e);
+
+        // rows of a previous query must not stay under a new query's filters
+        if (discardOnError) {
+          items.value = [];
+          nextCursor.value = undefined;
+          prevCursor.value = undefined;
+        }
+      }
     } finally {
       inFlight -= 1;
 
@@ -90,7 +100,8 @@ export function useAuditCursor<T>(
     }
   }
 
-  async function refresh() {
+  /** `discardOnError`: a failed restart drops the old rows (new query). */
+  async function refresh(refreshOptions: { discardOnError?: boolean } = {}) {
     await run(
       undefined,
       (page) => {
@@ -100,6 +111,7 @@ export function useAuditCursor<T>(
         loaded.value = true;
       },
       true,
+      refreshOptions.discardOnError,
     );
   }
 

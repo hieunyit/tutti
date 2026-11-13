@@ -60,6 +60,21 @@ describe('useAuditCursor', () => {
     expect(cursor.loading.value).toBe(false);
   });
 
+  it('drops old rows when a restart with discardOnError fails', async () => {
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['2', '1'], '1'))
+      .mockRejectedValueOnce(new Error('boom'));
+    const cursor = useAuditCursor<Item>(fetchPage);
+
+    await cursor.refresh();
+    await cursor.refresh({ discardOnError: true });
+
+    expect(cursor.items.value).toEqual([]);
+    expect(cursor.error.value).toBe('boom');
+    expect(cursor.hasOlder.value).toBe(false);
+  });
+
   it('loadNewer prepends only entries not already loaded', async () => {
     const fetchPage = vi
       .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()

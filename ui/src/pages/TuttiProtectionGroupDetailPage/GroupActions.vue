@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
   import { NButton, NSelect } from 'naive-ui';
-  import { computed, ref } from 'vue';
+  import { computed, ref, type Ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { Callout, ConfirmDialog, EMPTY_VALUE } from '@/components/kit';
@@ -38,8 +38,11 @@
   const showSwitch = ref(false);
   const showAbort = ref(false);
   const target = ref<string | null>(null);
-  const busy = ref(false);
-  const error = ref<string | null>(null);
+  // each dialog owns its busy/error so one cannot show the other's state
+  const switchBusy = ref(false);
+  const switchError = ref<string | null>(null);
+  const abortBusy = ref(false);
+  const abortError = ref<string | null>(null);
 
   const candidates = computed(() =>
     ProtectionGroupHelper.switchTargets(props.group),
@@ -53,19 +56,31 @@
 
   function openSwitch() {
     target.value = candidates.value[0] ?? null;
-    error.value = null;
+    switchError.value = null;
     showSwitch.value = true;
   }
 
   function openAbort() {
-    error.value = null;
+    abortError.value = null;
     showAbort.value = true;
+  }
+
+  function cancelSwitch() {
+    showSwitch.value = false;
+    switchError.value = null;
+  }
+
+  function cancelAbort() {
+    showAbort.value = false;
+    abortError.value = null;
   }
 
   async function run(
     action: () => Promise<void>,
     failKey: string,
     close: () => void,
+    busy: Ref<boolean>,
+    error: Ref<string | null>,
   ) {
     busy.value = true;
     error.value = null;
@@ -89,6 +104,8 @@
       () => props.actions.switchover(chosen),
       'switchFailed',
       () => (showSwitch.value = false),
+      switchBusy,
+      switchError,
     );
   }
 
@@ -97,6 +114,8 @@
       () => props.actions.abortSwitch(),
       'abortFailed',
       () => (showAbort.value = false),
+      abortBusy,
+      abortError,
     );
   }
 </script>
@@ -127,10 +146,10 @@
     :title="t('switchTitle', { id: group.id })"
     :target-name="group.id"
     danger
-    :loading="busy"
+    :loading="switchBusy"
     :confirm-label="t('switchConfirm', { target: target || '…' })"
     @confirm="confirmSwitch"
-    @cancel="showSwitch = false"
+    @cancel="cancelSwitch"
   >
     <Callout
       v-if="candidates.length === 0"
@@ -144,7 +163,7 @@
         v-model:value="target"
         :options="options"
         :placeholder="t('switchPickPlaceholder')"
-        :disabled="busy"
+        :disabled="switchBusy"
       />
       <p
         v-if="target"
@@ -165,10 +184,10 @@
       </Callout>
     </template>
     <Callout
-      v-if="error"
+      v-if="switchError"
       tone="danger"
     >
-      {{ error }}
+      {{ switchError }}
     </Callout>
   </ConfirmDialog>
 
@@ -177,10 +196,10 @@
     :title="t('abortTitle')"
     :target-name="group.id"
     danger
-    :loading="busy"
+    :loading="abortBusy"
     :confirm-label="t('abortConfirm')"
     @confirm="confirmAbort"
-    @cancel="showAbort = false"
+    @cancel="cancelAbort"
   >
     <p class="group-actions__text">
       {{
@@ -191,10 +210,10 @@
       }}
     </p>
     <Callout
-      v-if="error"
+      v-if="abortError"
       tone="danger"
     >
-      {{ error }}
+      {{ abortError }}
     </Callout>
   </ConfirmDialog>
 </template>

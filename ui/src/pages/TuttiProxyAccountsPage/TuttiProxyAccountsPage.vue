@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
-  import { computed, onBeforeMount, onBeforeUnmount, ref } from 'vue';
+  import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NTooltip } from 'naive-ui';
   import i18nAccounts from '@/components/tutti/accounts/i18nAccounts';
@@ -39,6 +39,21 @@
     return loaded.value || accounts.value.length > 0
       ? ('ready' as const)
       : ('loading' as const);
+  });
+
+  // the tile is not mounted while the first load runs: queue the open
+  let createQueued = false;
+
+  function openCreate() {
+    if (accountsTile.value) accountsTile.value.openCreate();
+    else createQueued = true;
+  }
+
+  watch(accountsTile, (tile) => {
+    if (tile && createQueued) {
+      createQueued = false;
+      tile.openCreate();
+    }
   });
 
   async function reload() {
@@ -71,7 +86,7 @@
               <NButton
                 type="primary"
                 :disabled="!dynamicAvailable"
-                @click="accountsTile?.openCreate()"
+                @click="openCreate"
                 >{{ t('createAccount') }}</NButton
               >
             </span>
