@@ -16,7 +16,7 @@ func CredentialValidator(creds objstore.CredsService, policies *accesspolicy.Sto
 				if creds.Storages()[m] != dom.S3 {
 					return fmt.Errorf("%w: group members must be configured S3 storages", dom.ErrInvalidArg)
 				}
-				_, mode, err := creds.ResolveS3Credentials(m, ServiceUser)
+				_, mode, err := creds.ResolveS3Credentials(m, "")
 				if err != nil || mode != objstore.ModeConnection {
 					return fmt.Errorf("%w: storage %q must have a connection account configured to be part of an infrastructure protection group", dom.ErrFailedPrecondition, m)
 				}

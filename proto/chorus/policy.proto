@@ -120,8 +120,9 @@ service Policy {
 // - User-level replicates all existing and future buckets of the user.
 // - Bucket-level  replicates a single bucket.
 message ReplicationID {
-  // REQUIRED: Replication user from chorus storage credential config.
-  // Selected user must be configured for both from/to storages.
+  // Replication user from chorus storage credential config; must be configured
+  // for both from/to storages. Empty means storage-level replication: both
+  // storages must have a connection account.
   string user = 1;
   // REQUIRED: source storage name from chorus storage config.
   string from_storage = 2;
@@ -280,7 +281,8 @@ message Replication {
 }
 
 // Request list of bucket available for replication for given user and from/to
-// storages.
+// storages. Empty user lists buckets with the connection account of
+// from_storage (storage-level replication).
 message AvailableBucketsRequest {
   string user = 1;
   string from_storage = 2;
@@ -289,8 +291,21 @@ message AvailableBucketsRequest {
 }
 
 message AvailableBucketsResponse {
+  // Buckets that can be replicated now (covered buckets are excluded).
   repeated string buckets = 1;
   repeated string replicated_buckets = 2;
+  // Buckets that already conflict for the requested from->to edge with a
+  // protection group or another replication.
+  repeated CoveredBucket covered_buckets = 3;
+}
+
+// Bucket that cannot be replicated because another object already covers it.
+message CoveredBucket {
+  string bucket = 1;
+  // "group" or "replication".
+  string owner_kind = 2;
+  // Protection group id or replication id.
+  string owner_id = 3;
 }
 
 message CompareBucketRequest {

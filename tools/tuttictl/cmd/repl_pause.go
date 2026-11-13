@@ -70,7 +70,7 @@ func init() {
 	replCmd.AddCommand(pauseCmd)
 	pauseCmd.Flags().StringVarP(&rpFrom, "from", "f", "", "source storage name")
 	pauseCmd.Flags().StringVarP(&rpTo, "to", "t", "", "destination storage name")
-	pauseCmd.Flags().StringVarP(&rpUser, "user", "u", "", "replication user")
+	pauseCmd.Flags().StringVarP(&rpUser, "user", "u", "", "replication user; omit for storage-level replication")
 	pauseCmd.Flags().StringVarP(&rpFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
 	pauseCmd.Flags().StringVar(&rpToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
 
@@ -78,9 +78,6 @@ func init() {
 		logrus.WithError(err).Fatal()
 	}
 	if err := pauseCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := pauseCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }

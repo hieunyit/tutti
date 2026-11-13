@@ -24,12 +24,11 @@ import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   AddReplicationStepName,
   type ChorusBucketListRequest,
+  type ChorusCoveredBucket,
   type ChorusReplicationId,
   type ChorusStorage,
 } from '@/utils/types/chorus';
 import { ChorusService } from '@/services/ChorusService';
-import { TuttiService } from '@/services/TuttiService';
-import type { S3User } from '@/utils/types/users';
 import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
@@ -41,10 +40,6 @@ interface ChorusAddReplicationState {
   isMainAsSourceAlertShown: boolean;
   selectedFromStorage: ChorusStorage | null;
   selectedToStorage: ChorusStorage | null;
-  selectedUser: string | null;
-  /** S3 users (replications are per user), loaded from /tutti/users */
-  users: S3User[];
-  hasUsersError: boolean;
   isForAllBuckets: boolean;
   isBucketsListLoading: boolean;
   hasBucketsError: boolean;
@@ -53,6 +48,9 @@ interface ChorusAddReplicationState {
   bucketsRequestOptions: ChorusBucketListRequest | null;
   bucketsList: string[];
   replicatedBucketsList: string[];
+  coveredBucketsList: ChorusCoveredBucket[];
+  /** server text of the last failed create, shown on the page */
+  createError: string;
   selectedBuckets: string[];
   currentStep: AddReplicationStepName;
   isConfirmDialogOpen: boolean;
@@ -67,9 +65,6 @@ function getInitialState(): ChorusAddReplicationState {
     isMainAsSourceAlertShown: false,
     selectedFromStorage: null,
     selectedToStorage: null,
-    selectedUser: null,
-    users: [],
-    hasUsersError: false,
     isForAllBuckets: false,
     isBucketsListLoading: false,
     hasBucketsError: false,
@@ -78,6 +73,8 @@ function getInitialState(): ChorusAddReplicationState {
     bucketsRequestOptions: null,
     bucketsList: [],
     replicatedBucketsList: [],
+    coveredBucketsList: [],
+    createError: '',
     selectedBuckets: [],
     currentStep: AddReplicationStepName.FROM_STORAGE,
     isConfirmDialogOpen: false,
@@ -91,35 +88,14 @@ export const useTuttiAddReplicationStore = defineStore(
     const state = reactive<ChorusAddReplicationState>(getInitialState());
     const router = useRouter();
 
-    const eligibleUsers = computed(() =>
-      state.users.filter((user) =>
-        [state.selectedFromStorage?.name, state.selectedToStorage?.name].every(
-          (storage) => {
-            const mode = userModeOn(user.name, storage);
-
-            return mode === 'override' || mode === 'connection-account';
-          },
-        ),
-      ),
-    );
-    /** Unknown/missing credentials must never authorize a bucket-list request. */
-    const isSelectedUserUsable = computed(() =>
-      eligibleUsers.value.some((user) => user.name === state.selectedUser),
-    );
-
     async function initAddReplicationPage() {
       state.isLoading = true;
       state.hasError = false;
 
       try {
-        const [{ storages }, usersResponse] = await Promise.all([
-          ChorusService.getStorages(),
-          TuttiService.getUsers().catch(() => null),
-        ]);
+        const { storages } = await ChorusService.getStorages();
 
         state.storages = storages;
-        state.users = usersResponse?.users ?? [];
-        state.hasUsersError = usersResponse === null;
         prepareForm();
       } catch {
         state.hasError = true;
@@ -156,53 +132,55 @@ export const useTuttiAddReplicationStore = defineStore(
         ) ??
         state.storages[1] ??
         null;
-      const queryUser = router?.currentRoute?.value?.query?.user as
-        | string
-        | undefined;
-      const matchingUser = queryUser
-        ? state.users.find((u) => u.name === queryUser)
-        : undefined;
-
-      state.selectedUser = queryUser
-        ? (matchingUser?.name ?? null)
-        : (eligibleUsers.value[0]?.name ?? null);
       state.isMainAsSourceAlertShown = false;
     }
 
-    async function selectUser(user: string) {
-      if (state.selectedUser === user) {
-        return;
-      }
-
-      state.selectedUser = user;
-      await initBucketsList();
-    }
-
     async function getBucketsList() {
-      if (
-        !isSelectedUserUsable.value ||
-        !state.selectedFromStorage ||
-        !state.selectedToStorage ||
-        !state.selectedUser
-      ) {
-        throw new Error(t('userMissingWarning'));
+      if (!state.selectedFromStorage || !state.selectedToStorage) {
+        throw new Error(t('initBucketsError'));
       }
 
       state.bucketsRequestOptions = {
-        user: state.selectedUser,
         fromStorage: state.selectedFromStorage.name,
         toStorage: state.selectedToStorage.name,
         showReplicated: true,
       };
 
-      const { buckets, replicatedBuckets } =
+      const { buckets, replicatedBuckets, coveredBuckets } =
         await ChorusService.getBucketsForReplication(
           state.bucketsRequestOptions,
         );
 
       state.bucketsList = buckets ?? [];
       state.replicatedBucketsList = replicatedBuckets ?? [];
+      state.coveredBucketsList = coveredBuckets ?? [];
+
+      // "all buckets" is not allowed on an edge that already has covered buckets
+      if (state.coveredBucketsList.length > 0) state.isForAllBuckets = false;
     }
+
+    function coveredReason(covered: ChorusCoveredBucket): string {
+      return t('coveredReason', {
+        kind: covered.ownerKind,
+        id: covered.ownerId,
+      });
+    }
+
+    /** covered buckets are shown as disabled rows with the owner as reason */
+    const coveredRows = computed(() =>
+      state.coveredBucketsList.map((covered) => ({
+        name: covered.bucket,
+        reason: coveredReason(covered),
+      })),
+    );
+    const isAllBucketsDisabled = computed(
+      () => state.coveredBucketsList.length > 0,
+    );
+    const allBucketsDisabledReason = computed(() => {
+      const [first] = state.coveredBucketsList;
+
+      return first ? coveredReason(first) : '';
+    });
 
     async function initBucketsList(resetSelection = true) {
       state.isBucketsListLoading = true;
@@ -211,6 +189,7 @@ export const useTuttiAddReplicationStore = defineStore(
 
       state.bucketsList = [];
       state.replicatedBucketsList = [];
+      state.coveredBucketsList = [];
       state.bucketsError = '';
 
       try {
@@ -228,25 +207,11 @@ export const useTuttiAddReplicationStore = defineStore(
 
     const isBucketsAlreadyRequested = computed(
       () =>
-        state.bucketsRequestOptions?.user === state.selectedUser &&
         state.bucketsRequestOptions?.fromStorage ===
           state.selectedFromStorage?.name &&
         state.bucketsRequestOptions?.toStorage ===
           state.selectedToStorage?.name,
     );
-
-    /** how the chosen user is signed on a storage: override, connection-account, missing or unknown */
-    function userModeOn(user: string, storage: string | undefined): string {
-      const entry = state.users
-        .find((u) => u.name === user)
-        ?.storages?.find((s) => s.storage === storage);
-
-      if (!entry) {
-        return 'unknown';
-      }
-
-      return entry.mode || (entry.configured ? 'override' : 'missing');
-    }
 
     const validator = useVuelidate(
       {
@@ -267,35 +232,31 @@ export const useTuttiAddReplicationStore = defineStore(
       },
     );
 
-    /** resolves true when at least one replication was created */
+    /** resolves true only when every replication was created */
     async function createReplication(): Promise<boolean> {
       const {
         selectedToStorage,
         selectedFromStorage,
-        selectedUser,
         selectedBuckets,
         isForAllBuckets,
       } = state;
 
-      const effectiveUser = selectedUser;
-
       if (
-        !effectiveUser ||
-        !isSelectedUserUsable.value ||
         !selectedToStorage ||
         !selectedFromStorage ||
-        (!selectedBuckets.length && !isForAllBuckets)
+        (!selectedBuckets.length && !isForAllBuckets) ||
+        (isForAllBuckets && isAllBucketsDisabled.value)
       ) {
         return false;
       }
 
       state.isSubmitting = true;
+      state.createError = '';
 
       const successList: ChorusReplicationId[] = [];
       const errorList: [ChorusReplicationId, string][] = [];
 
       const baseReplicationId: ChorusReplicationId = {
-        user: effectiveUser,
         fromStorage: selectedFromStorage.name,
         toStorage: selectedToStorage.name,
       };
@@ -308,45 +269,49 @@ export const useTuttiAddReplicationStore = defineStore(
             toBucket: bucket,
           }));
 
-      await Promise.all(
-        replicationIds.map(async (replicationId) => {
-          try {
-            await ChorusService.addReplication({
-              id: replicationId,
-            });
-            successList.push(replicationId);
-          } catch (error: unknown) {
-            const reason =
-              ErrorHelper.getReason(error) ||
-              t('createReplicationErrorUnknown');
+      // One at a time: every request takes the same two storage locks (10 s acquire timeout), so parallel
+      // requests would make the later ones fail with "storage is being modified; retry".
+      for (const replicationId of replicationIds) {
+        try {
+          await ChorusService.addReplication({
+            id: replicationId,
+          });
+          successList.push(replicationId);
+        } catch (error: unknown) {
+          const reason =
+            ErrorHelper.getReason(error) || t('createReplicationErrorUnknown');
 
-            errorList.push([replicationId, reason]);
-          }
-        }),
-      );
+          errorList.push([replicationId, reason]);
+        }
+      }
 
       state.isSubmitting = false;
 
-      // on total failure stay on the wizard so the draft is not lost
-      if (successList.length > 0) {
-        router.push({ name: RouteName.CHORUS_REPLICATION });
-      }
-
       if (errorList.length !== 0) {
-        const content = errorList.map(([id, reason]) => {
-          const bucketInfo = id.fromBucket ? ` (${id.fromBucket})` : '';
+        // stay on the wizard so the draft is not lost; keep only what failed
+        if (!isForAllBuckets) {
+          const failed = new Set(errorList.map(([id]) => id.fromBucket));
 
-          return `${id.user}/${id.fromStorage}->${id.toStorage}${bucketInfo}: ${reason}`;
-        });
+          state.selectedBuckets = selectedBuckets.filter((bucket) =>
+            failed.has(bucket),
+          );
+        }
 
-        showCreateError(content ? content.join(', ') : undefined);
+        const content = errorList.map(([id, reason]) =>
+          id.fromBucket ? `${id.fromBucket}: ${reason}` : reason,
+        );
+
+        state.createError = content.join('; ');
+        showCreateError(state.createError);
+      } else {
+        router.push({ name: RouteName.CHORUS_REPLICATION });
       }
 
       if (successList.length !== 0) {
         showCreateSuccess();
       }
 
-      return successList.length > 0;
+      return errorList.length === 0 && successList.length > 0;
     }
 
     const { createNotification } = useNotification();
@@ -380,13 +345,12 @@ export const useTuttiAddReplicationStore = defineStore(
       ...toRefs(state),
       steps,
       stepsCount,
-      selectUser,
       initBucketsList,
       getBucketsList,
       isBucketsAlreadyRequested,
-      userModeOn,
-      isSelectedUserUsable,
-      eligibleUsers,
+      coveredRows,
+      isAllBucketsDisabled,
+      allBucketsDisabledReason,
       validator,
       createReplication,
       $reset,

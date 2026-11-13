@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
@@ -34,7 +35,8 @@ type ContextSvc interface {
 	// Same as BuildProxyContext but for requests where bucket is not known (e.g. ListBuckets).
 	BuildProxyNoBucketContext(ctx context.Context, user string) (context.Context, error)
 	// Sets active policies to agent bucket notification request context.
-	BuildAgentContext(ctx context.Context, user, bucket string) (context.Context, error)
+	// Only replications whose source is the storage that emitted the event are kept.
+	BuildAgentContext(ctx context.Context, storage, user, bucket string) (context.Context, error)
 }
 
 var _ ContextSvc = (*policySvc)(nil)
@@ -229,19 +231,26 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 	data.replications = keepReplicationsFromRoute(replications, routeTo)
 
 	// If request scope is in a protection group and has no user replications,
-	// attach the group's infrastructure replications running under ServiceUser.
+	// attach the group's storage-level replications (empty user, connection accounts).
 	if groupID != "" && len(data.replications) == 0 {
 		if grepls := r.groupReplications(ctx, groupID, routeTo, bucket); len(grepls) > 0 {
 			data.replications = grepls
 		}
 	}
 
+	// Storage-level (empty user) replications of the routed storage cover this bucket whoever the client is.
+	storageLevel, err := r.storageLevelReplications(ctx, user, routeTo, bucket)
+	if err != nil {
+		return nil, err
+	}
+	data.replications = mergeReplications(data.replications, storageLevel)
+
 	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
 	if err != nil {
 		return nil, err
 	}
 	for _, repl := range data.replications {
-		if repl.User() == protectiongroups.ServiceUser {
+		if repl.IsStorageLevel() {
 			if _, ok := data.generations[repl]; !ok || data.generations[repl] == 0 {
 				if gen, gErr := r.replicationGenerationStore.Get(ctx, repl); gErr == nil {
 					data.generations[repl] = gen
@@ -250,6 +259,35 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 		}
 	}
 	return data, nil
+}
+
+// storageLevelReplications returns the replications with an empty user (storage level) that start at the
+// storage the request is routed to and cover bucket: bucket policies of the bucket, or the all-bucket policies
+// when there is none (same precedence as getReplications). A request of the empty user already reads them as
+// its own, and a request without bucket has no bucket to cover.
+func (r *policySvc) storageLevelReplications(ctx context.Context, user, routedTo, bucket string) ([]entity.UniversalReplicationID, error) {
+	if user == "" || bucket == "" {
+		return nil, nil
+	}
+	tx := r.userReplicationPolicyStore.TxExecutor()
+	userRepls := r.userReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, "")
+	bucketRepls := r.bucketReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, entity.NewBucketReplicationPolicyID("", bucket))
+	_ = tx.Exec(ctx) // errors are caught on the individual results
+	repls, err := getReplications(bucketRepls, userRepls)
+	if err != nil {
+		return nil, err
+	}
+	return keepReplicationsFromRoute(repls, routedTo), nil
+}
+
+// mergeReplications appends the replications of extra that base does not already contain.
+func mergeReplications(base, extra []entity.UniversalReplicationID) []entity.UniversalReplicationID {
+	for _, id := range extra {
+		if !slices.Contains(base, id) {
+			base = append(base, id)
+		}
+	}
+	return base
 }
 
 // keepReplicationsFromRoute keeps only replications whose source is the storage the request is
@@ -426,7 +464,7 @@ func getReplications(bucketPolicies store.OperationResult[[]entity.BucketReplica
 	return result, nil
 }
 
-func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) (context.Context, error) {
+func (r *policySvc) BuildAgentContext(ctx context.Context, storage, user, bucket string) (context.Context, error) {
 	bucketReplID := entity.NewBucketReplicationPolicyID(user, bucket)
 	// in a single batch:
 	tx := r.userReplicationPolicyStore.TxExecutor()
@@ -441,6 +479,8 @@ func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) 
 	if err != nil {
 		return ctx, err
 	}
+	// storage-level replications of different storage pairs share (user, bucket): keep the ones fed by the event storage
+	relications = keepReplicationsFromRoute(relications, storage)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}
@@ -510,7 +550,6 @@ func (r *policySvc) groupReplications(ctx context.Context, groupID, primary, buc
 		}
 		if bucket != "" {
 			out = append(out, entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{
-				User:        protectiongroups.ServiceUser,
 				FromStorage: primary,
 				ToStorage:   m,
 				FromBucket:  bucket,
@@ -518,7 +557,6 @@ func (r *policySvc) groupReplications(ctx context.Context, groupID, primary, buc
 			}))
 		} else {
 			out = append(out, entity.UniversalFromUserReplication(entity.UserReplicationPolicy{
-				User:        protectiongroups.ServiceUser,
 				FromStorage: primary,
 				ToStorage:   m,
 			}))

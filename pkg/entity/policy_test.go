@@ -74,13 +74,13 @@ func TestUserReplicationPolicy_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing user",
+			name: "empty user is storage-level",
 			fields: fields{
 				User:        "",
 				FromStorage: "storageA",
 				ToStorage:   "storageB",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "missing from storage",
@@ -149,7 +149,7 @@ func TestBucketReplicationPolicy_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing user",
+			name: "empty user is storage-level",
 			fields: fields{
 				User:        "",
 				FromStorage: "storageA",
@@ -157,7 +157,7 @@ func TestBucketReplicationPolicy_Validate(t *testing.T) {
 				ToStorage:   "storageB",
 				ToBucket:    "bucket2",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "missing from storage",

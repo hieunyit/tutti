@@ -16,16 +16,6 @@
 
 import { ChorusService } from '@/services/ChorusService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
-import { TuttiService } from '@/services/TuttiService';
-import { UserHelper } from '@/utils/helpers/UserHelper';
-import type { S3User } from '@/utils/types/users';
-
-function hasStorageCredentials(user: S3User, storage: string): boolean {
-  return (user.storages ?? []).some(
-    (entry) =>
-      entry.storage === storage && UserHelper.modeOf(entry) !== 'missing',
-  );
-}
 
 export interface StorageBucketEntry {
   bucket: string;
@@ -56,10 +46,7 @@ export abstract class BucketDiscoveryHelper {
 
     // 2. Query storages via Chorus replication list-buckets API
     try {
-      const [{ storages }, { users = [] }] = await Promise.all([
-        ChorusService.getStorages(),
-        TuttiService.getUsers(),
-      ]);
+      const { storages } = await ChorusService.getStorages();
 
       if (storages && storages.length > 0) {
         for (let i = 0; i < storages.length; i++) {
@@ -67,24 +54,12 @@ export abstract class BucketDiscoveryHelper {
 
           if (!from) continue;
 
-          const user = users.find(
-            (candidate) =>
-              (!userName || candidate.name === userName) &&
-              hasStorageCredentials(candidate, from),
-          );
-
-          if (!user) continue;
-
           const to =
-            storages.find(
-              (candidate) =>
-                candidate.name !== from &&
-                hasStorageCredentials(user, candidate.name),
-            )?.name ?? from;
+            storages.find((candidate) => candidate.name !== from)?.name ?? from;
 
           try {
             const res = await ChorusService.getBucketsForReplication({
-              user: user.name,
+              ...(userName ? { user: userName } : {}),
               fromStorage: from,
               toStorage: to,
               showReplicated: true,
@@ -96,6 +71,11 @@ export abstract class BucketDiscoveryHelper {
 
             for (const b of res.replicatedBuckets || []) {
               if (b && b.trim()) bucketsSet.add(b.trim());
+            }
+
+            for (const covered of res.coveredBuckets || []) {
+              if (covered.bucket && covered.bucket.trim())
+                bucketsSet.add(covered.bucket.trim());
             }
           } catch {
             // Best-effort per storage pair
@@ -120,35 +100,20 @@ export abstract class BucketDiscoveryHelper {
     const seen = new Set<string>();
 
     try {
-      const [{ storages: allStorages }, { users = [] }] = await Promise.all([
-        ChorusService.getStorages(),
-        TuttiService.getUsers(),
-      ]);
+      const { storages: allStorages } = await ChorusService.getStorages();
 
       if (!allStorages || allStorages.length === 0) return [];
 
       for (const storageName of storages) {
-        const user = users.find(
-          (candidate) =>
-            (!userName || candidate.name === userName) &&
-            hasStorageCredentials(candidate, storageName),
-        );
-
-        if (
-          !user ||
-          !allStorages.some((storage) => storage.name === storageName)
-        )
+        if (!allStorages.some((storage) => storage.name === storageName))
           continue;
 
         const other =
-          allStorages.find(
-            (s) =>
-              s.name !== storageName && hasStorageCredentials(user, s.name),
-          )?.name || storageName;
+          allStorages.find((s) => s.name !== storageName)?.name || storageName;
 
         try {
           const res = await ChorusService.getBucketsForReplication({
-            user: user.name,
+            ...(userName ? { user: userName } : {}),
             fromStorage: storageName,
             toStorage: other,
             showReplicated: true,
@@ -156,6 +121,7 @@ export abstract class BucketDiscoveryHelper {
           const all = [
             ...(res.buckets || []),
             ...(res.replicatedBuckets || []),
+            ...(res.coveredBuckets || []).map((covered) => covered.bucket),
           ];
 
           for (const b of all) {

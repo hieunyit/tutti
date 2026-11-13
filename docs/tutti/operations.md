@@ -196,6 +196,12 @@ Console user mutations use Redis compare-and-swap with the last-enabled-admin ch
 
 Replication definitions cannot be edited in place. Pause/resume controls runtime activity; changing source, destination, scope or event source requires a separately planned migration. Deleting archives the existing replication status and purges its queues, so do not treat delete and recreate as an atomic edit. Confirm queued work is drained and validate source/target consistency when replacing a replication.
 
+## Storage-level replication
+
+A replication without a user copies a whole storage (or chosen buckets) A to B with each storage's connection account; both storages must have one, otherwise the request fails naming the storage that lacks it. Creating a replication or group that overlaps an existing one (same destination, or reverse direction, with intersecting buckets; or, for storage-level objects, a different source storage on a shared bucket or both all-buckets, because the policy stores keep one source per bucket) is refused with HTTP 409 and a reason naming the conflicting object; nothing is created. To resolve it delete the conflicting replication or group first (changing "all buckets" to a bucket list also requires deleting the storage-level object). For one source and several destinations create several replications (`A -> B`, `A -> C`) or one protection group. Rule table: [API](./api.md).
+
+Data behavior during the initial copy and later events: same object name with different content, the source overwrites the destination; objects present only on the destination are never touched or deleted; identical objects are skipped. The internal `$service` identity was removed; no action is needed for existing user-based replications, which keep working unchanged.
+
 See [performance and Redis recovery](./performance-and-redis.md) for the measured baseline, backup/restore commands and production durability requirements.
 
 ## See also

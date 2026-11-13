@@ -132,6 +132,27 @@ func TestResolutionOrderOverrideConnectionMissing(t *testing.T) {
 	require.False(t, svc.HasIdentity("bob"))
 }
 
+func TestHasUserEmptyNeedsConnectionAccount(t *testing.T) {
+	rc := testutil.SetupRedis(t)
+	conf := cfgWith("http://localhost:9000", &s3.CredentialsV4{AccessKeyID: "conn", SecretAccessKey: "connsecret"},
+		map[string]s3.CredentialsV4{"alice": {AccessKeyID: "alice-key", SecretAccessKey: "alice-secret"}})
+	conf.Storages["legacy"] = Storage{CommonConfig: CommonConfig{Type: dom.S3}, S3: &s3.Storage{
+		StorageAddress: s3.StorageAddress{Address: "http://localhost:9001", Provider: s3.ProviderMinIO},
+		Credentials:    map[string]s3.CredentialsV4{"alice": {AccessKeyID: "alice-legacy", SecretAccessKey: "s"}}}}
+	svc, err := NewCredsSvc(t.Context(), conf, rc, WithManagedStorages(rc))
+	require.NoError(t, err)
+
+	// storage-level (empty user): valid iff the storage has a connection account
+	require.NoError(t, svc.HasUser("main", ""))
+	err = svc.HasUser("legacy", "")
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.EqualError(t, err, `FailedPrecondition: storage "legacy" has no connection account`)
+	// real users unchanged
+	require.NoError(t, svc.HasUser("legacy", "alice"))
+	require.NoError(t, svc.HasUser("main", "alice"))
+	require.Error(t, svc.HasUser("main", "stranger"))
+}
+
 func TestForwardingSignsWithTheRightKey(t *testing.T) {
 	up := newUpstream("alice-key", "conn")
 	defer up.Close()

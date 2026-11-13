@@ -196,13 +196,13 @@ func (m *Migrator) check(ctx context.Context, ms *MigrationScope, existing, prop
 		}
 	}
 	for _, o := range existing {
-		if g.Overlaps(o) {
+		if g.conflictWith(o) != nil {
 			return MigrationConflict, "overlaps existing protection group " + o.ID
 		}
 	}
 	for _, o := range proposed {
-		if g.Overlaps(o) {
-			return MigrationConflict, "overlaps the group proposed for another scope (" + o.ID + "): groups of different users must not share a member for the same bucket"
+		if g.conflictWith(o) != nil {
+			return MigrationConflict, "overlaps the group proposed for another scope (" + o.ID + "): groups conflict when they have the same destination or the reverse direction for an intersecting bucket"
 		}
 	}
 	v := *g

@@ -250,13 +250,13 @@ func (s *Store) healRedis(ctx context.Context, g Group) error {
 		if err != nil || deleted {
 			return err
 		}
-		for id, other := range docs {
+		for _, other := range docs {
 			var o Group
 			if err := json.Unmarshal([]byte(other), &o); err != nil {
 				return err
 			}
-			if g.Overlaps(o) {
-				return fmt.Errorf("%w: restoring group %s: scope overlaps group %s", dom.ErrFailedPrecondition, g.ID, id)
+			if c := g.conflictWith(o); c != nil {
+				return fmt.Errorf("%w: restoring group %s: %v", dom.ErrFailedPrecondition, g.ID, c)
 			}
 		}
 		index, err := scopeIndex(docs, &g, "")
@@ -415,8 +415,8 @@ func (s *Store) Save(ctx context.Context, g *Group) error {
 			if err = json.Unmarshal([]byte(raw), &other); err != nil {
 				return err
 			}
-			if g.Overlaps(other) {
-				return fmt.Errorf("%w: scope overlaps group %s", dom.ErrAlreadyExists, id)
+			if c := g.conflictWith(other); c != nil {
+				return c
 			}
 		}
 		next = *g
@@ -483,8 +483,11 @@ func (s *Store) checkControlPlaneOverlap(ctx context.Context, next Group) error 
 			continue
 		}
 		var other Group
-		if json.Unmarshal(d.Value.JSON, &other) == nil && next.Overlaps(other) {
-			return fmt.Errorf("%w: scope overlaps group %s", dom.ErrAlreadyExists, d.Value.ID)
+		if json.Unmarshal(d.Value.JSON, &other) != nil {
+			continue
+		}
+		if c := next.conflictWith(other); c != nil {
+			return c
 		}
 	}
 	return nil

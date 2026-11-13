@@ -43,9 +43,6 @@ func TestPolicy_AddReplicationRequiresExplicitExistingUser(t *testing.T) {
 	t.Cleanup(func() { _ = conn.Close() })
 	c := pb.NewPolicyClient(conn)
 
-	// no user: rejected, no silent defaulting
-	_, err = c.AddReplication(t.Context(), &pb.AddReplicationRequest{Id: &pb.ReplicationID{FromStorage: "main", ToStorage: "a"}})
-	require.Equal(t, codes.InvalidArgument, status.Code(err))
 	// unknown user: InvalidArgument too
 	_, err = c.AddReplication(t.Context(), &pb.AddReplicationRequest{Id: &pb.ReplicationID{User: "ghost", FromStorage: "main", ToStorage: "a"}})
 	require.Equal(t, codes.InvalidArgument, status.Code(err))

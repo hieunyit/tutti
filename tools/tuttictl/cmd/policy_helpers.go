@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sirupsen/logrus"
 
@@ -56,4 +57,13 @@ func buildReplicationID(user, from, to, fromBucket, toBucket string) *pb.Replica
 		id.ToBucket = &b
 	}
 	return id
+}
+
+// requireSwitchUser rejects switch creation without --user: switches work by re-routing a real user,
+// so they are not supported for storage-level replications.
+func requireSwitchUser(user string) error {
+	if user == "" {
+		return errors.New("--user is required: switch is not supported for storage-level replication; use a protection group switchover")
+	}
+	return nil
 }

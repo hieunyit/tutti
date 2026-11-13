@@ -47,7 +47,12 @@ func (s *svc) HandleAccountUpdate(ctx context.Context, t *asynq.Task) (err error
 		return err
 	}
 
-	lock, err := s.userLocker.Lock(ctx, "upd"+p.ID.User())
+	// a storage-level replication has no user: lock per storage pair so unrelated pairs do not share one lock
+	lockKey := "upd" + p.ID.User()
+	if p.ID.IsStorageLevel() {
+		lockKey = "upd:" + p.ID.FromStorage() + ":" + p.ID.ToStorage()
+	}
+	lock, err := s.userLocker.Lock(ctx, lockKey)
 	if err != nil {
 		return err
 	}

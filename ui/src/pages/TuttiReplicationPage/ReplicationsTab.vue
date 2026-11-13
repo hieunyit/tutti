@@ -36,6 +36,7 @@
   import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
+  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import {
     ReplicationType,
@@ -95,7 +96,7 @@
   });
 
   const rowKey = (row: Row) => row.idStr;
-  const targetOf = (row: Row) => row.id.fromBucket || row.id.user;
+  const targetOf = (row: Row) => ReplicationsHelper.getSubjectLabel(row);
 
   const { actionsFor, pending, confirmPending, cancelPending } =
     useRowActions<Row>(

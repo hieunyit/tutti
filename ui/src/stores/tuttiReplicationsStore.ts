@@ -117,7 +117,7 @@ export const useTuttiReplicationsStore = defineStore(
       state.replications.filter((replication) => {
         const isUserMatched =
           !state.filterUsers.length ||
-          state.filterUsers.includes(replication.id.user);
+          state.filterUsers.includes(replication.id.user ?? '');
         const isBucketMatched =
           !state.filterBuckets.length ||
           state.filterBuckets.includes(

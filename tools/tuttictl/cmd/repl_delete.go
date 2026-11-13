@@ -70,7 +70,7 @@ func init() {
 	replCmd.AddCommand(deleteCmd)
 	deleteCmd.Flags().StringVarP(&rdFrom, "from", "f", "", "source storage name")
 	deleteCmd.Flags().StringVarP(&rdTo, "to", "t", "", "destination storage name")
-	deleteCmd.Flags().StringVarP(&rdUser, "user", "u", "", "replication user")
+	deleteCmd.Flags().StringVarP(&rdUser, "user", "u", "", "replication user; omit for storage-level replication")
 	deleteCmd.Flags().StringVarP(&rdFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
 	deleteCmd.Flags().StringVar(&rdToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
 
@@ -78,9 +78,6 @@ func init() {
 		logrus.WithError(err).Fatal()
 	}
 	if err := deleteCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := deleteCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }

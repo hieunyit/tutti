@@ -10,15 +10,12 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/replscope"
 )
 
 const GroupsKey = "tutti:protection:groups"
 const PromotionKey = "tutti:protection:promotion"
 const FreezeKey = "tutti:protection:automatic-frozen"
-
-// ServiceUser is the synthetic identity used by infrastructure protection groups
-// (g.User == "") whose replications and resync run with storage connection accounts.
-const ServiceUser = "$service"
 
 // GroupSpec holds the desired configuration of a protection group.
 // When controlPlane.backend is "postgres", PostgreSQL is the source of truth for GroupSpec.
@@ -302,39 +299,32 @@ func (g Group) Covers(user, bucket string) bool {
 	}
 	return len(g.Buckets) == 0 || (bucket != "" && slices.Contains(g.Buckets, bucket))
 }
-func (g Group) Overlaps(other Group) bool {
-	// S3 bucket names identify physical data independent of the Tutti identity. Conservatively
-	// reject overlapping scopes on a common member even for different users; account-specific
-	// namespaces cannot safely be inferred from access keys or bucket-glob expressions.
-	shared := false
-	for _, m := range g.Members {
-		if slices.Contains(other.Members, m) {
-			shared = true
-			break
-		}
-	}
-	if !shared {
-		return false
-	}
-	if g.IsStorageScope() || other.IsStorageScope() {
-		return true
-	}
-	if len(g.Buckets) == 0 || len(other.Buckets) == 0 {
-		return true
-	}
-	for _, b := range g.Buckets {
-		if slices.Contains(other.Buckets, b) {
-			return true
-		}
-	}
-	return false
+
+// Scope is the replication scope of the group for the shared conflict rule: every ordered pair of members (a
+// switchover can make any member the source) and the group's buckets (none = all buckets).
+func (g Group) Scope() replscope.Scope {
+	return replscope.GroupScope(g.Members, g.Buckets).WithUser(g.User)
 }
+
+// GroupOwners returns the scope owners of the groups for replscope.Check.
+func GroupOwners(groups []Group) []replscope.Owner {
+	out := make([]replscope.Owner, 0, len(groups))
+	for _, g := range groups {
+		out = append(out, replscope.Owner{Kind: "group", ID: g.ID, Scope: g.Scope()})
+	}
+	return out
+}
+
+// conflictWith reports the replscope conflict between g and another group, nil when they do not overlap.
+func (g Group) conflictWith(other Group) *replscope.ConflictError {
+	return replscope.Check(g.Scope(), GroupOwners([]Group{other}), "")
+}
+
+// Replications returns the replications of the group from primary to every other member. An infrastructure
+// group (no user) replicates storage-level: the ids have an empty user and use the connection accounts.
 func (g Group) Replications(primary string) []entity.UniversalReplicationID {
 	var out []entity.UniversalReplicationID
 	user := g.User
-	if user == "" {
-		user = ServiceUser
-	}
 	for _, member := range g.Members {
 		if member == primary {
 			continue

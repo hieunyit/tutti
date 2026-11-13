@@ -405,3 +405,25 @@ func TestObjectID_DoesNotAliasLatestAndVersionedObject(t *testing.T) {
 		t.Fatalf("objectID(a) == objectID(b) (%q); expected distinct keys", objectID(a))
 	}
 }
+
+func TestVersionKeys_EmptyUserDistinct(t *testing.T) {
+	bucket := func(user string) entity.UniversalReplicationID {
+		return entity.UniversalFromBucketReplication(entity.NewBucketReplicationPolicy(user, "s1", "b1", "s2", "b2"))
+	}
+	user := func(u string) entity.UniversalReplicationID {
+		return entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy(u, "s1", "s2"))
+	}
+	if got := toRedisKeys(bucket(""), "b1", "o", payload).hashKey; got != "v::s1:s2:b1:b2" {
+		t.Errorf("hashKey = %q", got)
+	}
+	if got := redisReplicationMATCH(bucket("")); got != "v::s1:s2:b1:b2" {
+		t.Errorf("match = %q", got)
+	}
+	if got := redisReplicationMATCH(user("")); got != "v::s1:s2:*" {
+		t.Errorf("match = %q", got)
+	}
+	if redisReplicationMATCH(user("")) == redisReplicationMATCH(user("alice")) ||
+		redisReplicationMATCH(bucket("")) == redisReplicationMATCH(bucket("alice")) {
+		t.Error("empty user key collides with a real user key")
+	}
+}

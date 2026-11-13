@@ -103,7 +103,14 @@ func (s *Service) DeleteBucketNotification(ctx context.Context, storage, user, b
 	return client.S3().SetBucketNotification(ctx, bucket, notifications)
 }
 
+// storageLevelTopic names the topic of a storage-level replication (empty user). It has no user part, so it
+// cannot equal the topic of a real user (those always have a non-empty name after "chorus-").
+const storageLevelTopic = "chorus--"
+
 func topicName(user string) string {
+	if user == "" {
+		return storageLevelTopic
+	}
 	return fmt.Sprintf("chorus-%s", user)
 }
 
@@ -118,6 +125,11 @@ func UserIDFromNotificationID(id string) (string, error) {
 		return "", fmt.Errorf("%w: notification id should start from 'chorus-': %s", dom.ErrInternal, id)
 	}
 	id = strings.TrimPrefix(id, "chorus-")
+	// Empty user (storage-level replication): "chorus-" + "" + "-" + bucket. A real user that starts with a
+	// dash is escaped to "--", so a single leading dash is unambiguous.
+	if len(id) >= 2 && id[0] == '-' && id[1] != '-' {
+		return "", nil
+	}
 	if len(id) < 5 {
 		return "", fmt.Errorf("%w: unable to extract user from notification id: %s", dom.ErrInternal, id)
 	}

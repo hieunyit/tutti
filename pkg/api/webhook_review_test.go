@@ -22,7 +22,7 @@ func (reviewWebhookCreds) Storages() map[string]dom.StorageType {
 
 type reviewWebhookPolicy struct{ policy.Service }
 
-func (reviewWebhookPolicy) BuildAgentContext(ctx context.Context, _, _ string) (context.Context, error) {
+func (reviewWebhookPolicy) BuildAgentContext(ctx context.Context, _, _, _ string) (context.Context, error) {
 	return ctx, nil
 }
 

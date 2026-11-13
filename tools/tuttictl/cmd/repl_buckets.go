@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/sirupsen/logrus"
@@ -35,15 +34,19 @@ var (
 	rbFrom string
 	rbTo   string
 	rbUser string
+	rbShow bool
 )
 
 // bucketsCmd represents the buckets command
 var bucketsCmd = &cobra.Command{
 	Use:   "buckets",
 	Short: "list buckets available for replication",
-	Long: `List buckets available for replication for a given user and from/to storages.
+	Long: `List buckets available for replication between from/to storages.
+--user is optional: without it the request is storage-level and buckets already
+covered by a protection group or another replication are listed separately.
 
 Example:
+  tuttictl repl buckets --from main --to follower
   tuttictl repl buckets --from main --to follower --user admin
   tuttictl repl buckets --from main --to follower --user admin --show-replicated`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -54,19 +57,19 @@ Example:
 		defer conn.Close()
 
 		res, err := client.AvailableBuckets(ctx, &pb.AvailableBucketsRequest{
-			User:        rbUser,
-			FromStorage: rbFrom,
-			ToStorage:   rbTo,
+			User:           rbUser,
+			FromStorage:    rbFrom,
+			ToStorage:      rbTo,
+			ShowReplicated: rbShow,
 		})
 		if err != nil {
 			api.PrintGrpcError(err)
 		}
-		sort.Strings(res.Buckets)
 
 		// io.Writer, minwidth, tabwidth, padding int, padchar byte, flags uint
 		w := tabwriter.NewWriter(os.Stdout, 10, 1, 5, ' ', 0)
-		for _, m := range res.Buckets {
-			fmt.Fprintln(w, m)
+		for _, l := range api.AvailableBucketsLines(res) {
+			fmt.Fprintln(w, l)
 		}
 		w.Flush()
 	},
@@ -76,16 +79,13 @@ func init() {
 	replCmd.AddCommand(bucketsCmd)
 	bucketsCmd.Flags().StringVarP(&rbFrom, "from", "f", "", "source storage name")
 	bucketsCmd.Flags().StringVarP(&rbTo, "to", "t", "", "destination storage name")
-	bucketsCmd.Flags().StringVarP(&rbUser, "user", "u", "", "replication user")
+	bucketsCmd.Flags().BoolVar(&rbShow, "show-replicated", false, "also list already replicated buckets")
+	bucketsCmd.Flags().StringVarP(&rbUser, "user", "u", "", "replication user; omit for storage-level replication (uses each storage connection account)")
 	err := bucketsCmd.MarkFlagRequired("from")
 	if err != nil {
 		logrus.WithError(err).Fatal()
 	}
 	err = bucketsCmd.MarkFlagRequired("to")
-	if err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	err = bucketsCmd.MarkFlagRequired("user")
 	if err != nil {
 		logrus.WithError(err).Fatal()
 	}

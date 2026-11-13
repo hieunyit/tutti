@@ -319,7 +319,7 @@ func TestUniversalReplicationID_IsEmpty(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "no user - empty",
+			name: "no user - storage-level, not empty",
 			fields: fields{
 				user:        "",
 				fromStorage: "fs",
@@ -327,7 +327,7 @@ func TestUniversalReplicationID_IsEmpty(t *testing.T) {
 				fromBucket:  "fb",
 				toBucket:    "tb",
 			},
-			want: true,
+			want: false,
 		},
 		{
 			name: "no fromStorage - empty",
@@ -446,4 +446,67 @@ func TestUniversalReplicationID_Swap(t *testing.T) {
 			r.Equal(tt.fields.toBucket, repl.toBucket)
 		})
 	}
+}
+
+func TestUniversalID_RoundTrip(t *testing.T) {
+	for _, user := range []string{"", "alice"} {
+		for _, bucketLevel := range []bool{false, true} {
+			name := "user=" + user + " bucket=" + map[bool]string{true: "yes", false: "no"}[bucketLevel]
+			t.Run(name, func(t *testing.T) {
+				r := require.New(t)
+				var id UniversalReplicationID
+				if bucketLevel {
+					id = UniversalFromBucketReplication(NewBucketReplicationPolicy(user, "s1", "b1", "s2", "b2"))
+				} else {
+					id = UniversalFromUserReplication(NewUserReplicationPolicy(user, "s1", "s2"))
+				}
+				s := id.AsString()
+				r.NotEmpty(s)
+				got, err := UniversalIDFromString(s)
+				r.NoError(err)
+				r.Equal(id, got)
+				r.Equal(user == "", got.IsStorageLevel())
+				r.Equal(user, got.User())
+				r.NoError(got.Validate())
+				data, err := json.Marshal(id)
+				r.NoError(err)
+				var fromJSON UniversalReplicationID
+				r.NoError(json.Unmarshal(data, &fromJSON))
+				r.Equal(id, fromJSON)
+			})
+		}
+	}
+	r := require.New(t)
+	id, err := UniversalIDFromString(":s1:s2")
+	r.NoError(err)
+	r.Equal("", id.User())
+	id, err = UniversalIDFromString(":s1:s2:b1:b2")
+	r.NoError(err)
+	r.Equal("b2", id.toBucket)
+	_, err = UniversalIDFromString("s1:s2")
+	r.Error(err)
+	_, err = UniversalIDFromString("a:s1:s2:b1")
+	r.Error(err)
+}
+
+func TestUserMethodDoesNotPanic(t *testing.T) {
+	id := UniversalFromUserReplication(NewUserReplicationPolicy("", "s1", "s2"))
+	require.NotPanics(t, func() { _ = id.User() })
+	require.Equal(t, "", id.User())
+	require.True(t, id.IsStorageLevel())
+	alice := UniversalFromUserReplication(NewUserReplicationPolicy("alice", "s1", "s2"))
+	require.False(t, alice.IsStorageLevel())
+	require.NotEqual(t, id.AsString(), alice.AsString())
+}
+
+func TestPolicyValidate_EmptyUserAllowed(t *testing.T) {
+	r := require.New(t)
+	r.NoError(NewUserReplicationPolicy("", "s1", "s2").Validate())
+	r.NoError(NewBucketReplicationPolicy("", "s1", "b1", "s2", "b2").Validate())
+	r.Error(NewUserReplicationPolicy("", "", "s2").Validate())
+	r.Error(NewUserReplicationPolicy("", "s1", "").Validate())
+	r.Error(NewBucketReplicationPolicy("", "", "b1", "s2", "b2").Validate())
+	r.Error(NewBucketReplicationPolicy("", "s1", "b1", "", "b2").Validate())
+	empty := UniversalReplicationID{}
+	r.Error(empty.Validate())
 }

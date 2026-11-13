@@ -15,8 +15,6 @@
   -->
 
 <script setup lang="ts">
-  import { NSelect } from 'naive-ui';
-  import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { CAlert, CCollapseTransition, CRadio } from '@clyso/clyso-ui-kit';
   import { onBeforeMount } from 'vue';
@@ -30,15 +28,12 @@
     isForAllBuckets,
     isBucketsAlreadyRequested,
     validator,
-    users,
-    selectedUser,
-    isSelectedUserUsable,
-    hasUsersError,
     hasBucketsError,
     bucketsError,
-    eligibleUsers,
+    isAllBucketsDisabled,
+    allBucketsDisabledReason,
   } = storeToRefs(useTuttiAddReplicationStore());
-  const { initBucketsList, selectUser } = useTuttiAddReplicationStore();
+  const { initBucketsList } = useTuttiAddReplicationStore();
 
   const { t } = useI18n({
     messages: i18nAddReplication,
@@ -48,46 +43,13 @@
     void initBucketsList(!isBucketsAlreadyRequested.value);
   }
 
-  const userOptions = computed(() =>
-    users.value.map((user) => ({
-      label: user.name,
-      value: user.name,
-      disabled: !eligibleUsers.value.some(
-        (eligible) => eligible.name === user.name,
-      ),
-    })),
-  );
-
   onBeforeMount(initBucketsStep);
 </script>
 
 <template>
   <div class="buckets-form-step">
-    <label class="buckets-form-step__user">
-      {{ t('userStepTitle') }}
-      <NSelect
-        :value="selectedUser"
-        :options="userOptions"
-        :aria-label="t('user')"
-        @update:value="selectUser"
-      />
-    </label>
     <Callout
-      v-if="hasUsersError || !isSelectedUserUsable"
-      tone="warning"
-    >
-      {{
-        t(
-          hasUsersError
-            ? 'usersLoadError'
-            : users.length === 0
-              ? 'noUsersText'
-              : 'userMissingWarning',
-        )
-      }}
-    </Callout>
-    <Callout
-      v-else-if="hasBucketsError && bucketsError"
+      v-if="hasBucketsError && bucketsError"
       tone="danger"
       >{{ bucketsError }}</Callout
     >
@@ -109,9 +71,16 @@
           :checked="isForAllBuckets"
           value="Definitely Maybe"
           name="basic-demo"
+          :disabled="isAllBucketsDisabled"
           @change="isForAllBuckets = true"
         >
           {{ t('bucketsAllOption') }}
+          <span
+            v-if="isAllBucketsDisabled"
+            class="bucket-replication-selection__reason"
+          >
+            ({{ allBucketsDisabledReason }})
+          </span>
         </CRadio>
       </div>
 
@@ -142,14 +111,6 @@
   @use '@/styles/utils' as utils;
 
   .buckets-form-step {
-    &__user {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-width: 420px;
-      margin-bottom: 16px;
-    }
-
     &__title {
       margin-bottom: utils.unit(2);
     }
@@ -173,6 +134,10 @@
 
     &:last-child {
       margin-bottom: 0;
+    }
+
+    &__reason {
+      opacity: 0.7;
     }
   }
 </style>

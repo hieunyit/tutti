@@ -37,20 +37,10 @@ export default <I18nMessages>{
     toStorageStepTitle: 'Select Destination storage for replication:',
     addReplicationError:
       'An error occurred while preparing the Add Replication form. Please try again.',
-    user: 'User',
-    userStepTitle: 'Select the user whose buckets are replicated:',
-    userModeOverride: 'own credentials',
-    userModeConnection: 'connection account',
-    userModeMissing: 'no credentials',
-    userModeUnknown: 'unknown',
-    userMissingWarning:
-      'This user has no credentials on one of the selected storages: the replication cannot be created.',
-    noUsersTitle: 'No users',
-    noUsersText: 'Create a user first: replications belong to a user.',
-    usersLoadError: 'The user list could not be loaded.',
     bucketsStepTitle: 'Select buckets for replication:',
     bucketsSelectOption: 'Replicate selected buckets',
-    bucketsAllOption: 'Replicate all buckets on source storage (including future ones)',
+    bucketsAllOption:
+      'Replicate all buckets on source storage (including future ones)',
     columnName: 'Bucket',
     columnStatus: 'Status',
     searchBuckets: 'Search buckets',
@@ -58,6 +48,8 @@ export default <I18nMessages>{
     selectedBuckets: '{total} buckets selected',
     statusReplicated: 'Replicated',
     statusAvailable: 'Available for replication',
+    statusCovered: 'Already covered',
+    coveredReason: 'already covered by {kind} {id}',
     initBucketsError:
       'An error occurred while processing the list of buckets. Please try again.',
     noResultsTitle: 'No Buckets found',
@@ -103,18 +95,6 @@ export default <I18nMessages>{
     toStorageStepTitle: 'Zielspeicher für die Replikation auswählen:',
     addReplicationError:
       'Beim Vorbereiten des Replikationsformulars ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
-    user: 'Benutzer',
-    userStepTitle: 'Benutzer auswählen, dessen Buckets repliziert werden:',
-    userModeOverride: 'eigene Zugangsdaten',
-    userModeConnection: 'Verbindungskonto',
-    userModeMissing: 'keine Zugangsdaten',
-    userModeUnknown: 'unbekannt',
-    userMissingWarning:
-      'Dieser Benutzer hat auf einem der gewählten Speicher keine Zugangsdaten: die Replikation kann nicht erstellt werden.',
-    noUsersTitle: 'Keine Benutzer',
-    noUsersText:
-      'Legen Sie zuerst einen Benutzer an: Replikationen gehören zu einem Benutzer.',
-    usersLoadError: 'Die Benutzerliste konnte nicht geladen werden.',
     bucketsStepTitle: 'Buckets für die Replikation auswählen:',
     bucketsSelectOption: 'Ausgewählte Buckets replizieren',
     bucketsAllOption:
@@ -126,6 +106,8 @@ export default <I18nMessages>{
     selectedBuckets: '{total} Buckets ausgewählt',
     statusReplicated: 'Repliziert',
     statusAvailable: 'Für Replikation verfügbar',
+    statusCovered: 'Bereits abgedeckt',
+    coveredReason: 'bereits abgedeckt durch {kind} {id}',
     initBucketsError:
       'Beim Verarbeiten der Bucket-Liste ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     noResultsTitle: 'Keine Buckets gefunden',
@@ -143,11 +125,17 @@ export default <I18nMessages>{
       'Sie sind dabei, die folgende Replikation zu erstellen:',
     confirmReplicationPositive: 'Replikation erstellen',
     confirmReplicationNegative: 'Abbrechen',
-    summaryAllBuckets: 'Alle Buckets auf {fromStorage} (einschließlich zukünftiger)',
+    summaryAllBuckets:
+      'Alle Buckets auf {fromStorage} (einschließlich zukünftiger)',
     createReplicationSuccess:
       'Die Replikation(en) wurden erfolgreich erstellt. Sie sollten sie oben in der Liste sehen können.',
     createReplicationError:
       'Beim Erstellen der Replikation(en) ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     createReplicationErrorUnknown: 'Unbekannter Fehler',
+  }, // Vietnamese: only the strings added for storage-level replication, the
+  // rest falls back to English.
+  vi: {
+    statusCovered: 'Đã được phủ',
+    coveredReason: 'đã được phủ bởi {kind} {id}',
   },
 };

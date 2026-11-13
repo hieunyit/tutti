@@ -38,6 +38,8 @@
   interface BucketRowData {
     name: string;
     isReplicated: boolean;
+    /** set when a group or replication already covers the bucket */
+    coveredReason?: string;
   }
 
   const {
@@ -46,8 +48,10 @@
     selectedBuckets,
     isBucketsListLoading,
     hasBucketsError,
+    bucketsError,
     isReplicatedShown,
     selectedFromStorage,
+    coveredRows,
   } = storeToRefs(useTuttiAddReplicationStore());
   const { initBucketsList } = useTuttiAddReplicationStore();
 
@@ -62,7 +66,7 @@
       type: 'selection',
       width: 44,
       disabled(row: DataTableRowData) {
-        return row.isReplicated;
+        return row.isReplicated || !!row.coveredReason;
       },
     },
     {
@@ -93,10 +97,21 @@
   }
 
   const bucketsRows = computed<BucketRowData[]>(() => {
-    const availableBucketsRows: BucketRowData[] = getBucketRowList(
-      bucketsList.value,
-      false,
-    );
+    const coveredBucketsRows: BucketRowData[] = coveredRows.value
+      .map(({ name, reason }) => ({
+        name,
+        isReplicated: false,
+        coveredReason: reason,
+      }))
+      .filter((bucketsRow) =>
+        bucketsRow.name
+          .toLowerCase()
+          .includes(bucketsSearchString.value.toLowerCase()),
+      );
+    const availableBucketsRows: BucketRowData[] = [
+      ...getBucketRowList(bucketsList.value, false),
+      ...coveredBucketsRows,
+    ];
 
     if (!isReplicatedShown.value) {
       return GeneralHelper.orderBy(availableBucketsRows, 'name', 'asc');
@@ -178,8 +193,12 @@
       >
         <template #name="{ rowData }">
           <span
-            :class="{ 'buckets-list__name--disabled': rowData.isReplicated }"
+            :class="{
+              'buckets-list__name--disabled':
+                rowData.isReplicated || rowData.coveredReason,
+            }"
             class="buckets-list__name"
+            :title="rowData.coveredReason"
           >
             {{ rowData.name }}
           </span>
@@ -188,15 +207,33 @@
         <template #status="{ rowData }">
           <CTag
             class="buckets-list__tag"
-            :class="{ 'buckets-list__tag--disabled': rowData.isReplicated }"
-            :type="rowData.isReplicated ? 'default' : 'info'"
+            :class="{
+              'buckets-list__tag--disabled':
+                rowData.isReplicated || rowData.coveredReason,
+            }"
+            :type="
+              rowData.isReplicated || rowData.coveredReason ? 'default' : 'info'
+            "
+            :title="rowData.coveredReason"
             round
             size="small"
           >
             {{
-              t(rowData.isReplicated ? 'statusReplicated' : 'statusAvailable')
+              rowData.coveredReason
+                ? t('statusCovered')
+                : t(
+                    rowData.isReplicated
+                      ? 'statusReplicated'
+                      : 'statusAvailable',
+                  )
             }}
           </CTag>
+          <span
+            v-if="rowData.coveredReason"
+            class="buckets-list__reason"
+          >
+            {{ rowData.coveredReason }}
+          </span>
         </template>
 
         <template #error>
@@ -204,7 +241,7 @@
             v-if="hasBucketsError"
             class="buckets-selection-list__error"
             :title="t('errorTitle')"
-            :text="t('initBucketsError')"
+            :text="bucketsError || t('initBucketsError')"
             :action-text="t('errorAction')"
             :max-width="400"
             key="error"
@@ -224,7 +261,9 @@
               {{ t('noResultsTitle') }}
             </template>
 
-            <p>{{ t('noResultsText', { storage: selectedFromStorage?.name }) }}</p>
+            <p>
+              {{ t('noResultsText', { storage: selectedFromStorage?.name }) }}
+            </p>
           </CResult>
           <CResult
             v-else
@@ -304,6 +343,12 @@
       &--disabled {
         opacity: 0.4;
       }
+    }
+
+    &__reason {
+      margin-left: utils.unit(2);
+      font-size: 12px;
+      opacity: 0.7;
     }
   }
 

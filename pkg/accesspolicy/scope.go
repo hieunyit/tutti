@@ -24,9 +24,10 @@ func NewScope(shared func(storage, user string) bool, store *Store) *Scope {
 	return &Scope{Shared: shared, Get: store.Get}
 }
 
-// Filter returns the buckets of the list the user may see on the storage.
+// Filter returns the buckets of the list the user may see on the storage. An empty user (storage-level
+// replication with the connection account) sees every bucket.
 func (s *Scope) Filter(ctx context.Context, storage, user string, buckets []string) ([]string, error) {
-	if s == nil || !s.Shared(storage, user) {
+	if s == nil || user == "" || !s.Shared(storage, user) {
 		return buckets, nil
 	}
 	pol, err := s.Get(ctx, user)
@@ -46,9 +47,9 @@ func (s *Scope) Filter(ctx context.Context, storage, user string, buckets []stri
 }
 
 // CheckUserReplication refuses a user-level replication of a user on a shared account without a policy: it would
-// have nothing to replicate.
+// have nothing to replicate. A storage-level replication (empty user) replicates every bucket and needs no policy.
 func (s *Scope) CheckUserReplication(ctx context.Context, storage, user string) error {
-	if s == nil || !s.Shared(storage, user) {
+	if s == nil || user == "" || !s.Shared(storage, user) {
 		return nil
 	}
 	if _, err := s.Get(ctx, user); err != nil {

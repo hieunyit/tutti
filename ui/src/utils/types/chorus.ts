@@ -127,7 +127,8 @@ export interface ChorusMigrationStreamResponse {
 
 // Replication
 export interface ChorusReplicationId {
-  user: string;
+  /** empty or omitted for a storage-level replication */
+  user?: string;
   fromStorage: string;
   toStorage: string;
   fromBucket?: string;
@@ -188,15 +189,27 @@ export interface ChorusAddReplicationsRequest {
 }
 
 export interface ChorusBucketListRequest {
-  user: string;
+  /** omitted: buckets are listed with the connection account of the source storage */
+  user?: string;
   fromStorage: string;
   toStorage: string;
   showReplicated: boolean;
 }
 
+export type ChorusCoveredOwnerKind = 'group' | 'replication';
+
+/** a bucket already covered by a group or another replication of the same edge */
+export interface ChorusCoveredBucket {
+  bucket: string;
+  ownerKind: ChorusCoveredOwnerKind;
+  ownerId: string;
+}
+
 export interface ChorusBucketListResponse {
+  /** never contains covered buckets */
   buckets: string[];
   replicatedBuckets: string[];
+  coveredBuckets?: ChorusCoveredBucket[];
 }
 
 export enum ReplicationStatusFilter {

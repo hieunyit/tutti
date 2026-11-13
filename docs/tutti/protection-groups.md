@@ -13,13 +13,27 @@ The controller runs in every worker (one reconcile per group per second, seriali
 
 | Field | Meaning |
 |---|---|
-| `id`, `user` | Group ID and the Tutti user whose data it protects. `user` is required and must exist (an identity, or a user with credentials on a member); it is never chosen implicitly |
-| `buckets` | Exact bucket names; empty = all buckets of the user. Scopes of two groups may not overlap |
+| `id`, `user` | Group ID and the Tutti user whose data it protects. `user` is optional: empty means a storage-level group (every bucket of the members, connection accounts, no identity); if set it must exist (an identity, or a user with credentials on a member) and is never chosen implicitly |
+| `buckets` | Exact bucket names; empty = all buckets of the user (or of the storage when `user` is empty). Scopes of two groups may not overlap |
 | `members` | Storages (S3, at least two). The primary must currently be the routing target of the scope |
 | `copies` | Wanted healthy copies (2..members) |
 | `mode` | `manual` (switchover only) or `auto` (automatic failover by quorum) |
 | `after`, `electorate`, `maxEventLag`, `maxSwitchesPerHour` | Automatic failover: outage duration, explicit proxy voters (at least three), allowed event lag, rate limit |
 | `primary`, `generation`, `state`, `frozen`, `target`, `verified`, `quarantined`, `history` | Server-owned state |
+
+A group shares the overlap rule with replications (see [API](../tutti/api.md), "Storage-level replication"); a group over members {A, B, C} counts every ordered pair, so it conflicts with a standalone `C -> A`, and (storage-level, all buckets) with a standalone all-buckets `A -> D` because the group can switch its source, but not with `A -> D` on explicit buckets while the group covers all buckets:
+
+| Case | Example | Result |
+|---|---|---|
+| Same destination | `A -> C` exists, add `B -> C` (or `A -> C` again) | rejected |
+| Reverse direction | `A -> B` exists, add `B -> A` | rejected |
+| Different source storage (storage-level only) | `A -> B` on bucket `b1` exists, add `C -> D` on `b1`; or `A -> B` and `C -> D` both all-buckets | rejected: policy stores keep one source per bucket |
+| Same source, different destination | `A -> B` exists, add `A -> C` | allowed |
+| Chain, unrelated pairs | `A -> B` and `B -> C` (or `C -> D`) with disjoint buckets, or one all-buckets and one explicit list | allowed |
+
+The different-source row applies only to two storage-level objects (empty user) whose explicit bucket lists intersect or that are both all-buckets (a bucket policy takes precedence over an all-buckets one in the proxy, so all-vs-explicit is fine); a chain on the same bucket is therefore also rejected. The error text is `storage-level replications must share one source storage per bucket: bucket "b1" is already replicated from "A" by <kind> "<id>"`. Other rejections apply only when the bucket sets also intersect: an explicit bucket list intersects when at least one name is shared, and "all buckets" intersects everything. Objects of two different real users conflict only when their explicit bucket lists intersect, because "all buckets" of a user means all buckets of that user. A storage-level object (no user) covers every bucket of the storage, so it conflicts with any object on the same edges. A protection group contributes every ordered pair between its members. The check runs before anything is created, under one global lock, so a rejected request leaves no policy, key, group or queue entry behind and two concurrent creations cannot both succeed.
+
+Creating or updating a group that would overlap fails with `AlreadyExists` (HTTP 409) naming the object and bucket, and creates nothing. One source to many destinations is several replications or one group. The group's internal replications run without a user, using each member's connection account; the former internal `$service` identity was removed.
 
 Scope and members are immutable; detach (`Delete`, ready groups only) and create again to change them.
 

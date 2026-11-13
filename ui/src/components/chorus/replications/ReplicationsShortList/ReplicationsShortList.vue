@@ -18,6 +18,7 @@
   import { CShortList } from '@clyso/clyso-ui-kit';
   import type { AddId } from '@/utils/types/helper';
   import type { ChorusReplication } from '@/utils/types/chorus';
+  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
 
   withDefaults(
     defineProps<{
@@ -41,16 +42,23 @@
     class="replications-short-list"
   >
     <template #default="{ item }: { item: AddId<ChorusReplication> }">
-      <strong>
-        <span class="replications-short-list__user">{{ item.id.user }}: </span>
-      </strong>
-      {{ item.id.fromStorage }}/<span class="replications-short-list__bucket">
-        {{ item.id.fromBucket || '*' }}
-      </span>
-      →
-      {{ item.id.toStorage }}/<span class="replications-short-list__bucket">
-        {{ item.id.toBucket || '*' }}
-      </span>
+      <template v-if="item.id.user || item.id.fromBucket">
+        <strong v-if="item.id.user">
+          <span class="replications-short-list__user"
+            >{{ item.id.user }}:
+          </span>
+        </strong>
+        {{ item.id.fromStorage }}/<span class="replications-short-list__bucket">
+          {{ item.id.fromBucket || '*' }}
+        </span>
+        →
+        {{ item.id.toStorage }}/<span class="replications-short-list__bucket">
+          {{ item.id.toBucket || '*' }}
+        </span>
+      </template>
+      <template v-else>
+        {{ ReplicationsHelper.getDirectionPairString(item) }}
+      </template>
     </template>
   </CShortList>
 </template>

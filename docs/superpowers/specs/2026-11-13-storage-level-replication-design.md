@@ -39,7 +39,11 @@ Hai scope **chồng** khi tồn tại một cạnh `e1` của bên này và mộ
 
 **và** tập bucket giao nhau (hoặc một bên là "tất cả"). Danh tính user không làm hai scope tách rời, vì tên bucket S3 định danh dữ liệu vật lý.
 
+**Làm rõ theo user (bổ sung sau khi triển khai):** "tất cả bucket" của một user thật chỉ có nghĩa là mọi bucket **của user đó**, không phải mọi bucket của storage. Vì vậy hai đối tượng thuộc **hai user thật khác nhau** chỉ coi là chồng khi danh sách bucket **liệt kê cụ thể** của chúng giao nhau; "tất cả" của user này không chồng với "tất cả" hay bucket của user kia. Đối tượng **cấp storage** (user rỗng) thật sự phủ mọi bucket của storage, nên vẫn chồng với mọi đối tượng cùng cạnh theo luật ở trên. Điều này giữ nguyên hành vi hiện có của replication theo từng user (nhiều user cùng nhân bản sang một storage đích vẫn được).
+
 Được phép (không coi là chồng): cùng nguồn khác đích (`A→B` và `A→C` cho cùng bucket, tức fan-out bằng replication rời), và chuỗi nối tiếp (`A→B` rồi `B→C`). Hai replication khác đích và không ngược chiều (ví dụ `A→B` và `C→D`) không ảnh hưởng nhau.
+
+**Giới hạn của kho lưu trữ:** kho policy chỉ giữ **một storage nguồn** cho mỗi (user, bucket) (`p:repl_bucket_from:<user>`) và mỗi user (`p:repl_user_from`); mọi replication cấp storage dùng chung user rỗng. Vì vậy hai đối tượng cấp storage có **nguồn khác nhau** (`e1.from != e2.from`) mà cùng bucket (danh sách liệt kê giao nhau, hoặc cả hai đều "tất cả") sẽ ghi đè nguồn của nhau và để lại trạng thái hỏng; chúng bị coi là chồng (lý do `source_storage`, thông báo "storage-level replications must share one source storage per bucket"), dù đích khác nhau và không ngược chiều. Cùng nguồn khác đích vẫn được phép; "tất cả" với danh sách bucket cụ thể vẫn được phép vì proxy tra policy bucket trước policy toàn bucket. Hệ quả: chuỗi `A→B`, `B→C` chỉ được phép khi bucket rời nhau, và group (mọi cặp có hướng) áp dụng cùng luật khi không có user. Giải pháp dài hạn là đổi khóa kho theo storage nguồn (re-keying); chưa làm.
 
 Hành vi:
 1. Kiểm tra chồng chạy **trước khi tạo bất cứ thứ gì**, và nằm trong cùng khóa (một khóa phạm vi toàn cục cho thao tác tạo) với việc ghi để hai lần tạo đồng thời không cùng lọt qua. Phát hiện chồng thì dừng hẳn, không để lại trạng thái dở dang, trả `AlreadyExists` kèm tên đối tượng và bucket cụ thể đang bị chiếm.

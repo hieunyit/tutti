@@ -413,6 +413,13 @@ func (s *credsSvc) ValidateReplicationID(id entity.UniversalReplicationID) error
 }
 
 func (s *credsSvc) HasUser(storage string, user string) error {
+	if user == "" {
+		// storage-level replication: runs with the connection account of the storage
+		if _, ok := s.view.Load().conn[storage]; ok {
+			return nil
+		}
+		return fmt.Errorf("%w: storage %q has no connection account", dom.ErrFailedPrecondition, storage)
+	}
 	if _, ok := s.view.Load().conn[storage]; ok && s.knownUser(user) {
 		// the connection account serves every Tutti user
 		return nil

@@ -49,3 +49,20 @@ func TestScope(t *testing.T) {
 	_, err = sc.Filter(ctx, "main", "alice", all)
 	require.Error(t, err)
 }
+
+// A storage-level replication (empty user) lists with the connection account and replicates every bucket: the
+// shared-account policy filter must not apply (it used to look up a policy for "" and return no buckets).
+func TestAccessPolicyFilterEmptyUser(t *testing.T) {
+	ctx := context.Background()
+	sc := &Scope{
+		Shared: func(string, string) bool { return true },
+		Get: func(context.Context, string) (Policy, error) {
+			return Policy{}, fmt.Errorf("%w: policy", dom.ErrNotFound)
+		},
+	}
+	all := []string{"a", "b", "c"}
+	got, err := sc.Filter(ctx, "main", "", all)
+	require.NoError(t, err)
+	require.Equal(t, all, got)
+	require.NoError(t, sc.CheckUserReplication(ctx, "main", ""))
+}

@@ -33,8 +33,8 @@ const (
 type replications struct{ rt *runner }
 
 func (r *replications) check(id controlplane.ReplicationID) error {
-	if id.User == "" || id.FromStorage == "" || id.ToStorage == "" {
-		return fmt.Errorf("%w: replication: user, from and to storage are required", dom.ErrInvalidArg)
+	if id.FromStorage == "" || id.ToStorage == "" {
+		return fmt.Errorf("%w: replication: from and to storage are required", dom.ErrInvalidArg)
 	}
 	if (id.FromBucket == "") != (id.ToBucket == "") {
 		return fmt.Errorf("%w: replication: from and to bucket must be both set or both empty", dom.ErrInvalidArg)
@@ -472,8 +472,8 @@ func (r *replications) SetGeneration(ctx context.Context, id controlplane.Replic
 
 func (r *replications) setGen(ctx context.Context, id controlplane.ReplicationID, value int64, incr bool) (int64, error) {
 	// generations are keyed without the source storage
-	if id.User == "" || id.ToStorage == "" || (id.FromBucket == "") != (id.ToBucket == "") {
-		return 0, fmt.Errorf("%w: replication generation: user and destination are required", dom.ErrInvalidArg)
+	if id.ToStorage == "" || (id.FromBucket == "") != (id.ToBucket == "") {
+		return 0, fmt.Errorf("%w: replication generation: destination is required", dom.ErrInvalidArg)
 	}
 	var g int64
 	err := r.rt.write(ctx, func(tx pgx.Tx) error {

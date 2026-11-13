@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,6 +38,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/notifications"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/replscope"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
@@ -108,6 +108,12 @@ func WithPolicyControlPlaneStore(cp controlplane.Store) PolicyOption {
 	return func(h *policyHandlers) { h.cpStore = cp }
 }
 
+// WithPolicyScopeLocker serializes the replication scope conflict check with the write, shared with every
+// other creation path (protection groups). Without it creations are not serialized.
+func WithPolicyScopeLocker(l replscope.Locker) PolicyOption {
+	return func(h *policyHandlers) { h.scopeLocker = l }
+}
+
 var _ pb.PolicyServer = &policyHandlers{}
 
 type policyHandlers struct {
@@ -126,17 +132,22 @@ type policyHandlers struct {
 	storageLocker           *StorageLocker
 	scope                   *accesspolicy.Scope
 	cpStore                 controlplane.Store
+	scopeLocker             replscope.Locker
 }
 
 func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicationRequest) (*emptypb.Empty, error) {
-	// replications are per user: never pick a tenant on the caller's behalf
-	if req.Id != nil && strings.TrimSpace(req.Id.User) == "" {
-		return nil, fmt.Errorf("%w: replication user is required", dom.ErrInvalidArg)
-	}
 	// validate request:
 	uid, err := pbToReplicationID(req.Id)
 	if err != nil {
 		return nil, err
+	}
+	if uid.User() == "" {
+		// storage-level replication runs with the connection account of both storages
+		for _, st := range []string{uid.FromStorage(), uid.ToStorage()} {
+			if err := h.credsSvc.HasUser(st, ""); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
 		if errors.Is(err, dom.ErrNotFound) {
@@ -144,14 +155,25 @@ func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicat
 		}
 		return nil, err
 	}
-	// acquire user lock, then the lock of both storages (the replication references them)
-	err = h.inUserLock(ctx, req.Id.User, func(ctx context.Context) error {
+	// acquire user lock (not for storage-level), then the lock of both storages (the replication references them)
+	err = h.inUserLock(ctx, uid.User(), func(ctx context.Context) error {
 		return h.storageLocker.With(ctx, []string{uid.FromStorage(), uid.ToStorage()}, func(ctx context.Context) error {
 			// the storage may have been deleted while waiting for the lock
 			if err := h.credsSvc.ValidateReplicationID(uid); err != nil {
 				return err
 			}
-			return h.addReplicationLocked(ctx, uid, req)
+			// every network validation runs before the scope lock (its TTL is short and not renewed)
+			opts, err := h.validateAddReplication(ctx, uid, req)
+			if err != nil {
+				return err
+			}
+			// the scope lock covers only the conflict check and the creation
+			unlock, err := h.lockScope(ctx, uid)
+			if err != nil {
+				return err
+			}
+			defer unlock()
+			return h.addReplicationLocked(ctx, uid, req, opts)
 		})
 	})
 	if err != nil {
@@ -160,35 +182,121 @@ func (h *policyHandlers) AddReplication(ctx context.Context, req *pb.AddReplicat
 	return &emptypb.Empty{}, nil
 }
 
-func (h *policyHandlers) addReplicationLocked(ctx context.Context, uid entity.UniversalReplicationID, req *pb.AddReplicationRequest) error {
-	if userRepl, ok := uid.AsUserID(); ok {
-		// create user replication
-		return h.addUserReplication(ctx, userRepl, req)
-	} else if bucketRepl, ok := uid.AsBucketID(); ok {
-		// create bucket replication
-		return h.addBucketReplication(ctx, bucketRepl, req)
+// proposedScope is the scope of a replication: user-level covers all buckets, bucket-level its source and
+// destination bucket names (same representation as policy.ListScopeOwners).
+func proposedScope(uid entity.UniversalReplicationID) replscope.Scope {
+	var buckets []string
+	if b, ok := uid.AsBucketID(); ok {
+		buckets = []string{b.FromBucket}
+		if b.ToBucket != b.FromBucket {
+			buckets = append(buckets, b.ToBucket)
+		}
 	}
-	return fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
+	return replscope.ReplicationScope(uid.FromStorage(), uid.ToStorage(), buckets).WithUser(uid.User())
 }
 
-func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID entity.UserReplicationPolicy, req *pb.AddReplicationRequest) (err error) {
+// lockScope takes the global scope lock and refuses a replication whose scope conflicts with a group or another
+// replication (gRPC AlreadyExists via replscope.ConflictError). On success the caller creates the replication and
+// calls unlock; keep that critical section short (the lock is not renewed).
+func (h *policyHandlers) lockScope(ctx context.Context, uid entity.UniversalReplicationID) (func(), error) {
+	unlock := func() {}
+	if h.scopeLocker != nil {
+		u, err := h.scopeLocker.Lock(ctx)
+		if err != nil {
+			return nil, err
+		}
+		unlock = u
+	}
+	owners, err := h.policySvc.ListScopeOwners(ctx)
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	// an existing replication with the same id is reported by the creation validation, not as a scope conflict
+	if cerr := replscope.Check(proposedScope(uid), owners, uid.AsString()); cerr != nil {
+		unlock()
+		return nil, cerr
+	}
+	return unlock, nil
+}
+
+// validateAddReplication runs the validations that may call a storage or the credentials service and resolves the
+// replication options. It must run before the scope lock is taken.
+func (h *policyHandlers) validateAddReplication(ctx context.Context, uid entity.UniversalReplicationID, req *pb.AddReplicationRequest) (entity.ReplicationOptions, error) {
 	var eventSource pb.EventSource
 	if req.Opts != nil {
 		eventSource = req.Opts.EventSource
 	}
-	if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
-		return fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)
+	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource)}
+	if userRepl, ok := uid.AsUserID(); ok {
+		if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
+			return opts, fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)
+		}
+		if err := h.validateWebhookEventSource(eventSource); err != nil {
+			return opts, err
+		}
+		if err := h.scope.CheckUserReplication(ctx, userRepl.FromStorage, userRepl.User); err != nil {
+			return opts, err
+		}
+		return opts, nil
 	}
-	if err := h.validateWebhookEventSource(eventSource); err != nil {
-		return err
+	b, ok := uid.AsBucketID()
+	if !ok {
+		return opts, fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
 	}
-	opts := entity.ReplicationOptions{
-		EventSource: pbToEventSource(eventSource),
+	storageType := h.credsSvc.Storages()[b.FromStorage]
+	switch eventSource {
+	case pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION:
+		if storageType != dom.S3 {
+			return opts, fmt.Errorf("%w: s3_notification event source is only supported for S3 storage", dom.ErrInvalidArg)
+		}
+		webhook := h.effectiveWebhook()
+		if webhook == nil || !webhook.Enabled {
+			return opts, fmt.Errorf("%w: webhook must be enabled for s3_notification event source", dom.ErrInvalidArg)
+		}
+		agentURL, err := webhook.S3NotificationURL(b.FromStorage)
+		if err != nil {
+			return opts, err
+		}
+		opts.AgentURL = agentURL
+	case pb.EventSource_EVENT_SOURCE_WEBHOOK:
+		if err := h.validateWebhookEventSource(eventSource); err != nil {
+			return opts, err
+		}
+		webhookURL, err := h.webhookURLForStorage(b.FromStorage, storageType)
+		if err != nil {
+			return opts, err
+		}
+		opts.AgentURL = webhookURL
 	}
+	fromClient, err := h.clients.AsCommon(ctx, b.FromStorage, b.User)
+	if err != nil {
+		return opts, err
+	}
+	// check if bucket exists in source (network call)
+	exists, err := fromClient.BucketExists(ctx, b.FromBucket)
+	if err != nil {
+		return opts, fmt.Errorf("%w: unable to validate source bucket", err)
+	}
+	if !exists {
+		return opts, fmt.Errorf("%w: bucket %s not exists in source storage %s", dom.ErrInvalidArg, b.FromBucket, b.FromStorage)
+	}
+	return opts, nil
+}
+
+func (h *policyHandlers) addReplicationLocked(ctx context.Context, uid entity.UniversalReplicationID, req *pb.AddReplicationRequest, opts entity.ReplicationOptions) error {
+	if userRepl, ok := uid.AsUserID(); ok {
+		// create user replication
+		return h.addUserReplication(ctx, userRepl, opts)
+	} else if bucketRepl, ok := uid.AsBucketID(); ok {
+		// create bucket replication
+		return h.addBucketReplication(ctx, bucketRepl, opts)
+	}
+	return fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
+}
+
+func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID entity.UserReplicationPolicy, opts entity.ReplicationOptions) (err error) {
 	if err := h.policySvc.ValidateUserReplicationCreation(ctx, replicationID); err != nil {
-		return err
-	}
-	if err := h.scope.CheckUserReplication(ctx, replicationID.FromStorage, replicationID.User); err != nil {
 		return err
 	}
 	if err := h.removeLeftoversOfDeletedReplication(ctx, entity.UniversalFromUserReplication(replicationID)); err != nil {
@@ -226,54 +334,8 @@ func (h *policyHandlers) addUserReplication(ctx context.Context, replicationID e
 	return h.queueSvc.EnqueueTask(ctx, task)
 }
 
-func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID entity.BucketReplicationPolicy, req *pb.AddReplicationRequest) (err error) {
+func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID entity.BucketReplicationPolicy, opts entity.ReplicationOptions) (err error) {
 	storageType := h.credsSvc.Storages()[replicationID.FromStorage]
-	var eventSource pb.EventSource
-	if req.Opts != nil {
-		eventSource = req.Opts.EventSource
-	}
-	opts := entity.ReplicationOptions{
-		EventSource: pbToEventSource(eventSource),
-	}
-
-	switch eventSource {
-	case pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION:
-		if storageType != dom.S3 {
-			return fmt.Errorf("%w: s3_notification event source is only supported for S3 storage", dom.ErrInvalidArg)
-		}
-		webhook := h.effectiveWebhook()
-		if webhook == nil || !webhook.Enabled {
-			return fmt.Errorf("%w: webhook must be enabled for s3_notification event source", dom.ErrInvalidArg)
-		}
-		agentURL, err := webhook.S3NotificationURL(replicationID.FromStorage)
-		if err != nil {
-			return err
-		}
-		opts.AgentURL = agentURL
-	case pb.EventSource_EVENT_SOURCE_WEBHOOK:
-		if err := h.validateWebhookEventSource(eventSource); err != nil {
-			return err
-		}
-		webhookURL, err := h.webhookURLForStorage(replicationID.FromStorage, storageType)
-		if err != nil {
-			return err
-		}
-		opts.AgentURL = webhookURL
-	}
-
-	fromClient, err := h.clients.AsCommon(ctx, replicationID.FromStorage, replicationID.User)
-	if err != nil {
-		return err
-	}
-	// check if bucket exists in source
-	ok, err := fromClient.BucketExists(ctx, replicationID.FromBucket)
-	if err != nil {
-		return fmt.Errorf("%w: unable to validate source bucket", err)
-	}
-	if !ok {
-		return fmt.Errorf("%w: bucket %s not exists in source storage %s", dom.ErrInvalidArg, replicationID.FromBucket, replicationID.FromStorage)
-	}
-
 	if err := h.policySvc.ValidateBucketReplicationCreation(ctx, replicationID); err != nil {
 		return err
 	}
@@ -319,7 +381,7 @@ func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID
 }
 
 func (h *policyHandlers) AvailableBuckets(ctx context.Context, req *pb.AvailableBucketsRequest) (*pb.AvailableBucketsResponse, error) {
-	// validate request:
+	// validate request: an empty user means storage-level (connection account of both storages)
 	if err := h.credsSvc.HasUser(req.FromStorage, req.User); err != nil {
 		return nil, err
 	}
@@ -327,13 +389,15 @@ func (h *policyHandlers) AvailableBuckets(ctx context.Context, req *pb.Available
 		return nil, err
 	}
 
-	userReplExists, err := h.policySvc.IsUserReplicationExists(ctx, req.User)
-	if err != nil {
-		return nil, err
-	}
-	if userReplExists {
-		// user replication exists - no need to create bucket replications
-		return &pb.AvailableBucketsResponse{}, nil
+	if req.User != "" {
+		userReplExists, err := h.policySvc.IsUserReplicationExists(ctx, req.User)
+		if err != nil {
+			return nil, err
+		}
+		if userReplExists {
+			// user replication exists - no need to create bucket replications
+			return &pb.AvailableBucketsResponse{}, nil
+		}
 	}
 
 	bucketRepl, err := h.policySvc.ListBucketReplicationsInfo(ctx, req.User)
@@ -362,17 +426,25 @@ func (h *policyHandlers) AvailableBuckets(ctx context.Context, req *pb.Available
 	if err != nil {
 		return nil, err
 	}
+	// buckets covered for this edge by any group or replication of any user
+	owners, err := h.policySvc.ListScopeOwners(ctx)
+	if err != nil {
+		return nil, err
+	}
 	res := &pb.AvailableBucketsResponse{}
 	for _, bucket := range buckets {
-		_, used := usedBuckets[bucket]
-		if !used {
-			res.Buckets = append(res.Buckets, bucket)
+		if _, used := usedBuckets[bucket]; used {
+			// already used by this user on the same edge
+			if req.ShowReplicated {
+				res.ReplicatedBuckets = append(res.ReplicatedBuckets, bucket)
+			}
 			continue
 		}
-		// already used
-		if req.ShowReplicated {
-			res.ReplicatedBuckets = append(res.ReplicatedBuckets, bucket)
+		if cerr := replscope.Check(replscope.ReplicationScope(req.FromStorage, req.ToStorage, []string{bucket}).WithUser(req.User), owners, ""); cerr != nil {
+			res.CoveredBuckets = append(res.CoveredBuckets, &pb.CoveredBucket{Bucket: bucket, OwnerKind: cerr.OwnerKind, OwnerId: cerr.OwnerID})
+			continue
 		}
+		res.Buckets = append(res.Buckets, bucket)
 	}
 	return res, nil
 }
@@ -521,6 +593,9 @@ func (h *policyHandlers) listBucketReplications(ctx context.Context, filter *pb.
 	if filter != nil && filter.User != nil && *filter.User != "" {
 		// filter by user if set
 		users = []string{*filter.User}
+	} else {
+		// storage-level bucket replications have an empty user
+		users = append(append([]string(nil), users...), "")
 	}
 	usersRes := make([]map[entity.BucketReplicationPolicy]entity.ReplicationStatusExtended, len(users))
 	// list bucket replications per user in parallel
@@ -716,6 +791,8 @@ func (h *policyHandlers) StreamReplication(req *pb.ReplicationID, server grpc.Se
 	}
 }
 
+var errSwitchStorageLevel = fmt.Errorf("%w: switch is not supported for storage-level replication; use a protection group switchover", dom.ErrFailedPrecondition)
+
 func (h *policyHandlers) SwitchWithDowntime(ctx context.Context, req *pb.SwitchDowntimeRequest) (*emptypb.Empty, error) {
 	if req.DowntimeOpts != nil {
 		if err := validateSwitchDonwtimeOpts(req.DowntimeOpts); err != nil {
@@ -725,6 +802,9 @@ func (h *policyHandlers) SwitchWithDowntime(ctx context.Context, req *pb.SwitchD
 	uid, err := pbToReplicationID(req.ReplicationId)
 	if err != nil {
 		return nil, err
+	}
+	if uid.IsStorageLevel() {
+		return nil, errSwitchStorageLevel
 	}
 	err = h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 		// persist switch metadata
@@ -751,6 +831,9 @@ func (h *policyHandlers) SwitchWithZeroDowntime(ctx context.Context, req *pb.Swi
 	uid, err := pbToReplicationID(req.ReplicationId)
 	if err != nil {
 		return nil, err
+	}
+	if uid.IsStorageLevel() {
+		return nil, errSwitchStorageLevel
 	}
 	storageType := h.credsSvc.Storages()[uid.FromStorage()]
 	if storageType != dom.S3 {
@@ -844,6 +927,10 @@ func (h *policyHandlers) createAgentBucketNotification(ctx context.Context, repl
 }
 
 func (h *policyHandlers) inUserLock(ctx context.Context, user string, fn func(ctx context.Context) error) error {
+	if user == "" {
+		// storage-level replication has no user to serialize on
+		return fn(ctx)
+	}
 	lock, err := h.userLocker.Lock(ctx, user, store.WithDuration(time.Second), store.WithRetry(true))
 	if err != nil {
 		return err
@@ -862,6 +949,9 @@ func (h *policyHandlers) inReplicationLock(ctx context.Context, id entity.Univer
 }
 
 func (h *policyHandlers) AddRouting(ctx context.Context, req *pb.AddRoutingRequest) (*emptypb.Empty, error) {
+	if req.User == "" {
+		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
+	}
 	if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
 		return nil, err
 	}

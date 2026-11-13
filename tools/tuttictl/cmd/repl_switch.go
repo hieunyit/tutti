@@ -124,15 +124,12 @@ func switchZeroDowntimeCmdInit() {
 	switchZeroDowntimeCmd.Flags().StringVar(&switchZeroDowntimeCmdToBucket, "to-bucket", "", "destination bucket name of existing bucket-level replication")
 	switchZeroDowntimeCmd.Flags().StringVarP(&switchZeroDowntimeCmdFrom, "from", "f", "", "From storage of existing replication")
 	switchZeroDowntimeCmd.Flags().StringVarP(&switchZeroDowntimeCmdTo, "to", "t", "", "To storage of existing replication")
-	switchZeroDowntimeCmd.Flags().StringVarP(&switchZeroDowntimeCmdUser, "user", "u", "", "User of existing replication")
+	switchZeroDowntimeCmd.Flags().StringVarP(&switchZeroDowntimeCmdUser, "user", "u", "", "user of existing replication; omit for storage-level replication")
 	switchZeroDowntimeCmd.Flags().DurationVar(&switchZeroDowntimeCmdMultipartTTL, "multipart-ttl", time.Hour, "Max time to wait for multipart uploads started before the switch to finish")
 	if err := switchZeroDowntimeCmd.MarkFlagRequired("from"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 	if err := switchZeroDowntimeCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := switchZeroDowntimeCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }
@@ -148,6 +145,9 @@ User-level zero-downtime replication switch:
 Bucket-level zero-downtime replication switch:
   tuttictl repl switch zero-downtime -f main -t follower -u admin -b bucket1`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := requireSwitchUser(switchZeroDowntimeCmdUser); err != nil {
+			logrus.Fatal(err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		conn, client := newPolicyClient(ctx)
@@ -187,7 +187,7 @@ func switchScheduledCmdInit() {
 	switchScheduledCmd.Flags().StringVar(&switchScheduledCmdToBucket, "to-bucket", "", "destination bucket name of existing bucket-level replication")
 	switchScheduledCmd.Flags().StringVarP(&switchScheduledCmdFrom, "from", "f", "", "From storage of existing replication")
 	switchScheduledCmd.Flags().StringVarP(&switchScheduledCmdTo, "to", "t", "", "To storage of existing replication")
-	switchScheduledCmd.Flags().StringVarP(&switchScheduledCmdUser, "user", "u", "", "User of existing replication")
+	switchScheduledCmd.Flags().StringVarP(&switchScheduledCmdUser, "user", "u", "", "user of existing replication; omit for storage-level replication")
 
 	switchScheduledCmd.Flags().BoolVar(&switchScheduledCmdStartOnInitDone, "start-on-init-done", false, "Start switch when initialization is done")
 	switchScheduledCmd.Flags().StringVar(&switchScheduledCmdCron, "cron", "", "Cron expression for switch start")
@@ -201,9 +201,6 @@ func switchScheduledCmdInit() {
 		logrus.WithError(err).Fatal()
 	}
 	if err := switchScheduledCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := switchScheduledCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }
@@ -237,6 +234,9 @@ tuttictl repl switch scheduled -f main -t follower -u admin -b bucket1 \
     will be less than 100`,
 
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := requireSwitchUser(switchScheduledCmdUser); err != nil {
+			logrus.Fatal(err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		conn, client := newPolicyClient(ctx)
@@ -288,15 +288,12 @@ func switchDeleteCmdInit() {
 	switchDeleteCmd.Flags().StringVar(&switchDeleteCmdToBucket, "to-bucket", "", "destination bucket name of existing bucket-level replication")
 	switchDeleteCmd.Flags().StringVarP(&switchDeleteCmdFrom, "from", "f", "", "From storage of existing replication")
 	switchDeleteCmd.Flags().StringVarP(&switchDeleteCmdTo, "to", "t", "", "To storage of existing replication")
-	switchDeleteCmd.Flags().StringVarP(&switchDeleteCmdUser, "user", "u", "", "User of existing replication")
+	switchDeleteCmd.Flags().StringVarP(&switchDeleteCmdUser, "user", "u", "", "user of existing replication; omit for storage-level replication")
 
 	if err := switchDeleteCmd.MarkFlagRequired("from"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 	if err := switchDeleteCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := switchDeleteCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }
@@ -336,15 +333,12 @@ func switchStatusCmdInit() {
 	switchStatusCmd.Flags().StringVar(&switchStatusToBucket, "to-bucket", "", "destination bucket name of existing bucket-level replication")
 	switchStatusCmd.Flags().StringVarP(&switchStatusFrom, "from", "f", "", "From storage of existing replication")
 	switchStatusCmd.Flags().StringVarP(&switchStatusTo, "to", "t", "", "To storage of existing replication")
-	switchStatusCmd.Flags().StringVarP(&switchStatusUser, "user", "u", "", "User of existing replication")
+	switchStatusCmd.Flags().StringVarP(&switchStatusUser, "user", "u", "", "user of existing replication; omit for storage-level replication")
 
 	if err := switchStatusCmd.MarkFlagRequired("from"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 	if err := switchStatusCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := switchStatusCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }

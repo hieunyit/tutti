@@ -17,6 +17,8 @@
 package tasks
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -49,4 +51,49 @@ func Test_ReplicationGetterSetter(t *testing.T) {
 	r.EqualValues("fb", fromBucket)
 	r.EqualValues("tb", toBucket)
 	r.EqualValues(expect.ID, expect.GetReplicationID())
+}
+
+func TestQueueNameForEmptyUserDistinct(t *testing.T) {
+	empty := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("", "s1", "s2"))
+	alice := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("alice", "s1", "s2"))
+	for _, prefix := range replicationQueuePrefixes {
+		qe := replicationQueueName(prefix, empty)
+		qa := replicationQueueName(prefix, alice)
+		if qe == qa {
+			t.Fatalf("queue names collide: %q", qe)
+		}
+		if qe != string(prefix)+"::s1:s2" {
+			t.Fatalf("unexpected queue name %q", qe)
+		}
+		if !isReplicationQueue(qe) {
+			t.Fatalf("%q must be a replication queue", qe)
+		}
+		id, err := entity.UniversalIDFromString(strings.TrimPrefix(qe, string(prefix)+":"))
+		if err != nil || id != empty {
+			t.Fatalf("queue name does not parse back: %v %v", id, err)
+		}
+	}
+}
+
+// Diff payloads carry their own User string; an empty user (storage-level pair) encodes with a valid task id
+// and queue and keeps the empty user through the JSON payload.
+func TestDiffPayloadsEmptyUser(t *testing.T) {
+	locs := []MigrateLocation{{Storage: "s1", Bucket: "b"}, {Storage: "s2", Bucket: "b"}}
+	for _, payload := range []any{
+		DiffPayload{Locations: locs},
+		DiffListObjectsPayload{Locations: locs},
+		DiffListVersionsPayload{Locations: locs},
+		DiffFixCollectObjectsPayload{Locations: locs},
+		DiffFixRemoveObjectsPayload{Locations: locs},
+		DiffFixEnsureObjectsRemovedPayload{Locations: locs},
+	} {
+		task, err := EncodeAny(t.Context(), payload)
+		if err != nil {
+			t.Fatalf("%T: %v", payload, err)
+		}
+		var got struct{ User string }
+		if err := json.Unmarshal(task.Payload(), &got); err != nil || got.User != "" {
+			t.Fatalf("%T: user %q err %v", payload, got.User, err)
+		}
+	}
 }
