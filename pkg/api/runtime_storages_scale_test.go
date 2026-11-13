@@ -74,10 +74,10 @@ func TestListRuntimeStoragesUserCount(t *testing.T) {
 	require.EqualValues(t, 8, one.UserCount)
 }
 
-// BenchmarkListRuntimeStorages100x1000: "before" is the per-storage path the list used (ListOverrideUsers scans the
+// BenchmarkListRuntimeStorages100x200: "before" is the per-storage path the list used (ListOverrideUsers scans the
 // whole credential cache once per storage); "after" is the single-pass list.
-func BenchmarkListRuntimeStorages100x1000(b *testing.B) {
-	h, names := scaleHandlers(b, 100, 0, 1000)
+func BenchmarkListRuntimeStorages100x200(b *testing.B) {
+	h, names := scaleHandlers(b, 100, 0, 200)
 	ctx := b.Context()
 	tests, err := h.runtimeStorages.StorageTests(ctx)
 	require.NoError(b, err)
