@@ -451,3 +451,72 @@ func (c *Client) addToGroup(ctx context.Context, msg *base.TaskMessage, group st
 	}
 	return c.broker.AddToGroup(ctx, msg, group)
 }
+
+type batchBroker interface {
+	EnqueueBatch(ctx context.Context, msgs []*base.TaskMessage) (int, error)
+}
+
+// EnqueueBatch enqueues tasks in order, using one broker round trip for each run of
+// consecutive plain (immediately pending, non-unique, non-grouped) tasks of the same queue.
+// It returns the number of leading tasks handled. Tasks whose ID already exists count as
+// handled, matching how callers treat ErrTaskIDConflict. On ErrQueueFull the count tells
+// how many leading tasks were accepted before admission rejected the next one.
+func (c *Client) EnqueueBatch(ctx context.Context, tasks []*Task) (int, error) {
+	bb, batchable := c.broker.(batchBroker)
+	done := 0
+	var run []*base.TaskMessage
+	flush := func() error {
+		if len(run) == 0 {
+			return nil
+		}
+		n, err := bb.EnqueueBatch(ctx, run)
+		done += n
+		run = run[:0]
+		if errors.Is(err, errors.ErrQueueFull) {
+			return ErrQueueFull
+		}
+		return err
+	}
+	for _, task := range tasks {
+		if task == nil {
+			return done, fmt.Errorf("task cannot be nil")
+		}
+		opt, err := composeOptions(task.opts...)
+		plain := batchable && err == nil && opt.uniqueTTL == 0 && opt.group == "" &&
+			!opt.processAt.After(time.Now()) && strings.TrimSpace(task.Type()) != ""
+		if !plain {
+			if err := flush(); err != nil {
+				return done, err
+			}
+			_, err := c.EnqueueContext(ctx, task)
+			if err != nil && !errors.Is(err, ErrDuplicateTask) && !errors.Is(err, ErrTaskIDConflict) {
+				return done, err
+			}
+			done++
+			continue
+		}
+		deadline := noDeadline
+		if !opt.deadline.IsZero() {
+			deadline = opt.deadline
+		}
+		timeout := noTimeout
+		if opt.timeout != 0 {
+			timeout = opt.timeout
+		}
+		if deadline.Equal(noDeadline) && timeout == noTimeout {
+			timeout = defaultTimeout
+		}
+		msg := &base.TaskMessage{
+			ID: opt.taskID, Type: task.Type(), Payload: task.Payload(), Queue: opt.queue,
+			Retry: opt.retry, Deadline: deadline.Unix(), Timeout: int64(timeout.Seconds()),
+			Retention: int64(opt.retention.Seconds()),
+		}
+		if len(run) > 0 && run[0].Queue != msg.Queue {
+			if err := flush(); err != nil {
+				return done, err
+			}
+		}
+		run = append(run, msg)
+	}
+	return done, flush()
+}

@@ -78,6 +78,9 @@ const (
 	// This bounds the memory, execution time, and Redis task injection per slice.
 	MaxListingPageSize = 1000
 
+	// listEnqueueBatchSize is how many discovered objects are enqueued per Redis round trip.
+	listEnqueueBatchSize = 250
+
 	// BackpressureDeferInterval is the delay before the next continuation task runs when backlog is at or above high watermark.
 	// By yielding the worker slot, copy workers can drain the queue without being blocked by sleeping listing workers.
 	BackpressureDeferInterval = 3 * time.Second
@@ -211,6 +214,58 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 	count := 0
 	hitLimit := false
 
+	// Objects are enqueued in batches (one Redis round trip per batch) instead of one by one.
+	// Order is preserved and the checkpoint only advances past tasks the broker accepted.
+	var (
+		batch         []any
+		batchKeys     []string
+		batchVersions bool
+	)
+	// flush enqueues the pending batch. stop reports that this page must end.
+	flush := func() (stop bool, err error) {
+		if len(batch) == 0 {
+			return false, nil
+		}
+		defer func() { batch, batchKeys, batchVersions = batch[:0], batchKeys[:0], false }()
+		if batchVersions {
+			// The list-versions task lands on the list queue but fans out into copy tasks: admit it against the copy queue.
+			unprocessed, uErr := s.queueSvc.UnprocessedCount(ctx, true, copyQueue)
+			if uErr != nil {
+				return false, fmt.Errorf("migration bucket list obj: unable to fetch queue stats: %w", uErr)
+			}
+			if unprocessed >= highWatermark {
+				setQueueBackpressured(copyQueue, true)
+				hitLimit = true
+				return true, nil
+			}
+		}
+		n, enqueueErr := tasks.EnqueueMany(ctx, s.queueSvc, batch)
+		if n > 0 {
+			lastObjName = batchKeys[n-1]
+			count += n
+		}
+		if enqueueErr != nil {
+			var rl *dom.ErrRateLimitExceeded
+			if errors.As(enqueueErr, &rl) {
+				// broker admission rejected the task: queue is full, stop this page and defer
+				setQueueBackpressured(copyQueue, true)
+				hitLimit = true
+				return true, nil
+			}
+			key := ""
+			if n < len(batchKeys) {
+				key = batchKeys[n]
+			}
+			return false, fmt.Errorf("migration bucket list obj: unable to enqueue task for %q: %w", key, enqueueErr)
+		}
+		if count >= maxItems {
+			hitLimit = true
+			return true, nil
+		}
+		return false, nil
+	}
+
+	stopped := false
 	for object := range objects {
 		if object.Err != nil {
 			return fmt.Errorf("migration bucket list obj: list objects error %w", object.Err)
@@ -218,24 +273,14 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		isDir := object.Size == 0 && strings.HasSuffix(object.Key, "/")
 		logger.Debug().Str(log.Object, object.Key).Str("obj_version_id", object.VersionID).Bool("is_dir", isDir).Msg("migration bucket list obj: start processing object from the list")
 
-		var enqueueErr error
 		if p.Versioned && !isDir {
-			// The list-versions task lands on the list queue but fans out into copy tasks: admit it against the copy queue.
-			if unprocessed, uErr := s.queueSvc.UnprocessedCount(ctx, true, copyQueue); uErr != nil {
-				cancelList()
-				return fmt.Errorf("migration bucket list obj: unable to fetch queue stats: %w", uErr)
-			} else if unprocessed >= highWatermark {
-				setQueueBackpressured(copyQueue, true)
-				hitLimit = true
-				cancelList()
-				break
-			}
 			task := tasks.ListObjectVersionsPayload{
 				Bucket: p.Bucket,
 				Prefix: object.Key,
 			}
 			task.SetReplicationID(replicationID, p.Generation)
-			enqueueErr = s.queueSvc.EnqueueTask(ctx, task)
+			batch = append(batch, task)
+			batchVersions = true
 		} else {
 			task := tasks.MigrateObjCopyPayload{
 				Bucket: p.Bucket,
@@ -248,28 +293,25 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 				},
 			}
 			task.SetReplicationID(replicationID, p.Generation)
-			enqueueErr = s.queueSvc.EnqueueTask(ctx, task)
+			batch = append(batch, task)
 		}
-		if enqueueErr != nil {
-			var rl *dom.ErrRateLimitExceeded
-			if errors.As(enqueueErr, &rl) {
-				// broker admission rejected the task: queue is full, stop this page and defer
-				setQueueBackpressured(copyQueue, true)
-				hitLimit = true
+		batchKeys = append(batchKeys, object.Key)
+
+		if len(batch) >= listEnqueueBatchSize || count+len(batch) >= maxItems {
+			var err error
+			if stopped, err = flush(); err != nil {
+				cancelList()
+				return err
+			}
+			if stopped {
 				cancelList()
 				break
 			}
-			return fmt.Errorf("migration bucket list obj: unable to enqueue task for %q: %w", object.Key, enqueueErr)
 		}
-
-		lastObjName = object.Key
-		count++
-
-		// If page or capacity limit reached, stop listing and break
-		if count >= maxItems {
-			hitLimit = true
-			cancelList()
-			break
+	}
+	if !stopped {
+		if _, err = flush(); err != nil {
+			return err
 		}
 	}
 

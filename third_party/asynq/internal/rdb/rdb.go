@@ -1579,3 +1579,75 @@ func (r *RDB) SetOfQueues(ctx context.Context) (map[string]struct{}, error) {
 	}
 	return result, nil
 }
+
+// enqueueBatchCmd enqueues many pending tasks of ONE queue in a single round trip.
+// Admission is evaluated inside the script exactly like enqueueCmd: tasks whose ID
+// already exists are skipped (idempotent), and the first task that would exceed the
+// queue capacity stops the batch.
+//
+// KEYS[1..n] -> asynq:{<qname>}:t:<task_id>
+// KEYS[n+1]  -> asynq:{<qname>}:pending
+// KEYS[n+2]  -> asynq:queues
+// --
+// ARGV[1] -> current unix time in nsec
+// ARGV[2] -> queue name
+// ARGV[3+2(i-1)], ARGV[4+2(i-1)] -> encoded message, task ID of task i
+//
+// Returns the number of leading tasks that were handled (enqueued or already existing).
+var enqueueBatchCmd = redis.NewScript(queueCapacityLua + `
+local n = #KEYS - 2
+local capacity = queueCapacity("asynq:{" .. ARGV[2] .. "}:")
+local done = 0
+for i = 1, n do
+	if redis.call("EXISTS", KEYS[i]) == 0 then
+		if capacity and capacity < 1 then
+			break
+		end
+		redis.call("HSET", KEYS[i],
+		           "msg", ARGV[1 + 2 * i],
+		           "state", "pending",
+		           "pending_since", ARGV[1])
+		redis.call("LPUSH", KEYS[n + 1], ARGV[2 + 2 * i])
+		if capacity then capacity = capacity - 1 end
+	end
+	done = i
+end
+if done > 0 then
+	redis.call("SADD", KEYS[n + 2], ARGV[2])
+end
+return done
+`)
+
+// EnqueueBatch adds the given tasks (all of the same queue) to the pending list in one
+// round trip. It returns how many leading messages were handled. If the queue is full
+// the returned count is smaller than len(msgs) and the error wraps ErrQueueFull.
+func (r *RDB) EnqueueBatch(ctx context.Context, msgs []*base.TaskMessage) (int, error) {
+	var op errors.Op = "rdb.EnqueueBatch"
+	if len(msgs) == 0 {
+		return 0, nil
+	}
+	queue := msgs[0].Queue
+	keys := make([]string, 0, len(msgs)+2)
+	argv := make([]interface{}, 0, 2+2*len(msgs))
+	argv = append(argv, r.clock.Now().UnixNano(), queue)
+	for _, msg := range msgs {
+		if msg.Queue != queue {
+			return 0, errors.E(op, errors.Internal, "batch must contain tasks of a single queue")
+		}
+		encoded, err := base.EncodeMessage(msg)
+		if err != nil {
+			return 0, errors.E(op, errors.Unknown, fmt.Sprintf("cannot encode message: %v", err))
+		}
+		keys = append(keys, base.TaskKey(msg.Queue, msg.ID))
+		argv = append(argv, encoded, msg.ID)
+	}
+	keys = append(keys, base.PendingKey(queue), base.AllQueues)
+	n, err := r.runScriptWithErrorCode(ctx, op, enqueueBatchCmd, keys, argv...)
+	if err != nil {
+		return 0, err
+	}
+	if int(n) < len(msgs) {
+		return int(n), errors.E(op, errors.FailedPrecondition, errors.ErrQueueFull)
+	}
+	return int(n), nil
+}

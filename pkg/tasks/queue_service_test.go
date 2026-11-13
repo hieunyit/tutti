@@ -25,6 +25,7 @@ func Test_queueService_UnprocessedCount(t *testing.T) {
 		inspector.Close()
 	})
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 	queueName := "test-queue-is-empty"
@@ -124,6 +125,7 @@ func Test_queueService_RetriedTasksCountAsUnprocessed(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(c)
 	defer client.Close()
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 	queueName := "test-queue-is-empty-with-retry"
@@ -192,6 +194,7 @@ func Test_queueService_PauseResume(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(c)
 	defer client.Close()
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 	queueName := "test-queue-pause-resume"
@@ -250,6 +253,7 @@ func Test_queueService_Stats(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(c)
 	defer client.Close()
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 	queueName := "test-queue-stats"
@@ -305,6 +309,7 @@ func Test_queueService_Enqueue(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(c)
 	defer client.Close()
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 
@@ -342,6 +347,7 @@ func Test_queueService_StopPurge(t *testing.T) {
 	client := asynq.NewClientFromRedisClient(c)
 	defer client.Close()
 	qs := NewQueueService(client, inspector)
+	qs.SetUnprocessedCountCache(0, nil) // these tests assert exact live counts
 
 	r := require.New(t)
 	queueName, missingQueue := "test-queue-stop", "test-queue-stop-missing"
