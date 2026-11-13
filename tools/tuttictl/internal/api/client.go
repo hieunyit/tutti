@@ -56,24 +56,15 @@ func PrintGrpcError(err error) {
 	if err == nil {
 		return
 	}
-	// Extract the status from the error
 	st, ok := status.FromError(err)
 	if !ok {
 		logrus.WithError(err).Fatal("error from server")
 	}
-
-	log := logrus.WithError(err).
-		WithField("code", st.Code())
-
-	msg := ""
-
-	// Iterate over the details
+	log := logrus.WithError(err).WithField("code", st.Code())
 	for _, detail := range st.Details() {
 		switch d := detail.(type) {
 		case *errdetails.RequestInfo:
 			log = log.WithField("request_id", d.RequestId)
-		case *errdetails.ErrorInfo:
-			msg += d.Reason
 		case *errdetails.RetryInfo:
 			if d.RetryDelay != nil {
 				log = log.WithField("retry_delay", d.RetryDelay.AsDuration())
@@ -81,8 +72,23 @@ func PrintGrpcError(err error) {
 		default:
 		}
 	}
+	// Fatal exits with a non-zero status. For a conflict (409) the message is
+	// the server's human readable reason.
+	log.Fatal(FormatGrpcError(err))
+}
+
+// FormatGrpcError returns the text shown to the user: the server's ErrorInfo
+// reason (e.g. the overlap rule explanation of a 409) when present.
+func FormatGrpcError(err error) string {
+	st, _ := status.FromError(err)
+	msg := ""
+	for _, detail := range st.Details() {
+		if d, ok := detail.(*errdetails.ErrorInfo); ok {
+			msg += d.Reason
+		}
+	}
 	if msg == "" {
 		msg = "error from server: " + st.Message()
 	}
-	log.Fatal(msg)
+	return msg
 }

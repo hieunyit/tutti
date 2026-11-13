@@ -80,7 +80,27 @@ func ReplIDToString(in *pb.ReplicationID) string {
 	if in.ToBucket != nil && *in.ToBucket != "" {
 		to += ":" + *in.ToBucket
 	}
+	if in.User == "" {
+		return from + " -> " + to
+	}
 	return fmt.Sprintf("%s:%s->%s", in.User, from, to)
+}
+
+// AvailableBucketsLines renders `repl buckets` output: available buckets
+// sorted, then (if any) buckets covered by another replication or group.
+func AvailableBucketsLines(res *pb.AvailableBucketsResponse) []string {
+	buckets := slices.Clone(res.Buckets)
+	slices.Sort(buckets)
+	lines := buckets
+	if len(res.CoveredBuckets) > 0 {
+		covered := slices.Clone(res.CoveredBuckets)
+		slices.SortFunc(covered, func(a, b *pb.CoveredBucket) int { return strings.Compare(a.Bucket, b.Bucket) })
+		lines = append(lines, "", "covered (cannot be replicated):")
+		for _, c := range covered {
+			lines = append(lines, fmt.Sprintf("%s\t%s\t%s", c.Bucket, c.OwnerKind, c.OwnerId))
+		}
+	}
+	return lines
 }
 
 func ToProgress(in *pb.Replication) float64 {

@@ -40,7 +40,8 @@ var (
 var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "create replication policy",
-	Long: `Create replication policy.
+	Long: `Create replication policy. --user is optional: without it the replication is storage-level (whole storage A to B, using each storage connection account).
+
 
 User-level replication (all existing and future buckets for a user):
   tuttictl repl add --from main --to follower --user admin
@@ -95,7 +96,7 @@ func init() {
 	replCmd.AddCommand(addCmd)
 	addCmd.Flags().StringVarP(&raFrom, "from", "f", "", "source storage name")
 	addCmd.Flags().StringVarP(&raTo, "to", "t", "", "destination storage name")
-	addCmd.Flags().StringVarP(&raUser, "user", "u", "", "replication user")
+	addCmd.Flags().StringVarP(&raUser, "user", "u", "", "replication user; omit for storage-level replication")
 	addCmd.Flags().StringVar(&raEventSource, "event-source", "", "event source: proxy, s3-notification, webhook")
 	addCmd.Flags().StringVarP(&raFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
 	addCmd.Flags().StringVar(&raToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
@@ -104,9 +105,6 @@ func init() {
 		logrus.WithError(err).Fatal()
 	}
 	if err := addCmd.MarkFlagRequired("to"); err != nil {
-		logrus.WithError(err).Fatal()
-	}
-	if err := addCmd.MarkFlagRequired("user"); err != nil {
 		logrus.WithError(err).Fatal()
 	}
 }
