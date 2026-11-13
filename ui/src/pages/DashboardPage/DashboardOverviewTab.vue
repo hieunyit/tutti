@@ -13,36 +13,27 @@
   -  See the License for the specific language governing permissions and
   -  limitations under the License.
   -->
-
 <script setup lang="ts">
-  import { CButton, CSkeleton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
-  import { computed, onBeforeMount, onBeforeUnmount, ref } from 'vue';
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import i18nDashboard from './i18nDashboard';
   import DashboardAttention from '@/components/tutti/dashboard/DashboardAttention.vue';
   import DashboardEndpoint from '@/components/tutti/dashboard/DashboardEndpoint.vue';
   import DashboardKpis from '@/components/tutti/dashboard/DashboardKpis.vue';
   import DashboardReplications from '@/components/tutti/dashboard/DashboardReplications.vue';
   import DashboardStorages from '@/components/tutti/dashboard/DashboardStorages.vue';
-  import i18nDashboard from '@/components/tutti/dashboard/i18nDashboard';
-  import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
   import ProxyUptimeWidget from '@/components/chorus/home/ProxyUptimeWidget/ProxyUptimeWidget.vue';
   import WorkerUptimeWidget from '@/components/chorus/home/WorkerUptimeWidget/WorkerUptimeWidget.vue';
-  import PageHeader from '@/components/layout/PageHeader.vue';
-  import Callout from '@/components/ui/Callout.vue';
+  import { Callout } from '@/components/kit';
   import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
   import { useNow } from '@/utils/composables/useNow';
   import { HAS_PROMETHEUS } from '@/utils/constants/env';
   import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
-  import { formatRelative } from '@/utils/helpers/DateTimeHelper';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
   const { t } = useI18n({ messages: i18nDashboard });
-  const store = useTuttiDashboardStore();
   const {
-    isLoading,
-    isRefreshing,
-    lastUpdated,
     storages,
     replications,
     proxies,
@@ -50,12 +41,8 @@
     policies,
     totalRates,
     failedSources,
-    hasFatalError,
-  } = storeToRefs(store);
+  } = storeToRefs(useTuttiDashboardStore());
   const now = useNow(5000);
-
-  onBeforeMount(() => store.startPolling());
-  onBeforeUnmount(() => store.stopPolling());
 
   // only needed by the optional Prometheus uptime widgets
   const loadingState = ref(0);
@@ -69,14 +56,6 @@
 
     if (loadingState.value === 0) isLoadingFinished.value = true;
   }
-
-  const updatedText = computed(() =>
-    lastUpdated.value === null
-      ? t('notUpdated')
-      : t('liveUpdated', {
-          time: formatRelative(lastUpdated.value, undefined, now.value),
-        }),
-  );
 
   const storageRows = computed(() =>
     storages.value
@@ -136,145 +115,85 @@
 </script>
 
 <template>
-  <div class="chorus-home-page">
-    <PageHeader
-      :title="t('title')"
-      :description="t('description')"
-      :live-text="updatedText"
+  <div class="dashboard-overview">
+    <Callout
+      v-if="failedSources.length > 0"
+      tone="warning"
     >
-      <template #actions>
-        <CButton
-          :loading="isRefreshing"
-          @click="store.refresh()"
-        >
-          {{ t('refresh') }}
-        </CButton>
-      </template>
-    </PageHeader>
+      {{ partialErrorText }}
+    </Callout>
 
-    <ChorusListError
-      v-if="hasFatalError"
-      :title="t('errorTitle')"
-      :text="t('errorText')"
-      :action-text="t('retry')"
-      @retry="store.refresh()"
+    <DashboardAttention
+      v-if="attention.length > 0"
+      :items="attention"
     />
-
     <div
-      v-else-if="isLoading"
-      class="chorus-home-page__sections"
+      v-else-if="hasAllData"
+      class="dashboard-overview__ok"
+      role="status"
     >
-      <CSkeleton
-        :height="120"
-        :border-radius="12"
+      <span
+        class="dashboard-overview__ok-dot"
+        aria-hidden="true"
       />
-      <div class="chorus-home-page__skeleton-kpis">
-        <CSkeleton
-          v-for="n in 6"
-          :key="n"
-          :height="104"
-          :border-radius="12"
-        />
-      </div>
-      <div class="chorus-home-page__columns">
-        <CSkeleton
-          :height="240"
-          :border-radius="12"
-        />
-        <CSkeleton
-          :height="240"
-          :border-radius="12"
-        />
-      </div>
+      {{ t('allGood') }}
     </div>
 
-    <div
-      v-else
-      class="chorus-home-page__sections"
-    >
-      <Callout
-        v-if="failedSources.length > 0"
-        tone="warning"
-      >
-        {{ partialErrorText }}
-      </Callout>
+    <DashboardKpis
+      :storages="storageRows"
+      :replications="breakdown"
+      :proxies="reporting"
+      :traffic="traffic"
+    />
 
-      <DashboardAttention
-        v-if="attention.length > 0"
-        :items="attention"
-      />
-      <div
-        v-else-if="hasAllData"
-        class="chorus-home-page__ok"
-        role="status"
-      >
-        <span
-          class="chorus-home-page__ok-dot"
-          aria-hidden="true"
-        />
-        {{ t('allGood') }}
-      </div>
-
-      <DashboardKpis
+    <div class="dashboard-overview__columns">
+      <DashboardStorages
         :storages="storageRows"
-        :replications="breakdown"
-        :proxies="reporting"
-        :traffic="traffic"
+        :rates="storageRates"
+        :p95="p95"
       />
+      <DashboardReplications
+        v-if="breakdown && replications"
+        :breakdown="breakdown"
+        :replications="replications"
+      />
+    </div>
 
-      <div class="chorus-home-page__columns">
-        <DashboardStorages
-          :storages="storageRows"
-          :rates="storageRates"
-          :p95="p95"
-        />
-        <DashboardReplications
-          v-if="breakdown && replications"
-          :breakdown="breakdown"
-          :replications="replications"
-        />
-      </div>
+    <DashboardEndpoint />
 
-      <DashboardEndpoint />
-
-      <div
-        v-if="HAS_PROMETHEUS"
-        class="chorus-home-page__uptime"
-      >
-        <ProxyUptimeWidget
-          :is-page-loading="isUptimeLoading"
-          :is-enabled="HAS_PROMETHEUS"
-          @loading="setLoadingState"
-        />
-        <WorkerUptimeWidget
-          :is-page-loading="isUptimeLoading"
-          :is-enabled="HAS_PROMETHEUS"
-          @loading="setLoadingState"
-        />
-      </div>
+    <div
+      v-if="HAS_PROMETHEUS"
+      class="dashboard-overview__uptime"
+    >
+      <ProxyUptimeWidget
+        :is-page-loading="isUptimeLoading"
+        :is-enabled="HAS_PROMETHEUS"
+        @loading="setLoadingState"
+      />
+      <WorkerUptimeWidget
+        :is-page-loading="isUptimeLoading"
+        :is-enabled="HAS_PROMETHEUS"
+        @loading="setLoadingState"
+      />
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-  .chorus-home-page {
-    max-width: 1600px;
-
-    &__sections {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+  .dashboard-overview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-5);
 
     &__ok {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px var(--tt-card-padding);
+      gap: var(--tt-space-2);
+      padding: var(--tt-space-3) var(--tt-card-padding);
       border: 1px solid var(--tt-border);
       border-radius: var(--tt-radius-card);
       background-color: var(--tt-surface);
-      font-size: 14px;
+      font-size: var(--tt-text-md);
       color: var(--tt-text);
     }
 
@@ -285,23 +204,17 @@
       background-color: var(--tt-success-solid);
     }
 
-    &__skeleton-kpis {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 16px;
-    }
-
     &__columns {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
-      gap: 16px;
+      gap: var(--tt-space-4);
       align-items: start;
     }
 
     &__uptime {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-      gap: 16px;
+      gap: var(--tt-space-4);
 
       > :deep(*) {
         grid-column: auto !important;

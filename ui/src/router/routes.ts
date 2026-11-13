@@ -17,10 +17,8 @@
 import type { LocationQuery, RouteLocation, RouteRecordRaw } from 'vue-router';
 import { AUDIT_LOG_ROUTE_NAME } from '@/utils/types/audit';
 import { RouteName } from '@/utils/types/router';
-// WP1: swap this single line for the new Dashboard page (spec 4.1); until
-// then /dashboard renders the existing home page.
 const TuttiDashboardPage = () =>
-  import('@/pages/TuttiHomePage/TuttiHomePage.vue');
+  import('@/pages/DashboardPage/DashboardPage.vue');
 const DashboardView = () =>
   import('@/components/dashboard/DashboardView/DashboardView.vue');
 const TuttiStoragesPage = () =>

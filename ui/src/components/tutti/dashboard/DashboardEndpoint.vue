@@ -19,7 +19,7 @@
   import { onBeforeMount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
-  import CopyField from '@/components/ui/CopyField.vue';
+  import { CopyValue } from '@/components/kit';
   import { ChorusService } from '@/services/ChorusService';
   import { useAuthStore } from '@/stores/authStore';
   import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
@@ -81,7 +81,7 @@
       class="dashboard-endpoint__note"
       >{{ t('endpointError') }}</span
     >
-    <CopyField
+    <CopyValue
       v-else-if="address"
       :value="address"
       :label="t('endpointTitle')"

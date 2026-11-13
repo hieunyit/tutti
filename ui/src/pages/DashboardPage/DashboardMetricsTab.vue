@@ -15,20 +15,17 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CSkeleton } from '@clyso/clyso-ui-kit';
+  import { NButton } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useMetricsCharts } from './useMetricsCharts';
   import i18nMonitoring from '@/components/tutti/monitoring/i18nMonitoring';
   import MonitoringBreakdown from '@/components/tutti/monitoring/MonitoringBreakdown.vue';
   import MonitoringKpiTiles from '@/components/tutti/monitoring/MonitoringKpiTiles.vue';
   import MonitoringReplication from '@/components/tutti/monitoring/MonitoringReplication.vue';
-  import TrafficLineChart, {
-    type TrafficChartLine,
-  } from '@/components/tutti/monitoring/TrafficLineChart.vue';
-  import ChorusListError from '@/components/chorus/common/ChorusListError/ChorusListError.vue';
-  import PageHeader from '@/components/layout/PageHeader.vue';
-  import EmptyState from '@/components/ui/EmptyState.vue';
+  import TrafficLineChart from '@/components/tutti/monitoring/TrafficLineChart.vue';
+  import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/kit';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
   import { useNow } from '@/utils/composables/useNow';
   import { formatRelative } from '@/utils/helpers/DateTimeHelper';
@@ -36,11 +33,7 @@
     RANGE_BUCKET_MS,
     RANGE_MS,
     STATS_RANGES,
-    buildSeries,
-    hasValues,
-    pickers,
   } from '@/utils/helpers/MonitoringHelper';
-  import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 
   const { t } = useI18n({ messages: i18nMonitoring });
   const store = useTuttiMonitoringStore();
@@ -89,194 +82,23 @@
   const rangeLabel = computed(() => t(`rangeText${range.value}`));
   const baseLabel = computed(() => t(`rangeAgo${range.value}`));
 
-  const line = (
-    key: string,
-    label: string,
-    colorVar: string,
-    fallbackColor: string,
-    dash: number[],
-    pick: TrafficChartLine['pick'],
-  ): TrafficChartLine => ({ key, label, colorVar, fallbackColor, dash, pick });
-
-  const SOLID: number[] = [];
-  const DASHED = [6, 3];
-  const DOTTED = [2, 3];
-  const DASH_DOT = [8, 3, 2, 3];
-
-  /** read and write always; other classes only when they have traffic */
-  const classLines = computed<TrafficChartLine[]>(() => {
-    const all = [
-      line(
-        'read',
-        t('seriesRead'),
-        '--tt-chart-1',
-        '#2952cc',
-        SOLID,
-        pickers.byClass('read'),
-      ),
-      line(
-        'write',
-        t('seriesWrite'),
-        '--tt-chart-2',
-        '#e8590c',
-        DASHED,
-        pickers.byClass('write'),
-      ),
-      line(
-        'exists',
-        t('seriesExists'),
-        '--tt-chart-3',
-        '#0e9384',
-        DOTTED,
-        pickers.byClass('exists'),
-      ),
-      line(
-        'manage',
-        t('seriesManage'),
-        '--tt-chart-4',
-        '#7a5af8',
-        DASH_DOT,
-        pickers.byClass('manage'),
-      ),
-      line(
-        'other',
-        t('seriesOther'),
-        '--tt-chart-5',
-        '#667085',
-        [1, 3],
-        pickers.byClass('other'),
-      ),
-    ];
-
-    return all.filter(
-      (l, i) =>
-        i < 2 || hasValues(buildSeries(points.value, l.pick, bucketMs.value)),
-    );
-  });
-
-  const latencyLines = computed<TrafficChartLine[]>(() => [
-    line(
-      'avg',
-      t('seriesAvg'),
-      '--tt-chart-1',
-      '#2952cc',
-      SOLID,
-      pickers.latencyAvg,
-    ),
-    line(
-      'p95',
-      t('seriesP95'),
-      '--tt-chart-2',
-      '#e8590c',
-      DASHED,
-      pickers.latencyP95,
-    ),
-  ]);
-
-  const throughputLines = computed<TrafficChartLine[]>(() => [
-    line(
-      'out',
-      t('seriesOut'),
-      '--tt-chart-1',
-      '#2952cc',
-      SOLID,
-      pickers.bytesOut,
-    ),
-    line(
-      'in',
-      t('seriesIn'),
-      '--tt-chart-2',
-      '#e8590c',
-      DASHED,
-      pickers.bytesIn,
-    ),
-  ]);
-
-  const errorLines = computed<TrafficChartLine[]>(() => [
-    line(
-      '5xx',
-      t('series5xx'),
-      '--tt-danger',
-      '#b42318',
-      SOLID,
-      pickers.status5xx,
-    ),
-    line(
-      'ff',
-      t('seriesFailFast'),
-      '--tt-chart-2',
-      '#e8590c',
-      DASHED,
-      pickers.failFast,
-    ),
-    line(
-      '4xx',
-      t('series4xx'),
-      '--tt-chart-1',
-      '#2952cc',
-      DOTTED,
-      pickers.status4xx,
-    ),
-    line(
-      'denied',
-      t('seriesAccessDenied'),
-      '--tt-chart-5',
-      '#667085',
-      DASH_DOT,
-      pickers.accessDenied,
-    ),
-  ]);
-
-  const charts = computed(() => [
-    {
-      key: 'requests',
-      title: t('chartRequestsByClass'),
-      lines: classLines.value,
-      kind: 'rate' as const,
-      format: TrafficStatsHelper.formatRate,
-    },
-    {
-      key: 'latency',
-      title: t('chartLatency'),
-      lines: latencyLines.value,
-      kind: 'latency' as const,
-      format: TrafficStatsHelper.formatLatencyMs,
-    },
-    {
-      key: 'throughput',
-      title: t('chartThroughput'),
-      lines: throughputLines.value,
-      kind: 'bytes' as const,
-      format: TrafficStatsHelper.formatBytesPerSecond,
-    },
-    {
-      key: 'errors',
-      title: t('chartErrors'),
-      lines: errorLines.value,
-      kind: 'rate' as const,
-      format: TrafficStatsHelper.formatRate,
-    },
-  ]);
+  const { charts } = useMetricsCharts(points, bucketMs);
 </script>
 
 <template>
-  <div class="monitoring-page">
-    <PageHeader
-      :title="t('title')"
-      :description="t('description')"
-    >
-      <template #live>
+  <div class="dashboard-metrics">
+    <div class="dashboard-metrics__toolbar">
+      <span class="dashboard-metrics__live">
         <span
-          class="monitoring-page__dot"
-          :class="`monitoring-page__dot--${liveState}`"
+          class="dashboard-metrics__dot"
+          :class="`dashboard-metrics__dot--${liveState}`"
           aria-hidden="true"
         />
         {{ liveText }}
-      </template>
-
-      <template #actions>
+      </span>
+      <div class="dashboard-metrics__controls">
         <div
-          class="monitoring-page__range"
+          class="dashboard-metrics__range"
           role="group"
           :aria-label="t('rangeLabel')"
         >
@@ -284,57 +106,39 @@
             v-for="r in STATS_RANGES"
             :key="r"
             type="button"
-            class="monitoring-page__range-button"
+            class="dashboard-metrics__range-button"
             :aria-pressed="r === range"
             @click="store.setRange(r)"
           >
             {{ t(`range${r}`) }}
           </button>
         </div>
-        <CButton @click="isPaused ? store.resume() : store.pause()">
+        <NButton @click="isPaused ? store.resume() : store.pause()">
           {{ isPaused ? t('resume') : t('pause') }}
-        </CButton>
-      </template>
-    </PageHeader>
-
-    <ChorusListError
-      v-if="showError"
-      :title="t('errorTitle')"
-      :text="t('errorText')"
-      :action-text="t('retry')"
-      @retry="store.start()"
-    />
-
-    <div
-      v-else-if="isLoading"
-      class="monitoring-page__sections"
-    >
-      <div class="monitoring-page__skeleton">
-        <CSkeleton
-          v-for="n in 3"
-          :key="n"
-          :height="110"
-          :border-radius="12"
-        />
-      </div>
-      <div class="monitoring-page__charts">
-        <CSkeleton
-          v-for="n in 4"
-          :key="n"
-          :height="280"
-          :border-radius="12"
-        />
+        </NButton>
       </div>
     </div>
 
+    <ErrorBlock
+      v-if="showError"
+      :title="t('errorTitle')"
+      :description="t('errorText')"
+      @retry="store.start()"
+    />
+
+    <LoadingBlock
+      v-else-if="isLoading"
+      :rows="6"
+    />
+
     <div
       v-else
-      class="monitoring-page__sections"
+      class="dashboard-metrics__sections"
     >
-      <EmptyState
+      <EmptyBlock
         v-if="proxies.length === 0 && points.length === 0"
         :title="t('noProxiesTitle')"
-        :text="t('noProxiesText')"
+        :description="t('noProxiesText')"
       />
 
       <template v-else>
@@ -345,7 +149,7 @@
         />
 
         <section
-          class="monitoring-page__charts"
+          class="dashboard-metrics__charts"
           :aria-label="t('chartsSection')"
         >
           <TrafficLineChart
@@ -372,25 +176,43 @@
 </template>
 
 <style lang="scss" scoped>
-  .monitoring-page {
-    max-width: 1600px;
+  .dashboard-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-4);
+
+    &__toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--tt-space-3);
+    }
+
+    &__live {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--tt-space-2);
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-2);
+    }
+
+    &__controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--tt-space-2);
+    }
 
     &__sections {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-    }
-
-    &__skeleton {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-      gap: 16px;
+      gap: var(--tt-space-5);
     }
 
     &__charts {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: var(--tt-space-4);
 
       @media (width <= 900px) {
         grid-template-columns: minmax(0, 1fr);
@@ -415,7 +237,7 @@
     &__range {
       display: flex;
       overflow: hidden;
-      font-size: 13px;
+      font-size: var(--tt-text-sm);
       background-color: var(--tt-surface);
       border: 1px solid var(--tt-border-strong);
       border-radius: var(--tt-radius-control);
@@ -423,7 +245,7 @@
 
     &__range-button {
       height: 34px;
-      padding: 0 12px;
+      padding: 0 var(--tt-space-3);
       font: inherit;
       color: var(--tt-text);
       cursor: pointer;
@@ -439,7 +261,7 @@
       }
 
       &[aria-pressed='true'] {
-        font-weight: 600;
+        font-weight: var(--tt-weight-strong);
         background-color: var(--tt-accent-subtle);
         color: var(--tt-accent);
       }

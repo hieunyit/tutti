@@ -18,8 +18,7 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
-  import KpiCard from '@/components/ui/KpiCard.vue';
-  import type { Tone } from '@/components/ui/status';
+  import { StatTile, type StatusTone } from '@/components/kit';
   import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
   import type {
     ProxyReporting,
@@ -56,7 +55,7 @@
     const healthy = rows.filter((r) => r.state === 'healthy').length;
     const down = rows.filter((r) => r.state === 'unavailable').length;
     const unknown = rows.filter((r) => r.state === 'unknown').length;
-    const tone: Tone | undefined = down > 0 ? 'danger' : undefined;
+    const tone: StatusTone | undefined = down > 0 ? 'danger' : undefined;
 
     return {
       value: `${number(healthy)} / ${number(rows.length)}`,
@@ -83,7 +82,7 @@
     return {
       value: `${number(r.active)} ${t('kpiReplicationsActive')}`,
       hint: t('kpiReplicationsPausedHint', { n: number(r.paused) }),
-      tone: (r.paused > 0 ? 'warning' : undefined) as Tone | undefined,
+      tone: (r.paused > 0 ? 'warning' : undefined) as StatusTone | undefined,
     };
   });
 
@@ -95,7 +94,7 @@
     return {
       value: number(r.totalLag),
       hint: r.totalLag > 0 ? t('kpiLagHint') : t('kpiLagNone'),
-      tone: (r.totalLag > 0 ? 'warning' : undefined) as Tone | undefined,
+      tone: (r.totalLag > 0 ? 'warning' : undefined) as StatusTone | undefined,
     };
   });
 
@@ -122,7 +121,7 @@
         ? 'danger'
         : tr.errorPercent5xx >= 1
           ? 'warning'
-          : undefined) as Tone | undefined,
+          : undefined) as StatusTone | undefined,
     };
   });
 
@@ -134,7 +133,9 @@
     return {
       value: `${number(p.reporting)} / ${number(p.total)}`,
       hint: t('kpiProxiesHint'),
-      tone: (p.reporting < p.total ? 'warning' : undefined) as Tone | undefined,
+      tone: (p.reporting < p.total ? 'warning' : undefined) as
+        | StatusTone
+        | undefined,
     };
   });
 </script>
@@ -144,44 +145,44 @@
     class="dashboard-kpis"
     :aria-label="t('kpiLabel')"
   >
-    <KpiCard
+    <StatTile
       :label="t('kpiStorages')"
       :value="storagesCard.value"
-      :sub="storagesCard.hint"
+      :hint="storagesCard.hint"
       :tone="storagesCard.tone"
       :to="{ name: RouteName.CHORUS_STORAGES }"
     />
-    <KpiCard
+    <StatTile
       :label="t('kpiReplications')"
       :value="replicationsCard.value"
-      :sub="replicationsCard.hint"
+      :hint="replicationsCard.hint"
       :tone="replicationsCard.tone"
       :to="{ name: RouteName.CHORUS_REPLICATION }"
     />
-    <KpiCard
+    <StatTile
       :label="t('kpiLag')"
       :value="lagCard.value"
-      :sub="lagCard.hint"
+      :hint="lagCard.hint"
       :tone="lagCard.tone"
       :to="{ name: RouteName.CHORUS_REPLICATION }"
     />
-    <KpiCard
+    <StatTile
       :label="t('kpiRequests')"
       :value="requestsCard.value"
-      :sub="requestsCard.hint"
-      :to="{ name: RouteName.CHORUS_MONITORING }"
+      :hint="requestsCard.hint"
+      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'metrics' } }"
     />
-    <KpiCard
+    <StatTile
       :label="t('kpiErrors')"
       :value="errorsCard.value"
-      :sub="errorsCard.hint"
+      :hint="errorsCard.hint"
       :tone="errorsCard.tone"
-      :to="{ name: RouteName.CHORUS_MONITORING }"
+      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'metrics' } }"
     />
-    <KpiCard
+    <StatTile
       :label="t('kpiProxies')"
       :value="proxiesCard.value"
-      :sub="proxiesCard.hint"
+      :hint="proxiesCard.hint"
       :tone="proxiesCard.tone"
       :to="{ name: RouteName.CHORUS_STORAGES }"
     />
