@@ -17,10 +17,10 @@
 <script setup lang="ts">
   import { computed, defineAsyncComponent } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
+  import { PageShell } from '@/components/kit';
   import DocsGuides from '@/components/tutti/docs/DocsGuides.vue';
   import i18nDocs from '@/components/tutti/docs/i18nDocs';
-  import PageHeader from '@/components/layout/PageHeader.vue';
   import { RouteName } from '@/utils/types/router';
 
   // Swagger UI and the spec are only fetched on the API reference route
@@ -30,81 +30,41 @@
 
   const { t } = useI18n({ messages: i18nDocs });
   const route = useRoute();
+  const router = useRouter();
   const isApi = computed(() => route.name === RouteName.TUTTI_API_REFERENCE);
+  const activeTab = computed(() => (isApi.value ? 'api' : 'guides'));
+  const tabs = computed(() => [
+    { key: 'guides', label: t('tabGuides') },
+    { key: 'api', label: t('tabApi') },
+  ]);
   const slug = computed(() =>
     typeof route.params.slug === 'string' && route.params.slug.trim() !== ''
       ? route.params.slug
       : undefined,
   );
+
+  function selectTab(key: string) {
+    router.push({
+      name:
+        key === 'api' ? RouteName.TUTTI_API_REFERENCE : RouteName.TUTTI_DOCS,
+    });
+  }
 </script>
 
 <template>
-  <div class="docs-page">
-    <PageHeader
-      :title="t('title')"
-      :description="isApi ? t('apiDescription') : t('description')"
-    >
-      <template #actions>
-        <nav
-          class="docs-page__tabs"
-          :aria-label="t('sections')"
-        >
-          <RouterLink
-            class="docs-page__tab"
-            :to="{ name: RouteName.TUTTI_DOCS }"
-            :aria-current="isApi ? undefined : 'page'"
-            :class="{ 'docs-page__tab--active': !isApi }"
-          >
-            {{ t('tabGuides') }}
-          </RouterLink>
-          <RouterLink
-            class="docs-page__tab"
-            :to="{ name: RouteName.TUTTI_API_REFERENCE }"
-            :aria-current="isApi ? 'page' : undefined"
-            :class="{ 'docs-page__tab--active': isApi }"
-          >
-            {{ t('tabApi') }}
-          </RouterLink>
-        </nav>
-      </template>
-    </PageHeader>
-
+  <PageShell
+    class="docs-page"
+    :title="t('title')"
+    :description="isApi ? t('apiDescription') : t('description')"
+    state="ready"
+    :tabs="tabs"
+    :active-tab="activeTab"
+    @update:active-tab="selectTab"
+  >
     <DocsApiReference v-if="isApi" />
     <DocsGuides
       v-else
       :slug="slug"
     />
-  </div>
+  </PageShell>
 </template>
-
-<style lang="scss" scoped>
-  .docs-page {
-    max-width: 1600px;
-
-    &__tabs {
-      display: flex;
-      gap: 4px;
-      padding: 3px;
-      background-color: var(--tt-disabled-bg);
-      border-radius: 10px;
-    }
-
-    &__tab {
-      display: inline-flex;
-      align-items: center;
-      height: 32px;
-      padding: 0 14px;
-      font-size: 13px;
-      color: var(--tt-text-2);
-      text-decoration: none;
-      border-radius: var(--tt-radius-control);
-
-      &--active {
-        font-weight: 600;
-        color: var(--tt-text);
-        background-color: var(--tt-surface);
-        box-shadow: var(--tt-shadow);
-      }
-    }
-  }
-</style>

@@ -15,12 +15,11 @@
   -->
 
 <script setup lang="ts">
-  import { CSkeleton } from '@clyso/clyso-ui-kit';
   import { onBeforeUnmount, onMounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { loadSpec } from './docsSources';
   import i18nDocs from './i18nDocs';
-  import EmptyState from '@/components/ui/EmptyState.vue';
+  import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/kit';
   import { useAuthStore } from '@/stores/authStore';
   import { API_BASE_URL, API_PREFIX } from '@/utils/constants/env';
   import { prefixApiUrl, roleForPath } from '@/utils/helpers/ApiDocsHelper';
@@ -39,6 +38,8 @@
   }
 
   async function init() {
+    status.value = 'loading';
+
     const pending = loadSpec();
 
     if (!pending) {
@@ -128,6 +129,10 @@
     }
   }
 
+  function retry() {
+    void init();
+  }
+
   function downloadSpec() {
     if (!spec) return;
 
@@ -170,29 +175,22 @@
     </header>
     <p class="docs-api__hint">{{ t('apiHint') }}</p>
 
-    <div
+    <LoadingBlock
       v-if="status === 'loading'"
       class="docs-api__loading"
-      role="status"
-      :aria-label="t('apiLoading')"
-    >
-      <CSkeleton
-        v-for="n in 6"
-        :key="n"
-        :height="40"
-        :border-radius="8"
-      />
-    </div>
-
-    <EmptyState
+      :title="t('apiLoading')"
+      :rows="8"
+    />
+    <EmptyBlock
       v-else-if="status === 'missing'"
       :title="t('apiNotBundledTitle')"
-      :text="t('apiNotBundledText')"
+      :description="t('apiNotBundledText')"
     />
-    <EmptyState
+    <ErrorBlock
       v-else-if="status === 'failed'"
       :title="t('apiFailed')"
-      text=""
+      :retry-label="t('retry')"
+      @retry="retry"
     />
 
     <div
