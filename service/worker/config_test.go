@@ -19,6 +19,7 @@ package worker
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -112,4 +113,14 @@ func TestHelmEnvOverrides(t *testing.T) {
 		r.NoError(err)
 		r.Equal("encryption-key!!", conf.Storage.DynamicCredentials.MasterPassword)
 	})
+}
+
+func TestSessionTimeoutEnvOverrides(t *testing.T) {
+	r := require.New(t)
+	t.Setenv("CFG_API_AUTH_SESSIONIDLETIMEOUT", "2m")
+	t.Setenv("CFG_API_AUTH_SESSIONMAXLIFETIME", "5m")
+	conf, err := GetConfig()
+	r.NoError(err)
+	r.Equal(2*time.Minute, conf.Api.Auth.IdleTimeout())
+	r.Equal(5*time.Minute, conf.Api.Auth.MaxLifetime())
 }

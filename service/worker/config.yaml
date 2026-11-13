@@ -26,8 +26,8 @@ api:
   secure: false
   auth:
     enabled: false # set true to require login (Bearer session token) for the management api. Disabled by default for upgrade compatibility
-    # sessionIdleTimeout: 30m  # end session after this long without a refresh (default 30m)
-    # sessionMaxLifetime: 24h  # absolute cap from login (default 24h); legacy sessionTTL is used as this when unset
+    sessionIdleTimeout: 0s  # 0 = default 30m; end session after this long without a refresh. Key must exist for CFG_API_AUTH_SESSIONIDLETIMEOUT
+    sessionMaxLifetime: 0s  # 0 = default 24h absolute cap from login; legacy sessionTTL is used when unset. CFG_API_AUTH_SESSIONMAXLIFETIME
     # users: bcrypt hashes; generate with: htpasswd -nbBC 10 "" 'password' | tr -d ':\n'
     # role admin: all operations; viewer: read-only operations
     # trustedProxies: CIDRs/IPs of reverse proxies (e.g. the nginx serving the web UI) whose
