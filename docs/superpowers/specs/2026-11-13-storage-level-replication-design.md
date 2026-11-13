@@ -31,9 +31,15 @@ Tuyệt đối tránh: tạo dở dang (một phần replication) khi phát hi�
 - Phản hồi không bao giờ trả `$service`; user rỗng trả là chuỗi rỗng.
 
 ### 4.4 Luật chống chồng chéo chung (cốt lõi)
-Định nghĩa **phạm vi (scope)** của một đối tượng: tập storage tham gia (nguồn + đích) và tập bucket (liệt kê cụ thể hoặc "tất cả"). Mọi đối tượng sinh replication có scope: Protection group (nhóm hạ tầng hoặc theo bucket), replication cấp storage, replication theo user, replication theo bucket.
+Định nghĩa **phạm vi (scope)** của một đối tượng: một tập **cạnh có hướng** `from→to` giữa các storage và một tập bucket (liệt kê cụ thể hoặc "tất cả"). Mọi đối tượng sinh replication đều có scope: Protection group, replication cấp storage, replication theo user, replication theo bucket. Một group với các thành viên M đóng góp **mọi cạnh có hướng giữa các thành viên** (vì switchover có thể đảo primary), không chỉ các cạnh của primary hiện tại.
 
-Hai scope **chồng** khi cùng thỏa: (1) chung ít nhất một storage; (2) tập bucket giao nhau, hoặc một bên là "tất cả". Danh tính user không làm hai scope tách rời, vì tên bucket S3 định danh dữ liệu vật lý (đúng như chú thích hiện có ở `Group.Overlaps`, `model.go:305`). Muốn một nguồn copy sang nhiều đích cho cùng bucket thì dùng **một** group nhiều thành viên, không dùng nhiều replication rời.
+Hai scope **chồng** khi tồn tại một cạnh `e1` của bên này và một cạnh `e2` của bên kia thỏa **một** trong hai:
+1. **Cùng đích:** `e1.to == e2.to` (gồm cả trùng hẳn `A→B` với `A→B`; hai nguồn cùng ghi vào một đích sẽ ghi đè lẫn nhau).
+2. **Ngược chiều:** `e1.from == e2.to` và `e1.to == e2.from` (`A→B` với `B→A` sẽ copy qua lại mãi).
+
+**và** tập bucket giao nhau (hoặc một bên là "tất cả"). Danh tính user không làm hai scope tách rời, vì tên bucket S3 định danh dữ liệu vật lý.
+
+Được phép (không coi là chồng): cùng nguồn khác đích (`A→B` và `A→C` cho cùng bucket, tức fan-out bằng replication rời), và chuỗi nối tiếp (`A→B` rồi `B→C`). Hai replication khác đích và không ngược chiều (ví dụ `A→B` và `C→D`) không ảnh hưởng nhau.
 
 Hành vi:
 1. Kiểm tra chồng chạy **trước khi tạo bất cứ thứ gì**, và nằm trong cùng khóa (một khóa phạm vi toàn cục cho thao tác tạo) với việc ghi để hai lần tạo đồng thời không cùng lọt qua. Phát hiện chồng thì dừng hẳn, không để lại trạng thái dở dang, trả `AlreadyExists` kèm tên đối tượng và bucket cụ thể đang bị chiếm.
@@ -60,7 +66,7 @@ Dữ liệu đã có ở cả A và B khi tạo: luật chỉ xét phạm vi kha
 
 ## 6. Cách kiểm chứng
 1. Test round-trip `AsString`/`UniversalIDFromString` cho user rỗng ở mọi dạng.
-2. Test chồng chéo (bảng chân trị): tất cả×tất cả, tất cả×bucket, bucket giao nhau, bucket rời, storage không chung; group×group, group×replication, replication×replication, cấp storage×theo user; thông báo nêu đúng đối tượng và bucket.
+2. Test chồng chéo (bảng chân trị): tất cả×tất cả, tất cả×bucket, bucket giao nhau, bucket rời; **cùng đích** (`A→B`/`A→B`, `A→B`/`C→B`) bị chặn; **ngược chiều** (`A→B`/`B→A`) bị chặn; **cùng nguồn khác đích** (`A→B`/`A→C`) và **chuỗi** (`A→B`/`B→C`) được phép; group×group, group×replication (cạnh của group là mọi cặp có hướng giữa thành viên), replication×replication, cấp storage×theo user; thông báo nêu đúng đối tượng và bucket.
 3. Test không dở dang: lỗi chồng không để lại khóa/policy nào; hai lần tạo đồng thời cùng bucket chỉ một lần thành công.
 4. Test worker copy và seed với user rỗng bằng tài khoản kết nối; test object cùng tên khác nội dung, object chỉ có ở B.
 5. Test proxy: ghi vào bucket thuộc replication cấp storage kích hoạt đúng một replication.
