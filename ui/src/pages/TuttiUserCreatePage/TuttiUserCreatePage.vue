@@ -45,11 +45,15 @@
     () => store.dynamicEnabled && !store.hasError && !ctl.busy.value,
   );
 
+  let createdName = '';
+
   async function finish() {
     if (!canCreate.value) return;
 
     try {
-      await ctl.submit();
+      const { name } = await ctl.submit();
+
+      createdName = name;
 
       // no secret to show: go straight to the user
       if (!ctl.created.value?.secretAccessKey) await openUser();
@@ -59,7 +63,7 @@
   }
 
   async function openUser() {
-    const name = ctl.form.value.name;
+    const name = createdName || ctl.form.value.name;
 
     ctl.dismissSecret();
     await router.push({

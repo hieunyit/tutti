@@ -76,6 +76,21 @@ describe('useUserCreate', () => {
     expect(window.location.href).not.toContain(SECRET);
   });
 
+  it('submit returns the name and keeps the draft until the secret is dismissed', async () => {
+    const { form, submit, dismissSecret } = useUserCreate();
+
+    form.value.name = 'alice';
+
+    const result = await submit();
+
+    expect(result.name).toBe('alice');
+    expect(form.value.name).toBe('alice');
+
+    dismissSecret();
+
+    expect(form.value.name).toBe('');
+  });
+
   it('custom mode needs valid bucket patterns', () => {
     const { form, step, canNext } = useUserCreate();
 

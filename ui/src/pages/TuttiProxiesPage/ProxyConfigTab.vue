@@ -84,7 +84,12 @@
     proxiesStore.load();
   }
 
-  onMounted(() => store.load());
+  onMounted(() => {
+    store.load();
+
+    // deep links (/proxies?tab=config) must show the detected groups too
+    if (!proxiesStore.loaded) proxiesStore.load();
+  });
 </script>
 
 <template>
@@ -93,7 +98,7 @@
     <ErrorBlock
       v-else-if="loadError && !config"
       :description="t('loadError')"
-      @retry="store.load()"
+      @retry="store.load(true)"
     />
     <template v-else>
       <p class="config-tab__hint">
@@ -139,7 +144,7 @@
         {{ t('fleetConflict') }}
         <NButton
           size="small"
-          @click="store.load()"
+          @click="store.load(true)"
           >{{ t('fleetReload') }}</NButton
         >
       </Callout>

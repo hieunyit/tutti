@@ -173,7 +173,13 @@ export const useTuttiProxyFleetConfigStore = defineStore(
       draft.value = toDraft(next);
     }
 
-    async function load() {
+    /**
+     * Fetch the fleet config. Unsaved edits survive a plain load (e.g. the
+     * tab being re-mounted); `force` is the explicit reload that drops them.
+     */
+    async function load(force = false) {
+      if (!force && dirty.value) return;
+
       loading.value = true;
       conflict.value = false;
 

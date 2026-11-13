@@ -276,8 +276,12 @@ export function useUserCreate() {
     ]);
   }
 
+  let submitted = false;
+
   /** Creates the user once; the secret stays in `created` (memory only). */
-  async function submit(): Promise<{ secret: string }> {
+  async function submit(): Promise<{ name: string; secret: string }> {
+    const name = form.value.name;
+
     busy.value = true;
     error.value = '';
 
@@ -296,9 +300,11 @@ export function useUserCreate() {
       });
 
       created.value = result.accessKey ?? null;
-      clearWizardDraft(USER_CREATE_DRAFT_KEY);
+      // the draft stays until dismissSecret(): clearing it now would reset the
+      // form and bounce the wizard to step 0 behind the one-time secret modal
+      submitted = true;
 
-      return { secret: result.accessKey?.secretAccessKey ?? '' };
+      return { name, secret: result.accessKey?.secretAccessKey ?? '' };
     } finally {
       busy.value = false;
     }
@@ -306,6 +312,11 @@ export function useUserCreate() {
 
   function dismissSecret() {
     created.value = null;
+
+    if (submitted) {
+      submitted = false;
+      clearWizardDraft(USER_CREATE_DRAFT_KEY);
+    }
   }
 
   return {

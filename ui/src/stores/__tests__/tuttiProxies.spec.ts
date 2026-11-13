@@ -90,6 +90,23 @@ describe('tuttiProxyFleetConfigStore', () => {
     expect(store.dirty).toBe(false);
   });
 
+  it('keeps unsaved edits on a plain load and drops them on a forced one', async () => {
+    vi.mocked(TuttiService.getProxyFleetConfig).mockResolvedValue(loaded);
+    const store = useTuttiFleetStore();
+
+    await store.load();
+    store.setField('__defaults__', ['replication', 'sync', 'enabled'], true);
+    expect(store.dirty).toBe(true);
+
+    await store.load();
+    expect(TuttiService.getProxyFleetConfig).toHaveBeenCalledTimes(1);
+    expect(store.dirty).toBe(true);
+
+    await store.load(true);
+    expect(TuttiService.getProxyFleetConfig).toHaveBeenCalledTimes(2);
+    expect(store.dirty).toBe(false);
+  });
+
   it('setField sets and prunes nested values', async () => {
     vi.mocked(TuttiService.getProxyFleetConfig).mockResolvedValue(loaded);
     const store = useTuttiFleetStore();
