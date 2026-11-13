@@ -35,7 +35,8 @@ type ContextSvc interface {
 	// Same as BuildProxyContext but for requests where bucket is not known (e.g. ListBuckets).
 	BuildProxyNoBucketContext(ctx context.Context, user string) (context.Context, error)
 	// Sets active policies to agent bucket notification request context.
-	BuildAgentContext(ctx context.Context, user, bucket string) (context.Context, error)
+	// Only replications whose source is the storage that emitted the event are kept.
+	BuildAgentContext(ctx context.Context, storage, user, bucket string) (context.Context, error)
 }
 
 var _ ContextSvc = (*policySvc)(nil)
@@ -463,7 +464,7 @@ func getReplications(bucketPolicies store.OperationResult[[]entity.BucketReplica
 	return result, nil
 }
 
-func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) (context.Context, error) {
+func (r *policySvc) BuildAgentContext(ctx context.Context, storage, user, bucket string) (context.Context, error) {
 	bucketReplID := entity.NewBucketReplicationPolicyID(user, bucket)
 	// in a single batch:
 	tx := r.userReplicationPolicyStore.TxExecutor()
@@ -478,6 +479,8 @@ func (r *policySvc) BuildAgentContext(ctx context.Context, user, bucket string) 
 	if err != nil {
 		return ctx, err
 	}
+	// storage-level replications of different storage pairs share (user, bucket): keep the ones fed by the event storage
+	relications = keepReplicationsFromRoute(relications, storage)
 	if len(relications) != 0 {
 		ctx = xctx.SetReplications(ctx, relications)
 	}

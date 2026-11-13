@@ -13,6 +13,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
 type ctxKey struct{}
@@ -106,6 +107,20 @@ func Allowed(role, method string) bool {
 	return false
 }
 
+// AllowedRequest is Allowed plus request-dependent rules: AvailableBuckets without a user lists every bucket of
+// the storage connection accounts (and the owners of covered buckets), so it is admin-only.
+func AllowedRequest(role, method string, req any) bool {
+	if !Allowed(role, method) {
+		return false
+	}
+	if method == "/chorus.Policy/AvailableBuckets" && role != RoleAdmin && !isPublic(method) {
+		if r, ok := req.(*pb.AvailableBucketsRequest); ok && r.GetUser() == "" {
+			return false
+		}
+	}
+	return true
+}
+
 // Stable machine-readable markers of the "password change required" rejection.
 const (
 	PasswordChangeRequiredMessage = "password change required"
@@ -169,6 +184,9 @@ func (s *Service) UnaryInterceptor() grpc.UnaryServerInterceptor {
 		ctx, err := s.check(ctx, info.FullMethod)
 		if err != nil {
 			return nil, err
+		}
+		if sess, ok := FromContext(ctx); ok && sess != nil && !AllowedRequest(sess.Role, info.FullMethod, req) {
+			return nil, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s without a user", sess.Role, info.FullMethod)
 		}
 		return handler(ctx, req)
 	}

@@ -52,9 +52,9 @@ type Service struct {
 }
 
 // lockScope takes the global scope lock and refuses g when its scope conflicts with another group or
-// replication (replscope.Check, ignoring the group ignoreID and the replications g itself manages). On success
+// replication (replscope.Check, ignoring the group ignoreID and the replications g itself manages; with rejectOwn such an existing replication is an error instead, for a create that does not adopt). On success
 // the caller writes the group and then calls unlock; keep that critical section short (the lock is not renewed).
-func (s *Service) lockScope(ctx context.Context, g Group, ignoreID string) (unlock func(), err error) {
+func (s *Service) lockScope(ctx context.Context, g Group, ignoreID string, rejectOwn bool) (unlock func(), err error) {
 	unlock = func() {}
 	if s.ScopeOwners == nil {
 		return unlock, nil
@@ -78,6 +78,11 @@ func (s *Service) lockScope(ctx context.Context, g Group, ignoreID string) (unlo
 	others := owners[:0:0]
 	for _, o := range owners {
 		if o.Kind == "replication" && own[o.ID] {
+			if rejectOwn {
+				// created by someone else after Backend.Validate: only an explicit adoption may take it over
+				unlock()
+				return nil, fmt.Errorf("%w: unmanaged replication %s conflicts; use explicit adoption for a matching topology", dom.ErrFailedPrecondition, o.ID)
+			}
 			continue
 		}
 		others = append(others, o)
@@ -153,7 +158,7 @@ func (s *Service) create(ctx context.Context, g Group, adopt, skipLegacy bool) (
 		if err := s.Backend.Validate(ctx, g, adopt); err != nil {
 			return err
 		}
-		unlock, err := s.lockScope(ctx, g, "")
+		unlock, err := s.lockScope(ctx, g, "", !adopt)
 		if err != nil {
 			return err
 		}
@@ -203,7 +208,7 @@ func (s *Service) Update(ctx context.Context, input Group) (Group, error) {
 		if err = g.Validate(); err != nil {
 			return err
 		}
-		unlock, err := s.lockScope(ctx, g, g.ID)
+		unlock, err := s.lockScope(ctx, g, g.ID, false)
 		if err != nil {
 			return err
 		}

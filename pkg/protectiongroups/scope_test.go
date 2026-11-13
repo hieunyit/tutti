@@ -112,3 +112,29 @@ func TestGroupCreateIgnoresOwnReplications(t *testing.T) {
 	_, err := svc.Create(t.Context(), Group{ID: "g", Members: []string{"a", "b"}, Copies: 2}, true)
 	require.NoError(t, err)
 }
+
+// A replication of the group's own topology added between Backend.Validate and the scope lock must not be
+// silently taken over by a non-adopting create.
+func TestGroupCreateNonAdoptRejectsReplicationAddedBeforeLock(t *testing.T) {
+	own := entity.UniversalFromUserReplication(entity.UserReplicationPolicy{FromStorage: "a", ToStorage: "b"})
+	var racing bool
+	svc := scopeService(t)
+	groupOwners := svc.ScopeOwners
+	svc.ScopeOwners = func(ctx context.Context) ([]replscope.Owner, error) {
+		o, err := groupOwners(ctx)
+		if racing {
+			o = append(o, replscope.Owner{Kind: "replication", ID: own.AsString(), Scope: replscope.ReplicationScope("a", "b", nil)})
+		}
+		return o, err
+	}
+	racing = true // the replication appears after Validate passed (Validate is a no-op in the fake backend)
+	ctx := t.Context()
+	_, err := svc.Create(ctx, Group{ID: "g", Members: []string{"a", "b"}, Copies: 2}, false)
+	require.ErrorIs(t, err, dom.ErrFailedPrecondition)
+	require.Contains(t, err.Error(), "unmanaged replication")
+	_, err = svc.Store.Get(ctx, "g")
+	require.ErrorIs(t, err, dom.ErrNotFound)
+	unlock, err := svc.ScopeLocker.Lock(ctx)
+	require.NoError(t, err)
+	unlock()
+}

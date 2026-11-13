@@ -111,7 +111,7 @@ func (h *webhookHandlers) processSwiftEvent(ctx context.Context, logger *zerolog
 		}
 	}
 
-	evtCtx, err := h.policySvc.BuildAgentContext(ctx, evt.Account, evt.Container)
+	evtCtx, err := h.policySvc.BuildAgentContext(ctx, storage, evt.Account, evt.Container)
 	if err != nil {
 		return fmt.Errorf("build agent context: %w", err)
 	}
@@ -222,7 +222,7 @@ func (h *webhookHandlers) S3Notifications(ctx context.Context, req *pb.S3Notific
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		evtCtx, err := h.policySvc.BuildAgentContext(ctx, key.user, key.bucket)
+		evtCtx, err := h.policySvc.BuildAgentContext(ctx, req.Storage, key.user, key.bucket)
 		if err != nil {
 			return nil, fmt.Errorf("s3 webhook build agent context: %w", err)
 		}
