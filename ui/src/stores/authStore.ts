@@ -20,10 +20,14 @@ import { computed, reactive, toRefs } from 'vue';
 import { AuthService } from '@/services/AuthService';
 import { AuthTokenHelper } from '@/utils/helpers/AuthTokenHelper';
 import { clearDedupeCache } from '@/utils/helpers/dedupe';
+import { getSessionChannel } from '@/utils/helpers/SessionChannel';
+import { RouteName } from '@/utils/types/router';
 import {
   AuthRole,
+  type AuthExpireReason,
   type AuthLoginErrorKind,
   type AuthMeResponse,
+  type AuthSessionTimes,
 } from '@/utils/types/auth';
 
 interface AuthState {
@@ -46,6 +50,12 @@ interface AuthState {
   retryAfterSeconds: number | null;
   /** failed attempts left before a lock, only when the API reports it */
   remainingAttempts: number | null;
+  /** idle expiry, epoch ms on the SERVER clock (null = unknown) */
+  expiresAt: number | null;
+  /** absolute cap, epoch ms on the SERVER clock */
+  maxExpiresAt: number | null;
+  /** serverTime - Date.now() at the last response; add to Date.now() for server time */
+  serverOffsetMs: number;
 }
 
 function getInitialState(): AuthState {
@@ -63,6 +73,9 @@ function getInitialState(): AuthState {
     loginError: null,
     retryAfterSeconds: null,
     remainingAttempts: null,
+    expiresAt: null,
+    maxExpiresAt: null,
+    serverOffsetMs: 0,
   };
 }
 
@@ -95,6 +108,27 @@ export const useAuthStore = defineStore('auth', () => {
     state.source = me.source ?? null;
     state.mustChangePassword = me.mustChangePassword ?? false;
     state.warnings = me.warnings ?? [];
+    applyTimes(me);
+  }
+
+  function toMs(value: string | undefined): number | null {
+    const ms = value ? Date.parse(value) : NaN;
+
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  /** Stores the session clock of login, /auth/me and /auth/refresh. */
+  function applyTimes(times: AuthSessionTimes) {
+    const serverTime = toMs(times.serverTime);
+
+    if (serverTime !== null) state.serverOffsetMs = serverTime - Date.now();
+
+    const expiresAt = toMs(times.expiresAt);
+
+    if (expiresAt === null) return;
+
+    state.expiresAt = expiresAt;
+    state.maxExpiresAt = toMs(times.maxExpiresAt) ?? state.maxExpiresAt;
   }
 
   function clearSession() {
@@ -104,6 +138,8 @@ export const useAuthStore = defineStore('auth', () => {
     state.role = null;
     state.source = null;
     state.mustChangePassword = false;
+    state.expiresAt = null;
+    state.maxExpiresAt = null;
   }
 
   /** Asks the backend who we are. Idempotent; call from the router guard. */
@@ -152,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
       state.role = res.role;
       state.authEnabled = true;
       state.initError = false;
+      applyTimes(res);
 
       // the login response does not say: /auth/me does
       try {
@@ -208,6 +245,48 @@ export const useAuthStore = defineStore('auth', () => {
 
     clearSession();
     clearDedupeCache();
+    getSessionChannel().post({ type: 'logout' });
+  }
+
+  /** POST /auth/refresh; throws on failure (the keeper decides what to do). */
+  async function refreshSession(): Promise<void> {
+    applyTimes(await AuthService.refresh());
+
+    if (state.expiresAt !== null && state.maxExpiresAt !== null) {
+      getSessionChannel().post({
+        type: 'refreshed',
+        expiresAt: state.expiresAt,
+        maxExpiresAt: state.maxExpiresAt,
+      });
+    }
+  }
+
+  /** Deadline pushed by another tab (server-clock ms). */
+  function applyRemoteTimes(expiresAt: number, maxExpiresAt: number) {
+    state.expiresAt = expiresAt;
+    state.maxExpiresAt = maxExpiresAt;
+  }
+
+  /**
+   * The session ended (idle, absolute cap, or sign-out in another tab):
+   * clear it and go to the login page, remembering where the user was.
+   */
+  async function expire(reason: AuthExpireReason): Promise<void> {
+    clearSession();
+    clearDedupeCache();
+
+    const { default: router } = await import('@/router');
+    const current = router.currentRoute.value;
+
+    if (current.name === RouteName.LOGIN) return;
+
+    await router.push({
+      name: RouteName.LOGIN,
+      query: {
+        redirect: current.fullPath,
+        ...(reason === 'signedOut' ? {} : { reason }),
+      },
+    });
   }
 
   /** Called by the HTTP interceptor on 403 PASSWORD_CHANGE_REQUIRED. */
@@ -244,6 +323,9 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     handleUnauthorized,
+    refreshSession,
+    applyRemoteTimes,
+    expire,
     handlePasswordChangeRequired,
     changePassword,
     $reset,

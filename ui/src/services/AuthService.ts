@@ -20,6 +20,7 @@ import type {
   AuthLoginRequest,
   AuthLoginResponse,
   AuthMeResponse,
+  AuthSessionTimes,
 } from '@/utils/types/auth';
 
 export abstract class AuthService {
@@ -39,6 +40,15 @@ export abstract class AuthService {
   static async me(): Promise<AuthMeResponse> {
     const { data } = await apiClient.get<AuthMeResponse>(
       ApiHelper.getChorusAPIUrl('/auth/me'),
+    );
+
+    return data;
+  }
+
+  /** Extends the idle deadline; 401 when expired or at the absolute cap. */
+  static async refresh(): Promise<AuthSessionTimes> {
+    const { data } = await apiClient.post<AuthSessionTimes>(
+      ApiHelper.getChorusAPIUrl('/auth/refresh'),
     );
 
     return data;

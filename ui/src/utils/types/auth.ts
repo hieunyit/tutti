@@ -26,10 +26,23 @@ export interface AuthLoginRequest {
 
 export interface AuthLoginResponse {
   token: string;
+  /** idle expiry (RFC3339 UTC) */
   expiresAt?: string;
+  /** absolute cap (RFC3339 UTC) */
+  maxExpiresAt?: string;
+  serverTime?: string;
   username: string;
   role: AuthRole;
 }
+
+/** Session clock fields shared by login, /auth/me and /auth/refresh. */
+export interface AuthSessionTimes {
+  expiresAt?: string;
+  maxExpiresAt?: string;
+  serverTime?: string;
+}
+
+export type AuthExpireReason = 'idle' | 'max' | 'signedOut';
 
 export interface AuthMeResponse {
   username?: string;
@@ -40,6 +53,9 @@ export interface AuthMeResponse {
   mustChangePassword?: boolean;
   /** operator warning codes, e.g. webhook_unauthenticated */
   warnings?: string[];
+  expiresAt?: string;
+  maxExpiresAt?: string;
+  serverTime?: string;
 }
 
 export type AuthLoginErrorKind =
