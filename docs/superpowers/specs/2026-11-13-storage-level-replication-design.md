@@ -1,80 +1,75 @@
-# Replication cấp storage (không cần user)
+# Replication cấp storage, không có user (thiết kế đã duyệt hướng)
 
-Trạng thái: chờ duyệt. Phạm vi: backend (`pkg/api`, `pkg/policy`, `pkg/protectiongroups`, `pkg/objstore`), proto, UI Add replication, `tuttictl`.
+Trạng thái: hướng đã được người dùng chọn (cách b + luật chống chồng chéo chung). Phạm vi: backend (`pkg/entity`, `pkg/store`, `pkg/policy`, `pkg/protectiongroups`, `pkg/api`, `pkg/objstore`, `service/worker`, `service/proxy`), proto, UI, `tuttictl`, tài liệu.
 
-## 1. Vì sao làm
-Người dùng muốn copy dữ liệu từ storage A sang storage B bằng tài khoản kết nối đã khai báo khi thêm storage. Không cần S3 user trung gian. Protection group đã làm đúng việc này mà không cần user, nhưng màn hình/API "Add replication" vẫn bắt buộc chọn user (`pkg/api/policy_handlers.go:133`, `HasUser` tại `pkg/objstore/credentials.go:415`), nên trên stack chưa có user thì lỗi `404 NotFound` và thông báo chung "An error occurred while processing the list of buckets".
+## 1. Vì sao
+Replication từ storage A sang B dùng tài khoản kết nối của storage, không cần S3 user trung gian. Hiện "Add replication" bắt buộc `user` (`pkg/api/policy_handlers.go:133`, `HasUser` ở `pkg/objstore/credentials.go:415`), nên khi chưa có user thì lỗi `404` và thông báo chung khó hiểu. Protection group đã copy A sang B không cần user, nhưng phải dùng danh tính giả `$service` (`pkg/protectiongroups/model.go:21`). Người dùng yêu cầu bỏ user (và bỏ cả `$service`) khỏi mô hình replication cấp storage.
 
-Lời người dùng, nguyên văn ý: replication A sang B không cần user; khi tạo Protection group cũng tạo replication và cũng không cần user.
+## 2. Quyết định của người dùng
+1. **Cách (b):** user trở thành tùy chọn; **rỗng nghĩa là replication cấp storage**. Bỏ danh tính `$service` khỏi toàn bộ code.
+2. **Luật chống chồng chéo chung:** khi tạo replication hoặc group (chọn bucket hoặc chọn tất cả), nếu đã có replication nào phủ cùng bucket thì phải **dừng lại và báo lỗi**, không tạo gì cả.
+3. Hiện không có dữ liệu hay tác vụ đang chạy, nên không cần migration dữ liệu.
 
-## 2. Hiện trạng (đã đọc trong code)
-- Mọi replication định danh bằng `{user, fromStorage, toStorage[, bucket]}` (`pkg/entity/replication_id.go:34`). `User()` panic nếu rỗng (`:76`).
-- Khi sao chép, worker dùng `ResolveS3Credentials(storage, user)`: credential riêng của user nếu có, nếu không dùng tài khoản kết nối của storage (`pkg/objstore/connection.go:112`). User **không phải** nguồn quyền truy cập khi có tài khoản kết nối.
-- Protection group dùng danh tính nội bộ `$service` (`pkg/protectiongroups/model.go:21`) khi không có user, và tạo replication bằng `AddUserReplicationPolicy` trực tiếp, bỏ qua `HasUser`/`ValidateReplicationID`.
-- Proxy tra policy theo `(user, bucket)` lấy từ access key; nhóm hạ tầng được tra theo storage đích (`LookupStorageGroup`, `pkg/policy/context.go:205-236`) và tự sinh replication từ danh sách thành viên.
+## 3. Mục tiêu / không làm / tránh tuyệt đối
+Mục tiêu: tạo replication A→B (toàn bộ bucket hoặc bucket chọn) không có trường user ở UI, API, `tuttictl`; Protection group và Add replication dùng cùng một luật chống chồng chéo; lỗi chỉ đúng đối tượng đang chiếm bucket.
+Không làm: bỏ replication theo user (vẫn dùng được để lọc theo người dùng); loại trừ bucket ("toàn storage trừ X"); đổi mô hình failover.
+Tuyệt đối tránh: tạo dở dang (một phần replication) khi phát hiện chồng; hai đường tạo lệch luật; làm hỏng replication theo user đang có.
 
-## 3. Mục tiêu / không phải mục tiêu / điều tuyệt đối tránh
-Mục tiêu:
-1. Tạo replication A sang B (toàn bộ bucket hoặc bucket được chọn) **không có trường user** trong UI, API, `tuttictl`.
-2. Replication cấp storage và Protection group **dùng chung một luật chống chồng chéo** (mục 6).
-3. Lỗi rõ ràng, chỉ đúng đối tượng đang chiếm bucket.
+## 4. Thiết kế
 
-Không làm: đổi mô hình khóa Redis/Postgres, thêm loại policy mới, bỏ replication theo user hiện có (vẫn dùng được cho ai cần lọc theo người dùng).
+### 4.1 Định danh và khóa
+- `UniversalReplicationID` (`pkg/entity/replication_id.go`): `user` được phép rỗng. `User()` không panic; `IsEmpty()` không coi user rỗng là rỗng. `AsString()` và `UniversalIDFromString` phải mã hóa/giải mã được user rỗng (token đầu rỗng) mà không nhập nhằng với dạng bucket; người thực thi chọn mã hóa, miễn có test round-trip cho 4 dạng (user/cấp storage × cấp user/cấp bucket). Tên hàng đợi (`pkg/tasks/queue.go:85`) dùng cùng mã hóa.
+- Redis: các hàm dựng khóa (`pkg/store/replication_stores.go`, `replication_generation_store.go`, `routing_stores.go`, `pkg/meta/version_keys.go`) chấp nhận user rỗng. Postgres: cột `user_name` đã `NOT NULL` và chuỗi rỗng hợp lệ, **không đổi schema**; kiểm tra khóa chính không đụng với dòng bucket (`'' ` dùng cho bucket ở `routes`/`route_blocks`).
+- Xóa hằng `protectiongroups.ServiceUser` và mọi chỗ xử lý riêng nó: `pkg/policy/routing.go:409,431`, `pkg/policy/context.go:232-244,513,521`, `pkg/policy/protection_groups.go:27-67`, `pkg/protectiongroups/credentials.go:19`. Thay bằng điều kiện `user == ""`.
 
-Điều tuyệt đối tránh: tạo S3 user giả hiện trong danh sách user; làm hỏng replication theo user đang có.
+### 4.2 Xác thực quyền truy cập
+`ResolveS3Credentials(storage, "")` rơi về tài khoản kết nối (`pkg/objstore/connection.go:112`). `HasUser`/`ValidateReplicationID` với user rỗng: hợp lệ khi **cả hai storage** có tài khoản kết nối; ngược lại trả lỗi nêu rõ storage nào thiếu tài khoản kết nối. Không tạo "danh tính" nào trong `s3_identities`.
 
-## 4. Các cách đã cân nhắc (người dùng chưa chọn chính thức, mục này là đề xuất)
-| Cách | Nội dung | Nhận xét |
-|---|---|---|
-| **(a) Dùng lại `$service` (đề xuất)** | "Add replication" không user sẽ tạo đúng thứ Protection group đang tạo | Nhỏ nhất, không migration. Không có dữ liệu cần di chuyển nên chi phí của (b)/(c) về dữ liệu bằng 0, nhưng khối lượng sửa code vẫn lớn |
-| (b) User tùy chọn, rỗng nghĩa là cấp storage | Đổi định danh, khóa, hàng đợi, khóa chính Postgres | Rất lớn: 44 file UI, ~12 file `tuttictl`, nhiều file Go; `User()` hiện panic khi rỗng |
-| (c) Loại policy mới theo cặp storage | Entity, kho, bảng, RPC, vòng đời riêng | Lớn nhất, trùng lặp code pause/resume/status/switch |
+### 4.3 API
+- `AddReplication`, `GetReplication`, `ListReplications`, `Pause/Resume/DeleteReplication`, `Switch*`, `AvailableBuckets` (`/replication/list-buckets`): `user` tùy chọn. Rỗng = cấp storage, bucket được liệt kê bằng tài khoản kết nối của storage nguồn.
+- Khóa tuần tự theo user (`inUserLock`) bỏ qua khi user rỗng; thay bằng khóa theo cặp storage đã có (`StorageLocker`) cộng khóa phạm vi ở 4.4.
+- Phản hồi không bao giờ trả `$service`; user rỗng trả là chuỗi rỗng.
 
-## 5. `$service` có khác gì so với không có user (câu trả lời)
-Có, **không chỉ là chữ hiện trong Redis/Postgres**. Đã xác minh trong code:
+### 4.4 Luật chống chồng chéo chung (cốt lõi)
+Định nghĩa **phạm vi (scope)** của một đối tượng: tập storage tham gia (nguồn + đích) và tập bucket (liệt kê cụ thể hoặc "tất cả"). Mọi đối tượng sinh replication có scope: Protection group (nhóm hạ tầng hoặc theo bucket), replication cấp storage, replication theo user, replication theo bucket.
 
-| Chỗ | Ảnh hưởng của `$service` | Cách xử lý đề xuất |
-|---|---|---|
-| Khóa Redis/Postgres | `p:repl_*:$service…`, `v:$service:…`, cột `user_name='$service'` | Chấp nhận, kín, không ai thấy |
-| Tên hàng đợi và ID tác vụ | `AsString()` có tiền tố `$service:` (`pkg/tasks/queue.go:85`), hiện ở công cụ xem hàng đợi | Chấp nhận, ghi trong tài liệu vận hành |
-| Nhãn số liệu Prometheus | nhãn `user` mang giá trị `$service` (`pkg/policy/replication_metrics.go`) | Ghi chú trong tài liệu; cardinality không tăng |
-| Log, audit log, payload API | trường `user: "$service"` có thể lộ ra | API/UI ánh xạ thành rỗng khi trả về; log giữ nguyên |
-| Khóa tuần tự theo user | `AddReplication` lấy `inUserLock(user)` (`policy_handlers.go:148`): mọi thao tác storage-level tuần tự hóa trên một khóa `$service` | Chấp nhận (thao tác tạo ít, không nóng) |
-| Luật "replication cả user" chặn "replication theo bucket" | `IsUserReplicationExists(user)` kiểm theo tên user (`replication.go:901`): với một tên `$service` chung, luật này có nguy cơ lan sang **mọi cặp storage** (suy luận, chưa chạy) | Phải kiểm tra bằng test; nếu đúng thì đổi khóa kiểm tra thành `(user, from, to)` riêng cho `$service` |
-| Chỗ code xử lý riêng `ServiceUser` | bỏ qua kiểm tra routing (`policy/routing.go:409,431`), proxy gắn replication nhóm (`context.go:232-244`), logic tài khoản dùng chung (`policy/protection_groups.go:27-67`) | Giữ nguyên, kiểm tra không vỡ khi thêm đường tạo mới |
-| `HasUser` từ chối `$service` | `ValidateReplicationID` hiện từ chối (`credentials.go:415`) | Cho phép `$service` khi cả hai storage có tài khoản kết nối |
-| Trùng tên | một S3 user thật tên `$service` sẽ đụng khóa | Cấm tạo user tên bắt đầu bằng `$` |
+Hai scope **chồng** khi cùng thỏa: (1) chung ít nhất một storage; (2) tập bucket giao nhau, hoặc một bên là "tất cả". Danh tính user không làm hai scope tách rời, vì tên bucket S3 định danh dữ liệu vật lý (đúng như chú thích hiện có ở `Group.Overlaps`, `model.go:305`). Muốn một nguồn copy sang nhiều đích cho cùng bucket thì dùng **một** group nhiều thành viên, không dùng nhiều replication rời.
 
-Nếu **không có user** hẳn (cách b) thì mọi dòng trong bảng trên biến mất, nhưng đổi lại phải sửa định danh và khóa ở mọi tầng (mục 4).
+Hành vi:
+1. Kiểm tra chồng chạy **trước khi tạo bất cứ thứ gì**, và nằm trong cùng khóa (một khóa phạm vi toàn cục cho thao tác tạo) với việc ghi để hai lần tạo đồng thời không cùng lọt qua. Phát hiện chồng thì dừng hẳn, không để lại trạng thái dở dang, trả `AlreadyExists` kèm tên đối tượng và bucket cụ thể đang bị chiếm.
+2. Áp dụng cho cả: tạo group (chọn bucket hoặc tất cả), tạo replication (chọn bucket hoặc tất cả), và cập nhật group.
+3. `AvailableBuckets` đánh dấu bucket đã được phủ bởi bất kỳ replication hay group nào (không chỉ replication cùng user), để UI không cho chọn.
+4. Một hàm duy nhất (ví dụ `scope.Conflicts(existing, proposed)`) dùng cho mọi đường; không để `Group.Overlaps` và kiểm tra của replication tách riêng.
+5. Muốn đổi từ "tất cả" sang "chọn bucket" phải xóa đối tượng toàn storage trước.
 
-## 6. Luật chống chồng chéo dùng chung
-Luật hiện có (`Group.Overlaps`, `pkg/protectiongroups/model.go:305`): hai nhóm chung ít nhất một storage thành viên bị coi là chồng nếu một bên là toàn storage, hoặc hai bên cùng liệt kê chung ít nhất một bucket. Kiểm tra khi tạo (`store.go:418`) trả `AlreadyExists: scope overlaps group <id>`.
+Dữ liệu đã có ở cả A và B khi tạo: luật chỉ xét phạm vi khai báo. Seed ban đầu bỏ qua object giống nhau. **Chưa kiểm chứng:** object cùng tên khác nội dung (ghi đè hay giữ) và object chỉ có ở B; phải có test chốt hành vi.
 
-Quy tắc mới:
-1. Replication cấp storage được tạo từ "Add replication" được **đăng ký như một nhóm hạ tầng** hoặc phải qua cùng hàm `Overlaps`, để không có hai đường tạo lệch luật.
-2. Thông báo lỗi nêu tên đối tượng đang chiếm: "bucket X đã thuộc nhóm/replication Y".
-3. Muốn chuyển từ "toàn storage" sang "chọn bucket" phải xóa đối tượng toàn storage trước (không có "loại trừ" trong phạm vi này).
+### 4.5 Proxy, worker, webhook
+- Proxy: `BuildProxyContext(user, bucket)` (`pkg/policy/context.go:120`) vẫn tra theo user thật (nếu client có) và **thêm** tra replication cấp storage theo storage đích + bucket, thay cho đường tổng hợp `$service`; kết quả quyết định có kích hoạt replication tức thời cho ghi qua proxy.
+- Worker: các handler dùng `ID.User()` (`service/worker/handler/*`, `copy/copy.go`, `syncer/syncer.go`) phải chạy được với user rỗng bằng `AsCommon(storage, "")` rơi về tài khoản kết nối.
+- Webhook: `ConfigurationId` của thông báo S3 mã hóa user (`pkg/api/webhook_handlers.go:204-225`); cần cách mã hóa cho user rỗng.
+- Tác vụ có trường `User` riêng (diff, `pkg/tasks/tasks.go:249-295`): hỗ trợ user rỗng cho cặp storage.
 
-Dữ liệu đã có ở cả A và B khi tạo: luật chồng chéo chỉ xét phạm vi khai báo, không xét dữ liệu. Việc seed ban đầu bỏ qua object giống nhau (`resync.go`). **Chưa kiểm chứng**: object cùng tên khác nội dung (ghi đè hay giữ), object chỉ có ở B (có bị xóa không); sẽ có test chốt hành vi trước khi làm.
+### 4.6 UI và tuttictl
+- UI: Add replication **không có ô chọn user** và không dò user. Bước chọn bucket liệt kê bằng tài khoản kết nối, đánh dấu và vô hiệu hóa bucket bị chiếm kèm lý do. Danh sách Replication hiển thị "A → B" cho dòng cấp storage. Khi có replication theo user thật vẫn hiện user.
+- Gỡ phần "chọn tenant user" (`tuttiAddReplicationStore`: `users`, `eligibleUsers`, `selectedUser`) và các nhãn liên quan.
+- `tuttictl`: `--user` tùy chọn ở các lệnh `repl*`.
 
-## 7. Thay đổi cần làm (cho phần thực thi)
-Backend:
-- `AddReplication`: `id.user` tùy chọn; rỗng nghĩa là cấp storage, đi qua cùng đường tạo với nhóm hạ tầng, kiểm tra tài khoản kết nối ở cả hai storage, áp luật mục 6. `AvailableBuckets` (`/replication/list-buckets`) chấp nhận không user, liệt kê bucket bằng tài khoản kết nối của storage nguồn.
-- Các RPC get/list/pause/resume/delete/switch nhận định danh không user và ánh xạ sang `$service` bên trong.
-- Cấm tên user bắt đầu bằng `$` ở nơi tạo S3 user.
-- Sửa kiểm tra "user-level vs bucket-level" nếu test chứng minh lan sang nhiều cặp storage.
-UI: bỏ ô chọn user và bước dò user khỏi Add replication; thông báo lỗi cụ thể; trang Replication hiện "Storage → Storage" thay cho user.
-`tuttictl`: `--user` thành tùy chọn trong các lệnh `repl*`.
+## 5. Các cách đã cân nhắc
+(a) dùng lại `$service`: nhỏ nhất, nhưng để lại danh tính giả lộ ra ở hàng đợi, nhãn số liệu, log, khóa tuần tự dùng chung và nguy cơ luật user-level lan sang mọi cặp storage — người dùng bác. (c) loại policy mới theo cặp storage: sạch nhưng trùng lặp toàn bộ vòng đời. **Đã chọn (b)** vì mô hình đồng nhất; chi phí migration bằng 0 do chưa có dữ liệu.
 
-## 8. Cách kiểm chứng
-1. Test chặn: group chọn bucket khi đã có đối tượng toàn storage trả `AlreadyExists` nêu đúng tên.
-2. Test hai cặp storage độc lập (A→B toàn bộ, C→D chọn bucket) không ảnh hưởng nhau.
-3. Test seed: bucket đã có ở cả A và B không copy lại object giống nhau; ghi lại hành vi với object khác nội dung hoặc chỉ có ở B.
-4. Chạy lại trên stack thật có hai storage FPT và tài khoản kết nối, không có S3 user nào.
+## 6. Cách kiểm chứng
+1. Test round-trip `AsString`/`UniversalIDFromString` cho user rỗng ở mọi dạng.
+2. Test chồng chéo (bảng chân trị): tất cả×tất cả, tất cả×bucket, bucket giao nhau, bucket rời, storage không chung; group×group, group×replication, replication×replication, cấp storage×theo user; thông báo nêu đúng đối tượng và bucket.
+3. Test không dở dang: lỗi chồng không để lại khóa/policy nào; hai lần tạo đồng thời cùng bucket chỉ một lần thành công.
+4. Test worker copy và seed với user rỗng bằng tài khoản kết nối; test object cùng tên khác nội dung, object chỉ có ở B.
+5. Test proxy: ghi vào bucket thuộc replication cấp storage kích hoạt đúng một replication.
+6. Chạy lại trên stack thật: hai storage FPT, không có S3 user nào, Add replication thành công và bị chặn đúng khi chọn bucket trùng.
 
-## 9. Việc để người thực thi quyết
-Tên hiển thị của replication cấp storage trong UI; cách ánh xạ trường `user` trong phản hồi API; có đưa vào thư mục `docs/tutti` mục vận hành về nhãn `$service` hay không.
+## 7. Rủi ro
+- Chạm gần như mọi tầng (khoảng 44 file UI không test, ~12 file `tuttictl`, nhiều file Go): chia theo lớp, mỗi lớp có test trước.
+- Mã hóa chuỗi ID/hàng đợi với user rỗng dễ nhập nhằng; test round-trip bắt buộc.
+- `IsUserReplicationExists` và mọi kiểm tra "theo tên user" phải được duyệt lại để không coi user rỗng là một user duy nhất chung cho mọi cặp storage.
 
-## 10. Rủi ro còn mở
-- Nghi vấn lỗi seed ra 0 bucket với `$service` ở replication cấp user (`scope.Filter` trả rỗng khi storage dùng tài khoản dùng chung). Phải xác minh bằng test **trước** khi làm phần còn lại.
-- Luật "replication toàn user chặn theo bucket" có thể lan sang mọi cặp storage dưới một tên `$service` chung.
+## 8. Để người thực thi quyết
+Mã hóa cụ thể của ID rỗng; tên hàm chung `Conflicts`; cách hiển thị dòng cấp storage trong danh sách.
