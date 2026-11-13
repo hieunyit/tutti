@@ -791,6 +791,8 @@ func (h *policyHandlers) StreamReplication(req *pb.ReplicationID, server grpc.Se
 	}
 }
 
+var errSwitchStorageLevel = fmt.Errorf("%w: switch is not supported for storage-level replication; use a protection group switchover", dom.ErrFailedPrecondition)
+
 func (h *policyHandlers) SwitchWithDowntime(ctx context.Context, req *pb.SwitchDowntimeRequest) (*emptypb.Empty, error) {
 	if req.DowntimeOpts != nil {
 		if err := validateSwitchDonwtimeOpts(req.DowntimeOpts); err != nil {
@@ -800,6 +802,9 @@ func (h *policyHandlers) SwitchWithDowntime(ctx context.Context, req *pb.SwitchD
 	uid, err := pbToReplicationID(req.ReplicationId)
 	if err != nil {
 		return nil, err
+	}
+	if uid.IsStorageLevel() {
+		return nil, errSwitchStorageLevel
 	}
 	err = h.inReplicationLock(ctx, uid, func(ctx context.Context) error {
 		// persist switch metadata
@@ -826,6 +831,9 @@ func (h *policyHandlers) SwitchWithZeroDowntime(ctx context.Context, req *pb.Swi
 	uid, err := pbToReplicationID(req.ReplicationId)
 	if err != nil {
 		return nil, err
+	}
+	if uid.IsStorageLevel() {
+		return nil, errSwitchStorageLevel
 	}
 	storageType := h.credsSvc.Storages()[uid.FromStorage()]
 	if storageType != dom.S3 {
@@ -941,6 +949,9 @@ func (h *policyHandlers) inReplicationLock(ctx context.Context, id entity.Univer
 }
 
 func (h *policyHandlers) AddRouting(ctx context.Context, req *pb.AddRoutingRequest) (*emptypb.Empty, error) {
+	if req.User == "" {
+		return nil, fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
+	}
 	if err := h.credsSvc.HasUser(req.ToStorage, req.User); err != nil {
 		return nil, err
 	}

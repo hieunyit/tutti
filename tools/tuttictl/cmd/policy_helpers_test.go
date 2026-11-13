@@ -36,3 +36,11 @@ func TestReplCommandsUserFlagOptional(t *testing.T) {
 		r.False(required, name)
 	}
 }
+
+func TestRequireSwitchUser(t *testing.T) {
+	r := require.New(t)
+	err := requireSwitchUser("")
+	r.Error(err)
+	r.Contains(err.Error(), "protection group switchover")
+	r.NoError(requireSwitchUser("alice"))
+}

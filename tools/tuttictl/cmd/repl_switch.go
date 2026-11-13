@@ -145,6 +145,9 @@ User-level zero-downtime replication switch:
 Bucket-level zero-downtime replication switch:
   tuttictl repl switch zero-downtime -f main -t follower -u admin -b bucket1`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := requireSwitchUser(switchZeroDowntimeCmdUser); err != nil {
+			logrus.Fatal(err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		conn, client := newPolicyClient(ctx)
@@ -231,6 +234,9 @@ tuttictl repl switch scheduled -f main -t follower -u admin -b bucket1 \
     will be less than 100`,
 
 	Run: func(cmd *cobra.Command, args []string) {
+		if err := requireSwitchUser(switchScheduledCmdUser); err != nil {
+			logrus.Fatal(err)
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		conn, client := newPolicyClient(ctx)
