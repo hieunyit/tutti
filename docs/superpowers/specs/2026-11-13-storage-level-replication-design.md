@@ -39,6 +39,8 @@ Hai scope **chồng** khi tồn tại một cạnh `e1` của bên này và mộ
 
 **và** tập bucket giao nhau (hoặc một bên là "tất cả"). Danh tính user không làm hai scope tách rời, vì tên bucket S3 định danh dữ liệu vật lý.
 
+**Làm rõ theo user (bổ sung sau khi triển khai):** "tất cả bucket" của một user thật chỉ có nghĩa là mọi bucket **của user đó**, không phải mọi bucket của storage. Vì vậy hai đối tượng thuộc **hai user thật khác nhau** chỉ coi là chồng khi danh sách bucket **liệt kê cụ thể** của chúng giao nhau; "tất cả" của user này không chồng với "tất cả" hay bucket của user kia. Đối tượng **cấp storage** (user rỗng) thật sự phủ mọi bucket của storage, nên vẫn chồng với mọi đối tượng cùng cạnh theo luật ở trên. Điều này giữ nguyên hành vi hiện có của replication theo từng user (nhiều user cùng nhân bản sang một storage đích vẫn được).
+
 Được phép (không coi là chồng): cùng nguồn khác đích (`A→B` và `A→C` cho cùng bucket, tức fan-out bằng replication rời), và chuỗi nối tiếp (`A→B` rồi `B→C`). Hai replication khác đích và không ngược chiều (ví dụ `A→B` và `C→D`) không ảnh hưởng nhau.
 
 Hành vi:
