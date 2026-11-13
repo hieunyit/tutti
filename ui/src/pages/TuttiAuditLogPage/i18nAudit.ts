@@ -48,6 +48,7 @@ export default {
     readOnlyBannerText:
       'Configuration mutations are currently blocked (controlPlane.readOnly is enabled). Existing audit history remains queryable.',
     filtersTitle: 'Filter audit entries',
+    dateRangeLabel: 'Date range',
     familyLabel: 'Family',
     familyAll: 'All families',
     entityKeyLabel: 'Object / Entity ID',
@@ -149,6 +150,7 @@ export default {
     readOnlyBannerText:
       'Các thao tác thay đổi cấu hình hiện đang bị khóa (controlPlane.readOnly đang bật). Lịch sử kiểm toán vẫn có thể truy vấn bình thường.',
     filtersTitle: 'Bộ lọc nhật ký kiểm toán',
+    dateRangeLabel: 'Khoảng ngày',
     familyLabel: 'Nhóm đối tượng (Family)',
     familyAll: 'Tất cả nhóm',
     entityKeyLabel: 'Mã đối tượng (Entity Key)',
@@ -251,6 +253,7 @@ export default {
     readOnlyBannerText:
       'Konfigurationsänderungen sind derzeit gesperrt (controlPlane.readOnly ist aktiviert).',
     filtersTitle: 'Audit-Einträge filtern',
+    dateRangeLabel: 'Zeitraum',
     familyLabel: 'Familie',
     familyAll: 'Alle Familien',
     entityKeyLabel: 'Objekt- / Entitäts-ID',

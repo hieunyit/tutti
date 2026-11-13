@@ -19,6 +19,7 @@ import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { AuthService } from '@/services/AuthService';
 import { AuthTokenHelper } from '@/utils/helpers/AuthTokenHelper';
+import { clearDedupeCache } from '@/utils/helpers/dedupe';
 import {
   AuthRole,
   type AuthLoginErrorKind,
@@ -206,6 +207,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     clearSession();
+    clearDedupeCache();
   }
 
   /** Called by the HTTP interceptor on 403 PASSWORD_CHANGE_REQUIRED. */

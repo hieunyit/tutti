@@ -161,6 +161,7 @@
         @keyup.enter="applyNow"
       />
       <NDatePicker
+        :aria-label="t('dateRangeLabel')"
         :formatted-value="range"
         class="audit-filters__control"
         type="daterange"

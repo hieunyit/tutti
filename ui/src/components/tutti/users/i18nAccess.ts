@@ -9,6 +9,7 @@ import management from './i18nManagement';
 const access = {
   en: {
     statusComplete: 'Ready',
+    addPattern: 'Add',
     statusIncomplete: 'Incomplete',
     emptyUsersTitle: 'No S3 users yet',
     noMatchesTitle: 'No users match this filter',
@@ -66,6 +67,7 @@ const access = {
   },
   de: {
     statusComplete: 'Bereit',
+    addPattern: 'Hinzufügen',
     statusIncomplete: 'Unvollständig',
     emptyUsersTitle: 'Noch keine S3-Benutzer',
     noMatchesTitle: 'Kein Benutzer passt zu diesem Filter',
@@ -130,6 +132,7 @@ const access = {
   },
   vi: {
     statusComplete: 'Sẵn sàng',
+    addPattern: 'Thêm',
     statusIncomplete: 'Chưa đủ',
     emptyUsersTitle: 'Chưa có S3 user nào',
     noMatchesTitle: 'Không có user khớp bộ lọc',

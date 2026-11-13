@@ -2,6 +2,7 @@
 
 import { apiClient } from '@/http';
 import { ApiHelper } from '@/utils/helpers/ApiHelper';
+import { DedupeKey, invalidate } from '@/utils/helpers/dedupe';
 import type {
   RuntimeStorage,
   RuntimeStorageCredential,
@@ -22,15 +23,27 @@ export abstract class RuntimeStorageService {
   }
 
   static async create(input: RuntimeStorageMutation): Promise<RuntimeStorage> {
-    return (await apiClient.post<RuntimeStorage>(url(), input)).data;
+    try {
+      return (await apiClient.post<RuntimeStorage>(url(), input)).data;
+    } finally {
+      invalidate(DedupeKey.STORAGES, DedupeKey.USERS);
+    }
   }
 
   static async update(input: RuntimeStorageMutation): Promise<RuntimeStorage> {
-    return (await apiClient.put<RuntimeStorage>(url(), input)).data;
+    try {
+      return (await apiClient.put<RuntimeStorage>(url(), input)).data;
+    } finally {
+      invalidate(DedupeKey.STORAGES, DedupeKey.USERS);
+    }
   }
 
   static async remove(name: string): Promise<void> {
-    await apiClient.put(url('/delete'), { name });
+    try {
+      await apiClient.put(url('/delete'), { name });
+    } finally {
+      invalidate(DedupeKey.STORAGES, DedupeKey.USERS);
+    }
   }
 
   /** Full connection test of a saved (`name`) or unsaved (`storage`) storage. */
@@ -52,8 +65,12 @@ export abstract class RuntimeStorageService {
   }
 
   static async rotate(input: StorageRotateRequest): Promise<RuntimeStorage> {
-    return (
-      await apiClient.put<RuntimeStorage>(url('/connection-account'), input)
-    ).data;
+    try {
+      return (
+        await apiClient.put<RuntimeStorage>(url('/connection-account'), input)
+      ).data;
+    } finally {
+      invalidate(DedupeKey.STORAGES, DedupeKey.USERS);
+    }
   }
 }

@@ -158,8 +158,13 @@
       {{ t('switchNoTargets') }}
     </Callout>
     <template v-else>
-      <label class="group-actions__label">{{ t('switchPickTarget') }}</label>
+      <label
+        class="group-actions__label"
+        for="group-switch-target"
+        >{{ t('switchPickTarget') }}</label
+      >
       <NSelect
+        :input-props="{ id: 'group-switch-target' }"
         v-model:value="target"
         :options="options"
         :placeholder="t('switchPickPlaceholder')"
