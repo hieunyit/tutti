@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
@@ -236,6 +237,13 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 		}
 	}
 
+	// Storage-level (empty user) replications of the routed storage cover this bucket whoever the client is.
+	storageLevel, err := r.storageLevelReplications(ctx, user, routeTo, bucket)
+	if err != nil {
+		return nil, err
+	}
+	data.replications = mergeReplications(data.replications, storageLevel)
+
 	data.generations, err = replicationGenerations(userGenerations, bucketGenerations, data.replications, data.activeSwitch)
 	if err != nil {
 		return nil, err
@@ -250,6 +258,35 @@ func (r *policySvc) loadProxyDataForUser(ctx context.Context, user, bucket strin
 		}
 	}
 	return data, nil
+}
+
+// storageLevelReplications returns the replications with an empty user (storage level) that start at the
+// storage the request is routed to and cover bucket: bucket policies of the bucket, or the all-bucket policies
+// when there is none (same precedence as getReplications). A request of the empty user already reads them as
+// its own, and a request without bucket has no bucket to cover.
+func (r *policySvc) storageLevelReplications(ctx context.Context, user, routedTo, bucket string) ([]entity.UniversalReplicationID, error) {
+	if user == "" || bucket == "" {
+		return nil, nil
+	}
+	tx := r.userReplicationPolicyStore.TxExecutor()
+	userRepls := r.userReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, "")
+	bucketRepls := r.bucketReplicationPolicyStore.WithExecutor(tx).GetOp(ctx, entity.NewBucketReplicationPolicyID("", bucket))
+	_ = tx.Exec(ctx) // errors are caught on the individual results
+	repls, err := getReplications(bucketRepls, userRepls)
+	if err != nil {
+		return nil, err
+	}
+	return keepReplicationsFromRoute(repls, routedTo), nil
+}
+
+// mergeReplications appends the replications of extra that base does not already contain.
+func mergeReplications(base, extra []entity.UniversalReplicationID) []entity.UniversalReplicationID {
+	for _, id := range extra {
+		if !slices.Contains(base, id) {
+			base = append(base, id)
+		}
+	}
+	return base
 }
 
 // keepReplicationsFromRoute keeps only replications whose source is the storage the request is

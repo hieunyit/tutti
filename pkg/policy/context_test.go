@@ -1091,3 +1091,76 @@ func TestKeepReplicationsFromRoute(t *testing.T) {
 		t.Fatalf("expected no replications after failover, got %v", got)
 	}
 }
+
+// A write by a real user to a bucket of a storage covered by a storage-level (empty user) replication must
+// trigger that replication exactly once per destination.
+func Test_BuildProxyContext_StorageLevelReplications(t *testing.T) {
+	setup := func(t *testing.T) (*policySvc, entity.UserReplicationPolicy, entity.BucketReplicationPolicy) {
+		c := testutil.SetupRedis(t)
+		qs := &tasks.QueueServiceMock{}
+		tasks.Reset(qs)
+		svc := NewService(c, qs, "main")
+		return svc, entity.UserReplicationPolicy{FromStorage: "main", ToStorage: "backup"},
+			entity.BucketReplicationPolicy{FromStorage: "main", ToStorage: "backup2", FromBucket: "b1", ToBucket: "b1"}
+	}
+	t.Run("all-bucket storage-level policy applies to any user and bucket", func(t *testing.T) {
+		r := require.New(t)
+		svc, all, _ := setup(t)
+		_, err := svc.AddUserReplicationPolicy(t.Context(), all, entity.ReplicationOptions{})
+		r.NoError(err)
+
+		for _, user := range []string{"alice", "bob"} {
+			ctx, err := svc.BuildProxyContext(t.Context(), user, "any")
+			r.NoError(err)
+			validateCtx(t, ctx, validateCtxParams{expectedRoute: "main",
+				expectedRepls: []entity.UniversalReplicationID{entity.UniversalFromUserReplication(all)}})
+		}
+	})
+	t.Run("bucket storage-level policy applies only to its bucket", func(t *testing.T) {
+		r := require.New(t)
+		svc, _, b := setup(t)
+		_, err := svc.AddBucketReplicationPolicy(t.Context(), b, entity.ReplicationOptions{})
+		r.NoError(err)
+
+		ctx, err := svc.BuildProxyContext(t.Context(), "alice", "b1")
+		r.NoError(err)
+		validateCtx(t, ctx, validateCtxParams{expectedRoute: "main",
+			expectedRepls: []entity.UniversalReplicationID{entity.UniversalFromBucketReplication(b)}})
+		ctx, err = svc.BuildProxyContext(t.Context(), "alice", "b2")
+		r.NoError(err)
+		validateCtx(t, ctx, validateCtxParams{expectedRoute: "main"})
+	})
+	t.Run("not duplicated with the user's own replication to another destination", func(t *testing.T) {
+		r := require.New(t)
+		svc, all, _ := setup(t)
+		_, err := svc.AddUserReplicationPolicy(t.Context(), all, entity.ReplicationOptions{})
+		r.NoError(err)
+		own := entity.UserReplicationPolicy{User: "alice", FromStorage: "main", ToStorage: "other"}
+		_, err = svc.AddUserReplicationPolicy(t.Context(), own, entity.ReplicationOptions{})
+		r.NoError(err)
+
+		ctx, err := svc.BuildProxyContext(t.Context(), "alice", "b1")
+		r.NoError(err)
+		got := xctx.GetReplications(ctx)
+		r.ElementsMatch([]entity.UniversalReplicationID{
+			entity.UniversalFromUserReplication(own),
+			entity.UniversalFromUserReplication(all),
+		}, got)
+	})
+	t.Run("storage the request is not routed to is ignored", func(t *testing.T) {
+		r := require.New(t)
+		svc, _, _ := setup(t)
+		_, err := svc.AddUserReplicationPolicy(t.Context(),
+			entity.UserReplicationPolicy{FromStorage: "elsewhere", ToStorage: "backup"}, entity.ReplicationOptions{})
+		r.NoError(err)
+		ctx, err := svc.BuildProxyContext(t.Context(), "alice", "b1")
+		r.NoError(err)
+		validateCtx(t, ctx, validateCtxParams{expectedRoute: "main"})
+	})
+}
+
+func Test_mergeReplications(t *testing.T) {
+	a := entity.UniversalFromUserReplication(entity.UserReplicationPolicy{FromStorage: "m", ToStorage: "a"})
+	b := entity.UniversalFromUserReplication(entity.UserReplicationPolicy{FromStorage: "m", ToStorage: "b"})
+	require.Equal(t, []entity.UniversalReplicationID{a, b}, mergeReplications([]entity.UniversalReplicationID{a}, []entity.UniversalReplicationID{a, b}))
+}
