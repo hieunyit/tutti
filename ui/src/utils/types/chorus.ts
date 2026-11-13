@@ -91,6 +91,8 @@ export interface ChorusStorage {
   address: string;
   provider: StorageProvider;
   credentials: ChorusCredential[];
+  /** per-user credential overrides, when the backend reports it */
+  userCount?: number;
 }
 
 export enum StorageProvider {

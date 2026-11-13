@@ -21,6 +21,8 @@ import { TuttiService } from '@/services/TuttiService';
 import { RuntimeStorageService } from '@/services/RuntimeStorageService';
 import { StorageProvider } from '@/utils/types/chorus';
 import type { RuntimeStorage } from '@/utils/types/runtimeStorage';
+import { RuntimeStorageHelper } from '@/utils/helpers/RuntimeStorageHelper';
+import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import {
   StoragesPageHelper,
   type StoragesSources,
@@ -48,6 +50,9 @@ interface TuttiStoragesState {
   isLoaded: boolean;
   storages: ChorusStorage[];
   runtimeStorages: RuntimeStorage[];
+  /** per-storage users, loaded on the detail page only */
+  storageUsers: Record<string, NonNullable<RuntimeStorage['users']>>;
+  storageUsersLoading: boolean;
   managedStoragesEnabled: boolean;
   proxies: TuttiProxyStatus[];
   users: S3User[];
@@ -69,6 +74,8 @@ function getInitialState(): TuttiStoragesState {
     isLoaded: false,
     storages: [],
     runtimeStorages: [],
+    storageUsers: {},
+    storageUsersLoading: false,
     managedStoragesEnabled: false,
     proxies: [],
     users: [],
@@ -89,6 +96,8 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
   let generation = 0;
   let proxyRequest = 0;
   let slowRequest = 0;
+  const proxyChanges = createChangeDetector();
+  const slowChanges = createChangeDetector();
 
   const sources = computed<StoragesSources>(() => ({
     storages: state.storages,
@@ -110,8 +119,11 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
 
     if (current !== generation || request !== proxyRequest) return;
 
-    state.proxies = res.proxies ?? [];
     state.updatedAt = Date.now();
+
+    if (!proxyChanges.hasChanged(res)) return;
+
+    state.proxies = res.proxies ?? [];
   }
 
   async function loadSlow() {
@@ -119,7 +131,7 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
     const request = ++slowRequest;
     const [storages, users, replications, policies, events, routings] =
       await Promise.all([
-        RuntimeStorageService.list(),
+        RuntimeStorageService.listSummary(),
         TuttiService.getUsers().catch(() => null),
         ChorusService.getReplications().catch(() => null),
         // not readable by every role: the page works without
@@ -133,6 +145,19 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
 
     if (current !== generation || request !== slowRequest) return;
 
+    if (
+      !slowChanges.hasChanged([
+        storages,
+        users,
+        replications,
+        policies,
+        events,
+        routings,
+      ])
+    ) {
+      return;
+    }
+
     state.runtimeStorages = storages.storages ?? [];
     state.managedStoragesEnabled = storages.managedStoragesEnabled ?? false;
     state.storages = state.runtimeStorages.map((storage) => ({
@@ -141,6 +166,7 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
       isMain: storage.isMain ?? false,
       provider: StorageProvider.S3,
       credentials: [],
+      userCount: RuntimeStorageHelper.userCountOf(storage),
     }));
     state.users = users?.users ?? state.users;
     state.mainStorage =
@@ -151,6 +177,28 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
     state.routings = routings
       ? [...routings.userRoutings, ...routings.bucketRoutings]
       : state.routings;
+  }
+
+  /** Detail page: the full users array of one storage (old API form). */
+  async function loadStorageUsers(name: string) {
+    const current = generation;
+
+    state.storageUsersLoading = true;
+
+    try {
+      const res = await RuntimeStorageService.list();
+
+      if (current !== generation) return;
+
+      const found = (res.storages ?? []).find((item) => item.name === name);
+
+      state.storageUsers = {
+        ...state.storageUsers,
+        [name]: found?.users ?? [],
+      };
+    } finally {
+      if (current === generation) state.storageUsersLoading = false;
+    }
   }
 
   async function refresh(showLoading = false) {
@@ -178,6 +226,8 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
 
   function startPolling() {
     stopPolling();
+    proxyChanges.reset();
+    slowChanges.reset();
     refresh(true);
     state.proxyTimer = setInterval(() => {
       if (isVisible()) loadProxies().catch(() => undefined);
@@ -200,6 +250,8 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
 
   function $reset() {
     stopPolling();
+    proxyChanges.reset();
+    slowChanges.reset();
     Object.assign(state, getInitialState());
   }
 
@@ -209,6 +261,7 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
     summary,
     refresh,
     loadSlow,
+    loadStorageUsers,
     startPolling,
     stopPolling,
     $reset,

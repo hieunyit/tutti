@@ -23,7 +23,7 @@ vi.mock('@/components/tutti/storages/AddStorageDialog.vue', () => ({
   default: { template: '<div />' },
 }));
 vi.mock('@/services/RuntimeStorageService', () => ({
-  RuntimeStorageService: { list: vi.fn() },
+  RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
 }));
 vi.mock('@/services/ChorusService', () => ({
   ChorusService: {
@@ -68,12 +68,12 @@ function mountPage() {
 
 beforeEach(() => {
   setActivePinia(createPinia());
-  vi.mocked(RuntimeStorageService.list).mockReset();
+  vi.mocked(RuntimeStorageService.listSummary).mockReset();
 });
 
 describe('TuttiStoragesPage', () => {
   it('shows a loading skeleton while the request is pending', async () => {
-    vi.mocked(RuntimeStorageService.list).mockReturnValue(
+    vi.mocked(RuntimeStorageService.listSummary).mockReturnValue(
       new Promise(() => {}),
     );
     const wrapper = mountPage();
@@ -84,7 +84,7 @@ describe('TuttiStoragesPage', () => {
   });
 
   it('shows an empty state with an add-storage action', async () => {
-    vi.mocked(RuntimeStorageService.list).mockResolvedValue({
+    vi.mocked(RuntimeStorageService.listSummary).mockResolvedValue({
       managedStoragesEnabled: true,
       mainStorage: '',
       storages: [],
@@ -98,7 +98,7 @@ describe('TuttiStoragesPage', () => {
   });
 
   it('shows an error with a working retry', async () => {
-    vi.mocked(RuntimeStorageService.list).mockRejectedValueOnce(
+    vi.mocked(RuntimeStorageService.listSummary).mockRejectedValueOnce(
       new Error('down'),
     );
     const wrapper = mountPage();
@@ -106,7 +106,7 @@ describe('TuttiStoragesPage', () => {
     await flushPromises();
     expect(wrapper.find('[data-kit-state="error"]').exists()).toBe(true);
 
-    vi.mocked(RuntimeStorageService.list).mockResolvedValueOnce({
+    vi.mocked(RuntimeStorageService.listSummary).mockResolvedValueOnce({
       managedStoragesEnabled: true,
       mainStorage: 'main',
       storages: [
@@ -129,7 +129,7 @@ describe('TuttiStoragesPage', () => {
   });
 
   it('lists storages with their health when loaded', async () => {
-    vi.mocked(RuntimeStorageService.list).mockResolvedValue({
+    vi.mocked(RuntimeStorageService.listSummary).mockResolvedValue({
       managedStoragesEnabled: true,
       mainStorage: 'main',
       storages: [
