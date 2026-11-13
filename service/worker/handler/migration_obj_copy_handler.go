@@ -47,12 +47,10 @@ func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	fromBucket, toBucket := p.ID.FromToBuckets(p.Bucket)
 
 	// acquire rate limits for source and destination storage before proceeding
-	if err := s.rateLimit(ctx, p.ID.FromStorage(), s3.HeadObject, s3.GetObject, s3.GetObjectAcl); err != nil {
-		logger.Debug().Err(err).Str(log.Storage, p.ID.FromStorage()).Msg("rate limit error")
-		return err
-	}
-	if err := s.rateLimit(ctx, p.ID.ToStorage(), s3.HeadObject, s3.PutObject, s3.PutObjectAcl); err != nil {
-		logger.Debug().Err(err).Str(log.Storage, p.ID.ToStorage()).Msg("rate limit error")
+	if storage, err := s.rateLimitSides(ctx,
+		p.ID.FromStorage(), []s3.Method{s3.HeadObject, s3.GetObject, s3.GetObjectAcl},
+		p.ID.ToStorage(), []s3.Method{s3.HeadObject, s3.PutObject, s3.PutObjectAcl}); err != nil {
+		logger.Debug().Err(err).Str(log.Storage, storage).Msg("rate limit error")
 		return err
 	}
 

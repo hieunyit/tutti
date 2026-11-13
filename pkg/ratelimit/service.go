@@ -18,13 +18,12 @@ package ratelimit
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/go-redis/redis_rate/v10"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/swift"
@@ -47,10 +46,14 @@ type RPM interface {
 func New(rc redis.UniversalClient, conf map[string]RateLimit) *Svc {
 	limiter := redis_rate.NewLimiter(rc)
 
-	return &Svc{
+	s := &Svc{
 		limiter: limiter,
 		conf:    conf,
+		rc:      rc,
+		res:     reservations{now: time.Now, pools: map[string]*lease{}},
 	}
+	s.res.batch = reserveBatchFromEnv()
+	return s
 }
 
 type Opt interface {
@@ -98,6 +101,8 @@ type Svc struct {
 	lookup  func(string) (RateLimit, bool)
 	limiter *redis_rate.Limiter
 	conf    map[string]RateLimit
+	rc      redis.Scripter
+	res     reservations
 }
 
 func (s *Svc) StorReqN(ctx context.Context, storage string, n int, options ...Opt) error {
@@ -112,17 +117,7 @@ func (s *Svc) StorReqN(ctx context.Context, storage string, n int, options ...Op
 		return nil
 	}
 
-	res, err := s.limiter.AllowN(ctx, fmt.Sprintf("lim:%s", storage), redis_rate.PerMinute(conf.RPM), n)
-	if err != nil {
-		// rate limiter failure should not affect business logic.
-		// log and return error here:
-		zerolog.Ctx(ctx).Err(err).Str(log.Storage, storage).Msg("rate limit error")
-		return nil
-	}
-	if res.Allowed == 0 {
-		return &dom.ErrRateLimitExceeded{RetryIn: res.RetryAfter}
-	}
-	return nil
+	return s.acquire(ctx, []need{{storage: storage, limit: redis_rate.PerMinute(conf.RPM), cost: n}})
 }
 
 func (s *Svc) StorReq(ctx context.Context, storage string, options ...Opt) error {
@@ -136,17 +131,7 @@ func (s *Svc) StorReq(ctx context.Context, storage string, options ...Opt) error
 		zerolog.Ctx(ctx).Debug().Str(log.Storage, storage).Msg("rate limit disabled for non upload/download methods")
 		return nil
 	}
-	res, err := s.limiter.Allow(ctx, fmt.Sprintf("lim:%s", storage), redis_rate.PerMinute(conf.RPM))
-	if err != nil {
-		// rate limiter failure should not affect business logic.
-		// log and return error here:
-		zerolog.Ctx(ctx).Err(err).Str(log.Storage, storage).Msg("rate limit error")
-		return nil
-	}
-	if res.Allowed == 0 {
-		return &dom.ErrRateLimitExceeded{RetryIn: res.RetryAfter}
-	}
-	return nil
+	return s.acquire(ctx, []need{{storage: storage, limit: redis_rate.PerMinute(conf.RPM), cost: n}})
 }
 
 var s3UploadDownloadMethods = map[s3.Method]struct{}{

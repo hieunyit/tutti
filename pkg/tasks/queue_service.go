@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -41,6 +42,37 @@ type QueueService interface {
 	Purge(ctx context.Context, queues ...string) error
 	Stats(ctx context.Context, queueName string) (*QueueStats, error)
 	EnqueueTask(ctx context.Context, task any, opts ...asynq.Option) error
+}
+
+// BatchEnqueuer is an optional capability of QueueService: enqueue many tasks in as few
+// Redis round trips as possible while keeping the broker admission semantics of EnqueueTask.
+type BatchEnqueuer interface {
+	// EnqueueTasks enqueues tasks in order. It returns how many leading tasks were accepted
+	// (a task whose ID already exists counts as accepted, like EnqueueTask). If the broker
+	// rejects a task by admission, enqueueing stops and the error is *dom.ErrRateLimitExceeded,
+	// exactly as EnqueueTask reports it; tasks after the rejected one are not enqueued.
+	EnqueueTasks(ctx context.Context, tasks []any) (int, error)
+}
+
+// EnqueueMany enqueues tasks through BatchEnqueuer when svc supports it, otherwise one by one.
+func EnqueueMany(ctx context.Context, svc QueueService, payloads []any) (int, error) {
+	if b, ok := svc.(BatchEnqueuer); ok {
+		return b.EnqueueTasks(ctx, payloads)
+	}
+	for i, p := range payloads {
+		if err := svc.EnqueueTask(ctx, p); err != nil {
+			return i, err
+		}
+	}
+	return len(payloads), nil
+}
+
+// DefaultUnprocessedCountTTL bounds how long a queue size may be served from cache.
+const DefaultUnprocessedCountTTL = 300 * time.Millisecond
+
+type countEntry struct {
+	count int
+	at    time.Time
 }
 
 type QueueStats struct {
@@ -89,7 +121,22 @@ func NewQueueService(client *asynq.Client, inspector *asynq.Inspector) *queueSer
 		inspector: inspector,
 		client:    client,
 		rc:        extractRedisFromInspector(inspector),
+		countTTL:  DefaultUnprocessedCountTTL,
+		now:       time.Now,
+		counts:    map[string]countEntry{},
 	}
+}
+
+// SetUnprocessedCountCache configures the cache TTL (<=0 disables caching) and, if now is
+// not nil, the clock. Intended for tests and tuning; call before use.
+func (q *queueService) SetUnprocessedCountCache(ttl time.Duration, now func() time.Time) {
+	q.countMu.Lock()
+	defer q.countMu.Unlock()
+	q.countTTL = ttl
+	if now != nil {
+		q.now = now
+	}
+	q.counts = map[string]countEntry{}
 }
 
 var _ QueueService = (*queueService)(nil)
@@ -98,6 +145,46 @@ type queueService struct {
 	inspector *asynq.Inspector
 	client    *asynq.Client
 	rc        redis.Cmdable
+
+	countMu  sync.Mutex
+	countTTL time.Duration
+	now      func() time.Time
+	counts   map[string]countEntry
+}
+
+func (q *queueService) cachedCount(queue string) (int, bool) {
+	q.countMu.Lock()
+	defer q.countMu.Unlock()
+	if q.countTTL <= 0 {
+		return 0, false
+	}
+	e, ok := q.counts[queue]
+	if !ok || q.now().Sub(e.at) >= q.countTTL || q.now().Before(e.at) {
+		return 0, false
+	}
+	return e.count, true
+}
+
+func (q *queueService) storeCount(queue string, count int) {
+	q.countMu.Lock()
+	defer q.countMu.Unlock()
+	if q.countTTL > 0 {
+		q.counts[queue] = countEntry{count: count, at: q.now()}
+	}
+}
+
+// noteEnqueued optimistically bumps a cached count; it keeps the original timestamp so the
+// TTL still bounds staleness. Never creates entries.
+func (q *queueService) noteEnqueued(queue string, n int) {
+	if n <= 0 {
+		return
+	}
+	q.countMu.Lock()
+	defer q.countMu.Unlock()
+	if e, ok := q.counts[queue]; ok {
+		e.count += n
+		q.counts[queue] = e
+	}
 }
 
 func (q *queueService) RedisClient() redis.Cmdable {
@@ -119,11 +206,50 @@ func WithStrictWatermark(ctx context.Context) context.Context { return ctx }
 // Admission is enforced by the broker in the same Lua script that creates the
 // task. A caller delayed between encoding and enqueue cannot commit over quota.
 func (q *queueService) EnqueueTask(ctx context.Context, task any, opts ...asynq.Option) error {
-	err := enqueueAny(ctx, q.client, task, opts...)
+	var queue string
+	if len(opts) == 0 {
+		if t, encErr := EncodeAny(ctx, task); encErr == nil {
+			queue = t.QueueName()
+			_, err := q.client.EnqueueContext(ctx, t)
+			return q.finishEnqueue(queue, err)
+		}
+	}
+	return q.finishEnqueue("", enqueueAny(ctx, q.client, task, opts...))
+}
+
+func (q *queueService) finishEnqueue(queue string, err error) error {
+	if errors.Is(err, asynq.ErrDuplicateTask) || errors.Is(err, asynq.ErrTaskIDConflict) {
+		return nil
+	}
 	if errors.Is(err, asynq.ErrQueueFull) {
 		return &dom.ErrRateLimitExceeded{RetryIn: time.Second}
 	}
+	if err == nil && queue != "" {
+		q.noteEnqueued(queue, 1)
+	}
 	return err
+}
+
+var _ BatchEnqueuer = (*queueService)(nil)
+
+// EnqueueTasks enqueues tasks with one Redis round trip per run of same-queue tasks.
+func (q *queueService) EnqueueTasks(ctx context.Context, payloads []any) (int, error) {
+	encoded := make([]*asynq.Task, 0, len(payloads))
+	for _, p := range payloads {
+		t, err := EncodeAny(ctx, p)
+		if err != nil {
+			return 0, err
+		}
+		encoded = append(encoded, t)
+	}
+	n, err := q.client.EnqueueBatch(ctx, encoded)
+	for _, t := range encoded[:n] {
+		q.noteEnqueued(t.QueueName(), 1)
+	}
+	if errors.Is(err, asynq.ErrQueueFull) {
+		return n, &dom.ErrRateLimitExceeded{RetryIn: time.Second}
+	}
+	return n, err
 }
 
 func (q *queueService) Stats(ctx context.Context, queueName string) (*QueueStats, error) {
@@ -247,6 +373,10 @@ func (q *queueService) UnprocessedCount(ctx context.Context, ignoreNotFound bool
 	}
 	count := 0
 	for _, queue := range queues {
+		if c, ok := q.cachedCount(queue); ok {
+			count += c
+			continue
+		}
 		info, err := q.getInfo(ctx, queue)
 		if ignoreNotFound && errors.Is(err, dom.ErrNotFound) {
 			continue
@@ -254,7 +384,9 @@ func (q *queueService) UnprocessedCount(ctx context.Context, ignoreNotFound bool
 		if err != nil {
 			return 0, err
 		}
-		count += activeWaitingCount(info)
+		c := activeWaitingCount(info)
+		q.storeCount(queue, c)
+		count += c
 	}
 	return count, nil
 }

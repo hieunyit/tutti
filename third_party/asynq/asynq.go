@@ -36,6 +36,19 @@ type Task struct {
 func (t *Task) Type() string    { return t.typename }
 func (t *Task) Payload() []byte { return t.payload }
 
+// QueueName returns the queue set by the Queue option attached to the task, or the default queue.
+func (t *Task) QueueName() string {
+	q := base.DefaultQueueName
+	for _, o := range t.opts {
+		if o.Type() == QueueOpt {
+			if v, ok := o.Value().(string); ok {
+				q = v
+			}
+		}
+	}
+	return q
+}
+
 // ResultWriter returns a pointer to the ResultWriter associated with the task.
 //
 // Nil pointer is returned if called on a newly created task (i.e. task created by calling NewTask).
