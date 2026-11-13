@@ -14,10 +14,8 @@
  *  limitations under the License.
  */
 
-import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
-
-export default <I18nMessages>{
-  [I18nLocale.EN]: {
+export default {
+  en: {
     pageDescription:
       'Manage the S3 access keys that clients use to connect to the proxy.',
     refresh: 'Refresh',
@@ -156,21 +154,25 @@ export default <I18nMessages>{
     grantModeGroupsHint:
       'Grant access based on Protection Groups. Buckets protected by selected groups are automatically included.',
     grantModeCustom: 'Custom Bucket Patterns',
-    grantModeCustomHint:
-      'Specify custom glob patterns (e.g. logs-*, photos).',
+    grantModeCustomHint: 'Specify custom glob patterns (e.g. logs-*, photos).',
     selectProtectionGroups: 'Select Protection Groups',
     selectProtectionGroupsPlaceholder: 'Choose one or more Protection Groups',
     groupBucketsLabel: 'Buckets in Selected Groups',
-    groupBucketsHint: 'Select which buckets from these groups this account can access.',
+    groupBucketsHint:
+      'Select which buckets from these groups this account can access.',
     selectAllBuckets: 'Select all',
     deselectAllBuckets: 'Deselect all',
-    noBucketsInSelectedGroups: 'No explicit buckets configured in selected group(s).',
-    storageScopeAlert: 'The selected group "{group}" protects all buckets on storage: {storage}.',
+    noBucketsInSelectedGroups:
+      'No explicit buckets configured in selected group(s).',
+    storageScopeAlert:
+      'The selected group "{group}" protects all buckets on storage: {storage}.',
     additionalPatternsLabel: 'Additional bucket patterns (optional)',
-    additionalPatternsHint: 'Add extra glob patterns outside the selected groups, e.g. logs-*, test-*',
+    additionalPatternsHint:
+      'Add extra glob patterns outside the selected groups, e.g. logs-*, test-*',
     noGroupSelectedHint: 'Please select at least one Protection Group above.',
     clusterBucketsLabel: 'Discovered Cluster Buckets (Click to add):',
-    clusterBucketsHint: 'Quickly add existing buckets found across cluster storages.',
+    clusterBucketsHint:
+      'Quickly add existing buckets found across cluster storages.',
     saveUnknownError: 'Unknown error while saving the policy.',
     USER_REQUIRED: 'A user is required.',
     PERMISSION_INVALID: 'Choose a permission.',
@@ -178,7 +180,7 @@ export default <I18nMessages>{
     PATTERN_WHITESPACE: 'A bucket pattern must not contain spaces.',
     PATTERN_DUPLICATE: 'Bucket patterns must be unique.',
   },
-  [I18nLocale.DE]: {
+  de: {
     pageDescription:
       'Verwalten Sie die S3-Zugriffsschlüssel, mit denen Clients sich am Proxy anmelden.',
     refresh: 'Aktualisieren',
@@ -322,18 +324,25 @@ export default <I18nMessages>{
     grantModeCustomHint:
       'Benutzerdefinierte Glob-Muster angeben (z. B. logs-*, photos).',
     selectProtectionGroups: 'Protection Groups auswählen',
-    selectProtectionGroupsPlaceholder: 'Eine oder mehrere Protection Groups wählen',
+    selectProtectionGroupsPlaceholder:
+      'Eine oder mehrere Protection Groups wählen',
     groupBucketsLabel: 'Buckets in ausgewählten Gruppen',
-    groupBucketsHint: 'Wählen Sie aus, auf welche Buckets dieser Gruppen zugegriffen werden darf.',
+    groupBucketsHint:
+      'Wählen Sie aus, auf welche Buckets dieser Gruppen zugegriffen werden darf.',
     selectAllBuckets: 'Alle auswählen',
     deselectAllBuckets: 'Alle abwählen',
-    noBucketsInSelectedGroups: 'Keine expliziten Buckets in den ausgewählten Gruppen konfiguriert.',
-    storageScopeAlert: 'Die ausgewählte Gruppe "{group}" schützt alle Buckets auf dem Speicher: {storage}.',
+    noBucketsInSelectedGroups:
+      'Keine expliziten Buckets in den ausgewählten Gruppen konfiguriert.',
+    storageScopeAlert:
+      'Die ausgewählte Gruppe "{group}" schützt alle Buckets auf dem Speicher: {storage}.',
     additionalPatternsLabel: 'Zusätzliche Bucket-Muster (optional)',
-    additionalPatternsHint: 'Fügen Sie zusätzliche Muster außerhalb der Gruppen hinzu, z. B. logs-*, test-*',
-    noGroupSelectedHint: 'Bitte wählen Sie mindestens eine Protection Group aus.',
+    additionalPatternsHint:
+      'Fügen Sie zusätzliche Muster außerhalb der Gruppen hinzu, z. B. logs-*, test-*',
+    noGroupSelectedHint:
+      'Bitte wählen Sie mindestens eine Protection Group aus.',
     clusterBucketsLabel: 'Gefundene Cluster-Buckets (Klicken zum Hinzufügen):',
-    clusterBucketsHint: 'Bestehende Buckets aus Speicherorten schnell hinzufügen.',
+    clusterBucketsHint:
+      'Bestehende Buckets aus Speicherorten schnell hinzufügen.',
     saveUnknownError: 'Unbekannter Fehler beim Speichern der Richtlinie.',
     USER_REQUIRED: 'Ein Benutzer ist erforderlich.',
     PERMISSION_INVALID: 'Wählen Sie eine Berechtigung.',

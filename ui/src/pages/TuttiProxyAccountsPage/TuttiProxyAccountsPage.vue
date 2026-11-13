@@ -15,107 +15,95 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
-  import { NTooltip } from 'naive-ui';
   import { storeToRefs } from 'pinia';
-  import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
+  import { computed, onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { NButton, NTooltip } from 'naive-ui';
   import i18nAccounts from '@/components/tutti/accounts/i18nAccounts';
   import ProxyAccountsTile from '@/components/tutti/accounts/ProxyAccountsTile.vue';
-  import PageHeader from '@/components/layout/PageHeader.vue';
+  import { Callout, EmptyBlock, PageShell } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import Callout from '@/components/ui/Callout.vue';
-  import ErrorState from '@/components/tutti/common/ErrorState.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
-  import { IconName } from '@/utils/types/icon';
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { hasError, isLoading, dynamicAvailable, dynamicReason } =
+  const { hasError, isLoading, dynamicAvailable, dynamicReason, accounts } =
     storeToRefs(store);
 
   const accountsTile = ref<InstanceType<typeof ProxyAccountsTile> | null>(null);
+  // the store has no "loaded" flag: loading is the first request in flight
+  const loaded = ref(false);
+  const state = computed(() => {
+    if (hasError.value) return 'error' as const;
 
-  onBeforeMount(() => store.init());
+    return loaded.value || accounts.value.length > 0
+      ? ('ready' as const)
+      : ('loading' as const);
+  });
+
+  async function reload() {
+    await store.init();
+    loaded.value = true;
+  }
+
+  onBeforeMount(reload);
   onBeforeUnmount(() => store.$reset());
 </script>
 
 <template>
-  <div class="tutti-proxy-accounts-page">
-    <PageHeader
-      :title="t('title')"
-      :description="t('pageDescription')"
-    >
-      <template #actions>
-        <CButton
-          :loading="isLoading"
-          @click="store.init()"
-        >
-          {{ t('refresh') }}
-        </CButton>
-        <WriteGate v-if="!hasError">
-          <NTooltip :disabled="dynamicAvailable">
-            <template #trigger>
-              <span class="tutti-proxy-accounts-page__create">
-                <CButton
-                  type="primary"
-                  :disabled="!dynamicAvailable"
-                  @click="accountsTile?.openCreate()"
-                >
-                  <template #icon>
-                    <CIcon
-                      :is-inline="true"
-                      :name="IconName.BASE_ADD"
-                    />
-                  </template>
+  <PageShell
+    :title="t('title')"
+    :description="t('pageDescription')"
+    :state="state"
+    :error-text="t('errorText')"
+    @retry="reload"
+  >
+    <template #actions>
+      <NButton
+        :loading="isLoading"
+        @click="reload"
+        >{{ t('refresh') }}</NButton
+      >
+      <WriteGate v-if="!hasError">
+        <NTooltip :disabled="dynamicAvailable">
+          <template #trigger>
+            <span class="proxy-accounts-create">
+              <NButton
+                type="primary"
+                :disabled="!dynamicAvailable"
+                @click="accountsTile?.openCreate()"
+                >{{ t('createAccount') }}</NButton
+              >
+            </span>
+          </template>
+          {{
+            t('unavailableReason', {
+              reason: dynamicReason || t('notConfigured'),
+            })
+          }}
+        </NTooltip>
+      </WriteGate>
+    </template>
 
-                  {{ t('createAccount') }}
-                </CButton>
-              </span>
-            </template>
-            {{
-              t('unavailableReason', {
-                reason: dynamicReason || t('notConfigured'),
-              })
-            }}
-          </NTooltip>
-        </WriteGate>
-      </template>
-    </PageHeader>
-
-    <ErrorState
-      v-if="hasError"
-      :title="t('errorTitle')"
-      :text="t('errorText')"
-      :action-label="t('retry')"
-      @retry="store.init()"
+    <EmptyBlock
+      v-if="!dynamicAvailable && accounts.length === 0"
+      :title="t('unavailableTitle')"
+      :description="t('unavailableText')"
     />
-    <div
-      v-else
-      class="tutti-proxy-accounts-page__content"
-    >
+    <template v-else>
       <Callout
         v-if="!dynamicAvailable"
         tone="warning"
         :title="t('unavailableTitle')"
+        >{{ t('unavailableText') }}</Callout
       >
-        {{ t('unavailableText') }}
-      </Callout>
       <ProxyAccountsTile ref="accountsTile" />
-    </div>
-  </div>
+    </template>
+  </PageShell>
 </template>
 
 <style lang="scss" scoped>
-  .tutti-proxy-accounts-page {
-    &__content {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    &__create {
-      display: inline-flex;
-    }
+  .proxy-accounts-create {
+    display: inline-flex;
   }
 </style>

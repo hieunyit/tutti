@@ -17,7 +17,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import TuttiUsersPage from './TuttiUsersPage.vue';
+import TuttiUsersPage from '../TuttiUsersPage.vue';
 import { TuttiService } from '@/services/TuttiService';
 import {
   kitI18n,

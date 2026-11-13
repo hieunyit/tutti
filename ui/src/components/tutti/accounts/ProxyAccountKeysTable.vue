@@ -17,19 +17,22 @@
 <script setup lang="ts">
   /**
    * Key table with every access key for one account (user detail) or all
-   * accounts (flat access keys page).
+   * accounts (flat proxy accounts page).
    * Static keys come from the config and are read-only; managed keys can be
    * rotated, disabled/enabled and deleted.
    */
-  import { CButton } from '@clyso/clyso-ui-kit';
-  import { computed, ref } from 'vue';
+  import { computed, h, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { RouterLink } from 'vue-router';
+  import { NButton, type DataTableColumns } from 'naive-ui';
   import i18nAccounts from './i18nAccounts';
-  import CopyButton from '@/components/chorus/common/CopyButton/CopyButton.vue';
-  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
+  import {
+    ConfirmDialog,
+    CopyValue,
+    DataTable,
+    StatusBadge,
+  } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import StatusTag from '@/components/ui/StatusTag.vue';
   import { EMPTY_VALUE } from '@/components/ui/status';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
@@ -40,6 +43,8 @@
   } from '@/utils/helpers/ProxyAccountHelper';
   import type { TuttiProxyAccount } from '@/utils/types/tutti';
   import { RouteName } from '@/utils/types/router';
+
+  type Row = ProxyAccountKeyRow & { user: string };
 
   const props = defineProps<{
     account?: TuttiProxyAccount;
@@ -54,7 +59,7 @@
   const store = useTuttiAccessPolicyStore();
   const { createNotification } = useTuttiNotification();
 
-  const rows = computed(() =>
+  const rows = computed<Row[]>(() =>
     (props.accounts ?? (props.account ? [props.account] : [])).flatMap(
       (account) =>
         ProxyAccountHelper.getKeyRows(account).map((row) => ({
@@ -63,7 +68,7 @@
         })),
     ),
   );
-  const deleting = ref<ProxyAccountKeyRow | null>(null);
+  const deleting = ref<Row | null>(null);
   const isDeleting = ref(false);
 
   function reportError(error: unknown) {
@@ -76,7 +81,7 @@
     });
   }
 
-  async function toggleStatus(row: ProxyAccountKeyRow) {
+  async function toggleStatus(row: Row) {
     if (!row.dynamicKey) return;
 
     try {
@@ -123,7 +128,7 @@
   }
 
   /** "old secret valid until HH:MM:SS", only while it is still valid */
-  function oldSecretNote(row: ProxyAccountKeyRow): string | null {
+  function oldSecretNote(row: Row): string | null {
     const expires = row.dynamicKey?.previousSecretExpiresAt;
 
     if (!ProxyAccountHelper.hasTime(expires)) return null;
@@ -132,261 +137,164 @@
       ? t('oldSecretValidUntil', { time: formatTime(expires) })
       : null;
   }
+
+  function rowActions(row: Row) {
+    const key = row.dynamicKey;
+
+    if (!key) return h('span', t('managedInConfig'));
+
+    const disabled = ProxyAccountHelper.isDisabled(key);
+
+    return h(WriteGate, null, () =>
+      h('span', { class: 'keys-table__buttons' }, [
+        h(
+          NButton,
+          { size: 'small', onClick: () => emit('rotate', row.accessKeyId) },
+          () => t('rotate'),
+        ),
+        h(NButton, { size: 'small', onClick: () => toggleStatus(row) }, () =>
+          t(disabled ? 'enableKey' : 'disableKey'),
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            type: 'error',
+            secondary: true,
+            onClick: () => (deleting.value = row),
+          },
+          () => t('deleteKey'),
+        ),
+      ]),
+    );
+  }
+
+  const columns = computed<DataTableColumns<Row>>(() => [
+    ...(props.accounts
+      ? [
+          {
+            title: t('columnUser'),
+            key: 'user',
+            sorter: 'default' as const,
+            render: (row: Row) =>
+              h(
+                RouterLink,
+                {
+                  to: {
+                    name: RouteName.TUTTI_USER_DETAIL,
+                    params: { name: row.user },
+                  },
+                },
+                () => row.user,
+              ),
+          },
+        ]
+      : []),
+    {
+      title: t('columnAccessKeyId'),
+      key: 'accessKeyId',
+      render: (row) => h(CopyValue, { value: row.accessKeyId }),
+    },
+    {
+      title: t('columnSource'),
+      key: 'source',
+      render: (row) => sourceLabel(row.source),
+    },
+    {
+      title: t('columnStatus'),
+      key: 'status',
+      render: (row) => {
+        const off =
+          !!row.dynamicKey && ProxyAccountHelper.isDisabled(row.dynamicKey);
+
+        return h(StatusBadge, {
+          tone: off ? 'neutral' : 'success',
+          label: t(off ? 'statusDisabled' : 'statusActive'),
+        });
+      },
+    },
+    {
+      title: t('columnDescription'),
+      key: 'description',
+      render: (row) => row.dynamicKey?.description || EMPTY_VALUE,
+    },
+    {
+      title: t('columnCreated'),
+      key: 'createdAt',
+      render: (row) => dateCell(row.dynamicKey?.createdAt),
+    },
+    {
+      title: t('columnRotated'),
+      key: 'rotatedAt',
+      render: (row) => {
+        const note = oldSecretNote(row);
+
+        return h('span', { class: 'keys-table__stack' }, [
+          dateCell(row.dynamicKey?.rotatedAt),
+          note ? h('span', { class: 'keys-table__warn' }, note) : null,
+        ]);
+      },
+    },
+    {
+      title: t('columnActions'),
+      key: 'actions',
+      render: rowActions,
+    },
+  ]);
 </script>
 
 <template>
-  <div :class="['keys-table', { 'keys-table--flat': !!accounts }]">
-    <p
-      v-if="rows.length === 0"
-      class="keys-table__none"
+  <div class="keys-table">
+    <DataTable
+      :columns="columns"
+      :rows="rows"
+      :loading="false"
+      :row-key="(row: Row) => `${row.user}:${row.accessKeyId}`"
     >
-      {{ t('noKeys') }}
-    </p>
-    <div
-      v-else
-      class="tt-table-wrap keys-table__wrap"
-    >
-      <table class="tt-table">
-        <thead>
-          <tr>
-            <th
-              v-if="accounts"
-              scope="col"
-            >
-              {{ t('columnUser') }}
-            </th>
-            <th scope="col">{{ t('columnAccessKeyId') }}</th>
-            <th scope="col">{{ t('columnSource') }}</th>
-            <th scope="col">{{ t('columnStatus') }}</th>
-            <th scope="col">{{ t('columnDescription') }}</th>
-            <th scope="col">{{ t('columnCreated') }}</th>
-            <th scope="col">{{ t('columnRotated') }}</th>
-            <th scope="col">
-              <span class="tt-sr-only">{{ t('columnActions') }}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in rows"
-            :key="`${row.user}:${row.accessKeyId}`"
-          >
-            <td v-if="accounts">
-              <RouterLink
-                :to="{
-                  name: RouteName.TUTTI_USER_DETAIL,
-                  params: { name: row.user },
-                }"
-                >{{ row.user }}</RouterLink
-              >
-            </td>
-            <td :data-label="accounts ? t('columnAccessKeyId') : undefined">
-              <span class="keys-table__id">
-                <code>{{ row.accessKeyId }}</code>
-                <CopyButton :text="row.accessKeyId" />
-              </span>
-            </td>
-            <td :data-label="accounts ? t('columnSource') : undefined">
-              <span class="keys-table__source">{{
-                sourceLabel(row.source)
-              }}</span>
-            </td>
-            <td :data-label="accounts ? t('columnStatus') : undefined">
-              <StatusTag
-                :variant="
-                  row.dynamicKey &&
-                  ProxyAccountHelper.isDisabled(row.dynamicKey)
-                    ? 'neutral'
-                    : 'success'
-                "
-                :label="
-                  row.dynamicKey &&
-                  ProxyAccountHelper.isDisabled(row.dynamicKey)
-                    ? t('statusDisabled')
-                    : t('statusActive')
-                "
-              />
-            </td>
-            <td :data-label="accounts ? t('columnDescription') : undefined">
-              {{ row.dynamicKey?.description || EMPTY_VALUE }}
-            </td>
-            <td :data-label="accounts ? t('columnCreated') : undefined">
-              {{ dateCell(row.dynamicKey?.createdAt) }}
-            </td>
-            <td :data-label="accounts ? t('columnRotated') : undefined">
-              <span class="keys-table__stack">
-                <span>{{ dateCell(row.dynamicKey?.rotatedAt) }}</span>
-                <span
-                  v-if="oldSecretNote(row)"
-                  class="keys-table__warn"
-                  >{{ oldSecretNote(row) }}</span
-                >
-              </span>
-            </td>
-            <td
-              class="keys-table__actions"
-              :data-label="accounts ? t('columnActions') : undefined"
-            >
-              <span
-                v-if="!row.dynamicKey"
-                class="keys-table__muted"
-                >{{ t('managedInConfig') }}</span
-              >
-              <WriteGate v-else>
-                <span class="keys-table__buttons">
-                  <CButton
-                    secondary
-                    size="small"
-                    @click="emit('rotate', row.accessKeyId)"
-                  >
-                    {{ t('rotate') }}
-                  </CButton>
-                  <CButton
-                    secondary
-                    size="small"
-                    @click="toggleStatus(row)"
-                  >
-                    {{
-                      ProxyAccountHelper.isDisabled(row.dynamicKey)
-                        ? t('enableKey')
-                        : t('disableKey')
-                    }}
-                  </CButton>
-                  <CButton
-                    type="error"
-                    ghost
-                    size="small"
-                    @click="deleting = row"
-                  >
-                    {{ t('deleteKey') }}
-                  </CButton>
-                </span>
-              </WriteGate>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <template #empty>
+        <p class="keys-table__none">{{ t('noKeys') }}</p>
+      </template>
+    </DataTable>
 
     <ConfirmDialog
-      :show="deleting !== null"
+      :open="deleting !== null"
       :title="t('deleteKeyDialogTitle')"
-      :text="t('deleteKeyConfirm', { key: deleting?.accessKeyId ?? '' })"
+      :target-name="deleting?.accessKeyId"
       :confirm-label="t('deleteKeyAction')"
-      :cancel-label="t('cancel')"
       :loading="isDeleting"
       danger
-      @update:show="deleting = null"
+      @cancel="deleting = null"
       @confirm="confirmDelete"
-    />
+    >
+      {{ t('deleteKeyConfirm', { key: deleting?.accessKeyId ?? '' }) }}
+    </ConfirmDialog>
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
   .keys-table {
-    background-color: var(--tt-surface);
-    border: 1px solid var(--tt-border);
-    border-radius: 10px;
-    overflow: hidden;
-
-    :deep(.tt-table th),
-    :deep(.tt-table td) {
-      padding-inline: 10px;
-    }
-
     &__none {
       margin: 0;
-      padding: 12px 16px;
-      font-size: 13px;
+      padding: var(--tt-space-3) var(--tt-space-4);
+      font-size: var(--tt-text-sm);
       color: var(--tt-text-3);
-    }
-
-    &__id {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-
-      code {
-        font-family: var(--tt-mono);
-        font-size: 12px;
-      }
-    }
-
-    &__source {
-      padding: 1px 8px;
-      font-size: 12px;
-      color: var(--tt-text-2);
-      border: 1px solid var(--tt-border-strong);
-      border-radius: var(--tt-radius-tag);
-    }
-
-    &__stack {
-      display: flex;
-      flex-direction: column;
-    }
-
-    &__warn {
-      font-size: 12px;
-      color: var(--tt-warning);
-    }
-
-    &__muted {
-      font-size: 12px;
-      color: var(--tt-text-3);
-    }
-
-    &__actions {
-      text-align: right;
     }
 
     &__buttons {
       display: inline-flex;
-      gap: 6px;
+      flex-wrap: wrap;
+      gap: var(--tt-space-2);
     }
 
-    @media (max-width: 600px) {
-      &--flat .tt-table,
-      &--flat .tt-table tbody,
-      &--flat .tt-table tr,
-      &--flat .tt-table td {
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
-      }
+    &__stack {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+    }
 
-      &--flat .tt-table thead {
-        display: none;
-      }
-
-      &--flat .tt-table tr {
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--tt-border);
-      }
-
-      &--flat .tt-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 6px 0;
-        white-space: normal;
-        overflow-wrap: anywhere;
-        border: 0;
-        text-align: right;
-      }
-
-      &--flat .tt-table td::before {
-        content: attr(data-label);
-        flex: 0 0 35%;
-        color: var(--tt-text-3);
-        font-size: 12px;
-        text-align: left;
-      }
-
-      &--flat .keys-table__buttons {
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
+    &__warn {
+      font-size: var(--tt-text-xs);
+      color: var(--tt-warning);
     }
   }
 </style>

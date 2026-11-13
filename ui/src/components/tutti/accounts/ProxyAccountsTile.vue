@@ -15,27 +15,24 @@
   -->
 
 <script setup lang="ts">
-  import { CButton } from '@clyso/clyso-ui-kit';
   import { storeToRefs } from 'pinia';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { NButton } from 'naive-ui';
   import i18nAccounts from './i18nAccounts';
   import ProxyAccountCreateModal from './ProxyAccountCreateModal.vue';
   import ProxyAccountKeysTable from './ProxyAccountKeysTable.vue';
   import ProxyKeyRotateModal from './ProxyKeyRotateModal.vue';
   import ProxySecretModal from './ProxySecretModal.vue';
-  import SectionCard from '@/components/ui/SectionCard.vue';
-  import EmptyState from '@/components/ui/EmptyState.vue';
-  import FilterBar from '@/components/tutti/common/FilterBar.vue';
-  import SearchInput from '@/components/tutti/common/SearchInput.vue';
+  import { EmptyBlock, FilterBar } from '@/components/kit';
+  import WriteGate from '@/components/auth/WriteGate.vue';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
-  import { IconName } from '@/utils/types/icon';
   import { type TuttiProxyAccountSecret } from '@/utils/types/tutti';
 
   const { t } = useI18n({ messages: i18nAccounts });
   const store = useTuttiAccessPolicyStore();
-  const { accounts, proxyAddress } = storeToRefs(store);
+  const { accounts, proxyAddress, dynamicAvailable } = storeToRefs(store);
   const query = ref('');
 
   const showCreate = ref(false);
@@ -45,12 +42,14 @@
   const shownSecretKind = ref<'created' | 'rotated'>('created');
 
   const userNames = computed(() => accounts.value.map((a) => a.user));
-
   const visibleAccounts = computed(() =>
     ProxyAccountHelper.filterAccounts(accounts.value, query.value),
   );
+  const hasKeys = computed(() =>
+    accounts.value.some((account) => (account.accessKeyIds ?? []).length > 0),
+  );
 
-  // the primary "Create access key" action lives in the page header
+  // the primary "Create account" action lives in the page header
   defineExpose({ openCreate: () => (showCreate.value = true) });
 
   function onCreated(secret: TuttiProxyAccountSecret) {
@@ -66,44 +65,42 @@
 </script>
 
 <template>
-  <SectionCard
-    class="accounts-tile"
-    :title="t('title')"
-    flush
-  >
-    <FilterBar>
-      <SearchInput
-        v-model="query"
-        :placeholder="t('filterPlaceholder')"
-        :label="t('filterLabel')"
-      />
-      <template #note>
-        {{ t('filterNote') }}
-      </template>
-    </FilterBar>
-
-    <EmptyState
-      v-if="
-        accounts.length === 0 ||
-        accounts.every((account) => (account.accessKeyIds ?? []).length === 0)
-      "
-      :icon="IconName.BASE_KEY"
+  <div class="accounts-tile">
+    <EmptyBlock
+      v-if="!hasKeys"
       :title="t('emptyTitle')"
-      :text="t('emptyText')"
-    />
-    <EmptyState
-      v-else-if="visibleAccounts.length === 0"
-      :title="t('noResultsTitle')"
-      :text="t('noResultsText')"
+      :description="t('emptyText')"
     >
-      <CButton @click="query = ''">{{ t('noResultsAction') }}</CButton>
-    </EmptyState>
-
-    <ProxyAccountKeysTable
-      v-else
-      :accounts="visibleAccounts"
-      @rotate="rotateKeyId = $event"
-    />
+      <WriteGate>
+        <NButton
+          type="primary"
+          :disabled="!dynamicAvailable"
+          @click="showCreate = true"
+          >{{ t('createAccount') }}</NButton
+        >
+      </WriteGate>
+    </EmptyBlock>
+    <template v-else>
+      <FilterBar
+        v-model:search="query"
+        :search-label="t('filterLabel')"
+        :search-placeholder="t('filterPlaceholder')"
+        @clear="query = ''"
+      />
+      <p class="accounts-tile__note">{{ t('filterNote') }}</p>
+      <EmptyBlock
+        v-if="visibleAccounts.length === 0"
+        :title="t('noResultsTitle')"
+        :description="t('noResultsText')"
+      >
+        <NButton @click="query = ''">{{ t('noResultsAction') }}</NButton>
+      </EmptyBlock>
+      <ProxyAccountKeysTable
+        v-else
+        :accounts="visibleAccounts"
+        @rotate="rotateKeyId = $event"
+      />
+    </template>
 
     <ProxyAccountCreateModal
       v-model:show="showCreate"
@@ -121,71 +118,15 @@
       :endpoint="proxyAddress"
       @close="shownSecret = null"
     />
-  </SectionCard>
+  </div>
 </template>
 
 <style lang="scss" scoped>
   .accounts-tile {
-    strong {
-      font-weight: 600;
-    }
-
-    &__expand {
-      width: 32px;
-      padding-right: 0;
-    }
-
-    &__toggle {
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      font: inherit;
-      color: var(--tt-text-2);
-      background: var(--tt-surface);
-      border: 1px solid var(--tt-border-strong);
-      border-radius: var(--tt-radius-control);
-      cursor: pointer;
-
-      &:hover {
-        background: var(--tt-subtle);
-      }
-    }
-
-    &__muted {
-      font-size: 12px;
+    &__note {
+      margin: var(--tt-space-2) 0 var(--tt-space-4);
+      font-size: var(--tt-text-xs);
       color: var(--tt-text-3);
-    }
-
-    &__chips {
-      display: inline-flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    &__chip {
-      font-family: var(--tt-mono);
-      font-size: 12px;
-    }
-
-    // width 0 + min-width 100%: the nested table scrolls inside the cell and
-    // never widens the users table
-    &__nested-inner {
-      width: 0;
-      min-width: 100%;
-    }
-
-    &__nested td {
-      padding: 4px 16px 16px 40px;
-      background-color: var(--tt-subtle);
-    }
-
-    &__actions {
-      text-align: right;
-    }
-
-    &__buttons {
-      display: inline-flex;
-      gap: 6px;
     }
   }
 </style>
