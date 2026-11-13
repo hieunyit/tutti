@@ -220,6 +220,45 @@ curl -X POST http://localhost:9671/tutti/protection-groups \
   }'
 ```
 
+### Storage-level replication (`/replication/*`)
+
+`user` is optional on `POST /replication/add`, `get`, `list`, `PUT pause|resume|delete`, the switch endpoints and `POST /replication/list-buckets`. An empty or omitted `user` creates a **storage-level replication**: the whole storage (or the listed buckets) is copied A to B using each storage's connection account, with no S3 user. Responses return an empty user as `""`. The internal `$service` identity no longer exists and is never returned.
+
+```bash
+# storage-level, all buckets
+curl -X POST http://localhost:9671/replication/add -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2"}}'
+
+# storage-level, one bucket
+curl -X POST http://localhost:9671/replication/add -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2","fromBucket":"data","toBucket":"data"}}'
+
+# which buckets can be selected
+curl -X POST http://localhost:9671/replication/list-buckets -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fromStorage":"minio1","toStorage":"minio2","showReplicated":true}'
+```
+
+`list-buckets` returns `{"buckets":[...],"replicatedBuckets":[...],"coveredBuckets":[{"bucket","ownerKind","ownerId"}]}`. `buckets` are the ones that can be replicated now; `coveredBuckets` lists buckets already covered for that `from -> to` edge by a protection group (`ownerKind: "group"`) or another replication (`"replication"`), with the owner id. A storage with no connection account yields an error naming that storage.
+
+**Overlap rule and 409.** Creating a replication, creating a group and updating a group all use the same rule:
+
+| Case | Example | Result |
+|---|---|---|
+| Same destination | `A -> C` exists, add `B -> C` (or `A -> C` again) | rejected |
+| Reverse direction | `A -> B` exists, add `B -> A` | rejected |
+| Same source, different destination | `A -> B` exists, add `A -> C` | allowed |
+| Chain | `A -> B` exists, add `B -> C` | allowed |
+| Unrelated | `A -> B` exists, add `C -> D` | allowed |
+
+A rejection applies only when the bucket sets also intersect: an explicit bucket list intersects when at least one name is shared, and "all buckets" intersects everything. Objects of two different real users conflict only when their explicit bucket lists intersect, because "all buckets" of a user means all buckets of that user. A storage-level object (no user) covers every bucket of the storage, so it conflicts with any object on the same edges. A protection group contributes every ordered pair between its members. The check runs before anything is created, under one global lock, so a rejected request leaves no policy, key, group or queue entry behind and two concurrent creations cannot both succeed.
+
+A rejected request returns HTTP `409` (gRPC `AlreadyExists`); the human text naming the conflicting object and bucket is in the error details `reason`. `tuttictl` prints that text and exits non-zero. One source to many destinations is expressed as several replications (`A -> B`, `A -> C`) or as one protection group.
+
+**Data behavior** (measured): an object with the same name but different content is overwritten at the destination by the source version; objects that exist only on the destination are never touched; identical objects are skipped.
+
 ---
 
 ## 5. S3 Users & Access Policies

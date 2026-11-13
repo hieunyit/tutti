@@ -13,13 +13,27 @@ The controller runs in every worker (one reconcile per group per second, seriali
 
 | Field | Meaning |
 |---|---|
-| `id`, `user` | Group ID and the Tutti user whose data it protects. `user` is required and must exist (an identity, or a user with credentials on a member); it is never chosen implicitly |
-| `buckets` | Exact bucket names; empty = all buckets of the user. Scopes of two groups may not overlap |
+| `id`, `user` | Group ID and the Tutti user whose data it protects. `user` is optional: empty means a storage-level group (every bucket of the members, connection accounts, no identity); if set it must exist (an identity, or a user with credentials on a member) and is never chosen implicitly |
+| `buckets` | Exact bucket names; empty = all buckets of the user (or of the storage when `user` is empty). Scopes of two groups may not overlap |
 | `members` | Storages (S3, at least two). The primary must currently be the routing target of the scope |
 | `copies` | Wanted healthy copies (2..members) |
 | `mode` | `manual` (switchover only) or `auto` (automatic failover by quorum) |
 | `after`, `electorate`, `maxEventLag`, `maxSwitchesPerHour` | Automatic failover: outage duration, explicit proxy voters (at least three), allowed event lag, rate limit |
 | `primary`, `generation`, `state`, `frozen`, `target`, `verified`, `quarantined`, `history` | Server-owned state |
+
+A group shares the overlap rule with replications (see [API](../tutti/api.md), "Storage-level replication"); a group over members {A, B, C} counts every ordered pair, so it conflicts with a standalone `C -> A` but not with `A -> D`:
+
+| Case | Example | Result |
+|---|---|---|
+| Same destination | `A -> C` exists, add `B -> C` (or `A -> C` again) | rejected |
+| Reverse direction | `A -> B` exists, add `B -> A` | rejected |
+| Same source, different destination | `A -> B` exists, add `A -> C` | allowed |
+| Chain | `A -> B` exists, add `B -> C` | allowed |
+| Unrelated | `A -> B` exists, add `C -> D` | allowed |
+
+A rejection applies only when the bucket sets also intersect: an explicit bucket list intersects when at least one name is shared, and "all buckets" intersects everything. Objects of two different real users conflict only when their explicit bucket lists intersect, because "all buckets" of a user means all buckets of that user. A storage-level object (no user) covers every bucket of the storage, so it conflicts with any object on the same edges. A protection group contributes every ordered pair between its members. The check runs before anything is created, under one global lock, so a rejected request leaves no policy, key, group or queue entry behind and two concurrent creations cannot both succeed.
+
+Creating or updating a group that would overlap fails with `AlreadyExists` (HTTP 409) naming the object and bucket, and creates nothing. One source to many destinations is several replications or one group. The group's internal replications run without a user, using each member's connection account; the former internal `$service` identity was removed.
 
 Scope and members are immutable; detach (`Delete`, ready groups only) and create again to change them.
 

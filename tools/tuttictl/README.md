@@ -55,6 +55,9 @@ tuttictl repl
 # User-level replication (all buckets for user)
 tuttictl repl add -u <user> -f <from storage> -t <to storage>
 
+# Storage-level replication (no user; uses each storage connection account)
+tuttictl repl add -f <from storage> -t <to storage>
+
 # Bucket-level replication
 tuttictl repl add -u <user> -b <bucket> -f <from storage> -t <to storage>
 

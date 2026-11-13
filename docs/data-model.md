@@ -111,6 +111,10 @@ Routing logic:
 - `HASH` `p:repl_st:<user>:<from bucket>:<from storage>:<to storage>[:<to bucket>]` - bucket replication status metadata. Each bucket-level policy has corresponding status `HASH`. Status stores migration progress. See `ReplicationPolicyStatus` struct in [pkg/policy/service.go](../pkg/policy/service.go). Workers use status to support policy remove/pause/resume feature.
 - `HASH` `p:switch:<user>:<bucket>` - bucket switch. Created when and if source and destination were switched in proxy. Holds information about previous source and switch status info. Relevant only for switch-replication feature. Cannot be used if replication was done to custom destination bucket. See struct `ReplicationSwitch` in [pkg/policy/service.go](../pkg/policy/service.go).
 
+Storage-level replication: the `<user>` segment of the `p:repl:*`, `p:repl_st:*`, `p:switch:*` and `p:route:*` keys may be an empty string. An empty user means the whole storage (or the listed buckets) is replicated with each storage's connection account; no identity is created in `s3_identities`, and the former `$service` identity no longer exists. The Postgres column `user_name` stays `NOT NULL` and holds `''` for these rows (no schema change). The replication ID string and the queue names encode an empty user and round-trip through `UniversalIDFromString`.
+
+Creation of any replication or protection group is checked by the overlap rule (same destination or reverse direction, with intersecting buckets, is rejected with `AlreadyExists`) under one global scope lock, before any key is written. See [API](./tutti/api.md).
+
 Replication policy creation logic:
 
 1. Lookup routing policy and check that replication source equals to routing target.
