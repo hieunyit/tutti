@@ -362,6 +362,12 @@ func TestReplications(t *testing.T) {
 	g2, _ := r.IncrementGeneration(ctx, u)
 	require.EqualValues(t, 2, g2)
 
+	// storage-level replication: empty user
+	sl := controlplane.ReplicationID{FromStorage: "s1", ToStorage: "s2", FromBucket: "sb", ToBucket: "sb"}
+	gs, err := r.IncrementGeneration(ctx, sl)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, gs)
+
 	// removal keeps the status (archived) and the generation, like Redis
 	require.NoError(t, r.Remove(ctx, u))
 	require.NoError(t, r.Archive(ctx, u))
@@ -388,7 +394,7 @@ func TestReplications(t *testing.T) {
 	require.Len(t, list, 3)
 	gens, err := r.ListGenerations(ctx)
 	require.NoError(t, err)
-	require.Len(t, gens, 1)
+	require.Len(t, gens, 2) // includes the storage-level (empty user) generation
 
 	require.NoError(t, r.SetGeneration(ctx, bk, 7))
 	g, _ = r.Generation(ctx, bk)

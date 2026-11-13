@@ -472,8 +472,8 @@ func (r *replications) SetGeneration(ctx context.Context, id controlplane.Replic
 
 func (r *replications) setGen(ctx context.Context, id controlplane.ReplicationID, value int64, incr bool) (int64, error) {
 	// generations are keyed without the source storage
-	if id.User == "" || id.ToStorage == "" || (id.FromBucket == "") != (id.ToBucket == "") {
-		return 0, fmt.Errorf("%w: replication generation: user and destination are required", dom.ErrInvalidArg)
+	if id.ToStorage == "" || (id.FromBucket == "") != (id.ToBucket == "") {
+		return 0, fmt.Errorf("%w: replication generation: destination is required", dom.ErrInvalidArg)
 	}
 	var g int64
 	err := r.rt.write(ctx, func(tx pgx.Tx) error {

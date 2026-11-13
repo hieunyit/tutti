@@ -51,7 +51,11 @@ func (b *protectionBackend) Validate(ctx context.Context, g protectiongroups.Gro
 			if st.Switch != nil || st.IsPaused {
 				return fmt.Errorf("%w: replication is paused or switching", dom.ErrFailedPrecondition)
 			}
-			if !adopt || !allowed[id.AsString()] {
+			if !allowed[id.AsString()] {
+				// not part of the group's own topology: an overlap, same as the shared conflict rule (HTTP 409)
+				return fmt.Errorf("%w: replication %s already covers part of this group's scope", dom.ErrAlreadyExists, id.AsString())
+			}
+			if !adopt {
 				return fmt.Errorf("%w: unmanaged replication %s conflicts; use explicit adoption for a matching topology", dom.ErrFailedPrecondition, id.AsString())
 			}
 			return nil
