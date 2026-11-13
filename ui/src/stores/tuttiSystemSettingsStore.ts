@@ -242,6 +242,24 @@ export const useTuttiSystemSettingsStore = defineStore(
       }
     }
 
+    /**
+     * Version conflict, user chose "Overwrite": fetch the newer version, put
+     * the current draft on top of it and save again.
+     */
+    async function overwrite(): Promise<boolean> {
+      const mine = JSON.parse(
+        JSON.stringify(state.draft),
+      ) as TuttiUpdateSystemSettingsRequest;
+
+      await load();
+
+      if (state.hasError || !state.settings) return false;
+
+      state.draft = { ...mine, expectedVersion: state.settings.version };
+
+      return save();
+    }
+
     function resetDraft() {
       state.draft = cloneSettingsToDraft(state.settings);
       state.saveSuccess = false;
@@ -256,6 +274,7 @@ export const useTuttiSystemSettingsStore = defineStore(
       canSave,
       load,
       save,
+      overwrite,
       resetDraft,
     };
   },

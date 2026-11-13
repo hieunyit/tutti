@@ -1,0 +1,93 @@
+/*
+ * Copyright © 2026 hieunyit
+ *
+ *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { describe, expect, it, vi } from 'vitest';
+import { useAuditCursor } from '../useAuditCursor';
+
+interface Item {
+  id: string;
+}
+
+const page = (ids: string[], next?: string, prev?: string) => ({
+  items: ids.map((id) => ({ id })),
+  next,
+  prev,
+});
+
+describe('useAuditCursor', () => {
+  it('loadOlder passes the last next cursor and appends', async () => {
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['3', '2'], '2'))
+      .mockResolvedValueOnce(page(['1'], undefined));
+    const cursor = useAuditCursor<Item>(fetchPage, { keyOf: (i) => i.id });
+
+    await cursor.refresh();
+    expect(cursor.items.value.map((i) => i.id)).toEqual(['3', '2']);
+    expect(cursor.hasOlder.value).toBe(true);
+
+    await cursor.loadOlder();
+    expect(fetchPage).toHaveBeenLastCalledWith('2');
+    expect(cursor.items.value.map((i) => i.id)).toEqual(['3', '2', '1']);
+    expect(cursor.hasOlder.value).toBe(false);
+  });
+
+  it('keeps loaded items and sets error when a page fails', async () => {
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['3', '2'], '2'))
+      .mockRejectedValueOnce(new Error('boom'));
+    const cursor = useAuditCursor<Item>(fetchPage);
+
+    await cursor.refresh();
+    await cursor.loadOlder();
+
+    expect(cursor.items.value).toHaveLength(2);
+    expect(cursor.error.value).toBe('boom');
+    expect(cursor.loading.value).toBe(false);
+  });
+
+  it('loadNewer prepends only entries not already loaded', async () => {
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['3', '2'], '2'))
+      .mockResolvedValueOnce(page(['4', '3', '2'], '2'));
+    const cursor = useAuditCursor<Item>(fetchPage, { keyOf: (i) => i.id });
+
+    await cursor.refresh();
+    await cursor.loadNewer();
+
+    expect(cursor.items.value.map((i) => i.id)).toEqual(['4', '3', '2']);
+  });
+
+  it('refresh replaces items and ignores a stale response', async () => {
+    let resolveFirst: (v: ReturnType<typeof page>) => void = () => {};
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveFirst = resolve)),
+      )
+      .mockResolvedValueOnce(page(['9']));
+    const cursor = useAuditCursor<Item>(fetchPage);
+    const first = cursor.refresh();
+
+    await cursor.refresh();
+    resolveFirst(page(['1']));
+    await first;
+
+    expect(cursor.items.value.map((i) => i.id)).toEqual(['9']);
+  });
+});

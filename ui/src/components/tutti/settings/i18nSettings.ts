@@ -14,10 +14,24 @@
  *  limitations under the License.
  */
 
-import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
+import type { I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
-  [I18nLocale.EN]: {
+  en: {
+    retry: 'Retry',
+    diffTitle: 'Review changes before saving',
+    diffText: 'These settings will be saved as version {version}.',
+    diffNoChanges: 'No changes.',
+    confirmSave: 'Save settings',
+    cancel: 'Cancel',
+    conflictTitle: 'Settings were changed by someone else',
+    conflictText:
+      'Another operator saved a newer version. Reload to see their values (your draft is discarded), or overwrite to save your draft on top of the newer version.',
+    reload: 'Reload settings',
+    overwrite: 'Overwrite with my draft',
+    unsavedBar: 'You have unsaved changes',
+    changesCount: '{count} change(s)',
+    bannerFailed: 'Could not save settings',
     configuration: 'Configuration',
     settingsSections: 'System settings sections',
     tabFeatures: 'Features',
@@ -124,7 +138,21 @@ export default <I18nMessages>{
     unsavedChanges: 'Unsaved changes',
     never: 'Never',
   },
-  [I18nLocale.DE]: {
+  de: {
+    retry: 'Erneut versuchen',
+    diffTitle: 'Änderungen vor dem Speichern prüfen',
+    diffText: 'Diese Einstellungen werden als Version {version} gespeichert.',
+    diffNoChanges: 'Keine Änderungen.',
+    confirmSave: 'Einstellungen speichern',
+    cancel: 'Abbrechen',
+    conflictTitle: 'Einstellungen wurden von jemand anderem geändert',
+    conflictText:
+      'Ein anderer Operator hat eine neuere Version gespeichert. Neu laden, um dessen Werte zu sehen (Ihr Entwurf wird verworfen), oder überschreiben, um Ihren Entwurf auf der neueren Version zu speichern.',
+    reload: 'Einstellungen neu laden',
+    overwrite: 'Mit meinem Entwurf überschreiben',
+    unsavedBar: 'Es gibt ungespeicherte Änderungen',
+    changesCount: '{count} Änderung(en)',
+    bannerFailed: 'Einstellungen konnten nicht gespeichert werden',
     configuration: 'Konfiguration',
     settingsSections: 'Bereiche der Systemeinstellungen',
     tabFeatures: 'Funktionen',
@@ -236,6 +264,20 @@ export default <I18nMessages>{
     never: 'Nie',
   },
   vi: {
+    retry: 'Thử lại',
+    diffTitle: 'Xem lại thay đổi trước khi lưu',
+    diffText: 'Các cài đặt này sẽ được lưu thành phiên bản {version}.',
+    diffNoChanges: 'Không có thay đổi.',
+    confirmSave: 'Lưu cài đặt',
+    cancel: 'Hủy',
+    conflictTitle: 'Cài đặt đã bị người khác thay đổi',
+    conflictText:
+      'Một quản trị viên khác đã lưu phiên bản mới hơn. Hãy tải lại để xem giá trị của họ (bản nháp của bạn sẽ bị bỏ), hoặc ghi đè để lưu bản nháp của bạn lên phiên bản mới.',
+    reload: 'Tải lại cài đặt',
+    overwrite: 'Ghi đè bằng bản nháp của tôi',
+    unsavedBar: 'Có thay đổi chưa lưu',
+    changesCount: '{count} thay đổi',
+    bannerFailed: 'Không lưu được cài đặt',
     configuration: 'Cấu hình',
     settingsSections: 'Các nhóm cấu hình hệ thống',
     tabFeatures: 'Tính năng',
@@ -243,7 +285,7 @@ export default <I18nMessages>{
     tabWorker: 'Worker',
     tabLocking: 'Khóa phân tán',
     tabWebhook: 'Webhook',
-    restartRequired: 'Cần khởi động lại worker',
+    restartRequired: 'Cần restart worker',
     saved: 'Đã lưu',
     validationSummary: '{count} trường cần kiểm tra',
     reviewFields: 'Kiểm tra trường lỗi',
