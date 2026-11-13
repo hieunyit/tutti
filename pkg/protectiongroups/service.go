@@ -12,6 +12,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/rs/zerolog"
 	"slices"
+	"sync"
 	"time"
 )
 
@@ -203,13 +204,57 @@ func (s *Service) reports(ctx context.Context) ([]proxystatus.Status, error) {
 	}
 	return s.Reports(ctx)
 }
+
+// StatusAll returns the status of every group, in the order of Store.List. The group list (Redis + PostgreSQL merge),
+// the proxy reports and the writer counts are each read once for the whole list instead of once per group; only the
+// per-replication backend lookups remain per group and run concurrently. A group whose status cannot be computed is
+// returned without member details rather than failing the whole list.
+func (s *Service) StatusAll(ctx context.Context) ([]Status, error) {
+	groups, err := s.Store.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reports, err := s.reports(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(groups))
+	for i, g := range groups {
+		ids[i] = g.ID
+	}
+	writers, err := s.Store.ActiveWritersBatch(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Status, len(groups))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
+	for i := range groups {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			st, err := s.statusWith(ctx, groups[i], reports, writers[i])
+			if err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).Str("group", groups[i].ID).Msg("protection group: status unavailable in list")
+				st = Status{Group: groups[i], ActiveWriters: writers[i]}
+			}
+			out[i] = st
+		}(i)
+	}
+	wg.Wait()
+	return out, nil
+}
 func (s *Service) status(ctx context.Context, g Group, reports []proxystatus.Status) (Status, error) {
-	out := Status{Group: g}
 	n, err := s.Store.ActiveWriters(ctx, g.ID)
 	if err != nil {
-		return out, err
+		return Status{Group: g}, err
 	}
-	out.ActiveWriters = n
+	return s.statusWith(ctx, g, reports, n)
+}
+func (s *Service) statusWith(ctx context.Context, g Group, reports []proxystatus.Status, writers int64) (Status, error) {
+	out := Status{Group: g, ActiveWriters: writers}
 	for _, member := range g.Members {
 		st := MemberStatus{Storage: member, Available: Available(member, reports, s.now(), reportMaxAge), Initialized: true}
 		if member == g.Primary {
