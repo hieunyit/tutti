@@ -1,0 +1,68 @@
+// Copyright 2025 Clyso GmbH
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package replscope
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func rs(from, to string, b ...string) Scope { return ReplicationScope(from, to, b) }
+
+func TestConflicts(t *testing.T) {
+	group := GroupScope([]string{"A", "B", "C"}, nil)
+	tests := []struct {
+		name string
+		a, b Scope
+		want bool
+	}{
+		{"same edge", rs("A", "B"), rs("A", "B"), true},
+		{"same dest", rs("A", "B"), rs("C", "B"), true},
+		{"reverse", rs("A", "B"), rs("B", "A"), true},
+		{"same source other dest", rs("A", "B"), rs("A", "C"), false},
+		{"chain", rs("A", "B"), rs("B", "C"), false},
+		{"unrelated", rs("A", "B"), rs("C", "D"), false},
+		{"disjoint buckets", rs("A", "B", "x"), rs("A", "B", "y"), false},
+		{"intersecting buckets", rs("A", "B", "x", "y"), rs("A", "B", "y"), true},
+		{"all vs bucket", rs("A", "B"), rs("A", "B", "x"), true},
+		{"group vs A->D", group, rs("A", "D"), false},
+		{"group vs C->A", group, rs("C", "A"), true},
+		{"group vs A->B", group, rs("A", "B"), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _, _, _ := Conflicts(tt.a, tt.b)
+			require.Equal(t, tt.want, got)
+			got, _, _, _ = Conflicts(tt.b, tt.a)
+			require.Equal(t, tt.want, got, "symmetric")
+		})
+	}
+}
+
+func TestConflicts_Bucket(t *testing.T) {
+	_, b, _, _ := Conflicts(rs("A", "B"), rs("A", "B"))
+	require.Equal(t, "*", b)
+	_, b, _, _ = Conflicts(rs("A", "B"), rs("A", "B", "x"))
+	require.Equal(t, "x", b)
+}
+
+func TestGroupScope(t *testing.T) {
+	s := GroupScope([]string{"A", "B", "C"}, nil)
+	require.Len(t, s.Edges, 6)
+	require.True(t, s.AllBuckets)
+	s = GroupScope([]string{"A", "B"}, []string{"x"})
+	require.False(t, s.AllBuckets)
+}
