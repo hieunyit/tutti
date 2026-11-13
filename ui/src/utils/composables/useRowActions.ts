@@ -23,6 +23,9 @@ export interface RowActionDef<T> {
   run: (row: T) => Promise<void>;
   /** consequence text; with `danger` the action asks for confirmation first */
   confirm?: (row: T) => string;
+  /** the action is unavailable for this row (see `disabledReason`) */
+  disabled?: (row: T) => boolean;
+  disabledReason?: (row: T) => string;
 }
 
 export interface RowAction {
@@ -31,6 +34,9 @@ export interface RowAction {
   danger: boolean;
   /** this action is running for this row */
   busy: boolean;
+  disabled: boolean;
+  /** why the action is disabled, for a tooltip */
+  disabledReason?: string;
   invoke: () => void;
 }
 
@@ -74,6 +80,8 @@ export function useRowActions<T>(
   }
 
   function invoke(def: RowActionDef<T>, row: T) {
+    if (def.disabled?.(row)) return;
+
     if (def.danger && def.confirm) {
       pending.value = { def, row, message: def.confirm(row) };
 
@@ -102,6 +110,10 @@ export function useRowActions<T>(
       label: def.label,
       danger: def.danger ?? false,
       busy: running.value.has(`${def.key}:${rowKey(row)}`),
+      disabled: def.disabled?.(row) ?? false,
+      disabledReason: def.disabled?.(row)
+        ? def.disabledReason?.(row)
+        : undefined,
       invoke: () => invoke(def, row),
     }));
   }

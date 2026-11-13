@@ -26,18 +26,22 @@
 <template>
   <WriteGate>
     <div class="row-actions">
-      <NButton
+      <span
         v-for="action in actions"
         :key="action.key"
-        size="tiny"
-        secondary
-        :type="action.danger ? 'error' : 'default'"
-        :loading="action.busy"
-        :disabled="action.busy"
-        @click.stop="action.invoke()"
+        :title="action.disabledReason"
       >
-        {{ action.label }}
-      </NButton>
+        <NButton
+          size="tiny"
+          secondary
+          :type="action.danger ? 'error' : 'default'"
+          :loading="action.busy"
+          :disabled="action.busy || action.disabled"
+          @click.stop="action.invoke()"
+        >
+          {{ action.label }}
+        </NButton>
+      </span>
     </div>
   </WriteGate>
 </template>

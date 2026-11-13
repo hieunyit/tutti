@@ -44,6 +44,28 @@ function setup() {
 }
 
 describe('useRowActions', () => {
+  it('does not run a disabled action and exposes its reason', async () => {
+    const run = vi.fn().mockResolvedValue(undefined);
+    const api = useRowActions<Row>([
+      {
+        key: 'delete',
+        label: 'Delete',
+        run,
+        disabled: () => true,
+        disabledReason: () => 'blocked',
+      },
+    ]);
+    const [action] = api.actionsFor(row);
+
+    expect(action?.disabled).toBe(true);
+    expect(action?.disabledReason).toBe('blocked');
+
+    action?.invoke();
+    await Promise.resolve();
+
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it('runs a plain action at once', async () => {
     const { api, pause } = setup();
 

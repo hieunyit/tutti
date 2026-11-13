@@ -64,6 +64,7 @@
   const search = ref('');
   const selectedKeys = ref<string[]>([]);
   const bulkDeleteOpen = ref(false);
+  const bulkRestartOpen = ref(false);
 
   onBeforeMount(() => {
     // the kit table pages the rows itself, so the store hands over all of them
@@ -78,13 +79,13 @@
 
   const rows = computed<Row[]>(() => {
     const needle = search.value.trim().toLowerCase();
-    const twoLocations = computedReports.value.filter((row) =>
-      DiffReportsHelper.isTwoLocationReport(row),
-    );
+    // reports created via CLI (not two locations) stay listed so they can be
+    // seen and deleted; they just have no direction/bucket to show
+    const all = computedReports.value;
 
-    if (!needle) return twoLocations;
+    if (!needle) return all;
 
-    return twoLocations.filter((row) =>
+    return all.filter((row) =>
       row.locations.some(
         (location) =>
           location.storage.toLowerCase().includes(needle) ||
@@ -94,6 +95,7 @@
   });
 
   const rowKey = (row: Row) => String(row.idStr);
+  const isTwo = (row: Row) => DiffReportsHelper.isTwoLocationReport(row);
   const locationsOf = (row: Row) =>
     row.locations as [DiffReportLocation, DiffReportLocation];
 
@@ -115,7 +117,9 @@
         {
           key: 'restart',
           label: t('restart'),
+          danger: true,
           run: async (row) => report(await store.restartDiffReports([row])),
+          confirm: () => t('restartDiffReportConfirmContent'),
         },
         {
           key: 'delete',
@@ -133,33 +137,44 @@
       title: t('colStatus'),
       key: 'status',
       minWidth: 150,
-      render: (row) => h(DiffReportsStatusCell, { report: row }),
+      render: (row) =>
+        isTwo(row) ? h(DiffReportsStatusCell, { report: row }) : null,
     },
     {
       title: t('colProgress'),
       key: 'progress',
       minWidth: 140,
-      render: (row) => h(ChorusDiffReportsProgress, { report: row }),
+      render: (row) =>
+        isTwo(row) ? h(ChorusDiffReportsProgress, { report: row }) : null,
     },
     {
       title: t('colDirection'),
       key: 'direction',
       minWidth: 180,
       render: (row) =>
-        h(DiffReportsDirectionCell, { locations: locationsOf(row) }),
+        isTwo(row)
+          ? h(DiffReportsDirectionCell, { locations: locationsOf(row) })
+          : h('span', { class: 'diff-tab__cli-warning' }, t('cliCheckWarning')),
     },
     {
       title: t('colBucket'),
       key: 'bucket',
       minWidth: 220,
       render: (row) =>
-        h(DiffReportsBucketCell, { locations: locationsOf(row) }),
+        isTwo(row)
+          ? h(DiffReportsBucketCell, { locations: locationsOf(row) })
+          : null,
     },
     {
       title: t('colActions'),
       key: 'actions',
       width: 300,
       render: (row) => {
+        if (!isTwo(row))
+          return h(ChorusRowActions, {
+            actions: actionsFor(row).filter((a) => a.key === 'delete'),
+          });
+
         const [from, to] = locationsOf(row);
 
         return h(
@@ -235,7 +250,8 @@
   );
 
   async function bulkRestart() {
-    report(await store.restartDiffReports(selectedRows.value));
+    bulkRestartOpen.value = false;
+    report(await store.restartDiffReports(selectedRows.value.filter(isTwo)));
   }
 
   async function bulkDelete() {
@@ -299,7 +315,7 @@
         <WriteGate>
           <NButton
             size="small"
-            @click="bulkRestart"
+            @click="bulkRestartOpen = true"
           >
             {{ t('restartSelected', { n: keys.length }) }}
           </NButton>
@@ -313,6 +329,17 @@
         </WriteGate>
       </template>
     </DataTable>
+
+    <ConfirmDialog
+      :open="bulkRestartOpen"
+      :title="t('restartSelected', { n: selectedRows.filter(isTwo).length })"
+      danger
+      :confirm-label="t('restart')"
+      @confirm="bulkRestart"
+      @cancel="bulkRestartOpen = false"
+    >
+      <p>{{ t('restartReportsConfirmContent') }}</p>
+    </ConfirmDialog>
 
     <ConfirmDialog
       :open="bulkDeleteOpen"
@@ -342,5 +369,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-4);
+  }
+
+  .diff-tab__cli-warning {
+    color: var(--tt-warning, inherit);
   }
 </style>

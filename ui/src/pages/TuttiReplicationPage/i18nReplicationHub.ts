@@ -51,11 +51,23 @@ export default <Record<string, Record<string, string>>>{
     deleteReport: 'Delete report',
     open: 'Open',
     confirmTitle: '{action}?',
+    deleteBucketReplicationText:
+      'Delete bucket replication. Objects already copied stay on the destination. New changes of this source are no longer replicated.',
+    deleteUserReplicationText:
+      'Delete user replication rule. New buckets will not be automatically replicated after that. Buckets already replicated keep their own bucket replications.',
     deleteReplicationText:
       'Objects already copied stay on the destination. New changes of this source are no longer replicated.',
     deletePolicyText:
       'Requests of this user and bucket are routed by the next matching policy or the default route.',
     deleteReportText: 'The report and its findings are removed.',
+    actionDeleteBlocked: 'Unblock the routing policy before deleting it',
+    cliCheckWarning:
+      'This check was created via CLI. For further details or actions, please use the CLI.',
+    restartDiffReportConfirmTitle: 'Restart Diff Report',
+    restartDiffReportConfirmContent:
+      'You are about to restart the diff report generation for this diff report. Are you sure you want to proceed?',
+    restartReportsConfirmContent:
+      'You are about to restart the diff report generation for the selected diff reports. Are you sure you want to proceed?',
     deleteSelected: 'Delete {n} replications',
     deleteSelectedText: 'These replications stop. Copied objects stay.',
     pauseSelected: 'Pause {n}',
@@ -178,11 +190,23 @@ export default <Record<string, Record<string, string>>>{
     deleteReport: 'Bericht löschen',
     open: 'Öffnen',
     confirmTitle: '{action}?',
+    deleteBucketReplicationText:
+      'Bucket-Replikation löschen. Bereits kopierte Objekte bleiben im Ziel. Neue Änderungen dieser Quelle werden nicht mehr repliziert.',
+    deleteUserReplicationText:
+      'Benutzer-Replikationsregel löschen. Neue Buckets werden danach nicht mehr automatisch repliziert. Bereits replizierte Buckets behalten ihre eigenen Bucket-Replikationen.',
     deleteReplicationText:
       'Bereits kopierte Objekte bleiben im Ziel. Neue Änderungen der Quelle werden nicht mehr repliziert.',
     deletePolicyText:
       'Anfragen dieses Benutzers und Buckets folgen der nächsten passenden Richtlinie oder der Standardroute.',
     deleteReportText: 'Der Bericht und seine Ergebnisse werden entfernt.',
+    actionDeleteBlocked: 'Routing-Richtlinie vor dem Löschen entsperren',
+    cliCheckWarning:
+      'Dieser Check wurde über die CLI erstellt. Für weitere Details oder Aktionen verwenden Sie bitte die CLI.',
+    restartDiffReportConfirmTitle: 'Diff-Report neustarten',
+    restartDiffReportConfirmContent:
+      'Sie sind dabei, die Diff-Report-Generierung für den folgenden Diff-Report neu zu starten: Sind Sie sicher, dass Sie fortfahren möchten?',
+    restartReportsConfirmContent:
+      'Sie sind dabei, die Diff-Report-Generierung für die ausgewählten Diff-Reports neu zu starten. Sind Sie sicher, dass Sie fortfahren möchten?',
     deleteSelected: '{n} Replikationen löschen',
     deleteSelectedText:
       'Diese Replikationen werden gestoppt. Kopierte Objekte bleiben.',
@@ -308,11 +332,23 @@ export default <Record<string, Record<string, string>>>{
     deleteReport: 'Xóa report',
     open: 'Mở',
     confirmTitle: '{action}?',
+    deleteBucketReplicationText:
+      'Xóa replication của bucket. Các object đã sao chép vẫn ở đích. Thay đổi mới của nguồn này sẽ không còn được replicate.',
+    deleteUserReplicationText:
+      'Xóa quy tắc replication của người dùng. Các bucket mới sẽ không còn tự động được replicate. Các bucket đã replicate vẫn giữ replication riêng.',
     deleteReplicationText:
       'Object đã sao chép vẫn nằm ở đích. Thay đổi mới của nguồn không còn được sao chép.',
     deletePolicyText:
       'Request của user và bucket này sẽ theo policy khớp tiếp theo hoặc route mặc định.',
     deleteReportText: 'Report và kết quả của nó sẽ bị xóa.',
+    actionDeleteBlocked: 'Hãy bỏ chặn routing policy trước khi xóa',
+    cliCheckWarning:
+      'Kiểm tra này được tạo qua CLI. Để xem chi tiết hoặc thực hiện thao tác, vui lòng dùng CLI.',
+    restartDiffReportConfirmTitle: 'Khởi động lại diff report',
+    restartDiffReportConfirmContent:
+      'Bạn sắp khởi động lại việc tạo diff report này. Bạn có chắc chắn muốn tiếp tục không?',
+    restartReportsConfirmContent:
+      'Bạn sắp khởi động lại việc tạo các diff report đã chọn. Bạn có chắc chắn muốn tiếp tục không?',
     deleteSelected: 'Xóa {n} replication',
     deleteSelectedText: 'Các replication này dừng lại. Object đã chép vẫn còn.',
     pauseSelected: 'Tạm dừng {n}',

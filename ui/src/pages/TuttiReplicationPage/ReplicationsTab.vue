@@ -36,7 +36,10 @@
   import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
-  import type { ChorusReplication } from '@/utils/types/chorus';
+  import {
+    ReplicationType,
+    type ChorusReplication,
+  } from '@/utils/types/chorus';
   import type { AddId } from '@/utils/types/helper';
   import { RouteName } from '@/utils/types/router';
 
@@ -111,7 +114,10 @@
           label: t('deleteReplication'),
           danger: true,
           run: (row) => store.deleteReplications([row]),
-          confirm: () => t('deleteReplicationText'),
+          confirm: (row) =>
+            row.replicationType === ReplicationType.USER
+              ? t('deleteUserReplicationText')
+              : t('deleteBucketReplicationText'),
         },
       ],
       rowKey,

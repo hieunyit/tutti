@@ -126,6 +126,8 @@
           danger: true,
           run: async (row) => report(await store.deleteRoutingPolicies([row])),
           confirm: () => t('deletePolicyText'),
+          disabled: (row) => row.isBlocked,
+          disabledReason: () => t('actionDeleteBlocked'),
         },
       ],
       rowKey,
@@ -211,8 +213,15 @@
     report(await store.setRoutingPoliciesBlock(selectedRows.value, block));
   }
 
+  const hasBlockedSelected = computed(() =>
+    selectedRows.value.some((row) => row.isBlocked),
+  );
+
   async function bulkDelete() {
     bulkDeleteOpen.value = false;
+
+    if (hasBlockedSelected.value) return;
+
     report(await store.deleteRoutingPolicies(selectedRows.value));
   }
 </script>
@@ -289,6 +298,8 @@
           <NButton
             size="small"
             type="error"
+            :disabled="hasBlockedSelected"
+            :title="hasBlockedSelected ? t('actionDeleteBlocked') : undefined"
             @click="bulkDeleteOpen = true"
           >
             {{ t('deletePolicies', { n: keys.length }) }}
