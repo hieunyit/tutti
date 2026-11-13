@@ -621,6 +621,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		policyOpts := []api.PolicyOption{
 			api.WithPolicyStorageLocker(storageLocker),
 			api.WithPolicyScope(bucketScope),
+			api.WithPolicyScopeLocker(replscope.NewRedisLocker(confRedis)),
 		}
 		if cpStore != nil {
 			diffOpts = append(diffOpts, api.WithDiffControlPlaneStore(cpStore))
