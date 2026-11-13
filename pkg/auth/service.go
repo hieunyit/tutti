@@ -38,6 +38,10 @@ const (
 	maxUserHardFailures = 1000
 	failWindow          = 15 * time.Minute
 
+	refreshPrefix = "auth:refresh:"
+	refreshLimit  = 6
+	refreshWindow = time.Minute
+
 	knownPrefix = "tutti:authknown:"
 	// knownTTL is how long a successful (user, IP) login is remembered.
 	knownTTL = 30 * 24 * time.Hour
@@ -53,6 +57,8 @@ var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
 	ErrTooManyAttempts    = errors.New("too many failed login attempts")
 	ErrInvalidSession     = errors.New("invalid or expired session")
+	// ErrRefreshRateLimited is returned by Refresh when a token refreshes more than refreshLimit times per minute.
+	ErrRefreshRateLimited = errors.New("too many session refreshes")
 )
 
 // InvalidCredentialsError wraps the generic credential error while carrying
@@ -70,6 +76,8 @@ type Session struct {
 	Username  string    `json:"username"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"createdAt"`
+	// LastActiveAt is the last login or refresh. Sessions stored before it existed use CreatedAt.
+	LastActiveAt time.Time `json:"lastActiveAt,omitempty"`
 
 	// Resolved on every request from the current users, never stored.
 	Source             string `json:"-"`
@@ -78,10 +86,41 @@ type Session struct {
 
 // LoginResult is returned from a successful login.
 type LoginResult struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	Username  string    `json:"username"`
-	Role      string    `json:"role"`
+	Token string `json:"token"`
+	// ExpiresAt is the idle expiry now; MaxExpiresAt is the absolute cap.
+	ExpiresAt    time.Time `json:"expiresAt"`
+	MaxExpiresAt time.Time `json:"maxExpiresAt"`
+	ServerTime   time.Time `json:"serverTime"`
+	Username     string    `json:"username"`
+	Role         string    `json:"role"`
+}
+
+// SessionTimes are the session deadlines reported to clients (all UTC).
+type SessionTimes struct {
+	ExpiresAt, MaxExpiresAt, ServerTime time.Time
+}
+
+// Times returns the current idle expiry and absolute cap of the session at now.
+func (s *Service) Times(sess *Session, now time.Time) SessionTimes {
+	last := sess.LastActiveAt
+	if last.Before(sess.CreatedAt) {
+		last = sess.CreatedAt
+	}
+	maxAt := sess.CreatedAt.Add(s.conf.MaxLifetime())
+	exp := last.Add(s.conf.IdleTimeout())
+	if exp.After(maxAt) {
+		exp = maxAt
+	}
+	return SessionTimes{ExpiresAt: exp.UTC(), MaxExpiresAt: maxAt.UTC(), ServerTime: now.UTC()}
+}
+
+// sessionTTL is min(idle, absolute remaining) for a session created at createdAt.
+func (s *Service) sessionTTL(createdAt, now time.Time) time.Duration {
+	ttl := s.conf.IdleTimeout()
+	if rem := s.conf.MaxLifetime() - now.Sub(createdAt); rem < ttl {
+		ttl = rem
+	}
+	return ttl
 }
 
 // Service authenticates users and manages sessions.
@@ -404,8 +443,8 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 	}
 	token := base64.RawURLEncoding.EncodeToString(buf)
 	now := s.now().UTC()
-	ttl := s.conf.ttl()
-	data, err := json.Marshal(Session{Username: u.Username, Role: u.Role, CreatedAt: now})
+	ttl := s.sessionTTL(now, now)
+	data, err := json.Marshal(Session{Username: u.Username, Role: u.Role, CreatedAt: now, LastActiveAt: now})
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +461,52 @@ func (s *Service) Login(ctx context.Context, username, password, ip string) (*Lo
 			log.Warn().Err(err).Str("username", u.Username).Msg("unable to record last login")
 		}
 	}
-	return &LoginResult{Token: token, ExpiresAt: now.Add(ttl), Username: u.Username, Role: u.Role}, nil
+	return &LoginResult{Token: token, ExpiresAt: now.Add(ttl), MaxExpiresAt: now.Add(s.conf.MaxLifetime()), ServerTime: now, Username: u.Username, Role: u.Role}, nil
+}
+
+// Refresh extends the session to min(idle timeout, absolute remaining) from now. It is the only way a session is
+// extended: Authenticate never does. A session at or past the absolute cap is rejected with ErrInvalidSession; more
+// than refreshLimit calls per minute per token fail with ErrRefreshRateLimited.
+func (s *Service) Refresh(ctx context.Context, token string) (*SessionTimes, error) {
+	sess, err := s.Authenticate(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	hashed := hashToken(token)
+	key := refreshPrefix + hashed
+	n, err := s.rdb.Incr(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("auth: refresh rate limit: %w", err)
+	}
+	if n == 1 {
+		if err := s.rdb.Expire(ctx, key, refreshWindow).Err(); err != nil {
+			return nil, fmt.Errorf("auth: refresh rate limit: %w", err)
+		}
+	}
+	if n > refreshLimit {
+		return nil, ErrRefreshRateLimited
+	}
+	now := s.now().UTC()
+	ttl := s.sessionTTL(sess.CreatedAt, now)
+	if ttl <= 0 {
+		_ = s.rdb.Del(ctx, sessionPrefix+hashed).Err()
+		return nil, ErrInvalidSession
+	}
+	sess.LastActiveAt = now
+	data, err := json.Marshal(sess)
+	if err != nil {
+		return nil, err
+	}
+	// XX: a session revoked meanwhile (logout) must not be resurrected.
+	ok, err := s.rdb.SetArgs(ctx, sessionPrefix+hashed, data, redis.SetArgs{Mode: "XX", TTL: ttl}).Result()
+	if errors.Is(err, redis.Nil) || (err == nil && ok != "OK") {
+		return nil, ErrInvalidSession
+	}
+	if err != nil {
+		return nil, fmt.Errorf("auth: refresh session: %w", err)
+	}
+	st := s.Times(sess, now)
+	return &st, nil
 }
 
 // Authenticate resolves a bearer token to its session. The user and role are resolved from the current config and

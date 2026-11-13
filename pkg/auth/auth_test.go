@@ -249,6 +249,10 @@ func TestHTTPMeAndLogout(t *testing.T) {
 	require.Equal(t, 200, rec.Code)
 	var me meResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &me))
+	require.NotEmpty(t, me.ExpiresAt)
+	require.NotEmpty(t, me.MaxExpiresAt)
+	require.NotEmpty(t, me.ServerTime)
+	me.ExpiresAt, me.MaxExpiresAt, me.ServerTime = "", "", ""
 	require.Equal(t, meResponse{Username: "view", Role: "viewer", AuthEnabled: true, Source: SourceConfig}, me)
 
 	// token is forwarded through grpc-gateway to the interceptor

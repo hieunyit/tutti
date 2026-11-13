@@ -27,6 +27,20 @@ type meResponse struct {
 	MustChangePassword bool   `json:"mustChangePassword"`
 	// Warnings lists operator warnings (stable codes, e.g. "webhook_unauthenticated") the UI may display.
 	Warnings []string `json:"warnings,omitempty"`
+	// Session deadlines (RFC3339 UTC); empty when auth is disabled.
+	ExpiresAt    string `json:"expiresAt,omitempty"`
+	MaxExpiresAt string `json:"maxExpiresAt,omitempty"`
+	ServerTime   string `json:"serverTime,omitempty"`
+}
+
+type sessionTimesResponse struct {
+	ExpiresAt    string `json:"expiresAt"`
+	MaxExpiresAt string `json:"maxExpiresAt"`
+	ServerTime   string `json:"serverTime"`
+}
+
+func timesResponse(t SessionTimes) sessionTimesResponse {
+	return sessionTimesResponse{t.ExpiresAt.UTC().Format(time.RFC3339), t.MaxExpiresAt.UTC().Format(time.RFC3339), t.ServerTime.UTC().Format(time.RFC3339)}
 }
 
 type changePasswordRequest struct {
@@ -96,7 +110,7 @@ func resolveClientIP(r *http.Request, trusted []*net.IPNet) string {
 
 func (s *Service) clientIP(r *http.Request) string { return resolveClientIP(r, s.trusted) }
 
-// RegisterHTTP registers POST /auth/login, POST /auth/logout and GET /auth/me
+// RegisterHTTP registers POST /auth/login, POST /auth/logout, POST /auth/refresh and GET /auth/me
 // on the grpc-gateway mux. Safe to call with auth disabled: login/logout then
 // return 404-like errors and /auth/me reports authEnabled=false.
 func (s *Service) RegisterHTTP(mux *runtime.ServeMux) error {
@@ -109,7 +123,30 @@ func (s *Service) RegisterHTTP(mux *runtime.ServeMux) error {
 	if err := mux.HandlePath(http.MethodPost, "/auth/password", s.handleChangePassword); err != nil {
 		return err
 	}
+	if err := mux.HandlePath(http.MethodPost, "/auth/refresh", s.handleRefresh); err != nil {
+		return err
+	}
 	return mux.HandlePath(http.MethodGet, "/auth/me", s.handleMe)
+}
+
+// handleRefresh extends the session (the only endpoint that does). Allowed while MustChangePassword, like /auth/me.
+func (s *Service) handleRefresh(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	if !s.Enabled() {
+		writeErr(w, http.StatusNotFound, "authentication is not enabled")
+		return
+	}
+	st, err := s.Refresh(r.Context(), bearerFromRequest(r))
+	switch {
+	case err == nil:
+		writeJSON(w, http.StatusOK, timesResponse(*st))
+	case errors.Is(err, ErrInvalidSession):
+		writeErr(w, http.StatusUnauthorized, "authentication required")
+	case errors.Is(err, ErrRefreshRateLimited):
+		w.Header().Set("Retry-After", "60")
+		writeErr(w, http.StatusTooManyRequests, ErrRefreshRateLimited.Error())
+	default:
+		writeErr(w, http.StatusServiceUnavailable, "unable to refresh session")
+	}
 }
 
 // handleChangePassword lets a signed-in managed user change its own password. Other sessions of the user are revoked.
@@ -161,11 +198,11 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request, _ map[stri
 	switch {
 	case err == nil:
 		writeJSON(w, http.StatusOK, struct {
-			Token     string `json:"token"`
-			ExpiresAt string `json:"expiresAt"`
-			Username  string `json:"username"`
-			Role      string `json:"role"`
-		}{res.Token, res.ExpiresAt.Format(time.RFC3339), res.Username, res.Role})
+			Token string `json:"token"`
+			sessionTimesResponse
+			Username string `json:"username"`
+			Role     string `json:"role"`
+		}{res.Token, timesResponse(SessionTimes{res.ExpiresAt, res.MaxExpiresAt, res.ServerTime}), res.Username, res.Role})
 	case errors.Is(err, ErrInvalidCredentials):
 		var credentialErr *InvalidCredentialsError
 		remaining := 0
@@ -216,5 +253,8 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request, _ map[string]
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true, Source: sess.Source, MustChangePassword: sess.MustChangePassword, Warnings: s.warnings})
+	now := s.now().UTC()
+	t := timesResponse(s.Times(sess, now))
+	writeJSON(w, http.StatusOK, meResponse{Username: sess.Username, Role: sess.Role, AuthEnabled: true, Source: sess.Source, MustChangePassword: sess.MustChangePassword, Warnings: s.warnings,
+		ExpiresAt: t.ExpiresAt, MaxExpiresAt: t.MaxExpiresAt, ServerTime: t.ServerTime})
 }

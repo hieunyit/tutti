@@ -167,7 +167,7 @@ func (s *Service) check(ctx context.Context, method string) (context.Context, er
 		return ctx, status.Error(codes.Unavailable, "unable to verify session")
 	}
 	if sess.MustChangePassword {
-		// Only /auth/me, /auth/password and /auth/logout (plain HTTP handlers, not gRPC) are usable until the password is changed.
+		// Only /auth/me, /auth/refresh, /auth/password and /auth/logout (plain HTTP handlers, not gRPC) are usable until the password is changed.
 		return ctx, PasswordChangeRequiredError()
 	}
 	if !Allowed(sess.Role, method) {

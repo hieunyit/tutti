@@ -14,15 +14,22 @@ const (
 	RoleAdmin  = "admin"
 	RoleViewer = "viewer"
 
-	DefaultSessionTTL = 12 * time.Hour
+	// DefaultIdleTimeout is how long a session survives without a refresh.
+	DefaultIdleTimeout = 30 * time.Minute
+	// DefaultMaxLifetime is the absolute session cap counted from login.
+	DefaultMaxLifetime = 24 * time.Hour
 )
 
 // Config is the `api.auth` section of the worker config.
 type Config struct {
 	// Enabled turns on session authentication for the management API.
 	Enabled bool `yaml:"enabled"`
-	// SessionTTL is the lifetime of a login session.
+	// SessionTTL is deprecated: when sessionMaxLifetime is unset it is used as the absolute session lifetime.
 	SessionTTL time.Duration `yaml:"sessionTTL"`
+	// SessionIdleTimeout is how long a session lives without POST /auth/refresh (default 30m).
+	SessionIdleTimeout time.Duration `yaml:"sessionIdleTimeout"`
+	// SessionMaxLifetime is the absolute cap counted from login; refresh never extends past it (default 24h).
+	SessionMaxLifetime time.Duration `yaml:"sessionMaxLifetime"`
 	// Users is the list of local users. Passwords are bcrypt hashes.
 	Users []User `yaml:"users"`
 	// AllowManagedUsers allows running without static config users when managed users (PostgreSQL/Redis) are enabled.
@@ -84,6 +91,15 @@ func (c *Config) Validate() error {
 	if c.SessionTTL < 0 {
 		return fmt.Errorf("auth config: sessionTTL must not be negative")
 	}
+	if c.SessionIdleTimeout < 0 {
+		return fmt.Errorf("auth config: sessionIdleTimeout must be positive")
+	}
+	if c.SessionMaxLifetime < 0 {
+		return fmt.Errorf("auth config: sessionMaxLifetime must not be negative")
+	}
+	if c.MaxLifetime() < c.IdleTimeout() {
+		return fmt.Errorf("auth config: sessionMaxLifetime (%s) must not be shorter than sessionIdleTimeout (%s)", c.MaxLifetime(), c.IdleTimeout())
+	}
 	if len(c.Users) == 0 && !c.AllowManagedUsers {
 		return fmt.Errorf("auth config: at least one user is required when auth is enabled")
 	}
@@ -106,9 +122,25 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (c *Config) ttl() time.Duration {
-	if c.SessionTTL <= 0 {
-		return DefaultSessionTTL
+// MaxLifetime is the absolute session lifetime: sessionMaxLifetime, else the legacy sessionTTL, else 24h.
+func (c Config) MaxLifetime() time.Duration {
+	switch {
+	case c.SessionMaxLifetime > 0:
+		return c.SessionMaxLifetime
+	case c.SessionTTL > 0:
+		return c.SessionTTL
 	}
-	return c.SessionTTL
+	return DefaultMaxLifetime
+}
+
+// IdleTimeout is how long a session lives without a refresh (default 30m). When only the legacy sessionTTL is set
+// and it is shorter than the default, it bounds the idle time too so old configs keep starting.
+func (c Config) IdleTimeout() time.Duration {
+	if c.SessionIdleTimeout > 0 {
+		return c.SessionIdleTimeout
+	}
+	if c.SessionMaxLifetime <= 0 && c.SessionTTL > 0 && c.SessionTTL < DefaultIdleTimeout {
+		return c.SessionTTL
+	}
+	return DefaultIdleTimeout
 }
