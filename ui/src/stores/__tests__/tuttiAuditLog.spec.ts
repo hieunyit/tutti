@@ -50,6 +50,18 @@ describe('tuttiAuditLogStore', () => {
     );
   });
 
+  it('exposes the applied filters separately from live edits', async () => {
+    vi.mocked(AuditLogService.list).mockResolvedValue({ entries: [] } as never);
+
+    const store = useAuditLogStore();
+
+    store.filters.actor = 'alice';
+    await store.applyFilters();
+    store.filters.actor = 'bob';
+
+    expect(store.applied.actor).toBe('alice');
+  });
+
   it('shows the error state instead of old rows when applyFilters fails', async () => {
     vi.mocked(AuditLogService.list)
       .mockResolvedValueOnce({ entries: [entry('1')] } as never)

@@ -29,6 +29,9 @@ export interface AuditCursorOptions<T> {
   keyOf?: (item: T) => string;
 }
 
+/** upper bound of pages `loadNewer` walks to close a gap */
+const MAX_CATCH_UP_PAGES = 10;
+
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
@@ -64,9 +67,9 @@ export function useAuditCursor<T>(
     return incoming.filter((item) => !known.has(keyOf(item)));
   }
 
-  async function run(
-    cursor: string | undefined,
-    apply: (page: AuditCursorPage<T>) => void,
+  async function run<R = AuditCursorPage<T>>(
+    fetcher: () => Promise<R>,
+    apply: (result: R) => void,
     restart = false,
     discardOnError = false,
   ) {
@@ -79,9 +82,9 @@ export function useAuditCursor<T>(
     error.value = '';
 
     try {
-      const page = await fetchPage(cursor);
+      const result = await fetcher();
 
-      if (mine === generation) apply(page);
+      if (mine === generation) apply(result);
     } catch (e) {
       if (mine === generation) {
         error.value = messageOf(e);
@@ -103,7 +106,7 @@ export function useAuditCursor<T>(
   /** `discardOnError`: a failed restart drops the old rows (new query). */
   async function refresh(refreshOptions: { discardOnError?: boolean } = {}) {
     await run(
-      undefined,
+      () => fetchPage(),
       (page) => {
         items.value = page.items;
         nextCursor.value = page.next;
@@ -118,20 +121,88 @@ export function useAuditCursor<T>(
   async function loadOlder() {
     if (loading.value || nextCursor.value === undefined) return;
 
-    await run(nextCursor.value, (page) => {
-      items.value = [...items.value, ...dedupe(page.items, items.value)];
-      nextCursor.value = page.next;
-    });
+    const from = nextCursor.value;
+
+    await run(
+      () => fetchPage(from),
+      (page) => {
+        items.value = [...items.value, ...dedupe(page.items, items.value)];
+        nextCursor.value = page.next;
+      },
+    );
+  }
+
+  /**
+   * Fetches from the newest page and walks `next` until the previously
+   * newest entry shows up (bounded by MAX_CATCH_UP_PAGES), so more than one
+   * page of new entries cannot be skipped. `closed` is false when the bound
+   * was hit before reaching a known entry.
+   */
+  async function collectNewer(knownKey: string) {
+    const { keyOf } = options;
+    const fresh: T[] = [];
+    let cursor: string | undefined;
+    let next: string | undefined;
+
+    for (let i = 0; i < MAX_CATCH_UP_PAGES; i += 1) {
+      const page = await fetchPage(cursor);
+      const hit = page.items.findIndex((item) => keyOf?.(item) === knownKey);
+
+      if (hit >= 0) {
+        fresh.push(...page.items.slice(0, hit));
+
+        return { fresh, closed: true, next };
+      }
+
+      fresh.push(...page.items);
+      next = page.next;
+
+      if (page.next === undefined) return { fresh, closed: true, next };
+
+      cursor = page.next;
+    }
+
+    return { fresh, closed: false, next };
   }
 
   async function loadNewer() {
     if (loading.value) return;
 
-    await run(prevCursor.value, (page) => {
-      items.value = [...dedupe(page.items, items.value), ...items.value];
+    const { keyOf } = options;
+    const newest = items.value[0];
 
-      if (page.prev !== undefined) prevCursor.value = page.prev;
-    });
+    // the backend gave us a cursor for newer entries, or there is nothing to
+    // anchor a catch-up on: single-page behaviour
+    if (prevCursor.value !== undefined || !keyOf || newest === undefined) {
+      const from = prevCursor.value;
+
+      await run(
+        () => fetchPage(from),
+        (page) => {
+          items.value = [...dedupe(page.items, items.value), ...items.value];
+
+          if (page.prev !== undefined) prevCursor.value = page.prev;
+        },
+      );
+
+      return;
+    }
+
+    await run(
+      () => collectNewer(keyOf(newest)),
+      ({ fresh, closed, next }) => {
+        if (closed) {
+          items.value = [...dedupe(fresh, items.value), ...items.value];
+
+          return;
+        }
+
+        // gap too large to close: show the newest entries and continue
+        // older from where the walk stopped, so nothing is silently skipped
+        items.value = fresh;
+        nextCursor.value = next;
+      },
+    );
   }
 
   return {

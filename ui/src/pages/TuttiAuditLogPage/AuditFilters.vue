@@ -55,31 +55,32 @@
     applyNow();
   }
 
+  // chips mirror the applied query, not the inputs still being edited
   const chips = computed<FilterChip[]>(() => {
     const list: FilterChip[] = [];
 
-    if (store.filters.family)
+    if (store.applied.family)
       list.push({
         key: 'family',
-        label: `${t('familyLabel')}: ${familyLabel(store.filters.family)}`,
+        label: `${t('familyLabel')}: ${familyLabel(store.applied.family)}`,
       });
 
-    if (store.filters.action)
+    if (store.applied.action)
       list.push({
         key: 'action',
-        label: `${t('actionLabel')}: ${actionLabel(store.filters.action)}`,
+        label: `${t('actionLabel')}: ${actionLabel(store.applied.action)}`,
       });
 
-    if (store.filters.actor.trim())
+    if (store.applied.actor.trim())
       list.push({
         key: 'actor',
-        label: `${t('actorLabel')}: ${store.filters.actor.trim()}`,
+        label: `${t('actorLabel')}: ${store.applied.actor.trim()}`,
       });
 
-    if (store.filters.dateFrom)
+    if (store.applied.dateFrom)
       list.push({
         key: 'date',
-        label: `${store.filters.dateFrom} – ${store.filters.dateTo}`,
+        label: `${store.applied.dateFrom} – ${store.applied.dateTo}`,
       });
 
     return list;

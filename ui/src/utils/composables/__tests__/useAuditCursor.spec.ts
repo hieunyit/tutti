@@ -88,6 +88,55 @@ describe('useAuditCursor', () => {
     expect(cursor.items.value.map((i) => i.id)).toEqual(['4', '3', '2']);
   });
 
+  it('loadNewer walks pages until the gap to the newest known entry is closed', async () => {
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['10', '9'], '9'))
+      .mockResolvedValueOnce(page(['15', '14'], '14'))
+      .mockResolvedValueOnce(page(['13', '12'], '12'))
+      .mockResolvedValueOnce(page(['11', '10'], '10'));
+    const cursor = useAuditCursor<Item>(fetchPage, { keyOf: (i) => i.id });
+
+    await cursor.refresh();
+    await cursor.loadNewer();
+
+    expect(cursor.items.value.map((i) => i.id)).toEqual([
+      '15',
+      '14',
+      '13',
+      '12',
+      '11',
+      '10',
+      '9',
+    ]);
+    expect(fetchPage.mock.calls.map((c) => c[0])).toEqual([
+      undefined,
+      undefined,
+      '14',
+      '12',
+    ]);
+  });
+
+  it('loadNewer stops after 10 pages and restarts from the newest when the gap stays open', async () => {
+    let n = 1000;
+    const fetchPage = vi
+      .fn<(cursor?: string) => Promise<ReturnType<typeof page>>>()
+      .mockResolvedValueOnce(page(['2', '1'], '1'))
+      .mockImplementation(async () => {
+        n -= 2;
+
+        return page([String(n + 1), String(n)], String(n));
+      });
+    const cursor = useAuditCursor<Item>(fetchPage, { keyOf: (i) => i.id });
+
+    await cursor.refresh();
+    await cursor.loadNewer();
+
+    expect(fetchPage).toHaveBeenCalledTimes(1 + 10);
+    expect(cursor.items.value).toHaveLength(20);
+    expect(cursor.items.value.map((i) => i.id)).not.toContain('1');
+  });
+
   it('refresh replaces items and ignores a stale response', async () => {
     let resolveFirst: (v: ReturnType<typeof page>) => void = () => {};
     const fetchPage = vi

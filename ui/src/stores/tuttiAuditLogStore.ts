@@ -147,6 +147,7 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
 
   return {
     filters,
+    applied,
     backend,
     readOnly,
     localeOverride,
