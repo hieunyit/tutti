@@ -23,6 +23,9 @@
   } from '@clyso/clyso-ui-kit';
   import { computed, toRefs } from 'vue';
   import { NConfigProvider, dateViVN, viVN } from 'naive-ui';
+  import SessionExpiryDialog from '@/components/auth/SessionExpiryDialog.vue';
+  import { useAuthStore } from '@/stores/authStore';
+  import { useSessionKeeper } from '@/utils/composables/useSessionKeeper';
   import { toKitLocale } from '@/i18n/locales';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
@@ -32,6 +35,15 @@
   const { colorScheme } = toRefs(useColorSchemeStore());
   // ui-kit only knows en/de; Naive UI gets the vi locale from the inner provider.
   const kitLocale = computed(() => toKitLocale(locale.value));
+  const authStore = useAuthStore();
+  const { remainingIdleMs, remainingMaxMs, warning, extend } =
+    useSessionKeeper();
+
+  async function signOut() {
+    await authStore.logout();
+    await authStore.expire('signedOut');
+  }
+
   const isVi = computed(() => locale.value === 'vi');
 </script>
 
@@ -49,6 +61,14 @@
       abstract
     >
       <RouterView />
+
+      <SessionExpiryDialog
+        :warning="warning"
+        :remaining-idle-ms="remainingIdleMs"
+        :remaining-max-ms="remainingMaxMs"
+        @continue="extend"
+        @sign-out="signOut"
+      />
 
       <CDialogProvider />
       <CNotificationProvider />

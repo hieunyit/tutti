@@ -18,6 +18,7 @@
   import { NButton, NCheckbox, NInput } from 'naive-ui';
   import { onMounted, ref } from 'vue';
   import { Callout, ErrorBlock } from '@/components/kit';
+  import SessionEndedNotice from '@/components/auth/SessionEndedNotice.vue';
   import { useLoginFlow } from '@/utils/composables/useLoginFlow';
   import { APP_VERSION } from '@/utils/constants/env';
 
@@ -70,6 +71,8 @@
           <h1 class="login-page__title">{{ t('loginTitle') }}</h1>
           <p class="login-page__subtitle">{{ t('loginDescription') }}</p>
         </div>
+
+        <SessionEndedNotice />
 
         <Callout
           v-if="errorMessage"
