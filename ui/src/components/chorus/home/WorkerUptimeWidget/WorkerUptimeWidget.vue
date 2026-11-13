@@ -39,6 +39,10 @@
         workerUptimeTitle: 'Arbeiter Uptime',
         notEnabledMessage: 'Prometheus ist nicht verfügbar',
       },
+      vi: {
+        workerUptimeTitle: 'Uptime của worker',
+        notEnabledMessage: 'Prometheus không khả dụng',
+      },
     },
   });
 

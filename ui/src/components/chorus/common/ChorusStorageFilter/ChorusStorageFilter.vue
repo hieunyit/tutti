@@ -29,6 +29,10 @@
         noResultTitle: 'Keine Daten gefunden',
         noResultText: 'Keine Speicher entspricht Ihren Suchkriterien.',
       },
+      vi: {
+        noResultTitle: 'Không tìm thấy dữ liệu',
+        noResultText: 'Không có storage nào khớp với tiêu chí tìm kiếm.',
+      },
     },
   });
 

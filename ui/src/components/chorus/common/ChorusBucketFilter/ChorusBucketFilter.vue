@@ -29,6 +29,10 @@
         noResultTitle: 'Keine Daten gefunden',
         noResultText: 'Kein Bucket entspricht Ihren Suchkriterien.',
       },
+      vi: {
+        noResultTitle: 'Không tìm thấy dữ liệu',
+        noResultText: 'Không có bucket nào khớp với tiêu chí tìm kiếm.',
+      },
     },
   });
 

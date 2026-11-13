@@ -33,6 +33,12 @@
           'Beim Laden des Widgets ist ein Problem aufgetreten. Bitte versuchen Sie es später erneut.',
         actionRetry: 'Wiederholen',
       },
+      vi: {
+        widgetErrorTitle: 'Lỗi',
+        widgetErrorText:
+          'Đã xảy ra sự cố khi tải widget. Vui lòng thử lại sau.',
+        actionRetry: 'Thử lại',
+      },
     },
   });
 

@@ -38,6 +38,10 @@
         noUsersTitle: 'Keine Benutzer',
         noUsers: 'Keine Benutzer gefunden.',
       },
+      vi: {
+        noUsersTitle: 'Không có user',
+        noUsers: 'Không tìm thấy user nào.',
+      },
     },
   });
 

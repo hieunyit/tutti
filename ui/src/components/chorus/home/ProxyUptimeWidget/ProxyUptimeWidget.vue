@@ -39,6 +39,10 @@
         proxyUptimeTitle: 'S3-Proxy Uptime',
         notEnabledMessage: 'Prometheus ist nicht verfügbar',
       },
+      vi: {
+        proxyUptimeTitle: 'Uptime của S3 proxy',
+        notEnabledMessage: 'Prometheus không khả dụng',
+      },
     },
   });
 

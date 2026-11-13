@@ -30,6 +30,10 @@
         detailsPopupDefault: 'Diff-Report Status Details',
         detailsPopupDefaultFix: 'Diff-Report Fix Status Details',
       },
+      vi: {
+        detailsPopupDefault: 'Chi tiết trạng thái báo cáo diff',
+        detailsPopupDefaultFix: 'Chi tiết trạng thái sửa báo cáo diff',
+      },
     },
   });
 
