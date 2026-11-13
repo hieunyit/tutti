@@ -122,6 +122,31 @@ func (s *svc) getClients(ctx context.Context, user, fromStorage, toStorage strin
 	return
 }
 
+// rateLimitSides acquires source and destination limits together: one Redis EVAL when the
+// limiter supports it (all-or-nothing), otherwise two sequential acquisitions.
+// The error identifies which side was rejected only in the sequential fallback; in the
+// multi-key path the first side is reported as the storage in the returned storage name.
+func (s *svc) rateLimitSides(ctx context.Context, fromStorage string, fromMethods []s3.Method, toStorage string, toMethods []s3.Method) (string, error) {
+	if multi, ok := s.limit.(ratelimit.MultiRPM); ok {
+		toOpts := func(ms []s3.Method) []ratelimit.Opt {
+			opts := make([]ratelimit.Opt, 0, len(ms))
+			for _, m := range ms {
+				opts = append(opts, ratelimit.S3Method(m))
+			}
+			return opts
+		}
+		err := multi.StorReqMulti(ctx,
+			ratelimit.StorageReq{Storage: fromStorage, N: len(fromMethods), Opts: toOpts(fromMethods)},
+			ratelimit.StorageReq{Storage: toStorage, N: len(toMethods), Opts: toOpts(toMethods)},
+		)
+		return fromStorage + "+" + toStorage, err
+	}
+	if err := s.rateLimit(ctx, fromStorage, fromMethods...); err != nil {
+		return fromStorage, err
+	}
+	return toStorage, s.rateLimit(ctx, toStorage, toMethods...)
+}
+
 func (s *svc) rateLimit(ctx context.Context, storage string, methods ...s3.Method) error {
 	if len(methods) == 0 {
 		return nil
