@@ -48,6 +48,7 @@ interface ChorusAddReplicationState {
   isForAllBuckets: boolean;
   isBucketsListLoading: boolean;
   hasBucketsError: boolean;
+  bucketsError: string;
   isReplicatedShown: boolean;
   bucketsRequestOptions: ChorusBucketListRequest | null;
   bucketsList: string[];
@@ -72,6 +73,7 @@ function getInitialState(): ChorusAddReplicationState {
     isForAllBuckets: false,
     isBucketsListLoading: false,
     hasBucketsError: false,
+    bucketsError: '',
     isReplicatedShown: false,
     bucketsRequestOptions: null,
     bucketsList: [],
@@ -88,6 +90,22 @@ export const useTuttiAddReplicationStore = defineStore(
   () => {
     const state = reactive<ChorusAddReplicationState>(getInitialState());
     const router = useRouter();
+
+    const eligibleUsers = computed(() =>
+      state.users.filter((user) =>
+        [state.selectedFromStorage?.name, state.selectedToStorage?.name].every(
+          (storage) => {
+            const mode = userModeOn(user.name, storage);
+
+            return mode === 'override' || mode === 'connection-account';
+          },
+        ),
+      ),
+    );
+    /** Unknown/missing credentials must never authorize a bucket-list request. */
+    const isSelectedUserUsable = computed(() =>
+      eligibleUsers.value.some((user) => user.name === state.selectedUser),
+    );
 
     async function initAddReplicationPage() {
       state.isLoading = true;
@@ -145,11 +163,9 @@ export const useTuttiAddReplicationStore = defineStore(
         ? state.users.find((u) => u.name === queryUser)
         : undefined;
 
-      state.selectedUser =
-        matchingUser?.name ||
-        state.users[0]?.name ||
-        state.storages[0]?.credentials?.[0]?.alias ||
-        '';
+      state.selectedUser = queryUser
+        ? (matchingUser?.name ?? null)
+        : (eligibleUsers.value[0]?.name ?? null);
       state.isMainAsSourceAlertShown = false;
     }
 
@@ -163,23 +179,13 @@ export const useTuttiAddReplicationStore = defineStore(
     }
 
     async function getBucketsList() {
-      if (!state.selectedUser) {
-        const queryUser = router?.currentRoute?.value?.query?.user as
-          | string
-          | undefined;
-        const matchingUser = queryUser
-          ? state.users.find((u) => u.name === queryUser)
-          : undefined;
-
-        state.selectedUser =
-          matchingUser?.name ||
-          state.users[0]?.name ||
-          state.storages[0]?.credentials?.[0]?.alias ||
-          '';
-      }
-
-      if (!state.selectedFromStorage || !state.selectedToStorage) {
-        return;
+      if (
+        !isSelectedUserUsable.value ||
+        !state.selectedFromStorage ||
+        !state.selectedToStorage ||
+        !state.selectedUser
+      ) {
+        throw new Error(t('userMissingWarning'));
       }
 
       state.bucketsRequestOptions = {
@@ -194,21 +200,27 @@ export const useTuttiAddReplicationStore = defineStore(
           state.bucketsRequestOptions,
         );
 
-      state.bucketsList = buckets;
-      state.replicatedBucketsList = replicatedBuckets;
+      state.bucketsList = buckets ?? [];
+      state.replicatedBucketsList = replicatedBuckets ?? [];
     }
 
-    async function initBucketsList() {
+    async function initBucketsList(resetSelection = true) {
       state.isBucketsListLoading = true;
-      state.selectedBuckets = [];
+
+      if (resetSelection) state.selectedBuckets = [];
+
       state.bucketsList = [];
       state.replicatedBucketsList = [];
+      state.bucketsError = '';
 
       try {
         await getBucketsList();
         state.hasBucketsError = false;
-      } catch {
+      } catch (error) {
         state.hasBucketsError = true;
+        state.bucketsError =
+          ErrorHelper.getReason(error) ||
+          (error instanceof Error ? error.message : t('initBucketsError'));
       } finally {
         state.isBucketsListLoading = false;
       }
@@ -235,21 +247,6 @@ export const useTuttiAddReplicationStore = defineStore(
 
       return entry.mode || (entry.configured ? 'override' : 'missing');
     }
-
-    /** the selected user has usable credentials on both chosen storages */
-    const isSelectedUserUsable = computed(() => {
-      if (!state.selectedUser) {
-        return false;
-      }
-
-      return [
-        state.selectedFromStorage?.name,
-        state.selectedToStorage?.name,
-      ].every(
-        (storage) =>
-          userModeOn(state.selectedUser as string, storage) !== 'missing',
-      );
-    });
 
     const validator = useVuelidate(
       {
@@ -280,14 +277,11 @@ export const useTuttiAddReplicationStore = defineStore(
         isForAllBuckets,
       } = state;
 
-      const effectiveUser =
-        selectedUser ||
-        state.users[0]?.name ||
-        state.storages[0]?.credentials?.[0]?.alias ||
-        '';
+      const effectiveUser = selectedUser;
 
       if (
         !effectiveUser ||
+        !isSelectedUserUsable.value ||
         !selectedToStorage ||
         !selectedFromStorage ||
         (!selectedBuckets.length && !isForAllBuckets)
@@ -392,6 +386,7 @@ export const useTuttiAddReplicationStore = defineStore(
       isBucketsAlreadyRequested,
       userModeOn,
       isSelectedUserUsable,
+      eligibleUsers,
       validator,
       createReplication,
       $reset,

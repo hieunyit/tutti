@@ -8,6 +8,18 @@ import management from './i18nManagement';
  */
 const access = {
   en: {
+    storageCredentialsTitle: 'Storage credentials',
+    storageCredentialsHint:
+      'These storages have no connection account. Supply existing S3 credentials for this user, or configure a connection account on the storage. All buckets is an access policy; it does not create storage credentials.',
+    credentialsForStorage: 'Credentials for {storage}',
+    loadingStorageAccounts: 'Loading storage accounts…',
+    storageAccountsLoadFailed:
+      'Storage accounts could not be loaded. Retry before creating the user.',
+    retryStorageAccounts: 'Retry',
+    verifyStorageCredentials:
+      'Verify these credentials before creating the user',
+    completeIdentityAndCredentials:
+      'Complete the user name, storage credentials and permissions before creating the user.',
     statusComplete: 'Ready',
     addPattern: 'Add',
     statusIncomplete: 'Incomplete',
@@ -66,6 +78,17 @@ const access = {
     createFailed: 'Could not create the user.',
   },
   de: {
+    storageCredentialsTitle: 'Storage-Zugangsdaten',
+    storageCredentialsHint:
+      'Für diese Storages fehlt ein Verbindungskonto. Bestehende S3-Zugangsdaten für den Benutzer eingeben oder ein Verbindungskonto konfigurieren. Alle Buckets ist eine Zugriffsrichtlinie und erzeugt keine Zugangsdaten.',
+    credentialsForStorage: 'Zugangsdaten für {storage}',
+    loadingStorageAccounts: 'Storage-Konten werden geladen…',
+    storageAccountsLoadFailed:
+      'Storage-Konten konnten nicht geladen werden. Vor dem Anlegen erneut versuchen.',
+    retryStorageAccounts: 'Erneut versuchen',
+    verifyStorageCredentials: 'Diese Zugangsdaten vor dem Anlegen prüfen',
+    completeIdentityAndCredentials:
+      'Benutzernamen, Storage-Zugangsdaten und Berechtigungen vervollständigen.',
     statusComplete: 'Bereit',
     addPattern: 'Hinzufügen',
     statusIncomplete: 'Unvollständig',
@@ -131,6 +154,17 @@ const access = {
     createFailed: 'Benutzer konnte nicht angelegt werden.',
   },
   vi: {
+    storageCredentialsTitle: 'Credentials của storage',
+    storageCredentialsHint:
+      'Các storage này chưa có connection account. Nhập S3 credentials có sẵn cho user, hoặc cấu hình connection account tại storage. All buckets là quyền truy cập, không tự tạo credentials của storage.',
+    credentialsForStorage: 'Credentials cho {storage}',
+    loadingStorageAccounts: 'Đang tải tài khoản kết nối storage…',
+    storageAccountsLoadFailed:
+      'Không tải được tài khoản storage. Hãy thử lại trước khi tạo user.',
+    retryStorageAccounts: 'Thử lại',
+    verifyStorageCredentials: 'Kiểm tra credentials trước khi tạo user',
+    completeIdentityAndCredentials:
+      'Hoàn tất tên user, credentials storage và quyền truy cập trước khi tạo user.',
     statusComplete: 'Sẵn sàng',
     addPattern: 'Thêm',
     statusIncomplete: 'Chưa đủ',

@@ -21,6 +21,10 @@ import { ChorusService } from '@/services/ChorusService';
 import { TuttiService } from '@/services/TuttiService';
 import { AddReplicationStepName } from '@/utils/types/chorus';
 
+type UsersResponse = {
+  users: { storages: { mode: string }[] }[];
+};
+
 const push = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }));
@@ -120,6 +124,12 @@ describe('tuttiAddReplicationStore', () => {
   });
 
   it('allows operator to explicitly change the replication tenant user', async () => {
+    const response = await (
+      tutti.getUsers as unknown as () => Promise<UsersResponse>
+    )();
+
+    response.users[1]!.storages[1]!.mode = 'connection-account';
+    tutti.getUsers!.mockResolvedValueOnce(response);
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
@@ -132,6 +142,42 @@ describe('tuttiAddReplicationStore', () => {
     expect(chorus.addReplication).toHaveBeenCalledWith({
       id: { user: 'bob', fromStorage: 'main', toStorage: 'backup' },
     });
+  });
+
+  it('does not list buckets or create a replication for a user missing destination credentials', async () => {
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    await store.selectUser('bob');
+    expect(store.isSelectedUserUsable).toBe(false);
+    expect(store.hasBucketsError).toBe(true);
+    expect(chorus.getBucketsForReplication).not.toHaveBeenCalled();
+    store.isForAllBuckets = true;
+    expect(await store.createReplication()).toBe(false);
+    expect(chorus.addReplication).not.toHaveBeenCalled();
+  });
+
+  it('selects an eligible user rather than the first incomplete user', async () => {
+    const response = await (
+      tutti.getUsers as unknown as () => Promise<UsersResponse>
+    )();
+
+    response.users.reverse();
+    tutti.getUsers!.mockResolvedValueOnce(response);
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    expect(store.selectedUser).toBe('alice');
+  });
+
+  it('does not invent a user alias if user discovery fails', async () => {
+    tutti.getUsers!.mockRejectedValueOnce(new Error('offline'));
+    const store = useTuttiAddReplicationStore();
+
+    await store.initAddReplicationPage();
+    await store.initBucketsList();
+    expect(store.selectedUser).toBeNull();
+    expect(chorus.getBucketsForReplication).not.toHaveBeenCalled();
   });
 
   it('stays on the wizard and reports failure when every request fails', async () => {

@@ -16,6 +16,16 @@
 
 import { ChorusService } from '@/services/ChorusService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
+import { TuttiService } from '@/services/TuttiService';
+import { UserHelper } from '@/utils/helpers/UserHelper';
+import type { S3User } from '@/utils/types/users';
+
+function hasStorageCredentials(user: S3User, storage: string): boolean {
+  return (user.storages ?? []).some(
+    (entry) =>
+      entry.storage === storage && UserHelper.modeOf(entry) !== 'missing',
+  );
+}
 
 export interface StorageBucketEntry {
   bucket: string;
@@ -46,25 +56,35 @@ export abstract class BucketDiscoveryHelper {
 
     // 2. Query storages via Chorus replication list-buckets API
     try {
-      const { storages } = await ChorusService.getStorages();
+      const [{ storages }, { users = [] }] = await Promise.all([
+        ChorusService.getStorages(),
+        TuttiService.getUsers(),
+      ]);
 
       if (storages && storages.length > 0) {
-        const user =
-          userName ||
-          storages.flatMap(
-            (s) => s.credentials?.map((c) => c.alias) || [],
-          )[0] ||
-          'user1';
-
         for (let i = 0; i < storages.length; i++) {
           const from = storages[i]?.name;
-          const to = storages[(i + 1) % storages.length]?.name;
 
-          if (!from || !to) continue;
+          if (!from) continue;
+
+          const user = users.find(
+            (candidate) =>
+              (!userName || candidate.name === userName) &&
+              hasStorageCredentials(candidate, from),
+          );
+
+          if (!user) continue;
+
+          const to =
+            storages.find(
+              (candidate) =>
+                candidate.name !== from &&
+                hasStorageCredentials(user, candidate.name),
+            )?.name ?? from;
 
           try {
             const res = await ChorusService.getBucketsForReplication({
-              user,
+              user: user.name,
               fromStorage: from,
               toStorage: to,
               showReplicated: true,
@@ -100,24 +120,35 @@ export abstract class BucketDiscoveryHelper {
     const seen = new Set<string>();
 
     try {
-      const { storages: allStorages } = await ChorusService.getStorages();
+      const [{ storages: allStorages }, { users = [] }] = await Promise.all([
+        ChorusService.getStorages(),
+        TuttiService.getUsers(),
+      ]);
 
       if (!allStorages || allStorages.length === 0) return [];
 
-      const user =
-        userName ||
-        allStorages.flatMap(
-          (s) => s.credentials?.map((c) => c.alias) || [],
-        )[0] ||
-        'user1';
-
       for (const storageName of storages) {
+        const user = users.find(
+          (candidate) =>
+            (!userName || candidate.name === userName) &&
+            hasStorageCredentials(candidate, storageName),
+        );
+
+        if (
+          !user ||
+          !allStorages.some((storage) => storage.name === storageName)
+        )
+          continue;
+
         const other =
-          allStorages.find((s) => s.name !== storageName)?.name || storageName;
+          allStorages.find(
+            (s) =>
+              s.name !== storageName && hasStorageCredentials(user, s.name),
+          )?.name || storageName;
 
         try {
           const res = await ChorusService.getBucketsForReplication({
-            user,
+            user: user.name,
             fromStorage: storageName,
             toStorage: other,
             showReplicated: true,

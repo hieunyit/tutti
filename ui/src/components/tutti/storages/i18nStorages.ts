@@ -3,6 +3,9 @@
 // Keys missing from `vi` fall back to English.
 export default <Record<string, Record<string, string>>>{
   en: {
+    credentialWhitespace:
+      'The access key or secret contains leading/trailing whitespace. A pasted space changes the signature. Remove it only if it is not part of your credential.',
+    trimCredentialWhitespace: 'Remove surrounding whitespace',
     title: 'Storages',
     description:
       'Every backend, with live health, traffic and user coverage from all proxies.',
@@ -214,6 +217,9 @@ export default <Record<string, Record<string, string>>>{
     testError: 'The test could not run.',
   },
   de: {
+    credentialWhitespace:
+      'Access Key oder Secret enthalten Leerzeichen am Anfang oder Ende. Diese ändern die Signatur. Nur entfernen, wenn sie nicht zum Zugangsschlüssel gehören.',
+    trimCredentialWhitespace: 'Äußere Leerzeichen entfernen',
     title: 'Speicher',
     description:
       'Alle Backends mit aktuellem Zustand, Traffic und Benutzerabdeckung aller Proxys.',
@@ -431,6 +437,9 @@ export default <Record<string, Record<string, string>>>{
     testError: 'Der Test konnte nicht ausgeführt werden.',
   },
   vi: {
+    credentialWhitespace:
+      'Access key hoặc secret có khoảng trắng ở đầu/cuối, làm thay đổi chữ ký. Chỉ xóa nếu khoảng trắng không thuộc credential gốc.',
+    trimCredentialWhitespace: 'Xóa khoảng trắng ở đầu/cuối',
     title: 'Storage',
     description:
       'Mọi backend, kèm sức khỏe, lưu lượng và độ phủ user theo thời gian thực từ các proxy.',

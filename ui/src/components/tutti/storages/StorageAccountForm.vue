@@ -11,6 +11,7 @@
   import { computed, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nStorages from './i18nStorages';
+  import Callout from '@/components/ui/Callout.vue';
   import { StoragePolicyHelper } from '@/utils/helpers/StoragePolicyHelper';
   import type { TestOptionsForm } from '@/utils/helpers/StorageTestHelper';
   import type { StorageConnectionAccount } from '@/utils/types/runtimeStorage';
@@ -30,6 +31,11 @@
   }>();
   const { t } = useI18n({ messages: i18nStorages });
   const copied = ref<'idle' | 'ok' | 'failed'>('idle');
+  const hasSurroundingWhitespace = computed(
+    () =>
+      props.account.accessKeyId !== props.account.accessKeyId.trim() ||
+      props.account.secretAccessKey !== props.account.secretAccessKey.trim(),
+  );
   let timer: ReturnType<typeof setTimeout> | undefined;
   const features = [
     'versioning',
@@ -53,6 +59,13 @@
 
   function setAccount(key: keyof StorageConnectionAccount, value: string) {
     emit('update:account', { ...props.account, [key]: value });
+  }
+
+  function trimAccount() {
+    emit('update:account', {
+      accessKeyId: props.account.accessKeyId.trim(),
+      secretAccessKey: props.account.secretAccessKey.trim(),
+    });
   }
 
   function setOption<K extends keyof TestOptionsForm>(
@@ -104,6 +117,18 @@
           @update:value="setAccount('secretAccessKey', $event)"
       /></NFormItem>
     </div>
+    <Callout
+      v-if="hasSurroundingWhitespace"
+      tone="warning"
+    >
+      {{ t('credentialWhitespace') }}
+      <NButton
+        v-if="!readonly"
+        size="small"
+        @click="trimAccount"
+        >{{ t('trimCredentialWhitespace') }}</NButton
+      >
+    </Callout>
     <NFormItem
       v-if="!compact"
       :label="t('features')"

@@ -25,7 +25,7 @@
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import { RouteName } from '@/utils/types/router';
 
-  const { t } = useI18n({ messages });
+  const { t, te } = useI18n({ messages });
   const store = useTuttiUsersStore();
   const router = useRouter();
   const ctl = useUserCreate();
@@ -58,7 +58,9 @@
       // no secret to show: go straight to the user
       if (!ctl.created.value?.secretAccessKey) await openUser();
     } catch (e) {
-      ctl.error.value = ProxyAccountHelper.getMessage(e) ?? t('createFailed');
+      const message = ProxyAccountHelper.getMessage(e) ?? 'createFailed';
+
+      ctl.error.value = te(message) ? t(message) : message;
     }
   }
 

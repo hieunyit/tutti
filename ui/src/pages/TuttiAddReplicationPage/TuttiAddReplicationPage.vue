@@ -54,6 +54,7 @@
     isForAllBuckets,
     isSubmitting,
     bucketsRequestOptions,
+    isSelectedUserUsable,
   } = storeToRefs(store);
 
   const ready = computed(
@@ -118,7 +119,9 @@
     {
       key: 'buckets',
       label: t('stepBuckets'),
-      valid: isForAllBuckets.value || selectedBuckets.value.length > 0,
+      valid:
+        isSelectedUserUsable.value &&
+        (isForAllBuckets.value || selectedBuckets.value.length > 0),
     },
     { key: 'confirm', label: t('stepConfirm'), valid: true },
   ]);

@@ -59,7 +59,7 @@ export default {
       '1–64 letters, numbers, dots, underscores or hyphens; start with a letter or number.',
     invalidName: 'Enter a valid, unique user name.',
     createHint:
-      'Register an S3 identity, set what it may access, then create its first access key. No storage keys needed: storages use their connection account.',
+      'Register an S3 identity, set what it may access, then create its first proxy access key. Storage credentials are required only where no connection account is configured.',
     accessKeyId: 'Access key ID',
     secret: 'Secret access key',
     verify: 'Verify',
@@ -84,21 +84,25 @@ export default {
     grantModeGroupsHint:
       'Grant access based on Protection Groups. Buckets protected by selected groups are automatically included.',
     grantModeCustom: 'Custom Bucket Patterns',
-    grantModeCustomHint:
-      'Specify custom glob patterns (e.g. logs-*, photos).',
+    grantModeCustomHint: 'Specify custom glob patterns (e.g. logs-*, photos).',
     selectProtectionGroups: 'Select Protection Groups',
     selectProtectionGroupsPlaceholder: 'Choose one or more Protection Groups',
     groupBucketsLabel: 'Buckets in Selected Groups',
-    groupBucketsHint: 'Select which buckets from these groups this identity can access.',
+    groupBucketsHint:
+      'Select which buckets from these groups this identity can access.',
     selectAllBuckets: 'Select all',
     deselectAllBuckets: 'Deselect all',
-    noBucketsInSelectedGroups: 'No explicit buckets configured in selected group(s).',
-    storageScopeAlert: 'The selected group "{group}" protects all buckets on storage: {storage}.',
+    noBucketsInSelectedGroups:
+      'No explicit buckets configured in selected group(s).',
+    storageScopeAlert:
+      'The selected group "{group}" protects all buckets on storage: {storage}.',
     additionalPatternsLabel: 'Additional bucket patterns (optional)',
-    additionalPatternsHint: 'Add extra glob patterns outside the selected groups, e.g. logs-*, test-*',
+    additionalPatternsHint:
+      'Add extra glob patterns outside the selected groups, e.g. logs-*, test-*',
     noGroupSelectedHint: 'Please select at least one Protection Group above.',
     clusterBucketsLabel: 'Discovered Cluster Buckets (Click to add):',
-    clusterBucketsHint: 'Quickly add existing buckets found across cluster storages.',
+    clusterBucketsHint:
+      'Quickly add existing buckets found across cluster storages.',
     summaryTitle: 'User Summary',
     summaryUser: 'User Name',
     summaryPermission: 'Permission',
@@ -291,7 +295,7 @@ export default {
       '1–64 Buchstaben, Zahlen, Punkte, Unterstriche oder Bindestriche; mit Buchstabe oder Zahl beginnen.',
     invalidName: 'Geben Sie einen gültigen, eindeutigen Namen ein.',
     createHint:
-      'Eine S3-Identität registrieren, ihre Berechtigung festlegen und den ersten Zugriffsschlüssel erstellen. Speicherschlüssel sind nicht nötig: Speicher nutzen ihr Verbindungskonto.',
+      'Eine S3-Identität registrieren, ihre Berechtigung festlegen und den ersten Proxy-Zugriffsschlüssel erstellen. Speicherschlüssel sind nur ohne konfiguriertes Verbindungskonto nötig.',
     accessKeyId: 'Zugriffsschlüssel-ID',
     secret: 'Geheimer Zugriffsschlüssel',
     verify: 'Prüfen',
@@ -319,18 +323,25 @@ export default {
     grantModeCustomHint:
       'Benutzerdefinierte Glob-Muster angeben (z. B. logs-*, photos).',
     selectProtectionGroups: 'Protection Groups auswählen',
-    selectProtectionGroupsPlaceholder: 'Eine oder mehrere Protection Groups wählen',
+    selectProtectionGroupsPlaceholder:
+      'Eine oder mehrere Protection Groups wählen',
     groupBucketsLabel: 'Buckets in ausgewählten Gruppen',
-    groupBucketsHint: 'Wählen Sie aus, auf welche Buckets dieser Gruppen zugegriffen werden darf.',
+    groupBucketsHint:
+      'Wählen Sie aus, auf welche Buckets dieser Gruppen zugegriffen werden darf.',
     selectAllBuckets: 'Alle auswählen',
     deselectAllBuckets: 'Alle abwählen',
-    noBucketsInSelectedGroups: 'Keine expliziten Buckets in den ausgewählten Gruppen konfiguriert.',
-    storageScopeAlert: 'Die ausgewählte Gruppe "{group}" schützt alle Buckets auf dem Speicher: {storage}.',
+    noBucketsInSelectedGroups:
+      'Keine expliziten Buckets in den ausgewählten Gruppen konfiguriert.',
+    storageScopeAlert:
+      'Die ausgewählte Gruppe "{group}" schützt alle Buckets auf dem Speicher: {storage}.',
     additionalPatternsLabel: 'Zusätzliche Bucket-Muster (optional)',
-    additionalPatternsHint: 'Fügen Sie zusätzliche Muster außerhalb der Gruppen hinzu, z. B. logs-*, test-*',
-    noGroupSelectedHint: 'Bitte wählen Sie mindestens eine Protection Group aus.',
+    additionalPatternsHint:
+      'Fügen Sie zusätzliche Muster außerhalb der Gruppen hinzu, z. B. logs-*, test-*',
+    noGroupSelectedHint:
+      'Bitte wählen Sie mindestens eine Protection Group aus.',
     clusterBucketsLabel: 'Gefundene Cluster-Buckets (Klicken zum Hinzufügen):',
-    clusterBucketsHint: 'Bestehende Buckets aus Speicherorten schnell hinzufügen.',
+    clusterBucketsHint:
+      'Bestehende Buckets aus Speicherorten schnell hinzufügen.',
     summaryTitle: 'Benutzerübersicht',
     summaryUser: 'Benutzername',
     summaryPermission: 'Berechtigung',

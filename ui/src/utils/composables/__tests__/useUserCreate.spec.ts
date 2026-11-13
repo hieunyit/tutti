@@ -19,12 +19,44 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useUserCreate } from '../useUserCreate';
 import { TuttiService } from '@/services/TuttiService';
 import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
+import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
+import { RuntimeStorageService } from '@/services/RuntimeStorageService';
 
 vi.mock('@/services/TuttiService', () => ({
-  TuttiService: { createUser: vi.fn() },
+  TuttiService: { createUser: vi.fn(), getUsers: vi.fn() },
+}));
+vi.mock('@/services/RuntimeStorageService', () => ({
+  RuntimeStorageService: { list: vi.fn() },
+}));
+vi.mock('@/utils/helpers/BucketDiscoveryHelper', () => ({
+  BucketDiscoveryHelper: {
+    discoverBuckets: vi.fn().mockResolvedValue([]),
+    discoverStorageBuckets: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 const SECRET = 'S3cr3t-value-shown-once';
+
+function storage(name: string, configured: boolean) {
+  return {
+    name,
+    address: 'https://storage.example',
+    provider: 'minio',
+    defaultRegion: 'us-east-1',
+    isSecure: true,
+    httpTimeout: '5s',
+    healthCheckInterval: '5s',
+    connectionAccount: { configured },
+  };
+}
+
+async function readyController() {
+  const ctl = useUserCreate();
+
+  await ctl.init();
+
+  return ctl;
+}
 
 describe('useUserCreate', () => {
   beforeEach(() => {
@@ -32,15 +64,26 @@ describe('useUserCreate', () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.mocked(TuttiService.createUser).mockReset();
+    vi.spyOn(useTuttiProtectionStore(), 'refresh').mockResolvedValue();
+    vi.mocked(TuttiService.getUsers).mockResolvedValue({
+      users: [{ name: 'taken' }],
+      mainStorage: 'main',
+      storages: ['main'],
+      dynamicCredentialsEnabled: true,
+    });
+    vi.mocked(RuntimeStorageService.list).mockReset();
+    vi.mocked(RuntimeStorageService.list).mockResolvedValue({
+      storages: [storage('main', true)],
+    });
     vi.mocked(TuttiService.createUser).mockResolvedValue({
       accessKey: { accessKeyId: 'AK1', secretAccessKey: SECRET },
     });
   });
 
-  it('canNext stays false until the name is valid', () => {
+  it('canNext stays false until the name is valid', async () => {
     useTuttiUsersStore().users = [{ name: 'taken' }] as never;
 
-    const { form, canNext } = useUserCreate();
+    const { form, canNext } = await readyController();
 
     expect(canNext.value).toBe(false);
     form.value.name = '-bad';
@@ -52,7 +95,7 @@ describe('useUserCreate', () => {
   });
 
   it('submit calls createUser once and keeps the secret out of storage', async () => {
-    const { form, submit, created } = useUserCreate();
+    const { form, submit, created } = await readyController();
 
     form.value.name = 'alice';
 
@@ -77,7 +120,7 @@ describe('useUserCreate', () => {
   });
 
   it('submit returns the name and keeps the draft until the secret is dismissed', async () => {
-    const { form, submit, dismissSecret } = useUserCreate();
+    const { form, submit, dismissSecret } = await readyController();
 
     form.value.name = 'alice';
 
@@ -91,8 +134,8 @@ describe('useUserCreate', () => {
     expect(form.value.name).toBe('');
   });
 
-  it('custom mode needs valid bucket patterns', () => {
-    const { form, step, canNext } = useUserCreate();
+  it('custom mode needs valid bucket patterns', async () => {
+    const { form, step, canNext } = await readyController();
 
     step.value = 'permission';
     form.value.grantMode = 'custom';
@@ -100,5 +143,58 @@ describe('useUserCreate', () => {
     expect(canNext.value).toBe(false);
     form.value.buckets = 'logs-*, data';
     expect(canNext.value).toBe(true);
+  });
+
+  it('requires legacy storage credentials and sends them for an all-buckets user without persisting secrets', async () => {
+    vi.mocked(RuntimeStorageService.list).mockResolvedValueOnce({
+      storages: [storage('main', false), storage('replica', true)],
+    });
+    const ctl = await readyController();
+
+    ctl.form.value.name = 'alice';
+    expect(ctl.credentials.value.map((row) => row.storage)).toEqual(['main']);
+    expect(ctl.identityValid.value).toBe(false);
+    await expect(ctl.submit()).rejects.toThrow(
+      'completeIdentityAndCredentials',
+    );
+    expect(TuttiService.createUser).not.toHaveBeenCalled();
+    ctl.credentials.value[0]!.accessKeyId = 'EXISTING-S3-ACCESS';
+    ctl.credentials.value[0]!.secretAccessKey = 'existing-storage-secret';
+    expect(ctl.identityValid.value).toBe(true);
+    await ctl.submit();
+    expect(TuttiService.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: [
+          {
+            storage: 'main',
+            accessKeyId: 'EXISTING-S3-ACCESS',
+            secretAccessKey: 'existing-storage-secret',
+          },
+        ],
+        verify: true,
+        policy: expect.objectContaining({ buckets: ['*'] }),
+      }),
+    );
+    expect(
+      JSON.stringify({ ...window.localStorage, ...window.sessionStorage }),
+    ).not.toContain('existing-storage-secret');
+    expect(ctl.credentials.value).toEqual([]);
+  });
+
+  it('fails closed if account metadata cannot load and recovers after retry', async () => {
+    vi.mocked(RuntimeStorageService.list).mockRejectedValueOnce(
+      new Error('offline'),
+    );
+    const ctl = await readyController();
+
+    ctl.form.value.name = 'alice';
+    expect(ctl.credentialsError.value).toBe(true);
+    expect(ctl.identityValid.value).toBe(false);
+    await expect(ctl.submit()).rejects.toThrow(
+      'completeIdentityAndCredentials',
+    );
+    await ctl.loadCredentialRequirements();
+    expect(ctl.credentialsError.value).toBe(false);
+    expect(ctl.identityValid.value).toBe(true);
   });
 });

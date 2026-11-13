@@ -18,6 +18,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BucketDiscoveryHelper } from '../BucketDiscoveryHelper';
 import { ChorusService } from '@/services/ChorusService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
+import { TuttiService } from '@/services/TuttiService';
 import { StorageProvider } from '@/utils/types/chorus';
 import type { ProtectionGroupListResponse } from '@/utils/types/protection';
 
@@ -33,10 +34,24 @@ vi.mock('@/services/ProtectionGroupService', () => ({
     list: vi.fn(),
   },
 }));
+vi.mock('@/services/TuttiService', () => ({
+  TuttiService: { getUsers: vi.fn() },
+}));
 
 describe('BucketDiscoveryHelper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(TuttiService.getUsers).mockResolvedValue({
+      users: [
+        {
+          name: 'u1',
+          storages: [
+            { storage: 'st1', configured: true },
+            { storage: 'st2', configured: true },
+          ],
+        },
+      ],
+    });
   });
 
   it('discovers buckets across protection groups and storages', async () => {
@@ -125,5 +140,11 @@ describe('BucketDiscoveryHelper', () => {
       { bucket: 'b1', storage: 'st1' },
       { bucket: 'b2', storage: 'st2' },
     ]);
+  });
+
+  it('does not send a guessed tenant when no user can access the storage', async () => {
+    vi.mocked(TuttiService.getUsers).mockResolvedValueOnce({ users: [] });
+    await BucketDiscoveryHelper.discoverStorageBuckets(['st1']);
+    expect(ChorusService.getBucketsForReplication).not.toHaveBeenCalled();
   });
 });

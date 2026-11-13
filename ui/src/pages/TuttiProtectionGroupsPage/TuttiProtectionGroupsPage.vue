@@ -251,28 +251,26 @@
         @retry="store.refresh()"
       />
     </div>
-
-    <ProtectionGroupWizard
-      v-model:show="showCreate"
-      @saved="openGroup"
-    />
-
-    <ConfirmDialog
-      :open="showFreezeConfirm"
-      :title="
-        automaticFrozen ? t('freezeDisableTitle') : t('freezeEnableTitle')
-      "
-      :danger="!automaticFrozen"
-      :loading="isFreezing"
-      :confirm-label="
-        automaticFrozen ? t('freezeDisableAction') : t('freezeEnableAction')
-      "
-      @confirm="confirmToggleFreeze"
-      @cancel="showFreezeConfirm = false"
-    >
-      {{ automaticFrozen ? t('freezeDisableText') : t('freezeEnableText') }}
-    </ConfirmDialog>
   </PageShell>
+
+  <ProtectionGroupWizard
+    v-model:show="showCreate"
+    @saved="openGroup"
+  />
+
+  <ConfirmDialog
+    :open="showFreezeConfirm"
+    :title="automaticFrozen ? t('freezeDisableTitle') : t('freezeEnableTitle')"
+    :danger="!automaticFrozen"
+    :loading="isFreezing"
+    :confirm-label="
+      automaticFrozen ? t('freezeDisableAction') : t('freezeEnableAction')
+    "
+    @confirm="confirmToggleFreeze"
+    @cancel="showFreezeConfirm = false"
+  >
+    {{ automaticFrozen ? t('freezeDisableText') : t('freezeEnableText') }}
+  </ConfirmDialog>
 </template>
 
 <style lang="scss" scoped>

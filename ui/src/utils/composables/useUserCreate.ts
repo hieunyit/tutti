@@ -17,6 +17,7 @@
 import { computed, inject, ref, type InjectionKey } from 'vue';
 import { clearWizardDraft, useWizardDraft } from '@/components/kit';
 import { TuttiService } from '@/services/TuttiService';
+import { RuntimeStorageService } from '@/services/RuntimeStorageService';
 import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
 import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
 import { UserHelper } from '@/utils/helpers/UserHelper';
@@ -27,6 +28,7 @@ import {
   type StorageBucketEntry,
 } from '@/utils/helpers/BucketDiscoveryHelper';
 import type { TuttiProxyAccountSecret } from '@/utils/types/tutti';
+import type { S3UserCredentialInput } from '@/utils/types/users';
 
 export const USER_CREATE_DRAFT_KEY = 'user-create';
 
@@ -80,6 +82,46 @@ export function useUserCreate() {
   const discovered = ref<StorageBucketEntry[]>([]);
   /** shown once, kept in memory only: never in the draft, storage or URL */
   const created = ref<TuttiProxyAccountSecret | null>(null);
+  // Backend credentials must stay in memory, outside the persisted wizard draft.
+  const credentials = ref<S3UserCredentialInput[]>([]);
+  const credentialsLoaded = ref(false);
+  const credentialsLoading = ref(false);
+  const credentialsError = ref(false);
+  const verifyCredentials = ref(true);
+  const credentialsValid = computed(
+    () =>
+      credentialsLoaded.value &&
+      credentials.value.every(
+        (row) =>
+          row.accessKeyId.trim() !== '' && row.secretAccessKey.trim() !== '',
+      ),
+  );
+
+  async function loadCredentialRequirements() {
+    credentialsLoading.value = true;
+    credentialsError.value = false;
+    credentialsLoaded.value = false;
+
+    try {
+      const { storages } = await RuntimeStorageService.list();
+
+      credentials.value = (storages ?? [])
+        .filter((storage) => !storage.connectionAccount?.configured)
+        .map(
+          (storage) =>
+            credentials.value.find((row) => row.storage === storage.name) ?? {
+              storage: storage.name,
+              accessKeyId: '',
+              secretAccessKey: '',
+            },
+        );
+      credentialsLoaded.value = true;
+    } catch {
+      credentialsError.value = true;
+    } finally {
+      credentialsLoading.value = false;
+    }
+  }
 
   const nameProblem = computed(() =>
     form.value.name === ''
@@ -164,7 +206,10 @@ export function useUserCreate() {
   });
 
   const identityValid = computed(
-    () => form.value.name !== '' && nameProblem.value === null,
+    () =>
+      form.value.name !== '' &&
+      nameProblem.value === null &&
+      credentialsValid.value,
   );
   const permissionValid = computed(() => permissionProblem.value === null);
   const canNext = computed(() => {
@@ -272,6 +317,7 @@ export function useUserCreate() {
     await Promise.all([
       loadClusterBuckets(),
       users.load(),
+      loadCredentialRequirements(),
       protection.refresh().catch(() => null),
     ]);
   }
@@ -280,6 +326,10 @@ export function useUserCreate() {
 
   /** Creates the user once; the secret stays in `created` (memory only). */
   async function submit(): Promise<{ name: string; secret: string }> {
+    if (busy.value || !identityValid.value || !permissionValid.value) {
+      throw new Error('completeIdentityAndCredentials');
+    }
+
     const name = form.value.name;
 
     busy.value = true;
@@ -288,8 +338,11 @@ export function useUserCreate() {
     try {
       const result = await TuttiService.createUser({
         name: form.value.name,
-        credentials: [],
-        verify: false,
+        credentials: credentials.value.map((row) => ({
+          ...row,
+          accessKeyId: row.accessKeyId.trim(),
+        })),
+        verify: credentials.value.length > 0 && verifyCredentials.value,
         createAccessKey: form.value.createKey,
         description: form.value.description,
         policy: {
@@ -300,6 +353,7 @@ export function useUserCreate() {
       });
 
       created.value = result.accessKey ?? null;
+      credentials.value = [];
       // the draft stays until dismissSecret(): clearing it now would reset the
       // form and bounce the wizard to step 0 behind the one-time secret modal
       submitted = true;
@@ -312,6 +366,7 @@ export function useUserCreate() {
 
   function dismissSecret() {
     created.value = null;
+    credentials.value = [];
 
     if (submitted) {
       submitted = false;
@@ -325,6 +380,13 @@ export function useUserCreate() {
     busy,
     error,
     created,
+    credentials,
+    credentialsValid,
+    credentialsLoaded,
+    credentialsLoading,
+    credentialsError,
+    verifyCredentials,
+    loadCredentialRequirements,
     canNext,
     identityValid,
     permissionValid,

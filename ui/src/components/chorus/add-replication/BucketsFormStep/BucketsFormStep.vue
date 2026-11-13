@@ -15,10 +15,13 @@
   -->
 
 <script setup lang="ts">
+  import { NSelect } from 'naive-ui';
+  import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { CAlert, CCollapseTransition, CRadio } from '@clyso/clyso-ui-kit';
   import { onBeforeMount } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { Callout } from '@/components/kit';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
   import BucketsSelectionList from '@/components/chorus/add-replication/BucketsSelectionList/BucketsSelectionList.vue';
@@ -27,29 +30,67 @@
     isForAllBuckets,
     isBucketsAlreadyRequested,
     validator,
+    users,
+    selectedUser,
+    isSelectedUserUsable,
+    hasUsersError,
+    hasBucketsError,
+    bucketsError,
+    eligibleUsers,
   } = storeToRefs(useTuttiAddReplicationStore());
-  const { initBucketsList, getBucketsList } =
-    useTuttiAddReplicationStore();
+  const { initBucketsList, selectUser } = useTuttiAddReplicationStore();
 
   const { t } = useI18n({
     messages: i18nAddReplication,
   });
 
   function initBucketsStep() {
-    if (isBucketsAlreadyRequested.value) {
-      getBucketsList();
-
-      return;
-    }
-
-    initBucketsList();
+    void initBucketsList(!isBucketsAlreadyRequested.value);
   }
+
+  const userOptions = computed(() =>
+    users.value.map((user) => ({
+      label: user.name,
+      value: user.name,
+      disabled: !eligibleUsers.value.some(
+        (eligible) => eligible.name === user.name,
+      ),
+    })),
+  );
 
   onBeforeMount(initBucketsStep);
 </script>
 
 <template>
   <div class="buckets-form-step">
+    <label class="buckets-form-step__user">
+      {{ t('userStepTitle') }}
+      <NSelect
+        :value="selectedUser"
+        :options="userOptions"
+        :aria-label="t('user')"
+        @update:value="selectUser"
+      />
+    </label>
+    <Callout
+      v-if="hasUsersError || !isSelectedUserUsable"
+      tone="warning"
+    >
+      {{
+        t(
+          hasUsersError
+            ? 'usersLoadError'
+            : users.length === 0
+              ? 'noUsersText'
+              : 'userMissingWarning',
+        )
+      }}
+    </Callout>
+    <Callout
+      v-else-if="hasBucketsError && bucketsError"
+      tone="danger"
+      >{{ bucketsError }}</Callout
+    >
     <p class="buckets-form-step__title">
       {{ t('bucketsStepTitle') }}
     </p>
@@ -101,6 +142,14 @@
   @use '@/styles/utils' as utils;
 
   .buckets-form-step {
+    &__user {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 420px;
+      margin-bottom: 16px;
+    }
+
     &__title {
       margin-bottom: utils.unit(2);
     }
