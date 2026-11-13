@@ -81,12 +81,14 @@ func (r *UniversalReplicationID) ToStorage() string {
 	return r.toStorage
 }
 
+// User returns the replication user. It is empty for a storage-level replication.
 func (r *UniversalReplicationID) User() string {
-	if r.user == "" {
-		// should never happen
-		panic(fmt.Sprintf("replication user is empty for replication ID %#v", *r))
-	}
 	return r.user
+}
+
+// IsStorageLevel reports whether the replication has no user (it uses the storage connection accounts).
+func (r *UniversalReplicationID) IsStorageLevel() bool {
+	return r.user == ""
 }
 
 func (r *UniversalReplicationID) FromToBuckets(taskBucket string) (from, to string) {
@@ -107,7 +109,7 @@ func (r *UniversalReplicationID) FromToBuckets(taskBucket string) (from, to stri
 }
 
 func (r *UniversalReplicationID) IsEmpty() bool {
-	return r == nil || r.user == "" || r.fromStorage == "" || r.toStorage == ""
+	return r == nil || r.fromStorage == "" || r.toStorage == ""
 }
 
 func (r *UniversalReplicationID) AsBucketID() (BucketReplicationPolicy, bool) {

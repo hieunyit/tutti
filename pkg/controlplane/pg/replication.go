@@ -33,8 +33,8 @@ const (
 type replications struct{ rt *runner }
 
 func (r *replications) check(id controlplane.ReplicationID) error {
-	if id.User == "" || id.FromStorage == "" || id.ToStorage == "" {
-		return fmt.Errorf("%w: replication: user, from and to storage are required", dom.ErrInvalidArg)
+	if id.FromStorage == "" || id.ToStorage == "" {
+		return fmt.Errorf("%w: replication: from and to storage are required", dom.ErrInvalidArg)
 	}
 	if (id.FromBucket == "") != (id.ToBucket == "") {
 		return fmt.Errorf("%w: replication: from and to bucket must be both set or both empty", dom.ErrInvalidArg)

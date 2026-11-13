@@ -59,9 +59,6 @@ func (p UserReplicationPolicy) RoutingID() string {
 }
 
 func (p UserReplicationPolicy) Validate() error {
-	if p.User == "" {
-		return fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
-	}
 	if p.FromStorage == "" {
 		return fmt.Errorf("%w: from storage is required", dom.ErrInvalidArg)
 	}
@@ -200,10 +197,6 @@ func (p BucketReplicationPolicy) RoutingID() BucketRoutingPolicyID {
 
 func (p BucketReplicationPolicy) Validate() error {
 	errs := make([]error, 0)
-	if p.User == "" {
-		err := fmt.Errorf("%w: user is required", dom.ErrInvalidArg)
-		errs = append(errs, err)
-	}
 	if p.FromStorage == "" {
 		err := fmt.Errorf("%w: from storage is required", dom.ErrInvalidArg)
 		errs = append(errs, err)

@@ -17,6 +17,7 @@
 package tasks
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -49,4 +50,26 @@ func Test_ReplicationGetterSetter(t *testing.T) {
 	r.EqualValues("fb", fromBucket)
 	r.EqualValues("tb", toBucket)
 	r.EqualValues(expect.ID, expect.GetReplicationID())
+}
+
+func TestQueueNameForEmptyUserDistinct(t *testing.T) {
+	empty := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("", "s1", "s2"))
+	alice := entity.UniversalFromUserReplication(entity.NewUserReplicationPolicy("alice", "s1", "s2"))
+	for _, prefix := range replicationQueuePrefixes {
+		qe := replicationQueueName(prefix, empty)
+		qa := replicationQueueName(prefix, alice)
+		if qe == qa {
+			t.Fatalf("queue names collide: %q", qe)
+		}
+		if qe != string(prefix)+"::s1:s2" {
+			t.Fatalf("unexpected queue name %q", qe)
+		}
+		if !isReplicationQueue(qe) {
+			t.Fatalf("%q must be a replication queue", qe)
+		}
+		id, err := entity.UniversalIDFromString(strings.TrimPrefix(qe, string(prefix)+":"))
+		if err != nil || id != empty {
+			t.Fatalf("queue name does not parse back: %v %v", id, err)
+		}
+	}
 }
