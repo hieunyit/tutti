@@ -103,7 +103,8 @@ export default <I18nMessages>{
     bucketSelectionAll:
       'Auf alle Buckets anwenden (einschließlich zukünftiger)',
     bucketSelectionPlaceholder: 'Bucket Namen eingeben',
-    selectFromAvailableBuckets: 'Oder aus verfügbaren Cluster-Buckets auswählen:',
+    selectFromAvailableBuckets:
+      'Oder aus verfügbaren Cluster-Buckets auswählen:',
     loadingBuckets: 'Buckets werden ermittelt...',
     availableBucketsCount: '{count} Buckets verfügbar',
     bucketSelectionInputLabel: 'Bucket-Name',
@@ -162,5 +163,72 @@ export default <I18nMessages>{
       'Das Blockieren der neu erstellten Routing-Richtlinie ist fehlgeschlagen. Die Erstellung der Routing-Richtlinie wurde rückgängig gemacht. Sie können den Vorgang wiederholen oder die Routing-Richtlinie zunächst ohne Blockierung erstellen und sie anschließend separat blockieren.',
     addRoutingPolicyRollbackErrorUnknown:
       'Das Blockieren der neu erstellten Routing-Richtlinie ist fehlgeschlagen, und das Rückgängigmachen der Erstellung ist ebenfalls fehlgeschlagen. Die Routing-Richtlinie wurde erstellt, ist jedoch nicht blockiert. Bitte blockieren Sie sie manuell.',
+  },
+  vi: {
+    backToRoutingPolicies: 'Routing policy',
+    breadcrumbAddRoutingPolicy: 'Thêm routing policy',
+    addRoutingPolicyTitle: 'Thêm routing policy',
+    addRoutingPolicyHeader:
+      'Tạo routing policy mới để điều khiển hướng lưu lượng trong proxy.',
+    userSelectionTitle: 'User',
+    userSelectionDescription: 'Chọn hoặc chỉ định một S3 user:',
+    userSelectionPlaceholder: 'Chọn hoặc nhập tên S3 user',
+    bucketSelectionTitle: 'Tên bucket',
+    bucketSelectionDescription: 'Giới hạn policy cho một bucket cụ thể:',
+    bucketSelectionAll: 'Áp dụng cho tất cả bucket (kể cả bucket tạo sau này)',
+    bucketSelectionPlaceholder: 'Nhập tên bucket',
+    selectFromAvailableBuckets: 'Hoặc chọn từ các bucket có sẵn trong cluster:',
+    loadingBuckets: 'Đang tìm bucket...',
+    availableBucketsCount: 'Có {count} bucket khả dụng',
+    bucketSelectionInputLabel: 'Tên bucket',
+    bucketNameRequired: 'Vui lòng nhập tên bucket.',
+    bucketNameInvalid:
+      'Tên bucket không hợp lệ. Dùng 3-63 ký tự gồm chữ thường, số, dấu gạch ngang hoặc dấu chấm.',
+    bucketErrLength: 'Tên bucket phải dài từ 3 đến 63 ký tự.',
+    bucketErrChars:
+      'Tên bucket chỉ được chứa chữ thường, số, dấu chấm và dấu gạch ngang.',
+    bucketErrStartEnd:
+      'Tên bucket phải bắt đầu và kết thúc bằng chữ cái hoặc số.',
+    bucketErrAdjacentPeriods:
+      'Tên bucket không được chứa hai dấu chấm liền nhau.',
+    bucketErrIpAddress: 'Tên bucket không được có định dạng địa chỉ IP.',
+    bucketErrPrefixSuffix:
+      'Tên bucket chứa tiền tố hoặc hậu tố bị AWS hạn chế.',
+    storageSelectionTitle: 'Storage',
+    storageSelectionDescription: 'Chọn storage đích:',
+    storageSelectionRequired: 'Vui lòng chọn storage đích.',
+    storageSelectionBlockedOnlyHint:
+      'Chưa chọn storage: sẽ tạo policy chỉ chặn, không định tuyến.',
+    unknownValidationError: 'Lỗi xác thực không xác định',
+    statusSelectionTitle: 'Trạng thái chặn',
+    statusSelectionDescription:
+      'Xác định routing policy này được cho phép hoạt động hay bị chặn rõ ràng.',
+    statusSelectionAllowed: 'Cho phép',
+    statusSelectionBlocked: 'Bị chặn',
+    actionAddRoutingPolicy: 'Thêm routing policy',
+    userSelectionRequired: 'Vui lòng chọn user.',
+    addRoutingPolicyConfirmTitle: 'Xác nhận tạo routing policy',
+    confirmRoutingPolicyDescription: 'Bạn sắp tạo routing policy sau:',
+    confirmRoutingPolicyPositive: 'Tạo routing policy',
+    confirmRoutingPolicyNegative: 'Hủy',
+    summaryColumnUser: 'User',
+    summaryColumnStorage: 'Storage',
+    summaryNoStoragePlaceholder: 'Chưa chọn storage',
+    summaryColumnBucket: 'Bucket',
+    summaryColumnStatus: 'Trạng thái chặn',
+    summaryStatusBlocked: 'Bị chặn',
+    summaryStatusAllowed: 'Cho phép',
+    addRoutingPolicySuccessTitle: 'Đã tạo routing policy!',
+    addRoutingPolicySuccessContent: 'Đã tạo routing policy thành công.',
+    addRoutingPolicyErrorTitle: 'Chưa tạo được routing policy!',
+    addRoutingPolicyErrorContent: 'Đã xảy ra lỗi khi tạo routing policy:',
+    addErrorAction: 'Thử lại',
+    addRoutingPolicyErrorUnknown:
+      'Đã xảy ra lỗi không xác định khi tạo routing policy.',
+    addBlockErrorUnknown: 'Đã xảy ra lỗi không xác định khi tạo policy chặn',
+    addBlockRollbackErrorUnknown:
+      'Chặn routing policy vừa tạo không thành công. Việc tạo routing policy đã được hoàn tác. Bạn có thể thử lại, hoặc tạo routing policy không chặn rồi chặn riêng sau đó.',
+    addRoutingPolicyRollbackErrorUnknown:
+      'Chặn routing policy vừa tạo không thành công, và việc hoàn tác cũng thất bại. Routing policy đã được tạo nhưng chưa bị chặn. Vui lòng chặn thủ công.',
   },
 };

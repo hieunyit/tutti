@@ -137,5 +137,57 @@ export default <I18nMessages>{
   vi: {
     statusCovered: 'Đã được phủ',
     coveredReason: 'đã được phủ bởi {kind} {id}',
+    pageDescription:
+      'Chọn storage nguồn và đích cùng các bucket cần sao chép. Các object hiện có được sao chép trước, sau đó các thay đổi được giữ đồng bộ.',
+    backToReplication: 'Sao chép',
+    breadcrumbAddReplication: 'Thêm replication',
+    addReplicationTitle: 'Thêm replication',
+    step1Title: 'Storage nguồn',
+    step1Description: 'Chọn storage để sao chép từ',
+    step2Title: 'Storage đích',
+    step2Description: 'Chọn storage để sao chép tới',
+    step3Title: 'Bucket',
+    step3Description: 'Chọn bucket để sao chép',
+    nextAction: 'Tiếp theo',
+    addReplicationAction: 'Thêm replication',
+    fromStorageStepTitle: 'Chọn storage nguồn cho replication:',
+    alertTitle: 'Lưu ý!',
+    alertDescription: '',
+    toStorageStepTitle: 'Chọn storage đích cho replication:',
+    addReplicationError:
+      'Đã xảy ra lỗi khi chuẩn bị biểu mẫu thêm replication. Vui lòng thử lại.',
+    bucketsStepTitle: 'Chọn bucket để sao chép:',
+    bucketsSelectOption: 'Sao chép các bucket đã chọn',
+    bucketsAllOption:
+      'Sao chép tất cả bucket trên storage nguồn (kể cả bucket tạo sau này)',
+    columnName: 'Bucket',
+    columnStatus: 'Trạng thái',
+    searchBuckets: 'Tìm bucket',
+    showReplicatedBuckets: 'Hiển thị cả bucket đã được sao chép',
+    selectedBuckets: 'Đã chọn {total} bucket',
+    statusReplicated: 'Đã sao chép',
+    statusAvailable: 'Có thể sao chép',
+    initBucketsError:
+      'Đã xảy ra lỗi khi xử lý danh sách bucket. Vui lòng thử lại.',
+    noResultsTitle: 'Không tìm thấy bucket',
+    noResultsText:
+      'Không có bucket nào có thể sao chép trên storage {storage}.',
+    filterNoResultsTitle: 'Không tìm thấy bucket',
+    filterNoResultsText: 'Không có bucket nào khớp với từ khóa tìm kiếm.',
+    filterNoResultsAction: 'Đặt lại tìm kiếm',
+    validationErrorTitle: 'Lỗi xác thực',
+    validationErrorDescription:
+      'Vui lòng chọn ít nhất một bucket để tạo replication.',
+    confirmReplicationTitle: 'Xác nhận tạo replication',
+    confirmReplicationDescription: 'Bạn sắp tạo replication sau:',
+    confirmReplicationPositive: 'Tạo replication',
+    confirmReplicationNegative: 'Hủy',
+    summaryAllBuckets:
+      'Tất cả bucket trên {fromStorage} (kể cả bucket tạo sau này)',
+    createReplicationSuccess:
+      'Đã tạo replication thành công. Bạn có thể thấy chúng ở đầu danh sách.',
+    createReplicationError:
+      'Đã xảy ra lỗi khi tạo replication. Vui lòng thử lại một lần nữa.',
+    createReplicationErrorUnknown: 'Lỗi không xác định',
   },
 };

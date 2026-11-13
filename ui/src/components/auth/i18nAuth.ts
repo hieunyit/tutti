@@ -230,5 +230,11 @@ export default <Record<string, Record<string, string>>>{
     roleNameAdmin: 'Quản trị viên',
     roleNameViewer: 'Người xem',
     readOnlyAccount: 'tài khoản chỉ đọc',
+    brandLead:
+      'Sao chép, định tuyến và failover S3 storage phía sau một proxy duy nhất, đồng thời theo dõi sức khỏe của mọi bản sao trong một console.',
+    brandPoint1: 'Sao chép đồng bộ hoặc bất đồng bộ giữa các storage',
+    brandPoint2:
+      'Kiểm tra sức khỏe, circuit breaker và failover theo chính sách',
+    brandPoint3: 'Phân quyền theo từng tài khoản và access key xoay vòng',
   },
 };

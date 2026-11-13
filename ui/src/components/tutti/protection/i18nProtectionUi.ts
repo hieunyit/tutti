@@ -138,5 +138,5 @@ const baseMessages = base as unknown as Record<string, Record<string, unknown>>;
 export default <I18nMessages>{
   [I18nLocale.EN]: { ...baseMessages[I18nLocale.EN], ...extra.en },
   [I18nLocale.DE]: { ...baseMessages[I18nLocale.DE], ...extra.de },
-  vi: extra.vi,
+  vi: { ...baseMessages.vi, ...extra.vi },
 };

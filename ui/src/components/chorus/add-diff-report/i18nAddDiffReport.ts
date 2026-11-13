@@ -191,4 +191,77 @@ export default <I18nMessages>{
     createDiffReportError:
       'Beim Erstellen des Diff-Reports ist ein Fehler aufgetreten.',
   },
+  vi: {
+    backToDiffReports: 'Báo cáo diff',
+    breadcrumbCreateDiffReport: 'Thêm báo cáo diff',
+    addDiffReportTitle: 'Báo cáo diff mới',
+    addDiffReportDescription:
+      'Chạy kiểm tra đối chiếu theo yêu cầu giữa hai vị trí storage. Chọn cặp storage/bucket nguồn và đích, kèm tiêu chí kiểm tra tùy chọn.',
+    step1Title: 'Nguồn của báo cáo diff',
+    step1Description: 'Chọn storage và bucket nguồn',
+    step2Title: 'Đích của báo cáo diff',
+    step2Description: 'Chọn storage và bucket để so sánh',
+    step3Title: 'User',
+    step3Description: 'Chọn user',
+    step4Title: 'Cài đặt bổ sung',
+    step4Description: 'Chọn các cài đặt bổ sung',
+    nextAction: 'Tiếp theo',
+    actionAddDiffReport: 'Thêm báo cáo diff',
+    errorTitle: 'Lỗi',
+    errorText: 'Đã xảy ra lỗi khi tải danh sách storage.\nVui lòng thử lại.',
+    errorAction: 'Thử lại',
+    notEnoughStoragesTitle: 'Không đủ storage',
+    notEnoughStoragesText: 'Cần ít nhất hai storage để tạo báo cáo diff.',
+    fromStorageTitle: 'Storage nguồn',
+    fromStorageDescription: 'Chọn vị trí storage nguồn chứa dữ liệu gốc.',
+    fromStorageRequired: 'Vui lòng chọn storage nguồn.',
+    fromBucketTitle: 'Bucket nguồn',
+    fromBucketDescription:
+      'Nhập bucket từ storage nguồn cần đưa vào kiểm tra tính nhất quán.',
+    bucketPlaceholder: 'ví dụ: my-bucket',
+    bucketRequired: 'Vui lòng nhập tên bucket.',
+    bucketErrLength: 'Tên bucket phải dài từ 3 đến 63 ký tự.',
+    bucketErrChars:
+      'Tên bucket chỉ được chứa chữ thường, số, dấu chấm và dấu gạch ngang.',
+    bucketErrStartEnd:
+      'Tên bucket phải bắt đầu và kết thúc bằng chữ cái hoặc số.',
+    bucketErrAdjacentPeriods:
+      'Tên bucket không được chứa hai dấu chấm liền nhau.',
+    bucketErrIpAddress: 'Tên bucket không được có định dạng địa chỉ IP.',
+    bucketErrPrefixSuffix:
+      'Tên bucket chứa tiền tố hoặc hậu tố bị AWS hạn chế.',
+    toStorageTitle: 'Storage đích',
+    toStorageDescription: 'Chọn vị trí storage đích để so sánh với nguồn.',
+    toStorageRequired: 'Vui lòng chọn storage đích.',
+    toBucketTitle: 'Bucket đích',
+    toBucketDescription:
+      'Nhập bucket từ storage đích để so sánh với bucket nguồn.',
+    userTitle: 'User',
+    userDescription:
+      'Chọn bí danh credential S3 dùng để truy cập cả hai storage. Chỉ hiển thị các user có credential trên cả hai storage.',
+    userRequired: 'Vui lòng chọn user.',
+    noUsersTitle: 'Không tìm thấy credential của user',
+    noUsersText: 'Không có user nào có credential trên cả hai storage đã chọn.',
+    additionalSettingsTitle: 'Cài đặt bổ sung',
+    checkOnlyLastVersionsLabel: 'Chỉ kiểm tra phiên bản mới nhất',
+    checkOnlyLastVersionsDescription:
+      'Chỉ xác minh phiên bản mới nhất của mỗi object. Tắt tùy chọn này để kiểm tra cả các phiên bản cũ.',
+    ignoreEtagsLabel: 'Bỏ qua ETag',
+    ignoreEtagsDescription:
+      'Bỏ qua việc so sánh checksum dựa trên ETag. Hữu ích khi so sánh dữ liệu giữa các nhà cung cấp cloud tính hash khác nhau.',
+    ignoreSizesLabel: 'Bỏ qua kích thước',
+    ignoreSizesDescription:
+      'Bỏ qua việc xác minh kích thước object. Dùng khi kích thước payload khác nhau do máy chủ tự động biến đổi hoặc mã hóa trong quá trình truyền.',
+    confirmDiffReportTitle: 'Xác nhận báo cáo diff',
+    confirmDiffReportDescription: 'Bạn sắp tạo báo cáo diff sau.',
+    confirmDiffReportPositive: 'Tạo báo cáo diff',
+    confirmDiffReportNegative: 'Hủy',
+    summaryStorages: 'Storage',
+    summaryBuckets: 'Bucket',
+    summaryUser: 'User',
+    summaryOptions: 'Tùy chọn',
+    successTitle: 'Thành công',
+    createDiffReportSuccess: 'Đã tạo báo cáo diff thành công.',
+    createDiffReportError: 'Đã xảy ra lỗi khi tạo báo cáo diff.',
+  },
 };
