@@ -146,6 +146,13 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 	// Load dynamic system and worker settings from database / Redis projection
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
+		// multipart tuning from config YAML/env is the fallback for values not stored in the settings
+		if loadedSettings.Worker.MultipartThreads == 0 {
+			loadedSettings.Worker.MultipartThreads = conf.MultipartThreads
+		}
+		if loadedSettings.Worker.MultipartPartSizeMiB == 0 {
+			loadedSettings.Worker.MultipartPartSizeMiB = conf.MultipartPartSizeMiB
+		}
 		systemsettings.ApplySettings(*loadedSettings)
 		if loadedSettings.Worker.Concurrency > 0 {
 			conf.Concurrency = loadedSettings.Worker.Concurrency
@@ -196,6 +203,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				BandwidthLimitBytes:      api.DefaultSystemSettings().Worker.BandwidthLimitBytes,
 				BufferBudgetBytes:        api.DefaultSystemSettings().Worker.BufferBudgetBytes,
 				ShutdownTimeout:          conf.ShutdownTimeout,
+				BulkConcurrencyPercent:   conf.BulkConcurrencyPercent,
+				MultipartThreads:         conf.MultipartThreads,
+				MultipartPartSizeMiB:     conf.MultipartPartSizeMiB,
 				QueueUpdateInterval:      conf.Worker.QueueUpdateInterval,
 				TaskCheckInterval:        conf.Worker.TaskCheckInterval,
 				DelayedTaskCheckInterval: conf.Worker.DelayedTaskCheckInterval,
@@ -319,6 +329,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return !errors.As(err, &rlErr)
 	}
 
+	bulkPercent := conf.BulkConcurrencyPercent
+	if sp := systemsettings.Current().Worker.BulkConcurrencyPercent; sp > 0 {
+		bulkPercent = sp
+	}
 	var singleSrv *asynq.Server
 	var liveSrv *asynq.Server
 	var bulkSrv *asynq.Server
@@ -343,14 +357,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			},
 		)
 	} else {
-		bulkConcurrency := totalConcurrency * 2 / 10
-		if bulkConcurrency < 1 {
-			bulkConcurrency = 1
-		}
-		liveConcurrency := totalConcurrency - bulkConcurrency
-		if liveConcurrency < 1 {
-			liveConcurrency = 1
-		}
+		bulkConcurrency, liveConcurrency := systemsettings.SplitConcurrency(totalConcurrency, bulkPercent)
 
 		liveSrv = asynq.NewServer(
 			queueRedis,

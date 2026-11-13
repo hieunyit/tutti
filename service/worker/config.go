@@ -45,6 +45,12 @@ type Config struct {
 
 	Concurrency     int           `yaml:"concurrency"`
 	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
+	// BulkConcurrencyPercent: share (5..95, default 20) of concurrency for bulk migration; rest serves live events.
+	BulkConcurrencyPercent int `yaml:"bulkConcurrencyPercent"`
+	// MultipartThreads: parallel parts for objects above the multipart threshold (1..16, default 1).
+	MultipartThreads int `yaml:"multipartThreads"`
+	// MultipartPartSizeMiB: multipart part size in MiB (min 5, default 16).
+	MultipartPartSizeMiB int `yaml:"multipartPartSizeMiB"`
 
 	Api    *api.Config     `yaml:"api,omitempty"`
 	Lock   *Lock           `yaml:"lock,omitempty"`
@@ -70,6 +76,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Concurrency <= 0 {
 		return fmt.Errorf("worker config: concurency config must be positive: %d", c.Concurrency)
+	}
+	if c.BulkConcurrencyPercent != 0 && (c.BulkConcurrencyPercent < 5 || c.BulkConcurrencyPercent > 95) {
+		return fmt.Errorf("worker config: bulkConcurrencyPercent must be in 5..95: %d", c.BulkConcurrencyPercent)
+	}
+	if c.MultipartThreads < 0 || c.MultipartThreads > 16 {
+		return fmt.Errorf("worker config: multipartThreads must be in 1..16: %d", c.MultipartThreads)
+	}
+	if c.MultipartPartSizeMiB != 0 && c.MultipartPartSizeMiB < 5 {
+		return fmt.Errorf("worker config: multipartPartSizeMiB must be at least 5: %d", c.MultipartPartSizeMiB)
 	}
 	if c.Api == nil {
 		return fmt.Errorf("worker config: empty Api config")
