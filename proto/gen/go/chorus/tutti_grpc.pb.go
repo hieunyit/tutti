@@ -68,7 +68,7 @@ const (
 // Resilience exposes the high-availability state of the proxies (circuit breaker status and effective
 // settings) and manages automatic failover policies and the history of performed failovers.
 type ResilienceClient interface {
-	ListRuntimeStorages(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RuntimeStorageList, error)
+	ListRuntimeStorages(ctx context.Context, in *ListRuntimeStoragesRequest, opts ...grpc.CallOption) (*RuntimeStorageList, error)
 	CreateRuntimeStorage(ctx context.Context, in *CreateRuntimeStorageRequest, opts ...grpc.CallOption) (*RuntimeStorage, error)
 	UpdateRuntimeStorage(ctx context.Context, in *UpdateRuntimeStorageRequest, opts ...grpc.CallOption) (*RuntimeStorage, error)
 	DeleteRuntimeStorage(ctx context.Context, in *RuntimeStorageName, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -176,7 +176,7 @@ func NewResilienceClient(cc grpc.ClientConnInterface) ResilienceClient {
 	return &resilienceClient{cc}
 }
 
-func (c *resilienceClient) ListRuntimeStorages(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RuntimeStorageList, error) {
+func (c *resilienceClient) ListRuntimeStorages(ctx context.Context, in *ListRuntimeStoragesRequest, opts ...grpc.CallOption) (*RuntimeStorageList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimeStorageList)
 	err := c.cc.Invoke(ctx, Resilience_ListRuntimeStorages_FullMethodName, in, out, cOpts...)
@@ -573,7 +573,7 @@ func (c *resilienceClient) UpdateSystemSettings(ctx context.Context, in *UpdateS
 // Resilience exposes the high-availability state of the proxies (circuit breaker status and effective
 // settings) and manages automatic failover policies and the history of performed failovers.
 type ResilienceServer interface {
-	ListRuntimeStorages(context.Context, *emptypb.Empty) (*RuntimeStorageList, error)
+	ListRuntimeStorages(context.Context, *ListRuntimeStoragesRequest) (*RuntimeStorageList, error)
 	CreateRuntimeStorage(context.Context, *CreateRuntimeStorageRequest) (*RuntimeStorage, error)
 	UpdateRuntimeStorage(context.Context, *UpdateRuntimeStorageRequest) (*RuntimeStorage, error)
 	DeleteRuntimeStorage(context.Context, *RuntimeStorageName) (*emptypb.Empty, error)
@@ -680,7 +680,7 @@ type ResilienceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedResilienceServer struct{}
 
-func (UnimplementedResilienceServer) ListRuntimeStorages(context.Context, *emptypb.Empty) (*RuntimeStorageList, error) {
+func (UnimplementedResilienceServer) ListRuntimeStorages(context.Context, *ListRuntimeStoragesRequest) (*RuntimeStorageList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListRuntimeStorages not implemented")
 }
 func (UnimplementedResilienceServer) CreateRuntimeStorage(context.Context, *CreateRuntimeStorageRequest) (*RuntimeStorage, error) {
@@ -818,7 +818,7 @@ func RegisterResilienceServer(s grpc.ServiceRegistrar, srv ResilienceServer) {
 }
 
 func _Resilience_ListRuntimeStorages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(ListRuntimeStoragesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -830,7 +830,7 @@ func _Resilience_ListRuntimeStorages_Handler(srv interface{}, ctx context.Contex
 		FullMethod: Resilience_ListRuntimeStorages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResilienceServer).ListRuntimeStorages(ctx, req.(*emptypb.Empty))
+		return srv.(ResilienceServer).ListRuntimeStorages(ctx, req.(*ListRuntimeStoragesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

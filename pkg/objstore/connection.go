@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -133,6 +134,58 @@ func (s *credsSvc) CredentialMode(storage, user string) CredMode {
 // ListOverrideUsers lists the users with their own credentials on the storage (config and dynamic).
 func (s *credsSvc) ListOverrideUsers(storage string) []string {
 	return s.listOverrideUsers(storage)
+}
+
+// OverrideUserCounts returns, for every S3 storage, how many users have their own credentials on it, i.e.
+// len(ListOverrideUsers(storage)) for all storages, computed in one pass over the credential cache instead of one
+// pass per storage and without building the per-user lists.
+func (s *credsSvc) OverrideUserCounts() map[string]int {
+	view := s.view.Load()
+	out := make(map[string]int, len(view.s3))
+	for st := range view.s3 {
+		out[st] = 0
+		if conf, ok := s.config.Storages[st]; ok {
+			out[st] = len(conf.UserList())
+		}
+	}
+	if !s.config.DynamicCredentials.Enabled {
+		return out
+	}
+	s.RLock()
+	defer s.RUnlock()
+	for cacheKey := range s.s3Creds {
+		if i := strings.IndexByte(cacheKey, ':'); i > 0 {
+			if _, ok := out[cacheKey[:i]]; ok {
+				out[cacheKey[:i]]++
+			}
+		}
+	}
+	return out
+}
+
+// OverrideUsersByStorage returns ListOverrideUsers for every S3 storage in one pass over the credential cache
+// (unsorted within a storage).
+func (s *credsSvc) OverrideUsersByStorage() map[string][]string {
+	view := s.view.Load()
+	out := make(map[string][]string, len(view.s3))
+	for st := range view.s3 {
+		if conf, ok := s.config.Storages[st]; ok {
+			out[st] = conf.UserList()
+		}
+	}
+	if !s.config.DynamicCredentials.Enabled {
+		return out
+	}
+	s.RLock()
+	defer s.RUnlock()
+	for cacheKey := range s.s3Creds {
+		if i := strings.IndexByte(cacheKey, ':'); i > 0 {
+			if _, ok := view.s3[cacheKey[:i]]; ok {
+				out[cacheKey[:i]] = append(out[cacheKey[:i]], cacheKey[i+1:])
+			}
+		}
+	}
+	return out
 }
 
 // ---- identities

@@ -22,7 +22,6 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestRuntimeStorageLifecycle(t *testing.T) {
@@ -55,7 +54,7 @@ func TestRuntimeStorageLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "managed", created.Source)
 	require.Len(t, created.Users, 1)
-	listed, err := h.ListRuntimeStorages(t.Context(), &emptypb.Empty{})
+	listed, err := h.ListRuntimeStorages(t.Context(), &pb.ListRuntimeStoragesRequest{})
 	require.NoError(t, err)
 	require.Len(t, listed.Storages, 2)
 	references = []string{"bucket routing user/bucket"}
