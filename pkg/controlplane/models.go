@@ -265,6 +265,12 @@ type SystemWorkerSettings struct {
 	BacklogLowWatermark      int           `json:"backlogLowWatermark"`
 	BandwidthLimitBytes      int64         `json:"bandwidthLimitBytes"`
 	BufferBudgetBytes        int64         `json:"bufferBudgetBytes"`
+	// BulkConcurrencyPercent is the share (5..95, 0 = default 20) of Concurrency given to bulk migration.
+	BulkConcurrencyPercent int `json:"bulkConcurrencyPercent,omitempty"`
+	// MultipartThreads is the number of parallel parts for objects above the multipart threshold (1..16, 0 = 1).
+	MultipartThreads int `json:"multipartThreads,omitempty"`
+	// MultipartPartSizeMiB is the multipart part size in MiB (min 5, 0 = 16).
+	MultipartPartSizeMiB int `json:"multipartPartSizeMiB,omitempty"`
 }
 
 type SystemLockSettings struct {
@@ -275,4 +281,3 @@ type SystemWebhookSettings struct {
 	Enabled bool   `json:"enabled"`
 	BaseURL string `json:"baseUrl"`
 }
-
