@@ -95,6 +95,13 @@ func TestConflicts_Users(t *testing.T) {
 		{"alice ALL vs alice x", u("alice", rs("A", "B")), u("alice", rs("A", "B", "x")), true},
 		{"group alice vs bob ALL", u("alice", GroupScope([]string{"A", "B"}, nil)), u("bob", rs("A", "B")), false},
 		{"group alice vs alice ALL", u("alice", GroupScope([]string{"A", "B"}, nil)), u("alice", rs("B", "A")), true},
+		{"alice diff source same bucket", u("alice", rs("A", "B", "b1")), u("alice", rs("C", "D", "b1")), true},
+		{"alice diff source both all", u("alice", rs("A", "B")), u("alice", rs("C", "D")), true},
+		{"alice diff source all vs bucket", u("alice", rs("A", "B")), u("alice", rs("C", "D", "b1")), false},
+		{"alice diff source disjoint buckets", u("alice", rs("A", "B", "b1")), u("alice", rs("C", "D", "b2")), false},
+		{"alice same source fan-out", u("alice", rs("A", "B", "b1")), u("alice", rs("A", "C", "b1")), false},
+		{"alice ALL vs bob ALL diff source", u("alice", rs("A", "B")), u("bob", rs("C", "D")), false},
+		{"alice b1 vs bob b1 diff source", u("alice", rs("A", "B", "b1")), u("bob", rs("C", "D", "b1")), false},
 		{"group no user vs bob ALL", GroupScope([]string{"A", "B"}, nil), u("bob", rs("A", "B")), true},
 	}
 	for _, tt := range tests {
@@ -120,5 +127,10 @@ func TestConflictReason(t *testing.T) {
 	ok, _, _, _ := Conflicts(u("alice", rs("A", "B")), u("bob", rs("C", "D")))
 	require.False(t, ok)
 	ok, _, _, _ = Conflicts(u("alice", rs("A", "B")), u("alice", rs("C", "D")))
-	require.False(t, ok)
+	require.True(t, ok, "same user, both all, different sources")
+	_, _, _, _, r = conflict2(u("alice", rs("A", "B", "b1")), u("alice", rs("C", "D", "b1")))
+	require.Equal(t, ReasonSourceStorage, r)
+	err = Check(u("alice", rs("C", "D", "b1")), []Owner{{Kind: "replication", ID: "x", Scope: u("alice", rs("A", "B", "b1"))}}, "")
+	require.Equal(t, ReasonSourceStorage, err.Reason)
+	require.Contains(t, err.Error(), `replications of user "alice" must share one source storage per bucket: bucket "b1" is already replicated from "A" by replication "x"`)
 }

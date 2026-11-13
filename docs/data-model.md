@@ -113,7 +113,7 @@ Routing logic:
 
 Storage-level replication: the `<user>` segment of the `p:repl:*`, `p:repl_st:*`, `p:switch:*` and `p:route:*` keys may be an empty string. An empty user means the whole storage (or the listed buckets) is replicated with each storage's connection account; no identity is created in `s3_identities`, and the former `$service` identity no longer exists. The Postgres column `user_name` stays `NOT NULL` and holds `''` for these rows (no schema change). The replication ID string and the queue names encode an empty user and round-trip through `UniversalIDFromString`.
 
-Creation of any replication or protection group is checked by the overlap rule (same destination or reverse direction, with intersecting buckets, is rejected with `AlreadyExists`; so are two storage-level replications with different source storages on a shared bucket or both all-buckets, because `p:repl_bucket_from:<user>` and `p:repl_user_from` keep one source per bucket / per user and the empty user is shared) under one global scope lock, before any key is written. See [API](./tutti/api.md).
+Creation of any replication or protection group is checked by the overlap rule (same destination or reverse direction, with intersecting buckets, is rejected with `AlreadyExists`; so are two replications of the same user (storage-level, or the same real user) with different source storages on a shared bucket or both all-buckets, because `p:repl_bucket_from:<user>` and `p:repl_user_from` keep one source per bucket / per user and the empty user is shared by all storage-level replications) under one global scope lock, before any key is written. See [API](./tutti/api.md).
 
 Replication policy creation logic:
 

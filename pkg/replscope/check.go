@@ -22,7 +22,7 @@ func Check(proposed Scope, existing []Owner, ignoreID string) *ConflictError {
 			continue
 		}
 		if ok, bucket, e, other, reason := conflict2(proposed, o.Scope); ok {
-			return &ConflictError{OwnerKind: o.Kind, OwnerID: o.ID, Bucket: bucket, Edge: e, OtherEdge: other, Reason: reason}
+			return &ConflictError{OwnerKind: o.Kind, OwnerID: o.ID, Bucket: bucket, Edge: e, OtherEdge: other, Reason: reason, User: proposed.User}
 		}
 	}
 	return nil

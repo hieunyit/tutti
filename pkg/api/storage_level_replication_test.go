@@ -43,7 +43,7 @@ func (c slCreds) HasUser(storage, user string) error {
 		}
 		return fmt.Errorf("%w: storage %q has no connection account", dom.ErrFailedPrecondition, storage)
 	}
-	return dom.ErrNotFound
+	return nil // any real user exists on every storage
 }
 
 func (c slCreds) ValidateReplicationID(id entity.UniversalReplicationID) error {
@@ -136,6 +136,16 @@ func newSLEnvHook(t *testing.T, conn map[string]bool, onExists func(context.Cont
 func (e *slEnv) add(t *testing.T, from, to string, buckets ...string) error {
 	t.Helper()
 	return e.addCtx(t, from, to, buckets...)
+}
+
+func (e *slEnv) addUser(t *testing.T, user, from, to string, buckets ...string) error {
+	t.Helper()
+	id := &pb.ReplicationID{User: user, FromStorage: from, ToStorage: to}
+	if len(buckets) > 0 {
+		id.FromBucket, id.ToBucket = &buckets[0], &buckets[0]
+	}
+	_, err := e.client.AddReplication(t.Context(), &pb.AddReplicationRequest{Id: id})
+	return err
 }
 
 func (e *slEnv) addCtx(t *testing.T, from, to string, buckets ...string) error {
@@ -417,4 +427,25 @@ func TestAddReplicationDifferentSourceKeepsFirstSource(t *testing.T) {
 	// same source fan-out and all vs explicit with another source stay allowed
 	require.NoError(t, e.add(t, "main", "c", "b1"))
 	require.NoError(t, e.add(t, "c", "a", "b2"))
+}
+
+// TestAddReplicationSameUserDifferentSourceKeepsFirstSource: the stores keep one source per (user, bucket), so a
+// second replication of the same real user from another source on the same bucket is refused.
+func TestAddReplicationSameUserDifferentSourceKeepsFirstSource(t *testing.T) {
+	e := newSLEnv(t, allConn)
+	require.NoError(t, e.addUser(t, "alice", "main", "a", "b1"))
+	err := e.addUser(t, "alice", "b", "c", "b1")
+	require.Equal(t, codes.AlreadyExists, status.Code(err))
+	require.Contains(t, reason(err), `replications of user "alice" must share one source storage per bucket`)
+	require.Contains(t, reason(err), `bucket "b1" is already replicated from "main"`)
+	owners := e.owners(t)
+	require.Len(t, owners, 1)
+	require.Equal(t, "alice", owners[0].Scope.User)
+	require.Equal(t, "main", owners[0].Scope.Edges[0].From)
+	src, err := e.rc.HGetAll(t.Context(), "p:repl_bucket_from:alice").Result()
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"b1": "main"}, src)
+	require.Equal(t, 1, e.queue.count())
+	// a different real user stays independent
+	require.NoError(t, e.addUser(t, "bob", "b", "c", "b1"))
 }

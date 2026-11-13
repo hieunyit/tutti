@@ -51,7 +51,7 @@ type Reason string
 const (
 	// ReasonOverlap: same destination or reversed edge on a common bucket.
 	ReasonOverlap Reason = "overlap"
-	// ReasonSourceStorage: two storage-level scopes with different source storages share a bucket (or are both
+	// ReasonSourceStorage: two scopes of the same user (or both storage-level) with different source storages share a bucket (or are both
 	// all-buckets). The policy stores keep one source storage per bucket, so they cannot coexist.
 	ReasonSourceStorage Reason = "source_storage"
 )
@@ -61,14 +61,20 @@ type ConflictError struct {
 	OwnerKind, OwnerID, Bucket string
 	Edge, OtherEdge            Edge
 	Reason                     Reason
+	// User is the proposed scope's user (empty = storage-level); used in the source-storage message.
+	User string
 }
 
 func (e *ConflictError) Error() string {
 	if e.Reason == ReasonSourceStorage {
-		if e.Bucket == "*" {
-			return fmt.Sprintf("storage-level replications must share one source storage per bucket: all buckets are already replicated from %q by %s %q", e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+		who := "storage-level replications"
+		if e.User != "" {
+			who = fmt.Sprintf("replications of user %q", e.User)
 		}
-		return fmt.Sprintf("storage-level replications must share one source storage per bucket: bucket %q is already replicated from %q by %s %q", e.Bucket, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+		if e.Bucket == "*" {
+			return fmt.Sprintf("%s must share one source storage per bucket: all buckets are already replicated from %q by %s %q", who, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+		}
+		return fmt.Sprintf("%s must share one source storage per bucket: bucket %q is already replicated from %q by %s %q", who, e.Bucket, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
 	}
 	return fmt.Sprintf("bucket %q on %s->%s is already covered by %s %q", e.Bucket, e.Edge.From, e.Edge.To, e.OwnerKind, e.OwnerID)
 }
@@ -135,8 +141,9 @@ func Conflicts(a, b Scope) (conflict bool, bucket string, ea, eb Edge) {
 // conflict2 is Conflicts plus the reason.
 // Two scopes of different real users overlap only on explicitly listed common buckets: "all buckets" of a real
 // user means only that user's buckets. A storage-level scope (empty User) covers every bucket of the storage.
-// Two storage-level scopes with different source storages also conflict on a common bucket (or both all-buckets):
-// the policy stores keep one source storage per bucket (and per user), and storage-level ones share the empty user.
+// Two scopes of the same user (both storage-level, or the same real user) with different source storages also
+// conflict on a common bucket (or both all-buckets): the policy stores keep one source storage per (user, bucket)
+// and per user, and storage-level scopes share the empty user.
 func conflict2(a, b Scope) (conflict bool, bucket string, ea, eb Edge, reason Reason) {
 	var ok bool
 	if a.User != "" && b.User != "" && a.User != b.User {
@@ -155,7 +162,7 @@ func conflict2(a, b Scope) (conflict bool, bucket string, ea, eb Edge, reason Re
 			}
 		}
 	}
-	if a.User == "" && b.User == "" && (a.AllBuckets == b.AllBuckets) {
+	if a.User == b.User && (a.AllBuckets == b.AllBuckets) {
 		for _, x := range a.Edges {
 			for _, y := range b.Edges {
 				if x.From != y.From {
