@@ -15,43 +15,64 @@
   -->
 
 <script setup lang="ts">
-  import { CButton, CIcon } from '@clyso/clyso-ui-kit';
+  import { NButton, NSwitch, type DataTableColumns } from 'naive-ui';
   import { storeToRefs } from 'pinia';
-  import { onBeforeMount, onBeforeUnmount, ref } from 'vue';
+  import { computed, h, onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
-  import i18nProtection from '@/components/tutti/protection/i18nProtection';
-  import ProtectionGroupDialog from '@/components/tutti/protection/ProtectionGroupDialog.vue';
+  import { RouterLink, useRouter } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import PageHeader from '@/components/layout/PageHeader.vue';
-  import ConfirmDialog from '@/components/tutti/common/ConfirmDialog.vue';
-  import ErrorState from '@/components/tutti/common/ErrorState.vue';
-  import Callout from '@/components/ui/Callout.vue';
-  import EmptyState from '@/components/ui/EmptyState.vue';
-  import KpiCard from '@/components/ui/KpiCard.vue';
-  import SectionCard from '@/components/ui/SectionCard.vue';
-  import StatusTag from '@/components/ui/StatusTag.vue';
-  import { EMPTY_VALUE } from '@/components/ui/status';
+  import {
+    ConfirmDialog,
+    DataTable,
+    EMPTY_VALUE,
+    EmptyBlock,
+    ErrorBlock,
+    PageShell,
+    StatTile,
+    StatusBadge,
+    type PageState,
+    type StatusTone,
+  } from '@/components/kit';
+  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import ProtectionGroupWizard from '@/components/tutti/protection/ProtectionGroupWizard.vue';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
-  import { IconName } from '@/utils/types/icon';
   import type { ProtectionGroup } from '@/utils/types/protection';
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nProtection });
   const router = useRouter();
   const store = useTuttiProtectionStore();
-  const { isLoading, hasError, groups, statuses, automaticFrozen, summary } =
+  const { isLoading, isLoaded, hasError, groups, statuses, automaticFrozen } =
     storeToRefs(store);
 
   const showCreate = ref(false);
   const showFreezeConfirm = ref(false);
   const isFreezing = ref(false);
-  const freezeError = ref<string | null>(null);
+  const freezeError = ref(false);
 
   onBeforeMount(() => store.startPolling());
   onBeforeUnmount(() => store.stopPolling());
+
+  const state = computed<PageState>(() => {
+    if (hasError.value) return 'error';
+
+    if (!isLoaded.value) return 'loading';
+
+    return groups.value.length === 0 ? 'empty' : 'ready';
+  });
+
+  const switchingCount = computed(
+    () => groups.value.filter((g) => !!g.target).length,
+  );
+  const maxLag = computed(() => {
+    const lags = groups.value
+      .map((g) => ProtectionGroupHelper.maxLag(statuses.value[g.id]))
+      .filter((lag): lag is number => lag !== null);
+
+    return lags.length ? Math.max(...lags) : null;
+  });
 
   function scopeText(group: ProtectionGroup): string {
     const kind = ProtectionGroupHelper.scopeKind(group);
@@ -65,382 +86,218 @@
     return count === 1 ? t('scopeBucketsOne') : t('scopeBuckets', { count });
   }
 
-  function copiesText(group: ProtectionGroup): string {
-    const status = statuses.value[group.id];
-    const healthy = status?.healthyCopies ?? EMPTY_VALUE;
-    const wanted = ProtectionGroupHelper.wantedCopies(group);
+  const columns = computed<DataTableColumns<ProtectionGroup>>(() => [
+    {
+      title: t('colName'),
+      key: 'id',
+      render: (g) =>
+        h(
+          RouterLink,
+          {
+            to: {
+              name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
+              params: { name: g.id },
+            },
+            class: 'tt-mono',
+          },
+          { default: () => g.id },
+        ),
+    },
+    { title: t('colScope'), key: 'scope', render: scopeText },
+    {
+      title: t('colCopies'),
+      key: 'copies',
+      render: (g) =>
+        t('copiesValue', {
+          healthy: statuses.value[g.id]?.healthyCopies ?? EMPTY_VALUE,
+          wanted: ProtectionGroupHelper.wantedCopies(g),
+        }),
+    },
+    {
+      title: t('colLag'),
+      key: 'lag',
+      render: (g) =>
+        ProtectionGroupHelper.lagText(
+          ProtectionGroupHelper.maxLag(statuses.value[g.id]),
+        ),
+    },
+    {
+      title: t('colChange'),
+      key: 'change',
+      render: (g) =>
+        formatDateTime(ProtectionGroupHelper.historyNewestFirst(g)[0]?.at),
+    },
+    {
+      title: t('colState'),
+      key: 'state',
+      render: (g) => {
+        const display = ProtectionGroupHelper.displayState(g);
 
-    return t('copiesValue', { healthy, wanted });
-  }
-
-  function maxLagText(group: ProtectionGroup): string {
-    const lag = ProtectionGroupHelper.maxLag(statuses.value[group.id]);
-
-    return ProtectionGroupHelper.lagText(lag);
-  }
-
-  function lastChangeText(group: ProtectionGroup): string {
-    const latest = ProtectionGroupHelper.historyNewestFirst(group)[0];
-
-    return formatDateTime(latest?.at);
-  }
-
-  function openGroup(group: ProtectionGroup) {
-    router.push({
-      name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
-      params: { name: group.id },
-    });
-  }
+        return h(StatusBadge, {
+          tone: ProtectionGroupHelper.stateVariant(display) as StatusTone,
+          label: t(`state.${display}`),
+        });
+      },
+    },
+  ]);
 
   async function confirmToggleFreeze() {
-    const targetFrozen = !automaticFrozen.value;
-
     isFreezing.value = true;
-    freezeError.value = null;
+    freezeError.value = false;
 
-    const err = await store.setAutomaticFreeze(targetFrozen);
+    const err = await store.setAutomaticFreeze(!automaticFrozen.value);
 
     isFreezing.value = false;
-
-    if (err === null) {
-      showFreezeConfirm.value = false;
-
-      return;
-    }
-
-    freezeError.value = t('freezeFailed');
     showFreezeConfirm.value = false;
+    freezeError.value = err !== null;
+  }
+
+  function openGroup(id: string) {
+    router.push({
+      name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
+      params: { name: id },
+    });
   }
 </script>
 
 <template>
-  <div class="tutti-protection-groups-page">
-    <PageHeader
-      :title="t('title')"
-      :description="t('pageDescription')"
-    >
-      <template #actions>
-        <CButton
-          :loading="isLoading"
-          @click="store.refresh()"
+  <PageShell
+    :title="t('title')"
+    :description="t('pageDescription')"
+    :state="state"
+    :error-text="t('errorText')"
+    @retry="store.refresh()"
+  >
+    <template #actions>
+      <label
+        v-if="automaticFrozen !== null"
+        class="pg-list__freeze"
+      >
+        <span>{{ t('freezeSwitch') }}</span>
+        <WriteGate>
+          <NSwitch
+            :value="!automaticFrozen"
+            :loading="isFreezing"
+            @update:value="showFreezeConfirm = true"
+          />
+        </WriteGate>
+        <span class="pg-list__freeze-state">
+          {{ automaticFrozen ? t('freezeSwitchOff') : t('freezeSwitchOn') }}
+        </span>
+      </label>
+      <NButton
+        :loading="isLoading"
+        @click="store.refresh()"
+      >
+        {{ t('refresh') }}
+      </NButton>
+      <WriteGate v-if="!hasError">
+        <NButton
+          type="primary"
+          @click="showCreate = true"
         >
-          {{ t('refresh') }}
-        </CButton>
-        <WriteGate v-if="!hasError">
-          <CButton
+          {{ t('create') }}
+        </NButton>
+      </WriteGate>
+    </template>
+
+    <template #empty>
+      <EmptyBlock
+        :title="t('emptyTitle')"
+        :description="t('emptyText')"
+      >
+        <WriteGate>
+          <NButton
             type="primary"
             @click="showCreate = true"
           >
-            <template #icon>
-              <CIcon
-                :is-inline="true"
-                :name="IconName.BASE_ADD"
-              />
-            </template>
-
             {{ t('create') }}
-          </CButton>
+          </NButton>
         </WriteGate>
-      </template>
-    </PageHeader>
+      </EmptyBlock>
+    </template>
 
-    <ErrorState
-      v-if="hasError"
-      :title="t('errorTitle')"
-      :text="t('errorText')"
-      :action-label="t('retry')"
-      @retry="store.refresh()"
-    />
-
-    <div
-      v-else
-      class="tutti-protection-groups-page__content"
-    >
-      <section
-        class="tutti-protection-groups-page__kpis"
-        :aria-label="t('title')"
-      >
-        <KpiCard
+    <div class="pg-list">
+      <ErrorBlock
+        v-if="freezeError"
+        :title="t('freezeErrorTitle')"
+        :description="t('freezeFailed')"
+        @retry="showFreezeConfirm = true"
+      />
+      <section class="pg-list__tiles">
+        <StatTile
           :label="t('kpiGroups')"
-          :value="summary.total"
-          :sub="t('kpiGroupsSub')"
+          :value="groups.length"
+          :hint="t('kpiGroupsSub')"
         />
-        <KpiCard
-          :label="t('kpiHealthy')"
-          :value="summary.healthy"
-          :sub="t('kpiHealthySub')"
-          :tone="summary.healthy > 0 ? 'success' : 'default'"
+        <StatTile
+          :label="t('kpiSwitching')"
+          :value="switchingCount"
+          :hint="t('kpiSwitchingSub')"
+          :tone="switchingCount > 0 ? 'warning' : 'neutral'"
         />
-        <KpiCard
-          :label="t('kpiDegraded')"
-          :value="summary.degraded"
-          :sub="t('kpiDegradedSub')"
-          :tone="summary.degraded > 0 ? 'warning' : 'default'"
-        />
-        <KpiCard
-          :label="t('kpiFrozen')"
-          :value="summary.frozen"
-          :sub="t('kpiFrozenSub')"
-          :tone="summary.frozen > 0 ? 'warning' : 'default'"
+        <StatTile
+          :label="t('kpiMaxLag')"
+          :value="ProtectionGroupHelper.lagText(maxLag)"
+          :hint="t('kpiMaxLagSub')"
+          :tone="maxLag ? 'warning' : 'neutral'"
         />
       </section>
-
-      <Callout
-        v-if="automaticFrozen !== null"
-        :tone="automaticFrozen ? 'warning' : 'info'"
-        :title="`${t('freezeTitle')} · ${
-          automaticFrozen ? t('freezeOn') : t('freezeOff')
-        }`"
-      >
-        <p class="tutti-protection-groups-page__freeze-help">
-          {{ t('freezeHelp') }}
-        </p>
-        <template #actions>
-          <WriteGate>
-            <CButton
-              size="small"
-              :type="automaticFrozen ? 'primary' : 'warning'"
-              secondary
-              @click="showFreezeConfirm = true"
-            >
-              {{
-                automaticFrozen
-                  ? t('freezeDisableAction')
-                  : t('freezeEnableAction')
-              }}
-            </CButton>
-          </WriteGate>
-        </template>
-      </Callout>
-
-      <Callout
-        v-if="freezeError"
-        tone="danger"
-      >
-        {{ freezeError }}
-      </Callout>
-
-      <SectionCard
-        :title="t('tableTitle')"
-        flush
-      >
-        <EmptyState
-          v-if="groups.length === 0"
-          :icon="IconName.BASE_SERVER"
-          :title="t('emptyTitle')"
-          :text="t('emptyText')"
-        >
-          <WriteGate>
-            <CButton
-              type="primary"
-              @click="showCreate = true"
-            >
-              <template #icon>
-                <CIcon
-                  :is-inline="true"
-                  :name="IconName.BASE_ADD"
-                />
-              </template>
-
-              {{ t('create') }}
-            </CButton>
-          </WriteGate>
-        </EmptyState>
-
-        <div
-          v-else
-          class="tt-table-wrap"
-        >
-          <table class="tt-table">
-            <thead>
-              <tr>
-                <th scope="col">{{ t('colName') }}</th>
-                <th scope="col">{{ t('colScope') }}</th>
-                <th scope="col">{{ t('colMembers') }}</th>
-                <th
-                  scope="col"
-                  class="tt-num"
-                >
-                  {{ t('colCopies') }}
-                </th>
-                <th
-                  scope="col"
-                  class="tt-num"
-                >
-                  {{ t('colLag') }}
-                </th>
-                <th scope="col">{{ t('colState') }}</th>
-                <th scope="col">{{ t('colMode') }}</th>
-                <th scope="col">{{ t('colChange') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="group in groups"
-                :key="group.id"
-                class="tutti-protection-groups-page__row"
-                @click="openGroup(group)"
-              >
-                <td>
-                  <RouterLink
-                    class="tutti-protection-groups-page__link"
-                    :to="{
-                      name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
-                      params: { name: group.id },
-                    }"
-                    @click.stop
-                  >
-                    <strong>{{ group.id }}</strong>
-                  </RouterLink>
-                </td>
-                <td>
-                  <div>
-                    {{
-                      group.user ||
-                      (ProtectionGroupHelper.scopeKind(group) === 'storage'
-                        ? t('scopeStorageTitle')
-                        : EMPTY_VALUE)
-                    }}
-                  </div>
-                  <small class="tutti-protection-groups-page__sub">{{
-                    scopeText(group)
-                  }}</small>
-                </td>
-                <td>
-                  <span class="tutti-protection-groups-page__chips">
-                    <span
-                      v-for="member in group.members ?? []"
-                      :key="member"
-                      class="tutti-protection-groups-page__chip"
-                      :class="{
-                        'tutti-protection-groups-page__chip--primary':
-                          member === group.primary,
-                      }"
-                    >
-                      {{ member }}
-                      <em
-                        v-if="member === group.primary"
-                        class="tutti-protection-groups-page__primary-mark"
-                      >
-                        ({{ t('primaryMark') }})
-                      </em>
-                    </span>
-                    <template v-if="!(group.members ?? []).length">
-                      {{ EMPTY_VALUE }}
-                    </template>
-                  </span>
-                </td>
-                <td class="tt-num">{{ copiesText(group) }}</td>
-                <td class="tt-num">{{ maxLagText(group) }}</td>
-                <td>
-                  <StatusTag
-                    :variant="
-                      ProtectionGroupHelper.stateVariant(
-                        ProtectionGroupHelper.displayState(group),
-                      )
-                    "
-                    :label="
-                      t(`state.${ProtectionGroupHelper.displayState(group)}`)
-                    "
-                  />
-                </td>
-                <td>
-                  {{ group.mode === 'auto' ? t('modeAuto') : t('modeManual') }}
-                </td>
-                <td>{{ lastChangeText(group) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </SectionCard>
+      <DataTable
+        :columns="columns"
+        :rows="groups"
+        :loading="isLoading && !isLoaded"
+        :row-key="(g: ProtectionGroup) => g.id"
+        @retry="store.refresh()"
+      />
     </div>
 
-    <ProtectionGroupDialog
+    <ProtectionGroupWizard
       v-model:show="showCreate"
-      :group="null"
+      @saved="openGroup"
     />
 
     <ConfirmDialog
-      :show="showFreezeConfirm"
+      :open="showFreezeConfirm"
       :title="
         automaticFrozen ? t('freezeDisableTitle') : t('freezeEnableTitle')
       "
-      :text="automaticFrozen ? t('freezeDisableText') : t('freezeEnableText')"
+      :danger="!automaticFrozen"
+      :loading="isFreezing"
       :confirm-label="
         automaticFrozen ? t('freezeDisableAction') : t('freezeEnableAction')
       "
-      :cancel-label="t('cancel')"
-      :danger="!automaticFrozen"
-      :loading="isFreezing"
-      @update:show="showFreezeConfirm = $event"
       @confirm="confirmToggleFreeze"
-    />
-  </div>
+      @cancel="showFreezeConfirm = false"
+    >
+      {{ automaticFrozen ? t('freezeDisableText') : t('freezeEnableText') }}
+    </ConfirmDialog>
+  </PageShell>
 </template>
 
 <style lang="scss" scoped>
-  .tutti-protection-groups-page {
-    &__content {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+  .pg-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-4);
 
-    &__kpis {
+    &__tiles {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
+      gap: var(--tt-space-4);
     }
 
-    &__freeze-help {
-      margin: 4px 0 0;
-    }
-
-    &__row {
-      cursor: pointer;
-
-      &:hover {
-        background-color: var(--tt-hover);
-      }
-    }
-
-    &__link {
-      color: var(--tt-accent);
-      text-decoration: none;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-
-    &__sub {
-      display: block;
-      font-size: 12px;
-      color: var(--tt-text-3);
-    }
-
-    &__chips {
+    &__freeze {
       display: inline-flex;
-      flex-wrap: wrap;
-      gap: 4px;
+      align-items: center;
+      gap: var(--tt-space-2);
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-2);
     }
 
-    &__chip {
-      padding: 1px 8px;
-      font-size: 12px;
-      border: 1px solid var(--tt-border-strong);
-      border-radius: var(--tt-radius-tag);
-
-      &--primary {
-        border-color: var(--tt-accent);
-        background-color: var(--tt-accent-subtle);
-      }
-    }
-
-    &__primary-mark {
-      font-style: normal;
-      font-weight: 600;
-      color: var(--tt-accent);
+    &__freeze-state {
+      font-weight: var(--tt-weight-medium);
+      color: var(--tt-text);
     }
   }
 </style>
