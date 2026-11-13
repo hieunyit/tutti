@@ -16,6 +16,7 @@
 
 import { apiClient } from '@/http';
 import { ApiHelper } from '@/utils/helpers/ApiHelper';
+import { DedupeKey, dedupe, invalidate } from '@/utils/helpers/dedupe';
 import type {
   TuttiAccessPolicy,
   TuttiAccessPolicyListResponse,
@@ -52,12 +53,17 @@ export abstract class TuttiService {
   static async getProxies(
     signal?: AbortSignal,
   ): Promise<TuttiProxyStatusListResponse> {
-    const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxies'),
-      { signal },
-    );
+    const fetchProxies = async () => {
+      const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
+        ApiHelper.getChorusAPIUrl('/tutti/proxies'),
+        { signal },
+      );
 
-    return data;
+      return data;
+    };
+
+    // an abortable request must not be shared: aborting it would fail the others
+    return signal ? fetchProxies() : dedupe(DedupeKey.PROXIES, fetchProxies);
   }
 
   static async getProxyFleetConfig(
@@ -77,12 +83,16 @@ export abstract class TuttiService {
     /** the version the caller loaded: a different stored version is rejected (FailedPrecondition) */
     expectedVersion?: TuttiInt64;
   }): Promise<TuttiProxyFleetConfig> {
-    const { data } = await apiClient.put<TuttiProxyFleetConfig>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
-      payload,
-    );
+    try {
+      const { data } = await apiClient.put<TuttiProxyFleetConfig>(
+        ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
+        payload,
+      );
 
-    return data;
+      return data;
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async getStatsHistory(
@@ -106,17 +116,25 @@ export abstract class TuttiService {
   }
 
   static async setFailoverPolicy(policy: TuttiFailoverPolicy): Promise<void> {
-    await apiClient.post(
-      ApiHelper.getChorusAPIUrl('/tutti/failover/policies'),
-      policy,
-    );
+    try {
+      await apiClient.post(
+        ApiHelper.getChorusAPIUrl('/tutti/failover/policies'),
+        policy,
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async deleteFailoverPolicy(source: string): Promise<void> {
-    await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/failover/policies/delete'),
-      { source },
-    );
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/failover/policies/delete'),
+        { source },
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async getFailoverEvents(): Promise<TuttiFailoverEventListResponse> {
@@ -151,78 +169,110 @@ export abstract class TuttiService {
   }
 
   static async setAccessPolicy(policy: TuttiAccessPolicy): Promise<void> {
-    await apiClient.post(
-      ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
-      policy,
-    );
+    try {
+      await apiClient.post(
+        ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
+        policy,
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async deleteAccessPolicy(user: string): Promise<void> {
-    await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/access-policies/delete'),
-      { user },
-    );
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/access-policies/delete'),
+        { user },
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async createProxyAccount(
     user: string,
     description: string,
   ): Promise<TuttiProxyAccountSecret> {
-    const { data } = await apiClient.post<TuttiProxyAccountSecret>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
-      { user, description },
-    );
+    try {
+      const { data } = await apiClient.post<TuttiProxyAccountSecret>(
+        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
+        { user, description },
+      );
 
-    return data;
+      return data;
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async rotateProxyAccountSecret(
     accessKeyId: string,
     gracePeriod: string,
   ): Promise<TuttiProxyAccountSecret> {
-    const { data } = await apiClient.put<TuttiProxyAccountSecret>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/rotate'),
-      { accessKeyId, gracePeriod },
-    );
+    try {
+      const { data } = await apiClient.put<TuttiProxyAccountSecret>(
+        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/rotate'),
+        { accessKeyId, gracePeriod },
+      );
 
-    return data;
+      return data;
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async setProxyAccountStatus(
     accessKeyId: string,
     status: TuttiDynamicKeyStatus,
   ): Promise<void> {
-    await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/status'),
-      { accessKeyId, status },
-    );
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/status'),
+        { accessKeyId, status },
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async deleteProxyAccount(accessKeyId: string): Promise<void> {
-    await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/delete'),
-      { accessKeyId },
-    );
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/delete'),
+        { accessKeyId },
+      );
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 
   static async getUsers(signal?: AbortSignal): Promise<S3UserListResponse> {
-    const { data } = await apiClient.get<S3UserListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/users'),
-      { signal },
-    );
+    const fetchUsers = async () => {
+      const { data } = await apiClient.get<S3UserListResponse>(
+        ApiHelper.getChorusAPIUrl('/tutti/users'),
+        { signal },
+      );
 
-    return data;
+      return data;
+    };
+
+    return signal ? fetchUsers() : dedupe(DedupeKey.USERS, fetchUsers);
   }
 
   static async createUser(
     payload: S3UserCreateRequest,
   ): Promise<S3UserCreateResponse> {
-    const { data } = await apiClient.post<S3UserCreateResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/users'),
-      payload,
-    );
+    try {
+      const { data } = await apiClient.post<S3UserCreateResponse>(
+        ApiHelper.getChorusAPIUrl('/tutti/users'),
+        payload,
+      );
 
-    return data;
+      return data;
+    } finally {
+      invalidate(DedupeKey.USERS);
+    }
   }
 
   static async updateUserCredentials(payload: {
@@ -232,15 +282,22 @@ export abstract class TuttiService {
     secretAccessKey: string;
     verify?: boolean;
   }): Promise<void> {
-    await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/credentials'), {
-      user: payload.name,
-      credential: {
-        storage: payload.storage,
-        accessKeyId: payload.accessKeyId,
-        secretAccessKey: payload.secretAccessKey,
-      },
-      verify: payload.verify,
-    });
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/users/credentials'),
+        {
+          user: payload.name,
+          credential: {
+            storage: payload.storage,
+            accessKeyId: payload.accessKeyId,
+            secretAccessKey: payload.secretAccessKey,
+          },
+          verify: payload.verify,
+        },
+      );
+    } finally {
+      invalidate(DedupeKey.USERS);
+    }
   }
 
   /** Removes the per-user override on one storage (falls back to the connection account). */
@@ -248,17 +305,25 @@ export abstract class TuttiService {
     name: string,
     storage: string,
   ): Promise<void> {
-    await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/users/credentials/delete'),
-      { name, storage },
-    );
+    try {
+      await apiClient.put(
+        ApiHelper.getChorusAPIUrl('/tutti/users/credentials/delete'),
+        { name, storage },
+      );
+    } finally {
+      invalidate(DedupeKey.USERS);
+    }
   }
 
   static async deleteUser(name: string, force: boolean): Promise<void> {
-    await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/delete'), {
-      name,
-      force,
-    });
+    try {
+      await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/delete'), {
+        name,
+        force,
+      });
+    } finally {
+      invalidate(DedupeKey.USERS);
+    }
   }
 
   static async testUser(
@@ -347,11 +412,15 @@ export abstract class TuttiService {
   static async updateSystemSettings(
     payload: TuttiUpdateSystemSettingsRequest,
   ): Promise<TuttiSystemSettings> {
-    const { data } = await apiClient.put<TuttiSystemSettings>(
-      ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
-      payload,
-    );
+    try {
+      const { data } = await apiClient.put<TuttiSystemSettings>(
+        ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
+        payload,
+      );
 
-    return data;
+      return data;
+    } finally {
+      invalidate(DedupeKey.PROXIES);
+    }
   }
 }

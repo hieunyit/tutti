@@ -16,6 +16,7 @@
 
 import { apiClient } from '@/http';
 import { ApiHelper } from '@/utils/helpers/ApiHelper';
+import { DedupeKey, dedupe, invalidate } from '@/utils/helpers/dedupe';
 import type {
   ChorusAddReplicationsRequest,
   ChorusBucketListRequest,
@@ -51,11 +52,13 @@ export abstract class ChorusService {
   }
 
   static async getStorages(): Promise<ChorusStorageListResponse> {
-    const { data } = await apiClient.get<ChorusStorageListResponse>(
-      ApiHelper.getChorusAPIUrl('/storage'),
-    );
+    return dedupe(DedupeKey.STORAGES, async () => {
+      const { data } = await apiClient.get<ChorusStorageListResponse>(
+        ApiHelper.getChorusAPIUrl('/storage'),
+      );
 
-    return data;
+      return data;
+    });
   }
 
   static async compareBucket(
@@ -174,7 +177,11 @@ export abstract class ChorusService {
   static async setUserCredentials(
     payload: UserCredentialSetRequest,
   ): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl('/credentials'), payload);
+    try {
+      await apiClient.post(ApiHelper.getChorusAPIUrl('/credentials'), payload);
+    } finally {
+      invalidate(DedupeKey.STORAGES, DedupeKey.USERS);
+    }
   }
 
   static async deleteDiffReport(
