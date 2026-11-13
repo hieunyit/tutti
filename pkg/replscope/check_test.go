@@ -28,7 +28,7 @@ func TestCheck(t *testing.T) {
 		{Kind: "group", ID: "g1", Scope: GroupScope([]string{"A", "B", "C"}, nil)},
 		{Kind: "replication", ID: "r1", Scope: ReplicationScope("X", "Y", []string{"photos"})},
 	}
-	require.Nil(t, Check(ReplicationScope("A", "D", nil), existing, ""))
+	require.Nil(t, Check(ReplicationScope("A", "D", []string{"x"}), existing, ""))
 
 	err := Check(ReplicationScope("C", "A", nil), existing, "")
 	require.NotNil(t, err)

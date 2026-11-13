@@ -21,8 +21,8 @@ func Check(proposed Scope, existing []Owner, ignoreID string) *ConflictError {
 		if ignoreID != "" && o.ID == ignoreID {
 			continue
 		}
-		if ok, bucket, e, other := Conflicts(proposed, o.Scope); ok {
-			return &ConflictError{OwnerKind: o.Kind, OwnerID: o.ID, Bucket: bucket, Edge: e, OtherEdge: other}
+		if ok, bucket, e, other, reason := conflict2(proposed, o.Scope); ok {
+			return &ConflictError{OwnerKind: o.Kind, OwnerID: o.ID, Bucket: bucket, Edge: e, OtherEdge: other, Reason: reason}
 		}
 	}
 	return nil

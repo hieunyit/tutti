@@ -62,8 +62,8 @@ func TestListScopeOwnersIncludesGroupsAndPolicies(t *testing.T) {
 	_, ok := byID[managed.AsString()]
 	r.False(ok)
 
-	// a standalone replication next to the group is allowed, one into a member is not
-	r.Nil(replscope.Check(replscope.ReplicationScope("p", "w", nil), owners, ""))
+	// a standalone bucket replication next to the all-bucket group is allowed (an all-buckets one from another source is not), one into a member is not
+	r.Nil(replscope.Check(replscope.ReplicationScope("p", "w", []string{"x"}), owners, ""))
 	r.NotNil(replscope.Check(replscope.ReplicationScope("w", "q", nil), owners, ""))
 }
 

@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/hieunyit/tutti/pkg/dom"
 )
 
 func rs(from, to string, b ...string) Scope { return ReplicationScope(from, to, b) }
@@ -33,14 +35,22 @@ func TestConflicts(t *testing.T) {
 		{"same dest", rs("A", "B"), rs("C", "B"), true},
 		{"reverse", rs("A", "B"), rs("B", "A"), true},
 		{"same source other dest", rs("A", "B"), rs("A", "C"), false},
-		{"chain", rs("A", "B"), rs("B", "C"), false},
-		{"unrelated", rs("A", "B"), rs("C", "D"), false},
+		{"chain disjoint buckets", rs("A", "B", "x"), rs("B", "C", "y"), false},
+		{"chain same bucket needs one source", rs("A", "B", "x"), rs("B", "C", "x"), true},
+		{"unrelated disjoint buckets", rs("A", "B", "x"), rs("C", "D", "y"), false},
 		{"disjoint buckets", rs("A", "B", "x"), rs("A", "B", "y"), false},
 		{"intersecting buckets", rs("A", "B", "x", "y"), rs("A", "B", "y"), true},
 		{"all vs bucket", rs("A", "B"), rs("A", "B", "x"), true},
-		{"group vs A->D", group, rs("A", "D"), false},
+		{"group all vs A->D bucket", group, rs("A", "D", "x"), false},
 		{"group vs C->A", group, rs("C", "A"), true},
 		{"group vs A->B", group, rs("A", "B"), true},
+		{"diff source same bucket", rs("A", "B", "b1"), rs("C", "D", "b1"), true},
+		{"diff source both all", rs("A", "B"), rs("C", "D"), true},
+		{"same source fan-out bucket", rs("A", "B", "b1"), rs("A", "C", "b1"), false},
+		{"diff source all vs bucket", rs("A", "B"), rs("C", "D", "b1"), false},
+		{"diff source disjoint buckets", rs("A", "B", "b1"), rs("C", "D", "b2"), false},
+		{"group vs diff source all", GroupScope([]string{"A", "B"}, nil), rs("C", "D"), true},
+		{"group bucket vs diff source bucket", GroupScope([]string{"A", "B"}, []string{"b1"}), rs("C", "D", "b1"), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,4 +105,20 @@ func TestConflicts_Users(t *testing.T) {
 			require.Equal(t, tt.want, got, "symmetric")
 		})
 	}
+}
+
+func TestConflictReason(t *testing.T) {
+	_, _, _, _, r := conflict2(rs("A", "B", "b1"), rs("C", "D", "b1"))
+	require.Equal(t, ReasonSourceStorage, r)
+	_, _, _, _, r = conflict2(rs("A", "B"), rs("C", "B"))
+	require.Equal(t, ReasonOverlap, r)
+	err := Check(rs("C", "D", "b1"), []Owner{{Kind: "replication", ID: "x", Scope: rs("A", "B", "b1")}}, "")
+	require.Equal(t, ReasonSourceStorage, err.Reason)
+	require.Contains(t, err.Error(), `storage-level replications must share one source storage per bucket: bucket "b1" is already replicated from "A" by replication "x"`)
+	require.ErrorIs(t, err, dom.ErrAlreadyExists)
+	u := func(user string, s Scope) Scope { return s.WithUser(user) }
+	ok, _, _, _ := Conflicts(u("alice", rs("A", "B")), u("bob", rs("C", "D")))
+	require.False(t, ok)
+	ok, _, _, _ = Conflicts(u("alice", rs("A", "B")), u("alice", rs("C", "D")))
+	require.False(t, ok)
 }

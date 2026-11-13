@@ -268,32 +268,40 @@ func TestAvailableBucketsMarksCoveredByGroup(t *testing.T) {
 
 	res, err = e.client.AvailableBuckets(t.Context(), &pb.AvailableBucketsRequest{FromStorage: "c", ToStorage: "main"})
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"photos", "logs"}, res.Buckets, "c->main reverses main->c only for docs")
-	require.Len(t, res.CoveredBuckets, 1)
-	require.Equal(t, "docs", res.CoveredBuckets[0].Bucket)
+	// docs: c->main reverses main->c; photos: the group's a/b sources differ from c on the same bucket
+	require.ElementsMatch(t, []string{"logs"}, res.Buckets)
+	require.Len(t, res.CoveredBuckets, 2)
 
 	res, err = e.client.AvailableBuckets(t.Context(), &pb.AvailableBucketsRequest{FromStorage: "a", ToStorage: "b"})
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"docs", "logs"}, res.Buckets)
-	require.Len(t, res.CoveredBuckets, 1)
-	require.Equal(t, "photos", res.CoveredBuckets[0].Bucket)
-	require.Equal(t, "group", res.CoveredBuckets[0].OwnerKind)
-	require.Equal(t, "g1", res.CoveredBuckets[0].OwnerId)
+	// docs is replicated from main already (one source per bucket)
+	require.ElementsMatch(t, []string{"logs"}, res.Buckets)
+	require.Len(t, res.CoveredBuckets, 2)
+	for _, c := range res.CoveredBuckets {
+		if c.Bucket == "photos" {
+			require.Equal(t, "group", c.OwnerKind)
+			require.Equal(t, "g1", c.OwnerId)
+		}
+	}
 
 	// same destination as the replication: docs is covered by the replication
 	res, err = e.client.AvailableBuckets(t.Context(), &pb.AvailableBucketsRequest{FromStorage: "b", ToStorage: "c"})
 	require.NoError(t, err)
 	require.NotContains(t, res.Buckets, "docs")
-	require.Len(t, res.CoveredBuckets, 1)
-	require.Equal(t, "docs", res.CoveredBuckets[0].Bucket)
-	require.Equal(t, "replication", res.CoveredBuckets[0].OwnerKind)
+	require.Len(t, res.CoveredBuckets, 2) // docs by the replication, photos by the group's other sources
+	for _, c := range res.CoveredBuckets {
+		if c.Bucket == "docs" {
+			require.Equal(t, "replication", c.OwnerKind)
+		}
+	}
 
 	// the same edge keeps its replicated_buckets meaning
 	res, err = e.client.AvailableBuckets(t.Context(), &pb.AvailableBucketsRequest{FromStorage: "main", ToStorage: "c", ShowReplicated: true})
 	require.NoError(t, err)
 	require.Equal(t, []string{"docs"}, res.ReplicatedBuckets)
 	require.NotContains(t, res.Buckets, "docs")
-	require.Empty(t, res.CoveredBuckets)
+	require.Len(t, res.CoveredBuckets, 1) // photos: the group's sources a/b differ from main
+	require.Equal(t, "photos", res.CoveredBuckets[0].Bucket)
 
 	// a storage without connection account is refused naming it
 	e2 := newSLEnv(t, map[string]bool{"main": true}, "x")
@@ -380,4 +388,33 @@ func TestScopeLockNotHeldDuringBucketExists(t *testing.T) {
 	close(release)
 	require.NoError(t, <-slowDone)
 	require.Len(t, e.owners(t), 2)
+}
+
+// TestAddReplicationDifferentSourceKeepsFirstSource: policy stores keep one source per bucket, so a storage-level
+// replication from another source for the same bucket (or both all-buckets) is refused and leaves the first intact.
+func TestAddReplicationDifferentSourceKeepsFirstSource(t *testing.T) {
+	e := newSLEnv(t, allConn)
+	require.NoError(t, e.add(t, "main", "a", "b1"))
+	err := e.add(t, "b", "c", "b1")
+	require.Equal(t, codes.AlreadyExists, status.Code(err))
+	require.Contains(t, reason(err), "storage-level replications must share one source storage per bucket")
+	require.Contains(t, reason(err), `bucket "b1" is already replicated from "main"`)
+	require.Len(t, e.owners(t), 1)
+	res, err := e.client.ListReplications(t.Context(), &pb.ListReplicationsRequest{})
+	require.NoError(t, err)
+	require.Len(t, res.Replications, 1)
+	require.Equal(t, "main", res.Replications[0].Id.FromStorage)
+	require.Equal(t, "a", res.Replications[0].Id.ToStorage)
+	require.Equal(t, 1, e.queue.count())
+
+	// all vs all with another source
+	require.NoError(t, e.add(t, "main", "b"))
+	err = e.add(t, "c", "a")
+	require.Equal(t, codes.AlreadyExists, status.Code(err))
+	err = e.add(t, "c", "main")
+	require.Equal(t, codes.AlreadyExists, status.Code(err))
+	require.Len(t, e.owners(t), 2)
+	// same source fan-out and all vs explicit with another source stay allowed
+	require.NoError(t, e.add(t, "main", "c", "b1"))
+	require.NoError(t, e.add(t, "c", "a", "b2"))
 }

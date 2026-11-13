@@ -45,13 +45,31 @@ type Owner struct {
 	Scope Scope
 }
 
+// Reason tells the two kinds of conflict apart.
+type Reason string
+
+const (
+	// ReasonOverlap: same destination or reversed edge on a common bucket.
+	ReasonOverlap Reason = "overlap"
+	// ReasonSourceStorage: two storage-level scopes with different source storages share a bucket (or are both
+	// all-buckets). The policy stores keep one source storage per bucket, so they cannot coexist.
+	ReasonSourceStorage Reason = "source_storage"
+)
+
 // ConflictError reports that a proposed scope overlaps an existing owner.
 type ConflictError struct {
 	OwnerKind, OwnerID, Bucket string
 	Edge, OtherEdge            Edge
+	Reason                     Reason
 }
 
 func (e *ConflictError) Error() string {
+	if e.Reason == ReasonSourceStorage {
+		if e.Bucket == "*" {
+			return fmt.Sprintf("storage-level replications must share one source storage per bucket: all buckets are already replicated from %q by %s %q", e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+		}
+		return fmt.Sprintf("storage-level replications must share one source storage per bucket: bucket %q is already replicated from %q by %s %q", e.Bucket, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+	}
 	return fmt.Sprintf("bucket %q on %s->%s is already covered by %s %q", e.Bucket, e.Edge.From, e.Edge.To, e.OwnerKind, e.OwnerID)
 }
 
@@ -108,25 +126,43 @@ func firstBucket(bs []string) (string, bool) {
 }
 
 // Conflicts reports whether two scopes overlap, with the first offending bucket and edges (ea from a, eb from b).
+// See conflict2 for the rules.
+func Conflicts(a, b Scope) (conflict bool, bucket string, ea, eb Edge) {
+	conflict, bucket, ea, eb, _ = conflict2(a, b)
+	return
+}
+
+// conflict2 is Conflicts plus the reason.
 // Two scopes of different real users overlap only on explicitly listed common buckets: "all buckets" of a real
 // user means only that user's buckets. A storage-level scope (empty User) covers every bucket of the storage.
-func Conflicts(a, b Scope) (conflict bool, bucket string, ea, eb Edge) {
+// Two storage-level scopes with different source storages also conflict on a common bucket (or both all-buckets):
+// the policy stores keep one source storage per bucket (and per user), and storage-level ones share the empty user.
+func conflict2(a, b Scope) (conflict bool, bucket string, ea, eb Edge, reason Reason) {
 	var ok bool
 	if a.User != "" && b.User != "" && a.User != b.User {
 		if a.AllBuckets || b.AllBuckets {
-			return false, "", Edge{}, Edge{}
+			return
 		}
 	}
 	bucket, ok = commonBucket(a, b)
 	if !ok {
-		return false, "", Edge{}, Edge{}
+		return false, "", Edge{}, Edge{}, ""
 	}
 	for _, x := range a.Edges {
 		for _, y := range b.Edges {
 			if edgesClash(x, y) {
-				return true, bucket, x, y
+				return true, bucket, x, y, ReasonOverlap
 			}
 		}
 	}
-	return false, "", Edge{}, Edge{}
+	if a.User == "" && b.User == "" && (a.AllBuckets == b.AllBuckets) {
+		for _, x := range a.Edges {
+			for _, y := range b.Edges {
+				if x.From != y.From {
+					return true, bucket, x, y, ReasonSourceStorage
+				}
+			}
+		}
+	}
+	return false, "", Edge{}, Edge{}, ""
 }
