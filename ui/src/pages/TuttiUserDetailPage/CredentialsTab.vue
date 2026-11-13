@@ -154,7 +154,7 @@
 
         return h('div', [
           h(StatusBadge, {
-            tone: tones[mode],
+            tone: tones[mode] ?? 'warning',
             label: t(modeLabels[mode] ?? 'modeMissingLabel'),
           }),
           results.value[entry.storage]
