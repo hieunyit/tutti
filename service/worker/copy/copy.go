@@ -273,6 +273,20 @@ func EstimateCopyBuffer(size int64, customPartSize uint64) int64 {
 	return partSize
 }
 
+// EstimateParallelCopyBuffer is the buffer reservation for a multipart upload with the given number of
+// parts in flight: threads * partSize, but never more than the object itself.
+func EstimateParallelCopyBuffer(size int64, partSize uint64, threads int) int64 {
+	if size <= 0 || partSize == 0 || threads < 1 {
+		return EstimateCopyBuffer(size, partSize)
+	}
+	est := int64(partSize) * int64(threads)
+	if size < est {
+		// still at least one part
+		est = size
+	}
+	return est
+}
+
 func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to File) error {
 	fromClient, err := r.clientRegistry.AsS3(ctx, from.Storage, user)
 	if err != nil {
@@ -283,40 +297,81 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		return fmt.Errorf("unable to get to client: %w", err)
 	}
 
-	fromObjectStat, err := fromClient.S3().StatObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{
-		VersionID: from.Version,
-	})
-	if err != nil {
-		switch {
-		case from.Version != "" && fromObjectStat.IsDeleteMarker:
-			// delete marker version is replicated below
-		case from.Version != "" && isNotFound(err):
-			// Ceph RGW answers a delete marker version with 404 and without the delete marker header:
-			// tell it apart from a missing version by the object versions list.
-			isDeleteMarker, listErr := r.isDeleteMarkerVersion(ctx, user, from)
-			if listErr != nil {
-				return fmt.Errorf("unable to list from object versions: %w", listErr)
+	// Request saving. In this minio-go GetObject issues a HEAD of its own and Object.Stat() is then free,
+	// so for an unversioned source that has to be copied the separate source HEAD is a duplicate.
+	// The source stat is only needed up front to decide whether an already present destination
+	// makes the copy a no-op. Hence for an unversioned source the destination is checked first:
+	//   - destination absent: nothing can be skipped, the source stat is taken from GetObject (HEAD + GET)
+	//   - destination present: the source is stat-ed as before and compared (skip stays intact)
+	// Versioned sources keep the original sequence (delete markers answer GET and HEAD differently).
+	var fromObject *minio.Object
+	var fromObjectStat, toObjectStat minio.ObjectInfo
+	toObjectPresent := true
+	toStatDone := false
+	sourceStatDone := false
+	if from.Version == "" {
+		toObjectStat, err = toClient.S3().StatObject(ctx, to.Bucket, to.Name, minio.GetObjectOptions{
+			VersionID: to.Version,
+		})
+		toStatDone = true
+		if err != nil {
+			if !isNotFound(err) {
+				return fmt.Errorf("unable to get to object stat: %w", err)
 			}
-			if !isDeleteMarker {
-				return dom.ErrNotFound
+			toObjectPresent = false
+			fromObject, err = fromClient.S3().GetObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{})
+			if err != nil {
+				return fmt.Errorf("unable to get from object: %w", err)
 			}
-			fromObjectStat.IsDeleteMarker = true
-		case isNotFound(err):
-			return dom.ErrNotFound
-		case !fromObjectStat.IsDeleteMarker:
-			return fmt.Errorf("unable to get from object stat: %w", err)
+			defer fromObject.Close()
+			fromObjectStat, err = fromObject.Stat()
+			if err != nil {
+				if isNotFound(err) {
+					return dom.ErrNotFound
+				}
+				return fmt.Errorf("unable to get from object stat: %w", err)
+			}
+			sourceStatDone = true
 		}
 	}
 
-	toObjectPresent := true
-	toObjectStat, err := toClient.S3().StatObject(ctx, to.Bucket, to.Name, minio.GetObjectOptions{
-		VersionID: to.Version,
-	})
-	if err != nil {
-		if !isNotFound(err) {
-			return fmt.Errorf("unable to get to object stat: %w", err)
+	if !sourceStatDone {
+		fromObjectStat, err = fromClient.S3().StatObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{
+			VersionID: from.Version,
+		})
+		if err != nil {
+			switch {
+			case from.Version != "" && fromObjectStat.IsDeleteMarker:
+				// delete marker version is replicated below
+			case from.Version != "" && isNotFound(err):
+				// Ceph RGW answers a delete marker version with 404 and without the delete marker header:
+				// tell it apart from a missing version by the object versions list.
+				isDeleteMarker, listErr := r.isDeleteMarkerVersion(ctx, user, from)
+				if listErr != nil {
+					return fmt.Errorf("unable to list from object versions: %w", listErr)
+				}
+				if !isDeleteMarker {
+					return dom.ErrNotFound
+				}
+				fromObjectStat.IsDeleteMarker = true
+			case isNotFound(err):
+				return dom.ErrNotFound
+			case !fromObjectStat.IsDeleteMarker:
+				return fmt.Errorf("unable to get from object stat: %w", err)
+			}
 		}
-		toObjectPresent = false
+	}
+
+	if !toStatDone {
+		toObjectStat, err = toClient.S3().StatObject(ctx, to.Bucket, to.Name, minio.GetObjectOptions{
+			VersionID: to.Version,
+		})
+		if err != nil {
+			if !isNotFound(err) {
+				return fmt.Errorf("unable to get to object stat: %w", err)
+			}
+			toObjectPresent = false
+		}
 	}
 
 	if features.Tagging(ctx) {
@@ -406,13 +461,15 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 
 	r.metricsSvc.WorkerInProgressBytesInc(ctx, fromObjectSize)
 	defer r.metricsSvc.WorkerInProgressBytesDec(ctx, fromObjectSize)
-	fromObject, err := fromClient.S3().GetObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{
-		VersionID: from.Version,
-	})
-	if err != nil {
-		return fmt.Errorf("unable to get from object: %w", err)
+	if fromObject == nil {
+		fromObject, err = fromClient.S3().GetObject(ctx, from.Bucket, from.Name, minio.GetObjectOptions{
+			VersionID: from.Version,
+		})
+		if err != nil {
+			return fmt.Errorf("unable to get from object: %w", err)
+		}
+		defer fromObject.Close()
 	}
-	defer fromObject.Close()
 	// the source object can be deleted after the initial stat
 	stat, err := fromObject.Stat()
 	if err != nil {
@@ -430,10 +487,26 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		putObjectOpts.DisableContentSha256 = true
 	}
 
+	// Multipart tuning: objects above the part size are uploaded with several parts in flight.
+	// Defaults (1 thread) keep the sequential single-stream upload.
+	workerSettings := systemsettings.Current().Worker
+	threads, partSize := systemsettings.MultipartTuning(workerSettings.MultipartThreads, workerSettings.MultipartPartSizeMiB)
+	parallel := threads > 1 && stat.Size > int64(partSize)
+	if parallel {
+		putObjectOpts.NumThreads = uint(threads)
+		putObjectOpts.PartSize = partSize
+	} else if workerSettings.MultipartPartSizeMiB >= systemsettings.MinMultipartPartSizeMiB && stat.Size > int64(partSize) {
+		putObjectOpts.PartSize = partSize
+	}
+
 	// Buffer budget guardrail:
 	// Calculate actual buffer allocation needed by the SDK according to part layout (F2).
 	// Small files (<= 5 MiB) allocate file size; multipart files allocate buffers based on minio.OptimalPartInfo.
+	// With parallel parts, threads parts are in flight at once, so the reservation scales with threads.
 	estimatedBuffer := EstimateCopyBuffer(stat.Size, putObjectOpts.PartSize)
+	if parallel {
+		estimatedBuffer = EstimateParallelCopyBuffer(stat.Size, putObjectOpts.PartSize, threads)
+	}
 	releaseBuffer, err := systemsettings.AcquireBufferBudget(ctx, estimatedBuffer)
 	if err != nil {
 		var oversize *systemsettings.BufferExceedsBudgetError
@@ -444,14 +517,34 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 	}
 	defer releaseBuffer()
 
-	source := &sourceReader{obj: fromObject}
-	throttledSource := systemsettings.NewThrottledReader(ctx, source, systemsettings.BandwidthLimiter())
-	info, err := toClient.S3().PutObject(ctx, to.Bucket, to.Name, throttledSource, stat.Size, putObjectOpts)
-	if err != nil {
-		if isNotFound(source.err) {
-			return dom.ErrNotFound
+	var info minio.UploadInfo
+	if parallel {
+		// minio-go uploads parts concurrently only from an io.ReaderAt. minio.Object.ReadAt is serialized by
+		// a mutex, so parallelSource serves each part with its own ranged GET instead. The whole-object GET
+		// opened for the stat is not needed any more.
+		fromObject.Close()
+		psrc := newParallelSource(ctx, stat.Size, int64(partSize), systemsettings.BandwidthLimiter(),
+			minioObjectOpener(func(c context.Context, o minio.GetObjectOptions) (*minio.Object, error) {
+				return fromClient.S3().GetObject(c, from.Bucket, from.Name, o)
+			}, from.Version, stat.ETag))
+		defer psrc.Close()
+		info, err = toClient.S3().PutObject(ctx, to.Bucket, to.Name, psrc, stat.Size, putObjectOpts)
+		if err != nil {
+			if isNotFound(psrc.Err()) {
+				return dom.ErrNotFound
+			}
+			return fmt.Errorf("unable to upload object: %w", err)
 		}
-		return fmt.Errorf("unable to upload object: %w", err)
+	} else {
+		source := &sourceReader{obj: fromObject}
+		throttledSource := systemsettings.NewThrottledReader(ctx, source, systemsettings.BandwidthLimiter())
+		info, err = toClient.S3().PutObject(ctx, to.Bucket, to.Name, throttledSource, stat.Size, putObjectOpts)
+		if err != nil {
+			if isNotFound(source.err) {
+				return dom.ErrNotFound
+			}
+			return fmt.Errorf("unable to upload object: %w", err)
+		}
 	}
 	if info.VersionID != "" {
 		to.Version = info.VersionID
