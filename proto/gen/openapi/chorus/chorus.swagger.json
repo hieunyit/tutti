@@ -468,7 +468,7 @@
         "parameters": [
           {
             "name": "body",
-            "description": "Request list of bucket available for replication for given user and from/to\nstorages.",
+            "description": "Request list of bucket available for replication for given user and from/to\nstorages. Empty user lists buckets with the connection account of\nfrom_storage (storage-level replication).",
             "in": "body",
             "required": true,
             "schema": {
@@ -2906,7 +2906,7 @@
           "type": "boolean"
         }
       },
-      "description": "Request list of bucket available for replication for given user and from/to\nstorages."
+      "description": "Request list of bucket available for replication for given user and from/to\nstorages. Empty user lists buckets with the connection account of\nfrom_storage (storage-level replication)."
     },
     "chorusAvailableBucketsResponse": {
       "type": "object",
@@ -2915,13 +2915,22 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Buckets that can be replicated now (covered buckets are excluded)."
         },
         "replicatedBuckets": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "coveredBuckets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusCoveredBucket"
+          },
+          "description": "Buckets that already conflict for the requested from-\u003eto edge with a\nprotection group or another replication."
         }
       }
     },
@@ -3043,6 +3052,23 @@
           "type": "string"
         }
       }
+    },
+    "chorusCoveredBucket": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "type": "string",
+          "description": "\"group\" or \"replication\"."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Protection group id or replication id."
+        }
+      },
+      "description": "Bucket that cannot be replicated because another object already covers it."
     },
     "chorusCreateConsoleUserRequest": {
       "type": "object",
@@ -4522,7 +4548,7 @@
       "properties": {
         "user": {
           "type": "string",
-          "description": "REQUIRED: Replication user from chorus storage credential config.\nSelected user must be configured for both from/to storages."
+          "description": "Replication user from chorus storage credential config; must be configured\nfor both from/to storages. Empty means storage-level replication: both\nstorages must have a connection account."
         },
         "fromStorage": {
           "type": "string",
