@@ -69,6 +69,21 @@ spec:
             - name: CFG_REDIS_SENTINEL_MASTERNAME
               value: {{ .Values.externalRedis.sentinel.masterName | quote }}
             {{- end }}
+            {{- with .Values.auth }}
+            {{- with .bootstrapAdmin }}
+            {{- if .existingSecret.name }}
+            - name: TUTTI_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .existingSecret.name | quote }}
+                  key: {{ .existingSecret.key | default "password" | quote }}
+            {{- end }}
+            {{- if eq (toString .forceChange) "false" }}
+            - name: TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE
+              value: "false"
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.metrics.enabled }}
             - name: CFG_METRICS_ENABLED
               value: "true"

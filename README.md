@@ -67,6 +67,18 @@ The Tutti features are enabled in the proxy config; see the [configuration refer
 
 For a hands-on introduction, use the [docker-compose](./docker-compose) example. It includes a step-by-step README and sample configurations—ideal if you’re familiar with Docker and S3.
 
+First sign-in (web UI at http://localhost:8080, user `admin`):
+```shell
+cd docker-compose
+cp .env.example .env     # optional: set TUTTI_BOOTSTRAP_ADMIN_PASSWORD (min 12 characters)
+docker compose up --build
+# if you left it empty, read the generated password (printed once):
+docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
+# lost it? reset:
+docker compose exec worker /bin/chorus admin reset-password
+```
+See [First login and password recovery](./docs/tutti/operations.md#first-login-and-password-recovery).
+
 If using containers is not an option, try to run [standalone](./service/standalone) binary. It bundles all docker-compose services into one executable, letting you follow the same steps without containers.
 
 ## Installation

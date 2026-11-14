@@ -251,6 +251,19 @@ proxy:
 # =============================================================================
 # WORKER
 # =============================================================================
+# Console sign-in bootstrap. The first start (empty database) creates the user "admin".
+auth:
+  bootstrapAdmin:
+    # Existing Secret holding the initial admin password (minimum 12 characters). Never put the password in values.
+    # Create it: kubectl create secret generic tutti-admin --from-literal=password='<min 12 chars>'
+    # When name is empty the worker generates a random password and prints it once on stderr:
+    #   kubectl logs deploy/<release>-worker | grep -A6 'INITIAL ADMIN PASSWORD'
+    existingSecret:
+      name: ""
+      key: password
+    # Require a password change at first login (TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE).
+    forceChange: true
+
 worker:
   replicas: 2
 

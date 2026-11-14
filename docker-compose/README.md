@@ -25,6 +25,30 @@
 │   └── worker-conf.yaml      # example config for chorus-worker
 ```
 
+## First login: the admin password
+
+The first start creates the console user `admin`. Pick one way to get its password:
+
+1. **Set it yourself** (minimum 12 characters; a shorter one stops the worker with an error naming the variable):
+   ```shell
+   cd docker-compose
+   cp .env.example .env
+   # edit .env: TUTTI_BOOTSTRAP_ADMIN_PASSWORD=<your password>
+   docker compose up --build
+   ```
+2. **Read the generated one.** Leave the variable empty; the worker prints a banner once on stderr:
+   ```shell
+   docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
+   ```
+
+Sign in at http://localhost:8080 as `admin`; you are asked to change the password right away.
+The variable is only read while the database has no console users. If the password is lost, reset it:
+```shell
+docker compose exec worker /bin/chorus admin reset-password            # prints a new random password
+# or set a given one: docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<new password>' worker /bin/chorus admin reset-password
+```
+All sessions of that user are revoked. Details: [First login and password recovery](../docs/tutti/operations.md#first-login-and-password-recovery).
+
 Please also review [docker-compose.yml](./docker-compose.yml) file. It contains comments about services and their configuration.
 
 ## Bucket replication example
@@ -98,8 +122,8 @@ To run chorus with docker compose:
 The demo config enables the features below. Everything here is for local demos only.
 
 - **Sign-in:** the management API and web UI (http://localhost:8080) require login (`api.auth` in [worker-conf.yaml](./worker-conf.yaml)).
-  Demo users: `admin` / `admin` (role admin) and `viewer` / `viewer` (read-only). **Change or remove these users before any real use.**
-  Production hashes are bcrypt, generated as described in [service/worker/config.yaml](../service/worker/config.yaml).
+  The `admin` user's password is set or generated on first start, see [First login: the admin password](#first-login-the-admin-password).
+  Other users are created in the UI (Users) by an admin.
 - **Failover:** the proxy runs the automatic failover controller (`failover.enabled: true` in [proxy-conf.yaml](./proxy-conf.yaml)).
   A storage only fails over if it has an enabled failover policy with targets, set through the Resilience API, `tuttictl`, or the UI `/failover` page.
   See [docs/tutti/operations.md](../docs/tutti/operations.md#automatic-failover).

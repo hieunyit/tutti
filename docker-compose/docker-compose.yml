@@ -58,6 +58,10 @@ services:
       args:
         SERVICE: worker
     environment:
+      # Initial password of the console user "admin" (min 12 characters). Empty = the worker generates one and prints
+      # it once as a banner on stderr: docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
+      # Set it in docker-compose/.env (see .env.example). Reset later: docker compose exec worker /bin/chorus admin reset-password
+      - TUTTI_BOOTSTRAP_ADMIN_PASSWORD=${TUTTI_BOOTSTRAP_ADMIN_PASSWORD:-}
       # Same variables as the postgres service, so overriding POSTGRES_USER/PASSWORD/DB keeps the worker in sync
       # (CFG_ overrides worker-conf.yaml: controlPlane.postgres.dsn). URL-encode special characters in the password.
       - CFG_CONTROLPLANE_POSTGRES_DSN=postgres://${POSTGRES_USER:-tutti}:${POSTGRES_PASSWORD:-tutti}@postgres:5432/${POSTGRES_DB:-tutti}?sslmode=disable
