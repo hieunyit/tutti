@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,4 +60,36 @@ func TestInvoke_AddReplicationOmitsEmptyUser(t *testing.T) {
 	req := &pb.AddReplicationRequest{Id: &pb.ReplicationID{FromStorage: "A", ToStorage: "B"}}
 	r.NoError(conn.Invoke(context.Background(), pb.Policy_AddReplication_FullMethodName, req, &emptypb.Empty{}))
 	r.JSONEq(`{"id":{"fromStorage":"A","toStorage":"B"}}`, string(<-got))
+}
+
+func TestInvoke_RenameReplication(t *testing.T) {
+	r := require.New(t)
+	type call struct{ method, path, body string }
+	got := make(chan call, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		b, _ := io.ReadAll(req.Body)
+		got <- call{req.Method, req.URL.Path, string(b)}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{}"))
+	}))
+	defer srv.Close()
+	conn, err := Connect(context.Background(), srv.URL, false)
+	r.NoError(err)
+	req := &pb.UpdateReplicationNameRequest{Id: &pb.ReplicationID{FromStorage: "A", ToStorage: "B"}, Name: "prod to dr"}
+	r.NoError(conn.Invoke(context.Background(), pb.Policy_UpdateReplicationName_FullMethodName, req, &emptypb.Empty{}))
+	c := <-got
+	r.Equal(http.MethodPut, c.method)
+	r.Equal("/replication/rename", c.path)
+	r.JSONEq(`{"id":{"fromStorage":"A","toStorage":"B"},"name":"prod to dr"}`, c.body)
+}
+
+func TestReplRow_Name(t *testing.T) {
+	r := require.New(t)
+	r.Equal("ID\tNAME", ReplHeader()[:7])
+	row := func(name string) []string {
+		return strings.Split(ReplRow(&pb.Replication{Id: &pb.ReplicationID{FromStorage: "A", ToStorage: "B"}, Name: name}), "\t")
+	}
+	r.Equal("prod to dr", row("prod to dr")[1])
+	r.Equal("-", row("")[1])
+	r.Len(row("x"), len(strings.Split(ReplHeader(), "\t")))
 }

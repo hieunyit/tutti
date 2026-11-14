@@ -46,7 +46,7 @@ func StorageRow(in *pb.Storage) string {
 }
 
 func ReplHeader() string {
-	return "NAME\tPROGRESS\tOBJECTS\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
+	return "ID\tNAME\tPROGRESS\tOBJECTS\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
 }
 
 func ReplRow(in *pb.Replication) string {
@@ -58,8 +58,13 @@ func ReplRow(in *pb.Replication) string {
 	if in.HasSwitch {
 		switchStatus = in.SwitchInfo.LastStatus.String()
 	}
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
+	name := in.Name
+	if name == "" {
+		name = "-"
+	}
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
 		id,
+		name,
 		ToPercentage(p),
 		objects,
 		events,

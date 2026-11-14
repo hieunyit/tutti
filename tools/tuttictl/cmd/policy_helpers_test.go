@@ -18,7 +18,7 @@ func TestBuildReplicationID_NoUser(t *testing.T) {
 // --user must not be required on any repl subcommand.
 func TestReplCommandsUserFlagOptional(t *testing.T) {
 	r := require.New(t)
-	for _, name := range []string{"add", "buckets", "delete", "pause", "resume"} {
+	for _, name := range []string{"add", "buckets", "delete", "pause", "resume", "rename"} {
 		sub, _, err := replCmd.Find([]string{name})
 		r.NoError(err)
 		r.Equal(name, sub.Name())
@@ -43,4 +43,22 @@ func TestRequireSwitchUser(t *testing.T) {
 	r.Error(err)
 	r.Contains(err.Error(), "protection group switchover")
 	r.NoError(requireSwitchUser("alice"))
+}
+
+func TestReplNameFlags(t *testing.T) {
+	r := require.New(t)
+	for _, name := range []string{"add", "rename"} {
+		sub, _, err := replCmd.Find([]string{name})
+		r.NoError(err)
+		r.NotNil(sub.Flags().Lookup("name"), name)
+	}
+	long := make([]byte, 65)
+	for i := range long {
+		long[i] = 'a'
+	}
+	raName = string(long)
+	defer func() { raName = "" }()
+	r.Error(addCmd.PreRunE(addCmd, nil))
+	raName = "prod to dr"
+	r.NoError(addCmd.PreRunE(addCmd, nil))
 }

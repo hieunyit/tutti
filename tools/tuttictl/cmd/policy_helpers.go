@@ -19,6 +19,9 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/sirupsen/logrus"
 
@@ -64,6 +67,17 @@ func buildReplicationID(user, from, to, fromBucket, toBucket string) *pb.Replica
 func requireSwitchUser(user string) error {
 	if user == "" {
 		return errors.New("--user is required: switch is not supported for storage-level replication; use a protection group switchover")
+	}
+	return nil
+}
+
+// maxReplNameLen mirrors the server limit (entity.MaxReplicationNameLen); the server stays authoritative.
+const maxReplNameLen = 64
+
+// checkReplName rejects an over-long display name early with a clear message.
+func checkReplName(name string) error {
+	if n := utf8.RuneCountInString(strings.TrimSpace(name)); n > maxReplNameLen {
+		return fmt.Errorf("--name is too long: %d characters, max %d", n, maxReplNameLen)
 	}
 	return nil
 }

@@ -19,6 +19,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ var (
 	raEventSource string
 	raFromBucket  string
 	raToBucket    string
+	raName        string
 )
 
 // addCmd represents the add command
@@ -52,6 +54,9 @@ Bucket-level replication (single bucket, same name on both storages):
 Bucket-level replication (different destination bucket name):
   tuttictl repl add --from main --to follower --user admin --from-bucket src-bucket --to-bucket dest-bucket
 
+Optional display name (a label only, max 64 characters, not unique):
+  tuttictl repl add --from main --to follower --user admin --name "prod to dr"
+
 S3 notification event source (worker creates SNS topic + bucket notification):
   tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --event-source s3-notification
 
@@ -64,6 +69,9 @@ External webhook event source (e.g. Swift access log exporter):
 		if raEventSource != "" && raEventSource != "proxy" && raEventSource != "s3-notification" && raEventSource != "webhook" {
 			return fmt.Errorf("--event-source must be one of: proxy, s3-notification, webhook")
 		}
+		if err := checkReplName(raName); err != nil {
+			return err
+		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
@@ -74,7 +82,8 @@ External webhook event source (e.g. Swift access log exporter):
 		defer conn.Close()
 
 		id := buildReplicationID(raUser, raFrom, raTo, raFromBucket, raToBucket)
-		req := &pb.AddReplicationRequest{Id: id}
+		name := strings.TrimSpace(raName)
+		req := &pb.AddReplicationRequest{Id: id, Name: name}
 		if raEventSource != "" && raEventSource != "proxy" {
 			req.Opts = &pb.ReplicationOpts{}
 			switch raEventSource {
@@ -99,6 +108,7 @@ func init() {
 	addCmd.Flags().StringVarP(&raUser, "user", "u", "", "replication user; omit for storage-level replication")
 	addCmd.Flags().StringVar(&raEventSource, "event-source", "", "event source: proxy, s3-notification, webhook")
 	addCmd.Flags().StringVarP(&raFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
+	addCmd.Flags().StringVar(&raName, "name", "", "optional display name (max 64 characters)")
 	addCmd.Flags().StringVar(&raToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
 
 	if err := addCmd.MarkFlagRequired("from"); err != nil {

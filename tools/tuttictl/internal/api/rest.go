@@ -69,6 +69,7 @@ var restRoutes = map[string]route{
 	pb.Policy_PauseReplication_FullMethodName:       {http.MethodPut, "/replication/pause"},
 	pb.Policy_ResumeReplication_FullMethodName:      {http.MethodPut, "/replication/resume"},
 	pb.Policy_DeleteReplication_FullMethodName:      {http.MethodPut, "/replication/delete"},
+	pb.Policy_UpdateReplicationName_FullMethodName:  {http.MethodPut, "/replication/rename"},
 	pb.Policy_SwitchWithZeroDowntime_FullMethodName: {http.MethodPost, "/replication/switch/zero-downtime"},
 	pb.Policy_SwitchWithDowntime_FullMethodName:     {http.MethodPost, "/replication/switch"},
 	pb.Policy_DeleteSwitch_FullMethodName:           {http.MethodPost, "/replication/switch/delete"},
