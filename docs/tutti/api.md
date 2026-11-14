@@ -355,6 +355,7 @@ Enables real-time fleet health observation, circuit breaker status, and traffic 
 |---|---|---|
 | `GET` | `/tutti/proxies` | List all running proxies, circuit breaker states, and rates |
 | `GET` | `/tutti/stats/history?range=15m` | Time-series traffic metrics (`5m`, `15m`, `1h`, `6h`) |
+| `GET` | `/tutti/worker-stats` | Replication throughput of the live workers (see below) |
 | `GET` | `/tutti/proxy-config` | Cluster-wide proxy fleet configuration |
 | `PUT` | `/tutti/proxy-config` | Update cluster-wide proxy configuration |
 
@@ -418,3 +419,22 @@ Retrieves immutable control-plane and security audit logs stored in PostgreSQL.
 curl "http://localhost:9671/tutti/audit-log?limit=10&action=SWITCHOVER" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+
+## Worker throughput and tuning
+
+`GET /tutti/worker-stats` (read-only roles allowed) returns the snapshots that each worker publishes to Redis every 5 s (key `tutti:worker:stats:<appID>`, TTL 20 s; older snapshots are ignored) and their sums:
+
+```json
+{
+  "workers": [{ "workerId": "w1", "startedAt": "...", "updatedAt": "...", "concurrency": 10, "bulkConcurrency": 2, "liveConcurrency": 8,
+    "inFlight": 3, "copiedObjectsTotal": 120, "copiedBytesTotal": 5000000, "failedTotal": 1,
+    "objectsPerSec1m": 1.5, "bytesPerSec1m": 100000, "objectsPerSec5m": 1.2, "bytesPerSec5m": 90000, "avgCopySeconds1m": 2.1,
+    "bufferTotalBytes": 268435456, "bufferUsedBytes": 33554432, "bufferWaiters": 0, "bufferWaitSecondsTotal": 0.4 }],
+  "totals": { "inFlight": 3, "concurrency": 10, "objectsPerSec1m": 1.5, "bytesPerSec1m": 100000, "objectsPerSec5m": 1.2, "bytesPerSec5m": 90000,
+    "bufferTotalBytes": 268435456, "bufferUsedBytes": 33554432, "bufferWaiters": 0,
+    "copiedObjectsTotal": 120, "copiedBytesTotal": 5000000, "failedTotal": 1 }
+}
+```
+
+`GET/PUT /tutti/system-settings` `worker` block gained `bulkConcurrencyPercent` (0 or 5..95, default 20; worker restart), `multipartThreads` (0 or 1..16, default 1; live) and `multipartPartSizeMib` (0 or 5..512, default 16; live). Out-of-range values return `InvalidArgument`; an omitted or `0` field keeps the stored value.

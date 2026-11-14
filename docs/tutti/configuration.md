@@ -347,3 +347,16 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 - A proxy that receives an invalid document keeps the last good configuration and reports `configError` in its status.
 - Sync is reported as enabled only on proxies that can actually synchronize (S3 proxies).
 - `readHeaderTimeout` and `writerLease` need a restart (`pendingRestart`).
+
+
+## Replication throughput tuning
+
+| Knob | System setting (`worker.*`) | YAML / env | Default | Applies |
+|---|---|---|---|---|
+| Bulk share of concurrency | `bulkConcurrencyPercent` (0 or 5..95) | `bulkConcurrencyPercent` / `CFG_BULKCONCURRENCYPERCENT` | 20 | worker restart |
+| Parallel multipart parts | `multipartThreads` (0 or 1..16) | `multipartThreads` | 1 | next copy, no restart |
+| Multipart part size | `multipartPartSizeMib` (0 or 5..512) | `multipartPartSizeMiB` | 16 MiB | next copy, no restart |
+
+Precedence: non-zero system setting, then YAML/env, then the built-in default. The buffer budget (`bufferBudgetBytes`) also applies live; a multipart copy reserves `threads x partSize` of it, capped at the object size.
+
+Throughput is visible at `GET /tutti/worker-stats` and as Prometheus metrics `tutti_copy_objects_total{result}`, `tutti_copy_bytes_total`, `tutti_copy_duration_seconds`, `tutti_copy_inflight`, `tutti_copy_buffer_wait_seconds_total`, `tutti_copy_buffer_used_bytes`, `tutti_copy_buffer_total_bytes`. A growing `bufferWaitSecondsTotal` means the buffer budget limits throughput.

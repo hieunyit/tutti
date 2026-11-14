@@ -7,9 +7,11 @@
 # settings may apply without a restart.
 concurrency: 10 # max number of task that can be processed in parallel
 shutdownTimeout: 5s
-bulkConcurrencyPercent: 20 # 5..95, share of concurrency for bulk migration; the rest serves live events
+# Tuning knobs below are fallbacks: a non-zero System setting (worker.bulkConcurrencyPercent, multipartThreads,
+# multipartPartSizeMib) wins over these values. Multipart settings apply to the next copy without restart.
+bulkConcurrencyPercent: 20 # 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
 multipartThreads: 1 # 1..16, parallel parts for objects above the multipart threshold
-multipartPartSizeMiB: 16 # min 5
+multipartPartSizeMiB: 16 # 5..512
 worker:
   queueUpdateInterval: 3s
   swiftRetryInterval: 1m # used for swift task retries caused by swift inconsistent state
