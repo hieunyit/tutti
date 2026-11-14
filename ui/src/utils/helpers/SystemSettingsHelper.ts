@@ -51,6 +51,55 @@ export function toProtoDuration(value: string): string | null {
   return `${total / 1000000000n}${fraction ? `.${fraction}` : ''}s`;
 }
 
+/** Optional integer worker fields: 0 (or blank) = default, else min..max. */
+export const WORKER_TUNING_FIELDS = {
+  bulkConcurrencyPercent: { min: 5, max: 95, error: 'invalidBulkPercent' },
+  multipartThreads: { min: 1, max: 16, error: 'invalidMultipartThreads' },
+  multipartPartSizeMiB: { min: 5, max: 512, error: 'invalidPartSize' },
+} as const;
+
+export type WorkerTuningKey = keyof typeof WORKER_TUNING_FIELDS;
+
+export const WORKER_TUNING_KEYS = Object.keys(
+  WORKER_TUNING_FIELDS,
+) as WorkerTuningKey[];
+
+export function isValidTuningValue(
+  key: WorkerTuningKey,
+  value: number | null | undefined,
+): boolean {
+  if (value === undefined || value === null || value === 0) return true;
+
+  const { min, max } = WORKER_TUNING_FIELDS[key];
+
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
+export interface RecommendedSettings {
+  concurrency: number;
+  bufferBudgetBytes: string;
+  multipartThreads: number;
+  bulkConcurrencyPercent: number;
+}
+
+const GIB = 1024 ** 3;
+
+/** Starting-point suggestions for the given hardware (never auto-applied). */
+export function recommendSettings(
+  cores: number,
+  ramGb: number,
+): RecommendedSettings {
+  const c = Number.isFinite(cores) ? Math.max(1, Math.floor(cores)) : 1;
+  const ram = Number.isFinite(ramGb) ? Math.max(0, ramGb) : 0;
+
+  return {
+    concurrency: Math.min(256, 16 * c),
+    bufferBudgetBytes: String(Math.floor(Math.min(ram * GIB * 0.25, 8 * GIB))),
+    multipartThreads: 4,
+    bulkConcurrencyPercent: 80,
+  };
+}
+
 export function validateSystemSettings(
   draft: TuttiUpdateSystemSettingsRequest,
 ) {
@@ -91,6 +140,11 @@ export function validateSystemSettings(
 
     if (!/^\d{1,19}$/.test(value) || BigInt(value) > MAX_INT64)
       errors[key] = 'invalidBytes';
+  }
+
+  for (const key of WORKER_TUNING_KEYS) {
+    if (!isValidTuningValue(key, worker[key]))
+      errors[key] = WORKER_TUNING_FIELDS[key].error;
   }
 
   const baseUrl = draft.webhook?.baseUrl?.trim();

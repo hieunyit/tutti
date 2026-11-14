@@ -328,6 +328,12 @@ export interface TuttiSystemWorkerSettings {
   backlogLowWatermark?: number;
   bandwidthLimitBytes?: string;
   bufferBudgetBytes?: string;
+  /** 0 = default 20; valid 0 or 5..95; needs a worker restart */
+  bulkConcurrencyPercent?: number;
+  /** 0 = default 1; valid 0 or 1..16; applies live */
+  multipartThreads?: number;
+  /** 0 = default 16; valid 0 or 5..512; applies live */
+  multipartPartSizeMiB?: number;
 }
 
 export interface TuttiSystemLockSettings {

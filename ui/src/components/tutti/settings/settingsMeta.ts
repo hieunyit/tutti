@@ -14,7 +14,10 @@
  *  limitations under the License.
  */
 
-import { WORKER_DURATION_FIELDS } from '@/utils/helpers/SystemSettingsHelper';
+import {
+  WORKER_DURATION_FIELDS,
+  WORKER_TUNING_KEYS,
+} from '@/utils/helpers/SystemSettingsHelper';
 import type { TuttiUpdateSystemSettingsRequest } from '@/utils/types/tutti';
 
 export const FEATURE_KEYS = [
@@ -47,6 +50,7 @@ export type SettingsTab = (typeof SETTINGS_TABS)[number];
  */
 export const RESTART_FIELDS: ReadonlySet<string> = new Set([
   'concurrency',
+  'bulkConcurrencyPercent',
   ...WORKER_DURATION_FIELDS,
   'lockOverlap',
 ]);
@@ -81,6 +85,9 @@ function flatten(s: TuttiUpdateSystemSettingsRequest | null): Flat {
 
   for (const key of ['concurrency', ...WATERMARK_KEYS, ...BYTE_KEYS] as const)
     flat[key] = String(s.worker?.[key]);
+
+  for (const key of WORKER_TUNING_KEYS)
+    flat[key] = String(s.worker?.[key] ?? 0);
 
   for (const key of WORKER_DURATION_FIELDS) flat[key] = String(s.worker?.[key]);
 

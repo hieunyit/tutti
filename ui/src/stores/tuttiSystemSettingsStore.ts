@@ -62,6 +62,9 @@ function getDefaultDraft(): TuttiUpdateSystemSettingsRequest {
       backlogLowWatermark: 5000,
       bandwidthLimitBytes: '2097152',
       bufferBudgetBytes: '268435456',
+      bulkConcurrencyPercent: 0,
+      multipartThreads: 0,
+      multipartPartSizeMiB: 0,
     },
     lock: {
       overlap: '2s',
@@ -101,6 +104,9 @@ function cloneSettingsToDraft(
       backlogLowWatermark: s.worker?.backlogLowWatermark ?? 5000,
       bandwidthLimitBytes: s.worker?.bandwidthLimitBytes ?? '2097152',
       bufferBudgetBytes: s.worker?.bufferBudgetBytes ?? '268435456',
+      bulkConcurrencyPercent: s.worker?.bulkConcurrencyPercent ?? 0,
+      multipartThreads: s.worker?.multipartThreads ?? 0,
+      multipartPartSizeMiB: s.worker?.multipartPartSizeMiB ?? 0,
     },
     lock: {
       overlap: s.lock?.overlap ?? '2s',

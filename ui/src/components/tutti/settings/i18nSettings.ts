@@ -121,6 +121,35 @@ export default <I18nMessages>{
     bandwidthLimitHint: 'Per worker. 0 = unlimited; 2097152 = 2 MiB/s.',
     bufferBudgetBytes: 'Multipart buffer budget (bytes)',
     bufferBudgetHint: 'Per worker. 0 = unlimited; 268435456 = 256 MiB.',
+    tuneTitle: 'Replication throughput',
+    tuneDesc:
+      'Tune how many copies run in parallel and how multipart uploads are split. Leave a field blank (or 0) to use the default shown in it.',
+    needsRestart: 'Needs worker restart',
+    appliesLive: 'Applies immediately',
+    bulkConcurrencyPercent: 'Bulk concurrency share (%)',
+    bulkConcurrencyPercentHint:
+      'Share of task concurrency reserved for bulk migration. Default 20; allowed 5 to 95.',
+    multipartThreads: 'Multipart threads',
+    multipartThreadsHint:
+      'Parallel part uploads per object. Default 1; allowed 1 to 16.',
+    multipartPartSizeMiB: 'Multipart part size (MiB)',
+    multipartPartSizeMiBHint:
+      'Size of each uploaded part. Default 16; allowed 5 to 512.',
+    invalidBulkPercent: 'Enter 0 (default) or a whole number from 5 to 95.',
+    invalidMultipartThreads:
+      'Enter 0 (default) or a whole number from 1 to 16.',
+    invalidPartSize: 'Enter 0 (default) or a whole number from 5 to 512.',
+    recTitle: 'Recommended values',
+    recIntro:
+      'Starting points for your hardware. Nothing is applied until you press Fill in and save.',
+    recCores: 'CPU cores per worker',
+    recRam: 'RAM per worker (GB)',
+    recFill: 'Fill in',
+    recConcurrency: 'Task concurrency: about 16 per core, at most 256.',
+    recBuffer: 'Buffer budget: 25% of RAM, at most 8 GiB.',
+    recThreads: 'Multipart threads: 4 for object storage over a WAN.',
+    recBulk: 'Bulk share: 80% when live proxy traffic is light.',
+    throughputLink: 'Open throughput panel',
     lockTitle: 'Distributed locking',
     lockDesc: 'Configure the overlap margin for distributed worker locks.',
     lockOverlap: 'Lock overlap',
@@ -244,6 +273,37 @@ export default <I18nMessages>{
     bufferBudgetBytes: 'Pufferbudget im Flug (Bytes)',
     bufferBudgetHint:
       'Maximaler RAM für parallele SDK-Multipart-Puffer (z.B. 268435456 für 256 MiB, live angewendet)',
+    tuneTitle: 'Replikationsdurchsatz',
+    tuneDesc:
+      'Steuert, wie viele Kopien parallel laufen und wie Multipart-Uploads aufgeteilt werden. Ein leeres Feld (oder 0) verwendet den im Feld angezeigten Standard.',
+    needsRestart: 'Worker-Neustart erforderlich',
+    appliesLive: 'Wirkt sofort',
+    bulkConcurrencyPercent: 'Anteil Bulk-Parallelität (%)',
+    bulkConcurrencyPercentHint:
+      'Anteil der Task-Parallelität, der für Bulk-Migration reserviert ist. Standard 20; erlaubt 5 bis 95.',
+    multipartThreads: 'Multipart-Threads',
+    multipartThreadsHint:
+      'Parallele Teil-Uploads je Objekt. Standard 1; erlaubt 1 bis 16.',
+    multipartPartSizeMiB: 'Multipart-Teilgröße (MiB)',
+    multipartPartSizeMiBHint:
+      'Größe jedes hochgeladenen Teils. Standard 16; erlaubt 5 bis 512.',
+    invalidBulkPercent:
+      '0 (Standard) oder eine ganze Zahl von 5 bis 95 eingeben.',
+    invalidMultipartThreads:
+      '0 (Standard) oder eine ganze Zahl von 1 bis 16 eingeben.',
+    invalidPartSize:
+      '0 (Standard) oder eine ganze Zahl von 5 bis 512 eingeben.',
+    recTitle: 'Empfohlene Werte',
+    recIntro:
+      'Startwerte für Ihre Hardware. Nichts wird übernommen, bis Sie auf Übernehmen klicken und speichern.',
+    recCores: 'CPU-Kerne je Worker',
+    recRam: 'RAM je Worker (GB)',
+    recFill: 'Übernehmen',
+    recConcurrency: 'Task-Parallelität: etwa 16 je Kern, höchstens 256.',
+    recBuffer: 'Pufferbudget: 25 % des RAM, höchstens 8 GiB.',
+    recThreads: 'Multipart-Threads: 4 für Objektspeicher über WAN.',
+    recBulk: 'Bulk-Anteil: 80 %, wenn der Live-Proxy-Verkehr gering ist.',
+    throughputLink: 'Durchsatz-Panel öffnen',
     lockTitle: 'Verteilte Sperren',
     lockDesc: 'Pufferzeit für verteilte Redis-Sperren konfigurieren',
     lockOverlap: 'Sperrüberlappungsdauer',
@@ -365,6 +425,34 @@ export default <I18nMessages>{
     bandwidthLimitHint: 'Theo worker. 0 = không giới hạn; 2097152 = 2 MiB/s.',
     bufferBudgetBytes: 'Ngân sách bộ đệm multipart (bytes)',
     bufferBudgetHint: 'Theo worker. 0 = không giới hạn; 268435456 = 256 MiB.',
+    tuneTitle: 'Thông lượng đồng bộ',
+    tuneDesc:
+      'Điều chỉnh số bản sao chạy song song và cách chia multipart upload. Để trống (hoặc 0) để dùng giá trị mặc định hiển thị trong ô.',
+    needsRestart: 'Cần restart worker',
+    appliesLive: 'Áp dụng ngay',
+    bulkConcurrencyPercent: 'Tỷ lệ song song cho bulk (%)',
+    bulkConcurrencyPercentHint:
+      'Phần số tác vụ song song dành cho di chuyển hàng loạt. Mặc định 20; cho phép 5 đến 95.',
+    multipartThreads: 'Số luồng multipart',
+    multipartThreadsHint:
+      'Số phần được tải lên song song cho mỗi đối tượng. Mặc định 1; cho phép 1 đến 16.',
+    multipartPartSizeMiB: 'Kích thước phần multipart (MiB)',
+    multipartPartSizeMiBHint:
+      'Kích thước mỗi phần tải lên. Mặc định 16; cho phép 5 đến 512.',
+    invalidBulkPercent: 'Nhập 0 (mặc định) hoặc số nguyên từ 5 đến 95.',
+    invalidMultipartThreads: 'Nhập 0 (mặc định) hoặc số nguyên từ 1 đến 16.',
+    invalidPartSize: 'Nhập 0 (mặc định) hoặc số nguyên từ 5 đến 512.',
+    recTitle: 'Giá trị khuyến nghị',
+    recIntro:
+      'Điểm khởi đầu theo phần cứng của bạn. Không có gì được áp dụng cho đến khi bạn bấm Điền và lưu.',
+    recCores: 'Số lõi CPU mỗi worker',
+    recRam: 'RAM mỗi worker (GB)',
+    recFill: 'Điền',
+    recConcurrency: 'Số tác vụ song song: khoảng 16 mỗi lõi, tối đa 256.',
+    recBuffer: 'Ngân sách bộ đệm: 25% RAM, tối đa 8 GiB.',
+    recThreads: 'Số luồng multipart: 4 cho object storage qua WAN.',
+    recBulk: 'Tỷ lệ bulk: 80% khi lưu lượng proxy trực tiếp thấp.',
+    throughputLink: 'Mở bảng thông lượng',
     lockTitle: 'Khóa phân tán',
     lockDesc: 'Điều chỉnh khoảng thời gian gối đầu cho khóa giữa các worker.',
     lockOverlap: 'Thời gian gối đầu khóa',

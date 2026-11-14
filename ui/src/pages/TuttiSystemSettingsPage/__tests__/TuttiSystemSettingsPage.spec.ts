@@ -131,6 +131,26 @@ describe('TuttiSystemSettingsPage', () => {
     wrapper.unmount();
   });
 
+  it('badges the tuning fields and fills recommendations only on request', async () => {
+    const wrapper = await mountPage('worker');
+
+    expect(wrapper.findAll('[data-test="live-label"]')).toHaveLength(2);
+    expect(wrapper.find('#settings-bulkConcurrencyPercent').exists()).toBe(
+      true,
+    );
+    expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+    await wrapper.get('[data-test="fill-multipartThreads"]').trigger('click');
+    await flushPromises();
+
+    expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+    expect(
+      (wrapper.get('#settings-multipartThreads').element as HTMLInputElement)
+        .value,
+    ).toBe('4');
+    wrapper.unmount();
+  });
+
   it('shows a reload/overwrite dialog on a version conflict', async () => {
     const wrapper = await mountPage();
 

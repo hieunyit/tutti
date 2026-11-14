@@ -20,6 +20,7 @@
   import { useI18n } from 'vue-i18n';
   import { NInput, NInputNumber, NSwitch } from 'naive-ui';
   import SettingsField from './SettingsField.vue';
+  import SettingsRecommendations from './SettingsRecommendations.vue';
   import messages from './i18nSettings';
   import {
     BYTE_KEYS,
@@ -30,7 +31,12 @@
   } from './settingsMeta';
   import { FormSection } from '@/components/kit';
   import { useTuttiSystemSettingsStore } from '@/stores/tuttiSystemSettingsStore';
-  import { WORKER_DURATION_FIELDS } from '@/utils/helpers/SystemSettingsHelper';
+  import {
+    WORKER_DURATION_FIELDS,
+    WORKER_TUNING_FIELDS,
+    WORKER_TUNING_KEYS,
+    type WorkerTuningKey,
+  } from '@/utils/helpers/SystemSettingsHelper';
 
   const props = defineProps<{ tab: SettingsTab; disabled: boolean }>();
 
@@ -53,6 +59,21 @@
       'aria-describedby': hintId,
       'aria-invalid': Boolean(errors.value[key]),
     };
+  }
+
+  const tuningDefaults: Record<WorkerTuningKey, string> = {
+    bulkConcurrencyPercent: '20',
+    multipartThreads: '1',
+    multipartPartSizeMiB: '16',
+  };
+
+  /** 0 is stored, but shown as an empty field with the default as placeholder. */
+  function tuningValue(key: WorkerTuningKey): number | null {
+    return draft.value.worker![key] || null;
+  }
+
+  function setTuning(key: WorkerTuningKey, value: number | null) {
+    draft.value.worker![key] = value ?? 0;
   }
 
   const status = (key: string) => (errors.value[key] ? 'error' : undefined);
@@ -187,6 +208,36 @@
           :input-props="inputProps(key)"
         />
       </SettingsField>
+    </FormSection>
+    <FormSection
+      :title="t('tuneTitle')"
+      :description="t('tuneDesc')"
+    >
+      <SettingsField
+        v-for="key in WORKER_TUNING_KEYS"
+        :id="key"
+        :key="key"
+        :label="t(key)"
+        :hint="t(`${key}Hint`)"
+        :error="err(key)"
+        :restart="
+          key === 'bulkConcurrencyPercent' ? t('needsRestart') : undefined
+        "
+        :live="key === 'bulkConcurrencyPercent' ? undefined : t('appliesLive')"
+      >
+        <NInputNumber
+          :value="tuningValue(key)"
+          :disabled="disabled"
+          :min="0"
+          :max="WORKER_TUNING_FIELDS[key].max"
+          :precision="0"
+          :placeholder="tuningDefaults[key]"
+          :status="status(key)"
+          :input-props="inputProps(key)"
+          @update:value="(v) => setTuning(key, v)"
+        />
+      </SettingsField>
+      <SettingsRecommendations :disabled="disabled" />
     </FormSection>
   </div>
 

@@ -22,6 +22,8 @@
     hint?: string;
     error?: string;
     restart?: string;
+    /** badge for fields that apply without a restart */
+    live?: string;
   }>();
 </script>
 
@@ -38,6 +40,12 @@
         class="settings-field__restart"
         data-test="restart-label"
         >{{ restart }}</span
+      >
+      <span
+        v-if="live"
+        class="settings-field__live"
+        data-test="live-label"
+        >{{ live }}</span
       >
     </div>
     <slot />
@@ -76,6 +84,15 @@
       border: 1px solid var(--tt-warning);
       border-radius: var(--tt-radius-pill);
       color: var(--tt-warning);
+      font-size: var(--tt-text-xs);
+      line-height: 18px;
+    }
+
+    &__live {
+      padding: 0 var(--tt-space-2);
+      border: 1px solid var(--tt-success);
+      border-radius: var(--tt-radius-pill);
+      color: var(--tt-success);
       font-size: var(--tt-text-xs);
       line-height: 18px;
     }
