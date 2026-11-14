@@ -411,6 +411,20 @@ export const useTuttiReplicationsStore = defineStore(
       state.isResumeSelectedProcessing = false;
     }
 
+    /** Rejects when the server refuses; the list keeps the old name then. */
+    async function renameReplication(
+      replication: AddId<TuttiReplication>,
+      name: string,
+    ) {
+      await TuttiCoreService.renameReplication({ id: replication.id, name });
+
+      const row = state.replications.find(
+        ({ idStr }) => idStr === replication.idStr,
+      );
+
+      if (row) row.name = name;
+    }
+
     async function pauseReplications(replications: AddId<TuttiReplication>[]) {
       state.isPauseSelectedProcessing = true;
 
@@ -570,6 +584,7 @@ export const useTuttiReplicationsStore = defineStore(
       isSelectedProcessing,
       resumeReplications,
       pauseReplications,
+      renameReplication,
       deleteReplications,
       isFiltered,
       clearFilters,

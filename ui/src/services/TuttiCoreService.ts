@@ -19,6 +19,7 @@ import { ApiHelper } from '@/utils/helpers/ApiHelper';
 import { DedupeKey, dedupe, invalidate } from '@/utils/helpers/dedupe';
 import type {
   TuttiAddReplicationsRequest,
+  TuttiRenameReplicationRequest,
   TuttiBucketListRequest,
   TuttiBucketListResponse,
   TuttiCompareBucketRequest,
@@ -93,6 +94,15 @@ export abstract class TuttiCoreService {
   static async deleteReplication(payload: TuttiReplicationId): Promise<void> {
     await apiClient.put(
       ApiHelper.getTuttiAPIUrl('/replication/delete'),
+      payload,
+    );
+  }
+
+  static async renameReplication(
+    payload: TuttiRenameReplicationRequest,
+  ): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getTuttiAPIUrl('/replication/rename'),
       payload,
     );
   }

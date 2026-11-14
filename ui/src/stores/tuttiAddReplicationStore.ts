@@ -32,6 +32,7 @@ import { TuttiCoreService } from '@/services/TuttiCoreService';
 import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
+import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
 
 interface TuttiAddReplicationState {
   isLoading: boolean;
@@ -52,6 +53,8 @@ interface TuttiAddReplicationState {
   /** server text of the last failed create, shown on the page */
   createError: string;
   selectedBuckets: string[];
+  /** optional display name applied to every replication created */
+  name: string;
   currentStep: AddReplicationStepName;
   isConfirmDialogOpen: boolean;
   isSubmitting: boolean;
@@ -76,6 +79,7 @@ function getInitialState(): TuttiAddReplicationState {
     coveredBucketsList: [],
     createError: '',
     selectedBuckets: [],
+    name: '',
     currentStep: AddReplicationStepName.FROM_STORAGE,
     isConfirmDialogOpen: false,
     isSubmitting: false,
@@ -240,8 +244,10 @@ export const useTuttiAddReplicationStore = defineStore(
         selectedBuckets,
         isForAllBuckets,
       } = state;
+      const name = ReplicationNameHelper.normalize(state.name);
 
       if (
+        ReplicationNameHelper.getProblem(name) ||
         !selectedToStorage ||
         !selectedFromStorage ||
         (!selectedBuckets.length && !isForAllBuckets) ||
@@ -275,6 +281,7 @@ export const useTuttiAddReplicationStore = defineStore(
         try {
           await TuttiCoreService.addReplication({
             id: replicationId,
+            ...(name ? { name } : {}),
           });
           successList.push(replicationId);
         } catch (error: unknown) {

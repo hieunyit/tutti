@@ -28,6 +28,7 @@
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { IconName } from '@/utils/types/icon';
   import TuttiStorageCard from '@/components/tutti/common/TuttiStorageCard/TuttiStorageCard.vue';
+  import ReplicationNameField from '@/components/tutti/replications/ReplicationNameField/ReplicationNameField.vue';
   import SummaryBucketsList from '@/components/tutti/add-replication/SummaryBucketsList/SummaryBucketsList.vue';
 
   const { t } = useI18n({
@@ -39,6 +40,7 @@
     selectedToStorage,
     selectedBuckets,
     isForAllBuckets,
+    name,
   } = storeToRefs(useTuttiAddReplicationStore());
 
   const orderedSelectedBuckets = computed<string[]>(() =>
@@ -109,11 +111,20 @@
         </div>
       </CDescriptionItem>
     </CDescriptionList>
+
+    <ReplicationNameField
+      v-model="name"
+      class="add-replication-summary__name"
+    />
   </div>
 </template>
 
 <style lang="scss" scoped>
   @use '@/styles/utils' as utils;
+
+  .add-replication-summary__name {
+    margin-top: utils.unit(4);
+  }
 
   .replication-direction {
     display: grid;

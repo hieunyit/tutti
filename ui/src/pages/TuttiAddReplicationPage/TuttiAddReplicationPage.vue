@@ -30,6 +30,7 @@
   import AddReplicationSummary from '@/components/tutti/add-replication/AddReplicationSummary/AddReplicationSummary.vue';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
+  import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
 
   const DRAFT_KEY = 'add-replication';
@@ -39,6 +40,7 @@
     to: string | null;
     buckets: string[];
     all: boolean;
+    name: string;
   }
 
   const { t } = useI18n({ messages: i18nReplicationHub });
@@ -51,6 +53,7 @@
     selectedToStorage,
     selectedBuckets,
     isForAllBuckets,
+    name,
     isSubmitting,
     bucketsRequestOptions,
     createError,
@@ -67,12 +70,14 @@
       to: null,
       buckets: [],
       all: false,
+      name: '',
     }),
     snapshot: () => ({
       from: selectedFromStorage.value?.name ?? null,
       to: selectedToStorage.value?.name ?? null,
       buckets: [...selectedBuckets.value],
       all: isForAllBuckets.value,
+      name: name.value,
     }),
     apply: (draft) => {
       const from = storages.value.find((s) => s.name === draft.from);
@@ -83,6 +88,7 @@
       if (to && to.name !== from?.name) selectedToStorage.value = to;
 
       isForAllBuckets.value = draft.all;
+      name.value = draft.name ?? '';
 
       if (from && to && draft.buckets.length) {
         // marks the bucket list as requested, so opening step 3 keeps the choice
@@ -115,7 +121,11 @@
       label: t('stepBuckets'),
       valid: isForAllBuckets.value || selectedBuckets.value.length > 0,
     },
-    { key: 'confirm', label: t('stepConfirm'), valid: true },
+    {
+      key: 'confirm',
+      label: t('stepConfirm'),
+      valid: ReplicationNameHelper.getProblem(name.value) === null,
+    },
   ]);
 
   async function finish() {

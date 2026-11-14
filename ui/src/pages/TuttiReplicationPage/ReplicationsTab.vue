@@ -29,6 +29,8 @@
   import WriteGate from '@/components/auth/WriteGate.vue';
   import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
   import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
+  import ReplicationNameCell from '@/components/tutti/replications/ReplicationNameCell/ReplicationNameCell.vue';
+  import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
   import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
   import ReplicationDirectionCell from '@/components/tutti/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
   import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
@@ -48,6 +50,7 @@
   type Row = AddId<TuttiReplication>;
 
   const { t } = useI18n({ messages: i18nReplicationHub });
+  const { t: tn } = useI18n({ messages: i18nReplicationName });
   const store = useTuttiReplicationsStore();
   const {
     isLoading,
@@ -86,6 +89,7 @@
 
     return computedReplications.value.filter((row) =>
       [
+        row.name,
         row.id.user,
         row.id.fromBucket,
         row.id.toBucket,
@@ -126,6 +130,16 @@
     );
 
   const columns = computed<DataTableColumns<Row>>(() => [
+    {
+      title: tn('nameColumn'),
+      key: 'name',
+      minWidth: 240,
+      render: (row) =>
+        h(ReplicationNameCell, {
+          replication: row,
+          rename: (name: string) => store.renameReplication(row, name),
+        }),
+    },
     {
       title: t('colBucket'),
       key: 'bucket',

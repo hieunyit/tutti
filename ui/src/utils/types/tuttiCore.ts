@@ -177,6 +177,8 @@ export interface TuttiReplication {
   archivedAt: string;
   switchInfo: TuttiReplicationSwitchInfo;
   replicationType: ReplicationType;
+  /** optional display label; empty or omitted when the replication is unnamed */
+  name?: string;
 }
 
 export interface TuttiReplicationListResponse {
@@ -186,6 +188,14 @@ export interface TuttiReplicationListResponse {
 export interface TuttiAddReplicationsRequest {
   id: TuttiReplicationId;
   opts?: TuttiReplicationOpts;
+  /** optional display name, max 64 characters */
+  name?: string;
+}
+
+export interface TuttiRenameReplicationRequest {
+  id: TuttiReplicationId;
+  /** empty clears the name */
+  name: string;
 }
 
 export interface TuttiBucketListRequest {

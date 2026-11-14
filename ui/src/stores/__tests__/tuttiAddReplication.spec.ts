@@ -280,4 +280,47 @@ describe('tuttiAddReplicationStore', () => {
     expect(store.createError).toBe('');
     expect(push).toHaveBeenCalledTimes(1);
   });
+
+  describe('replication name', () => {
+    async function ready() {
+      const store = useTuttiAddReplicationStore();
+
+      await store.initAddReplicationPage();
+      store.isForAllBuckets = true;
+
+      return store;
+    }
+
+    it('sends the trimmed name', async () => {
+      const store = await ready();
+
+      store.name = '  prod to dr ';
+      await store.createReplication();
+
+      expect(tuttiCore.addReplication).toHaveBeenCalledWith({
+        id: { fromStorage: 'main', toStorage: 'backup' },
+        name: 'prod to dr',
+      });
+    });
+
+    it('omits an empty name', async () => {
+      const store = await ready();
+
+      store.name = '   ';
+      await store.createReplication();
+
+      expect(tuttiCore.addReplication!.mock.calls[0]![0]).toEqual({
+        id: { fromStorage: 'main', toStorage: 'backup' },
+      });
+    });
+
+    it('does not submit a name over 64 characters', async () => {
+      const store = await ready();
+
+      store.name = 'a'.repeat(65);
+
+      expect(await store.createReplication()).toBe(false);
+      expect(tuttiCore.addReplication).not.toHaveBeenCalled();
+    });
+  });
 });
