@@ -44,6 +44,9 @@ http:
     - selector: tutti.Policy.GetReplication
       post: /replication/get
       body: "*"
+    - selector: tutti.Policy.GetReplicationActivity
+      post: /replication/activity
+      body: "*"
     - selector: tutti.Policy.ListReplications
       post: /replication
       body: "*"

@@ -438,6 +438,7 @@ func TestHTTP_ChangePasswordAndMe(t *testing.T) {
 func TestViewerAllowList_Users(t *testing.T) {
 	require.True(t, Allowed(RoleViewer, "/tutti.Resilience/ListS3Users"))
 	require.True(t, Allowed(RoleViewer, "/tutti.Resilience/GetWorkerStats"))
+	require.True(t, Allowed(RoleViewer, "/tutti.Policy/GetReplicationActivity"))
 	for _, m := range []string{"CreateS3User", "UpdateS3UserCredentials", "DeleteS3User", "DeleteS3UserCredentials", "TestS3UserCredentials",
 		"ListConsoleUsers", "CreateConsoleUser", "UpdateConsoleUser", "ResetConsoleUserPassword", "DeleteConsoleUser"} {
 		require.False(t, Allowed(RoleViewer, "/tutti.Resilience/"+m), m)

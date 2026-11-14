@@ -553,6 +553,26 @@ func (h *policyHandlers) GetReplication(ctx context.Context, req *pb.Replication
 	return replicationToPb(uid, status), nil
 }
 
+// GetReplicationActivity is read-only runtime data (viewer allowed); the cursor is opaque to clients.
+func (h *policyHandlers) GetReplicationActivity(ctx context.Context, req *pb.GetReplicationActivityRequest) (*pb.GetReplicationActivityResponse, error) {
+	uid, err := pbToReplicationID(req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if req.GetLimit() < 0 || req.GetLimit() > store.ActivityMaxReadLimit {
+		return nil, fmt.Errorf("%w: limit must be between 0 and %d", dom.ErrInvalidArg, store.ActivityMaxReadLimit)
+	}
+	after := req.GetAfterCursor()
+	if len(after) > 64 || !activityCursorRe.MatchString(after) {
+		return nil, fmt.Errorf("%w: invalid after_cursor", dom.ErrInvalidArg)
+	}
+	snap, err := h.policySvc.GetReplicationActivity(ctx, uid, after, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+	return activityToPb(snap, time.Now()), nil
+}
+
 func (h *policyHandlers) GetSwitchStatus(ctx context.Context, req *pb.ReplicationID) (*pb.ReplicationSwitch, error) {
 	uid, err := pbToReplicationID(req)
 	if err != nil {

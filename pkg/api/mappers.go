@@ -18,6 +18,7 @@ package api
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/store"
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
@@ -63,6 +65,31 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		InitEtaSeconds:      initETASeconds(value),
 		InitListingComplete: value.InitBytes.ListingComplete,
 	}
+}
+
+var activityCursorRe = regexp.MustCompile(`^(|[0-9]{1,20}(-[0-9]{1,20})?)$`)
+
+func activityToPb(snap store.ActivitySnapshot, now time.Time) *pb.GetReplicationActivityResponse {
+	res := &pb.GetReplicationActivityResponse{
+		InFlight:   make([]*pb.ReplicationInFlight, 0, len(snap.InFlight)),
+		Events:     make([]*pb.ReplicationActivityEvent, 0, len(snap.Events)),
+		NextCursor: snap.NextCursor,
+		ServerTime: timestamppb.New(now),
+	}
+	for _, e := range snap.InFlight {
+		res.InFlight = append(res.InFlight, &pb.ReplicationInFlight{
+			Key: e.Key, VersionId: e.VersionID, Size: e.Size, StartedAt: timestamppb.New(time.UnixMilli(e.StartedAt)),
+			Flow: e.Flow, Attempt: int32(e.Attempt),
+		})
+	}
+	for _, e := range snap.Events {
+		res.Events = append(res.Events, &pb.ReplicationActivityEvent{
+			Cursor: e.Cursor, Time: timestamppb.New(time.UnixMilli(e.Time)), Level: e.Level, Type: e.Type, Key: e.Key,
+			VersionId: e.VersionID, Size: e.Size, DurationMs: e.DurationMs, BytesPerSecond: e.BytesPerSecond,
+			Attempt: int32(e.Attempt), Flow: e.Flow, Error: e.Error,
+		})
+	}
+	return res
 }
 
 func initETASeconds(value entity.ReplicationStatusExtended) int64 {

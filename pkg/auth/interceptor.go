@@ -64,6 +64,7 @@ var viewerMethods = map[string]struct{}{
 	"/tutti.Diff/GetReportEntries":                  {},
 	"/tutti.Policy/AvailableBuckets":                {},
 	"/tutti.Policy/GetReplication":                  {},
+	"/tutti.Policy/GetReplicationActivity":          {},
 	"/tutti.Policy/ListReplications":                {},
 	"/tutti.Policy/StreamReplication":               {},
 	"/tutti.Policy/GetSwitchStatus":                 {},

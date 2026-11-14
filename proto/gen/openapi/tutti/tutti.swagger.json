@@ -343,6 +343,39 @@
         ]
       }
     },
+    "/replication/activity": {
+      "post": {
+        "summary": "Returns the live activity of a replication: object copies running right\nnow and a capped log of recent copy events (started, done, failed, retry,\nskipped). Read-only; poll with the returned next_cursor.",
+        "operationId": "Policy_GetReplicationActivity",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiGetReplicationActivityResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiGetReplicationActivityRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
     "/replication/add": {
       "post": {
         "summary": "Configures new bucket-level or user-level replication.",
@@ -3793,6 +3826,53 @@
         }
       }
     },
+    "tuttiGetReplicationActivityRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/tuttiReplicationID",
+          "description": "REQUIRED: Replication to read."
+        },
+        "afterCursor": {
+          "type": "string",
+          "description": "OPTIONAL: return only events newer than this cursor (the next_cursor of a\nprevious response). Empty returns the most recent events."
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "OPTIONAL: maximum number of events, 1..500. 0 means 500."
+        }
+      }
+    },
+    "tuttiGetReplicationActivityResponse": {
+      "type": "object",
+      "properties": {
+        "inFlight": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/tuttiReplicationInFlight"
+          },
+          "description": "Object copies running now, oldest first (at most 500)."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/tuttiReplicationActivityEvent"
+          },
+          "description": "Events in ascending cursor order."
+        },
+        "nextCursor": {
+          "type": "string",
+          "description": "Cursor to pass as after_cursor next time. Equals the request cursor when\nthere are no newer events; empty when the log is empty."
+        },
+        "serverTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "tuttiGetStoragesResponse": {
       "type": "object",
       "properties": {
@@ -4688,6 +4768,58 @@
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
     },
+    "tuttiReplicationActivityEvent": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "description": "Monotonically increasing, opaque cursor of this event."
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "level": {
+          "type": "string",
+          "description": "\"info\", \"warn\" or \"error\"."
+        },
+        "type": {
+          "type": "string",
+          "description": "\"started\", \"done\", \"failed\", \"retry\" or \"skipped\"."
+        },
+        "key": {
+          "type": "string"
+        },
+        "versionId": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationMs": {
+          "type": "string",
+          "format": "int64",
+          "description": "Copy duration, set for done and skipped events."
+        },
+        "bytesPerSecond": {
+          "type": "string",
+          "format": "int64",
+          "description": "size / duration for done events."
+        },
+        "attempt": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "flow": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error or reason, truncated to about 300 characters."
+        }
+      }
+    },
     "tuttiReplicationID": {
       "type": "object",
       "properties": {
@@ -4713,6 +4845,35 @@
         }
       },
       "description": "Represents user-level and bucket-level replication source and destination\ntargets.\n- User-level replicates all existing and future buckets of the user.\n- Bucket-level  replicates a single bucket."
+    },
+    "tuttiReplicationInFlight": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "versionId": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "flow": {
+          "type": "string",
+          "description": "\"init\" (initial replication, diff fix) or \"live\" (change events)."
+        },
+        "attempt": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Task attempt, starting at 1."
+        }
+      },
+      "description": "An object copy that is running right now."
     },
     "tuttiReplicationOpts": {
       "type": "object",

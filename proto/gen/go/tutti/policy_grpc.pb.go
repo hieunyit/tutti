@@ -23,6 +23,7 @@ const (
 	Policy_AvailableBuckets_FullMethodName       = "/tutti.Policy/AvailableBuckets"
 	Policy_AddReplication_FullMethodName         = "/tutti.Policy/AddReplication"
 	Policy_GetReplication_FullMethodName         = "/tutti.Policy/GetReplication"
+	Policy_GetReplicationActivity_FullMethodName = "/tutti.Policy/GetReplicationActivity"
 	Policy_ListReplications_FullMethodName       = "/tutti.Policy/ListReplications"
 	Policy_StreamReplication_FullMethodName      = "/tutti.Policy/StreamReplication"
 	Policy_PauseReplication_FullMethodName       = "/tutti.Policy/PauseReplication"
@@ -54,6 +55,10 @@ type PolicyClient interface {
 	AddReplication(ctx context.Context, in *AddReplicationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Returns replication info by ID.
 	GetReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*Replication, error)
+	// Returns the live activity of a replication: object copies running right
+	// now and a capped log of recent copy events (started, done, failed, retry,
+	// skipped). Read-only; poll with the returned next_cursor.
+	GetReplicationActivity(ctx context.Context, in *GetReplicationActivityRequest, opts ...grpc.CallOption) (*GetReplicationActivityResponse, error)
 	// Lists configured replications info.
 	ListReplications(ctx context.Context, in *ListReplicationsRequest, opts ...grpc.CallOption) (*ListReplicationsResponse, error)
 	// Subscribes to replication updates stream.
@@ -169,6 +174,16 @@ func (c *policyClient) GetReplication(ctx context.Context, in *ReplicationID, op
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Replication)
 	err := c.cc.Invoke(ctx, Policy_GetReplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *policyClient) GetReplicationActivity(ctx context.Context, in *GetReplicationActivityRequest, opts ...grpc.CallOption) (*GetReplicationActivityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetReplicationActivityResponse)
+	err := c.cc.Invoke(ctx, Policy_GetReplicationActivity_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +381,10 @@ type PolicyServer interface {
 	AddReplication(context.Context, *AddReplicationRequest) (*emptypb.Empty, error)
 	// Returns replication info by ID.
 	GetReplication(context.Context, *ReplicationID) (*Replication, error)
+	// Returns the live activity of a replication: object copies running right
+	// now and a capped log of recent copy events (started, done, failed, retry,
+	// skipped). Read-only; poll with the returned next_cursor.
+	GetReplicationActivity(context.Context, *GetReplicationActivityRequest) (*GetReplicationActivityResponse, error)
 	// Lists configured replications info.
 	ListReplications(context.Context, *ListReplicationsRequest) (*ListReplicationsResponse, error)
 	// Subscribes to replication updates stream.
@@ -464,6 +483,9 @@ func (UnimplementedPolicyServer) AddReplication(context.Context, *AddReplication
 }
 func (UnimplementedPolicyServer) GetReplication(context.Context, *ReplicationID) (*Replication, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetReplication not implemented")
+}
+func (UnimplementedPolicyServer) GetReplicationActivity(context.Context, *GetReplicationActivityRequest) (*GetReplicationActivityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetReplicationActivity not implemented")
 }
 func (UnimplementedPolicyServer) ListReplications(context.Context, *ListReplicationsRequest) (*ListReplicationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListReplications not implemented")
@@ -586,6 +608,24 @@ func _Policy_GetReplication_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PolicyServer).GetReplication(ctx, req.(*ReplicationID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_GetReplicationActivity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReplicationActivityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).GetReplicationActivity(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_GetReplicationActivity_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).GetReplicationActivity(ctx, req.(*GetReplicationActivityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -907,6 +947,10 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReplication",
 			Handler:    _Policy_GetReplication_Handler,
+		},
+		{
+			MethodName: "GetReplicationActivity",
+			Handler:    _Policy_GetReplicationActivity_Handler,
 		},
 		{
 			MethodName: "ListReplications",

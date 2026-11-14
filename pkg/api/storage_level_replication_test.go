@@ -64,7 +64,11 @@ type slQueue struct {
 	tasks.QueueService
 	mu       sync.Mutex
 	enqueued int
+	rc       redis.Cmdable
 }
+
+// RedisClient mimics the real queue service: the activity feed lives in the queue Redis.
+func (q *slQueue) RedisClient() redis.Cmdable { return q.rc }
 
 func (q *slQueue) EnqueueTask(context.Context, any, ...asynq.Option) error {
 	q.mu.Lock()
@@ -115,7 +119,7 @@ func newSLEnvHook(t *testing.T, conn map[string]bool, onExists func(context.Cont
 	mr := miniredis.RunT(t)
 	rc := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rc.Close() })
-	q := &slQueue{}
+	q := &slQueue{rc: rc}
 	policySvc := policy.NewService(rc, q, "main")
 	h := PolicyHandlers(slCreds{conn: conn}, slClients{buckets: buckets, onExists: onExists}, q, policySvc, meta.NewVersionService(rc),
 		store.NewMigrationObjectListStateStore(rc), store.NewMigrationBucketListStateStore(rc), nil,
@@ -448,4 +452,51 @@ func TestAddReplicationSameUserDifferentSourceKeepsFirstSource(t *testing.T) {
 	require.Equal(t, 1, e.queue.count())
 	// a different real user stays independent (alice's other bucket and bob's b1 from the same routing source)
 	require.NoError(t, e.addUser(t, "bob", "main", "b", "b1"))
+}
+
+func TestGetReplicationActivity(t *testing.T) {
+	e := newSLEnv(t, allConn)
+	require.NoError(t, e.add(t, "main", "a"))
+	res, err := e.client.ListReplications(t.Context(), &pb.ListReplicationsRequest{})
+	require.NoError(t, err)
+	id := res.Replications[0].Id
+	uid, err := pbToReplicationID(id)
+	require.NoError(t, err)
+	gen, err := e.policy.GetReplicationGeneration(t.Context(), uid)
+	require.NoError(t, err)
+
+	empty, err := e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id})
+	require.NoError(t, err)
+	require.Empty(t, empty.InFlight)
+	require.Empty(t, empty.Events)
+	require.NotNil(t, empty.ServerTime)
+
+	st := store.NewActivityStore(e.rc)
+	require.NoError(t, st.Begin(t.Context(), uid.AsString(), gen, store.ActivityInFlight{Key: "a", Size: 5, Flow: "init", Attempt: 1},
+		&store.ActivityEvent{Level: "info", Type: "started", Key: "a", Size: 5, Flow: "init", Attempt: 1}))
+	require.NoError(t, st.End(t.Context(), uid.AsString(), gen, "b", "", false,
+		&store.ActivityEvent{Level: "info", Type: "done", Key: "b", Size: 7, DurationMs: 10, Flow: "init", Attempt: 1}))
+
+	got, err := e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id})
+	require.NoError(t, err)
+	require.Len(t, got.InFlight, 1)
+	require.Equal(t, "a", got.InFlight[0].Key)
+	require.Len(t, got.Events, 2)
+	require.Equal(t, "done", got.Events[1].Type)
+
+	newer, err := e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id, AfterCursor: got.Events[0].Cursor})
+	require.NoError(t, err)
+	require.Len(t, newer.Events, 1)
+	require.Equal(t, got.NextCursor, newer.NextCursor)
+
+	// validation like the other replication RPCs
+	_, err = e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: &pb.ReplicationID{}})
+	require.Error(t, err)
+	_, err = e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id, AfterCursor: "x; DROP"})
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	_, err = e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id, Limit: 501})
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	missing := &pb.ReplicationID{FromStorage: "main", ToStorage: "b"}
+	_, err = e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: missing})
+	require.Equal(t, codes.NotFound, status.Code(err))
 }

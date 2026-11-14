@@ -21,6 +21,12 @@ service Policy {
   // Returns replication info by ID.
   rpc GetReplication(ReplicationID) returns (Replication);
 
+  // Returns the live activity of a replication: object copies running right
+  // now and a capped log of recent copy events (started, done, failed, retry,
+  // skipped). Read-only; poll with the returned next_cursor.
+  rpc GetReplicationActivity(GetReplicationActivityRequest)
+      returns (GetReplicationActivityResponse);
+
   // Lists configured replications info.
   rpc ListReplications(ListReplicationsRequest)
       returns (ListReplicationsResponse);
@@ -161,6 +167,60 @@ message UpdateReplicationNameRequest {
   ReplicationID id = 1;
   // Display name, max 64 characters, no control characters. Empty clears it.
   string name = 2;
+}
+
+message GetReplicationActivityRequest {
+  // REQUIRED: Replication to read.
+  ReplicationID id = 1;
+  // OPTIONAL: return only events newer than this cursor (the next_cursor of a
+  // previous response). Empty returns the most recent events.
+  string after_cursor = 2;
+  // OPTIONAL: maximum number of events, 1..500. 0 means 500.
+  int32 limit = 3;
+}
+
+message GetReplicationActivityResponse {
+  // Object copies running now, oldest first (at most 500).
+  repeated ReplicationInFlight in_flight = 1;
+  // Events in ascending cursor order.
+  repeated ReplicationActivityEvent events = 2;
+  // Cursor to pass as after_cursor next time. Equals the request cursor when
+  // there are no newer events; empty when the log is empty.
+  string next_cursor = 3;
+  google.protobuf.Timestamp server_time = 4;
+}
+
+// An object copy that is running right now.
+message ReplicationInFlight {
+  string key = 1;
+  string version_id = 2;
+  int64 size = 3;
+  google.protobuf.Timestamp started_at = 4;
+  // "init" (initial replication, diff fix) or "live" (change events).
+  string flow = 5;
+  // Task attempt, starting at 1.
+  int32 attempt = 6;
+}
+
+message ReplicationActivityEvent {
+  // Monotonically increasing, opaque cursor of this event.
+  string cursor = 1;
+  google.protobuf.Timestamp time = 2;
+  // "info", "warn" or "error".
+  string level = 3;
+  // "started", "done", "failed", "retry" or "skipped".
+  string type = 4;
+  string key = 5;
+  string version_id = 6;
+  int64 size = 7;
+  // Copy duration, set for done and skipped events.
+  int64 duration_ms = 8;
+  // size / duration for done events.
+  int64 bytes_per_second = 9;
+  int32 attempt = 10;
+  string flow = 11;
+  // Error or reason, truncated to about 300 characters.
+  string error = 12;
 }
 
 // Determines how ongoing data change events are captured for replication.

@@ -80,6 +80,9 @@ type ReplicationSvc interface {
 	RenameReplication(ctx context.Context, id entity.UniversalReplicationID, name string) error
 	GetReplicationPolicyInfoExtended(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatusExtended, error)
 	GetReplicationGeneration(ctx context.Context, id entity.UniversalReplicationID) (int64, error)
+	// GetReplicationActivity returns the running copies and recent copy events of a replication (best effort
+	// runtime data from the queue Redis; empty when unavailable). Unknown replications yield dom.ErrNotFound.
+	GetReplicationActivity(ctx context.Context, id entity.UniversalReplicationID, after string, limit int) (store.ActivitySnapshot, error)
 
 	// user replication policies
 	ValidateUserReplicationCreation(ctx context.Context, policy entity.UserReplicationPolicy) error
@@ -271,6 +274,29 @@ func (r *policySvc) fillExtendedReplicationStatus(ctx context.Context, id entity
 	result.IsPaused = result.IsPaused || paused
 
 	return result, nil
+}
+
+func (r *policySvc) GetReplicationActivity(ctx context.Context, id entity.UniversalReplicationID, after string, limit int) (store.ActivitySnapshot, error) {
+	if err := id.Validate(); err != nil {
+		return store.ActivitySnapshot{}, fmt.Errorf("replication activity: unable to validate replication id: %w", err)
+	}
+	gen, err := r.GetReplicationGeneration(ctx, id)
+	if err != nil {
+		return store.ActivitySnapshot{}, err
+	}
+	if gen <= 0 { // generations start at 1: an unset one means the replication does not exist
+		return store.ActivitySnapshot{}, fmt.Errorf("%w: replication %s", dom.ErrNotFound, id.AsString())
+	}
+	// the worker writes the feed next to the task queues (see initBytesStats)
+	qr, ok := r.queueSvc.(interface{ RedisClient() redis.Cmdable })
+	if !ok || qr == nil {
+		return store.ActivitySnapshot{NextCursor: after}, nil
+	}
+	rc := qr.RedisClient()
+	if rc == nil {
+		return store.ActivitySnapshot{NextCursor: after}, nil
+	}
+	return store.NewActivityStore(rc).Get(ctx, id.AsString(), gen, after, limit, time.Now())
 }
 
 // initBytesStats reads initial replication byte counters. They are best effort: on error the bytes stay zero
