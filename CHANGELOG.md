@@ -6,6 +6,7 @@ First Tutti release: a fork of [Chorus](https://github.com/clyso/chorus) (base c
 
 ### Fixed
 
+- Replications: initial replication progress no longer stalls with very large objects. `initBytesDone` now includes the bytes already transferred of copies that are still running (reported by the worker at most once per second per object, absolute per-object values in `p:repl_init_bytes:{id:gen}:prog`, dropped when the object finishes or fails, never double counted), and `initBytesPerSecond` is computed from bytes actually sent in the last 3 minutes instead of completed objects. `POST /replication/activity` in-flight entries gain `bytesDone`; the console shows `Copied X (incl. in progress) · Y MB/s` and a Progress column in the in-progress table. Additive API change.
 - Worker: the replication reconciler no longer logs `replication reconciler cycle error ... no user replication policies found` every minute; "no user replications" is treated as nothing to reconcile (and bucket replications are still reconciled in that case). Real errors are still warnings.
 - System settings: a partial `PUT /tutti/system-settings` worker body no longer resets `bandwidthLimitBytes` and `bufferBudgetBytes` to 0. Worker numeric fields track presence (absent keeps the stored value, explicit `0` resets to the default or unlimited for bandwidth); `bufferBudgetBytes` below 16 MiB is rejected.
 
