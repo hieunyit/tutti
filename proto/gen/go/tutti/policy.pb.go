@@ -512,7 +512,10 @@ type ReplicationInFlight struct {
 	// "init" (initial replication, diff fix) or "live" (change events).
 	Flow string `protobuf:"bytes,5,opt,name=flow,proto3" json:"flow,omitempty"`
 	// Task attempt, starting at 1.
-	Attempt       int32 `protobuf:"varint,6,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Attempt int32 `protobuf:"varint,6,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	// Bytes of this object transferred so far by the running attempt (initial replication only, 0 otherwise);
+	// never more than size.
+	BytesDone     int64 `protobuf:"varint,7,opt,name=bytes_done,json=bytesDone,proto3" json:"bytes_done,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -585,6 +588,13 @@ func (x *ReplicationInFlight) GetFlow() string {
 func (x *ReplicationInFlight) GetAttempt() int32 {
 	if x != nil {
 		return x.Attempt
+	}
+	return 0
+}
+
+func (x *ReplicationInFlight) GetBytesDone() int64 {
+	if x != nil {
+		return x.BytesDone
 	}
 	return 0
 }
@@ -2623,7 +2633,7 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\vnext_cursor\x18\x03 \x01(\tR\n" +
 	"nextCursor\x12;\n" +
 	"\vserver_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"serverTime\"\xc3\x01\n" +
+	"serverTime\"\xe2\x01\n" +
 	"\x13ReplicationInFlight\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
@@ -2632,7 +2642,9 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12\x12\n" +
 	"\x04flow\x18\x05 \x01(\tR\x04flow\x12\x18\n" +
-	"\aattempt\x18\x06 \x01(\x05R\aattempt\"\xe0\x02\n" +
+	"\aattempt\x18\x06 \x01(\x05R\aattempt\x12\x1d\n" +
+	"\n" +
+	"bytes_done\x18\a \x01(\x03R\tbytesDone\"\xe0\x02\n" +
 	"\x18ReplicationActivityEvent\x12\x16\n" +
 	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12\x14\n" +

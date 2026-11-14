@@ -200,6 +200,9 @@ message ReplicationInFlight {
   string flow = 5;
   // Task attempt, starting at 1.
   int32 attempt = 6;
+  // Bytes of this object transferred so far by the running attempt (initial replication only, 0 otherwise);
+  // never more than size.
+  int64 bytes_done = 7;
 }
 
 message ReplicationActivityEvent {

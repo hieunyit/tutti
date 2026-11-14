@@ -477,10 +477,13 @@ func TestGetReplicationActivity(t *testing.T) {
 	require.NoError(t, st.End(t.Context(), uid.AsString(), gen, "b", "", false,
 		&store.ActivityEvent{Level: "info", Type: "done", Key: "b", Size: 7, DurationMs: 10, Flow: "init", Attempt: 1}))
 
+	require.NoError(t, store.NewInitBytesStore(e.rc).SetProgress(t.Context(), uid.AsString(), gen, store.ProgressField("a", ""), 3, 5, time.Now()))
+
 	got, err := e.client.GetReplicationActivity(t.Context(), &pb.GetReplicationActivityRequest{Id: id})
 	require.NoError(t, err)
 	require.Len(t, got.InFlight, 1)
 	require.Equal(t, "a", got.InFlight[0].Key)
+	require.EqualValues(t, 3, got.InFlight[0].BytesDone)
 	require.Len(t, got.Events, 2)
 	require.Equal(t, "done", got.Events[1].Type)
 

@@ -79,7 +79,7 @@ func activityToPb(snap store.ActivitySnapshot, now time.Time) *pb.GetReplication
 	for _, e := range snap.InFlight {
 		res.InFlight = append(res.InFlight, &pb.ReplicationInFlight{
 			Key: e.Key, VersionId: e.VersionID, Size: e.Size, StartedAt: timestamppb.New(time.UnixMilli(e.StartedAt)),
-			Flow: e.Flow, Attempt: int32(e.Attempt),
+			Flow: e.Flow, Attempt: int32(e.Attempt), BytesDone: e.BytesDone,
 		})
 	}
 	for _, e := range snap.Events {

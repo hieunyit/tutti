@@ -4871,6 +4871,11 @@
           "type": "integer",
           "format": "int32",
           "description": "Task attempt, starting at 1."
+        },
+        "bytesDone": {
+          "type": "string",
+          "format": "int64",
+          "description": "Bytes of this object transferred so far by the running attempt (initial replication only, 0 otherwise);\nnever more than size."
         }
       },
       "description": "An object copy that is running right now."
