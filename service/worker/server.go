@@ -80,6 +80,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 	// Detect the CPU/memory really available to this process (cgroup/Kubernetes limits aware); knobs without an
 	// explicit value are derived from it.
+	if addr, perr := startPprof(ctx, conf.Debug.PprofAddr, logger); perr != nil {
+		return fmt.Errorf("unable to start pprof server on %q: %w", conf.Debug.PprofAddr, perr)
+	} else if addr != "" {
+		logger.Info().Str("addr", addr).Msg("debug pprof endpoint listening")
+	}
 	hw := hostres.Detect()
 	systemsettings.SetHardware(hw)
 	if lim := hostres.ApplyMemoryLimit(hw); lim > 0 {

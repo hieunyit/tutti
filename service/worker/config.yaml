@@ -12,6 +12,12 @@ shutdownTimeout: 5s
 bulkConcurrencyPercent: 0 # 0 = auto (20..40 by CPU) or 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
 multipartThreads: 0 # 0 = auto (1), or 1..16; keep 1 unless measured: parallel parts were slower in local tests, gain unverified
 multipartPartSizeMiB: 0 # 0 = auto (16) or 5..512
+# Diagnostics, all off by default.
+debug:
+  # pprofAddr starts an UNAUTHENTICATED net/http/pprof server, e.g. "127.0.0.1:6060" (env CFG_DEBUG_PPROFADDR). Empty = off.
+  # Keep it on loopback and reach it with `docker compose exec worker ...` or `kubectl port-forward`; never publish the port.
+  # Example: go tool pprof 'http://127.0.0.1:6060/debug/pprof/profile?seconds=30'
+  pprofAddr: ""
 worker:
   queueUpdateInterval: 3s
   swiftRetryInterval: 1m # used for swift task retries caused by swift inconsistent state

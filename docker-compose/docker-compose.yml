@@ -68,6 +68,9 @@ services:
       - TUTTI_BOOTSTRAP_ADMIN_PASSWORD=${TUTTI_BOOTSTRAP_ADMIN_PASSWORD:-}
       # Same variables as the postgres service, so overriding POSTGRES_USER/PASSWORD/DB keeps the worker in sync
       # (CFG_ overrides worker-conf.yaml: controlPlane.postgres.dsn). URL-encode special characters in the password.
+      # Optional CPU/heap profiling, off by default. Uncomment, keep it on loopback and use `docker compose exec worker`
+      # to fetch profiles (docs/tutti/configuration.md, "Profiling the worker"). Do not add a ports: entry for it.
+      # - CFG_DEBUG_PPROFADDR=127.0.0.1:6060
       - CFG_CONTROLPLANE_POSTGRES_DSN=postgres://${POSTGRES_USER:-tutti}:${POSTGRES_PASSWORD:-tutti}@postgres:5432/${POSTGRES_DB:-tutti}?sslmode=disable
     volumes:
       - type: bind

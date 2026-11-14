@@ -351,6 +351,26 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 - `readHeaderTimeout` and `writerLease` need a restart (`pendingRestart`).
 
 
+## Profiling the worker
+
+The worker can serve Go pprof profiles (CPU, heap, goroutines, trace) to find out where CPU time and memory go during a real copy. It is **off by default**: nothing listens unless `debug.pprofAddr` (env `CFG_DEBUG_PPROFADDR`) is set. The endpoint is unauthenticated, so bind it to loopback and reach it from inside the container or pod:
+
+```yaml
+debug:
+  pprofAddr: "127.0.0.1:6060"
+```
+
+```bash
+# Docker Compose: set CFG_DEBUG_PPROFADDR=127.0.0.1:6060 in the worker environment, then a 30 s CPU profile
+docker compose exec worker sh -c 'wget -qO /tmp/cpu.pprof "http://127.0.0.1:6060/debug/pprof/profile?seconds=30"'
+docker compose cp worker:/tmp/cpu.pprof . && go tool pprof -top cpu.pprof
+# Kubernetes
+kubectl port-forward deploy/<release>-worker 6060:6060   # then: go tool pprof 'http://127.0.0.1:6060/debug/pprof/profile?seconds=30'
+# heap: /debug/pprof/heap, goroutines: /debug/pprof/goroutine?debug=1
+```
+
+Take the profile while copies are running. Do not publish the port (no `ports:` entry, no Service). Separately, when `metrics.enabled` is true, the metrics server (`metrics.port`) also exposes `/debug/pprof/`; keep that port internal as well.
+
 ## Replication throughput tuning
 
 ### Hardware-aware defaults

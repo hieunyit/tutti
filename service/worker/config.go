@@ -53,6 +53,9 @@ type Config struct {
 	// MultipartPartSizeMiB: multipart part size in MiB (min 5, default 16).
 	MultipartPartSizeMiB int `yaml:"multipartPartSizeMiB"`
 
+	// Debug: diagnostics, all OFF by default.
+	Debug DebugConfig `yaml:"debug"`
+
 	Api    *api.Config     `yaml:"api,omitempty"`
 	Lock   *Lock           `yaml:"lock,omitempty"`
 	Worker *handler.Config `yaml:"worker,omitempty"`
