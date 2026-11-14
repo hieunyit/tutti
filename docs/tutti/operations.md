@@ -190,7 +190,7 @@ kubectl exec deploy/<release>-worker -- /bin/chorus admin reset-password
 # another user: add --user <name> (created as admin when missing); --password-env <VAR> reads another variable
 ```
 
-The user must change the new password at first login. The command sets the password change time to now, so **all existing sessions of that user stop working** immediately. It needs `api.auth.enabled: true`.
+The user must change the new password at first login. The command sets the password change time to now, so **all existing sessions of that user stop working**; a running worker notices the change within 2 seconds (its console user cache). It needs `api.auth.enabled: true`.
 
 > **Warning:** the generated password is visible in the container's stderr. Do not forward it to a log aggregation system (Loki, ELK, ...) in clear text: filter the `INITIAL ADMIN PASSWORD` / `NEW ADMIN PASSWORD` banner lines, or set the password yourself, and change it at first login.
 
