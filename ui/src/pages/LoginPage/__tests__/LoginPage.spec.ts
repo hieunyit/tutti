@@ -74,4 +74,14 @@ describe('LoginPage', () => {
     await wrapper.find('[data-kit-state="error"] button').trigger('click');
     expect(AuthService.me).toHaveBeenCalledTimes(2);
   });
+
+  it('hints where to find the first-run admin password', () => {
+    const { wrapper } = mountPage();
+    const link = wrapper.find('[data-test="first-run-hint"]');
+
+    expect(link.exists()).toBe(true);
+    expect(link.attributes('href')).toBe(
+      'https://github.com/hieunyit/tutti/blob/main/docs/tutti/operations.md#first-login-and-password-recovery',
+    );
+  });
 });

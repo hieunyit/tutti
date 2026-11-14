@@ -57,6 +57,7 @@ export default <Record<string, Record<string, string>>>{
     signingIn: 'Signing in',
     loginHelp:
       'Forgot your password? Ask an administrator to reset it in the worker config.',
+    firstRunHint: 'First run? See how to get the admin password',
     usernamePlaceholder: 'Enter your username',
     passwordPlaceholder: 'Enter your password',
     username: 'Username',
@@ -132,6 +133,7 @@ export default <Record<string, Record<string, string>>>{
     signingIn: 'Anmeldung läuft',
     loginHelp:
       'Passwort vergessen? Bitten Sie einen Administrator, es in der Worker-Konfiguration zurückzusetzen.',
+    firstRunHint: 'Erster Start? So erhalten Sie das Admin-Passwort',
     usernamePlaceholder: 'Benutzernamen eingeben',
     passwordPlaceholder: 'Passwort eingeben',
     username: 'Benutzername',
@@ -200,6 +202,7 @@ export default <Record<string, Record<string, string>>>{
     signingIn: 'Đang đăng nhập',
     loginHelp:
       'Quên mật khẩu? Nhờ quản trị viên đặt lại trong cấu hình worker.',
+    firstRunHint: 'Chạy lần đầu? Xem cách lấy mật khẩu quản trị',
     usernamePlaceholder: 'Nhập tên đăng nhập',
     passwordPlaceholder: 'Nhập mật khẩu',
     username: 'Tên đăng nhập',

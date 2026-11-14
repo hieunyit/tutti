@@ -21,6 +21,10 @@
   import SessionEndedNotice from '@/components/auth/SessionEndedNotice.vue';
   import { useLoginFlow } from '@/utils/composables/useLoginFlow';
   import { APP_VERSION } from '@/utils/constants/env';
+  import { GITHUB_BLOB_URL } from '@/utils/helpers/DocsHelper';
+
+  // The in-app docs sit behind sign-in, so the hint points at the repository copy of the guide.
+  const firstRunDocsUrl = `${GITHUB_BLOB_URL}docs/tutti/operations.md#first-login-and-password-recovery`;
 
   const {
     t,
@@ -155,6 +159,16 @@
         </NButton>
 
         <p class="login-page__help">{{ t('loginHelp') }}</p>
+        <p class="login-page__help">
+          <a
+            class="login-page__link"
+            data-test="first-run-hint"
+            :href="firstRunDocsUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ t('firstRunHint') }}</a
+          >
+        </p>
       </form>
 
       <span class="login-page__version">v{{ APP_VERSION }}</span>
@@ -264,6 +278,11 @@
       font-size: var(--tt-text-xs);
       color: var(--tt-text-3);
       text-align: center;
+    }
+
+    &__link {
+      color: inherit;
+      text-decoration: underline;
     }
 
     &__version {
