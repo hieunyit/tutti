@@ -578,9 +578,25 @@ type Replication struct {
 	// Read-only, computed by the server.
 	WebhookUrl string `protobuf:"bytes,16,opt,name=webhook_url,json=webhookUrl,proto3" json:"webhook_url,omitempty"`
 	// Optional display name; empty when the replication is unnamed.
-	Name          string `protobuf:"bytes,17,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Name string `protobuf:"bytes,17,opt,name=name,proto3" json:"name,omitempty"`
+	// Initial replication progress by bytes (non-versioned objects only; all
+	// zero when not tracked, e.g. versioned buckets).
+	// Sum of sizes of objects enumerated so far by the initial listing. It is a
+	// lower bound until init_listing_complete is true.
+	InitBytesTotal int64 `protobuf:"varint,18,opt,name=init_bytes_total,json=initBytesTotal,proto3" json:"init_bytes_total,omitempty"`
+	// Sum of sizes of objects copied successfully during initial replication.
+	InitBytesDone int64 `protobuf:"varint,19,opt,name=init_bytes_done,json=initBytesDone,proto3" json:"init_bytes_done,omitempty"`
+	// Current copy throughput in bytes per second over a rolling 5 minute
+	// window, based on completed objects (lags for very large objects).
+	// 0 means idle or not yet known.
+	InitBytesPerSecond int64 `protobuf:"varint,20,opt,name=init_bytes_per_second,json=initBytesPerSecond,proto3" json:"init_bytes_per_second,omitempty"`
+	// Estimated seconds until initial replication completes. 0 means unknown
+	// (listing not complete or no throughput yet) or nothing left to copy.
+	InitEtaSeconds int64 `protobuf:"varint,21,opt,name=init_eta_seconds,json=initEtaSeconds,proto3" json:"init_eta_seconds,omitempty"`
+	// true when the source listing has finished, so init_bytes_total is final.
+	InitListingComplete bool `protobuf:"varint,22,opt,name=init_listing_complete,json=initListingComplete,proto3" json:"init_listing_complete,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Replication) Reset() {
@@ -730,6 +746,41 @@ func (x *Replication) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *Replication) GetInitBytesTotal() int64 {
+	if x != nil {
+		return x.InitBytesTotal
+	}
+	return 0
+}
+
+func (x *Replication) GetInitBytesDone() int64 {
+	if x != nil {
+		return x.InitBytesDone
+	}
+	return 0
+}
+
+func (x *Replication) GetInitBytesPerSecond() int64 {
+	if x != nil {
+		return x.InitBytesPerSecond
+	}
+	return 0
+}
+
+func (x *Replication) GetInitEtaSeconds() int64 {
+	if x != nil {
+		return x.InitEtaSeconds
+	}
+	return 0
+}
+
+func (x *Replication) GetInitListingComplete() bool {
+	if x != nil {
+		return x.InitListingComplete
+	}
+	return false
 }
 
 // Request list of bucket available for replication for given user and from/to
@@ -2238,7 +2289,7 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\r_event_sourceJ\x04\b\n" +
 	"\x10\v\"R\n" +
 	"\x18ListReplicationsResponse\x126\n" +
-	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xcf\x05\n" +
+	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xb2\a\n" +
 	"\vReplication\x12$\n" +
 	"\x02id\x18\x01 \x01(\v2\x14.tutti.ReplicationIDR\x02id\x12*\n" +
 	"\x04opts\x18\x02 \x01(\v2\x16.tutti.ReplicationOptsR\x04opts\x129\n" +
@@ -2265,7 +2316,12 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\fevent_source\x18\x0f \x01(\x0e2\x12.tutti.EventSourceR\veventSource\x12\x1f\n" +
 	"\vwebhook_url\x18\x10 \x01(\tR\n" +
 	"webhookUrl\x12\x12\n" +
-	"\x04name\x18\x11 \x01(\tR\x04nameB\x0e\n" +
+	"\x04name\x18\x11 \x01(\tR\x04name\x12(\n" +
+	"\x10init_bytes_total\x18\x12 \x01(\x03R\x0einitBytesTotal\x12&\n" +
+	"\x0finit_bytes_done\x18\x13 \x01(\x03R\rinitBytesDone\x121\n" +
+	"\x15init_bytes_per_second\x18\x14 \x01(\x03R\x12initBytesPerSecond\x12(\n" +
+	"\x10init_eta_seconds\x18\x15 \x01(\x03R\x0einitEtaSeconds\x122\n" +
+	"\x15init_listing_complete\x18\x16 \x01(\bR\x13initListingCompleteB\x0e\n" +
 	"\f_switch_info\"\x98\x01\n" +
 	"\x17AvailableBucketsRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12!\n" +

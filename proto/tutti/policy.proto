@@ -295,6 +295,23 @@ message Replication {
   string webhook_url = 16;
   // Optional display name; empty when the replication is unnamed.
   string name = 17;
+
+  // Initial replication progress by bytes (non-versioned objects only; all
+  // zero when not tracked, e.g. versioned buckets).
+  // Sum of sizes of objects enumerated so far by the initial listing. It is a
+  // lower bound until init_listing_complete is true.
+  int64 init_bytes_total = 18;
+  // Sum of sizes of objects copied successfully during initial replication.
+  int64 init_bytes_done = 19;
+  // Current copy throughput in bytes per second over a rolling 5 minute
+  // window, based on completed objects (lags for very large objects).
+  // 0 means idle or not yet known.
+  int64 init_bytes_per_second = 20;
+  // Estimated seconds until initial replication completes. 0 means unknown
+  // (listing not complete or no throughput yet) or nothing left to copy.
+  int64 init_eta_seconds = 21;
+  // true when the source listing has finished, so init_bytes_total is final.
+  bool init_listing_complete = 22;
 }
 
 // Request list of bucket available for replication for given user and from/to

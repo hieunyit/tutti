@@ -56,7 +56,24 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		EventSource:   eventSourceFromStatus(value.ReplicationStatus),
 		WebhookUrl:    webhookURLFromStatus(value.ReplicationStatus),
 		Name:          nameFromStatus(value.ReplicationStatus),
+
+		InitBytesTotal:      value.InitBytes.Total,
+		InitBytesDone:       value.InitBytes.Done,
+		InitBytesPerSecond:  value.InitBytes.BytesPerSecond,
+		InitEtaSeconds:      initETASeconds(value),
+		InitListingComplete: value.InitBytes.ListingComplete,
 	}
+}
+
+func initETASeconds(value entity.ReplicationStatusExtended) int64 {
+	if value.InitDone() {
+		return 0
+	}
+	eta, ok := value.InitBytes.ETA()
+	if !ok {
+		return 0
+	}
+	return int64(eta / time.Second)
 }
 
 func nameFromStatus(s *entity.ReplicationStatus) string {

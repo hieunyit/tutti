@@ -4660,6 +4660,30 @@
         "name": {
           "type": "string",
           "description": "Optional display name; empty when the replication is unnamed."
+        },
+        "initBytesTotal": {
+          "type": "string",
+          "format": "int64",
+          "description": "Initial replication progress by bytes (non-versioned objects only; all\nzero when not tracked, e.g. versioned buckets).\nSum of sizes of objects enumerated so far by the initial listing. It is a\nlower bound until init_listing_complete is true."
+        },
+        "initBytesDone": {
+          "type": "string",
+          "format": "int64",
+          "description": "Sum of sizes of objects copied successfully during initial replication."
+        },
+        "initBytesPerSecond": {
+          "type": "string",
+          "format": "int64",
+          "description": "Current copy throughput in bytes per second over a rolling 5 minute\nwindow, based on completed objects (lags for very large objects).\n0 means idle or not yet known."
+        },
+        "initEtaSeconds": {
+          "type": "string",
+          "format": "int64",
+          "description": "Estimated seconds until initial replication completes. 0 means unknown\n(listing not complete or no throughput yet) or nothing left to copy."
+        },
+        "initListingComplete": {
+          "type": "boolean",
+          "description": "true when the source listing has finished, so init_bytes_total is final."
         }
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
