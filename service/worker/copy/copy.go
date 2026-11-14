@@ -548,6 +548,10 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 		putObjectOpts.PartSize = partSize
 	}
 
+	if fn := progressFrom(ctx); fn != nil {
+		putObjectOpts.Progress = &progressReader{fn: fn, size: stat.Size}
+	}
+
 	// Buffer budget guardrail:
 	// Calculate actual buffer allocation needed by the SDK according to part layout (F2).
 	// Small files (<= 5 MiB) allocate file size; multipart files allocate buffers based on minio.OptimalPartInfo.

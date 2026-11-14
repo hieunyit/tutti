@@ -53,6 +53,8 @@ type ActivityInFlight struct {
 	StartedAt int64  `json:"startedAt"` // unix milliseconds
 	Flow      string `json:"flow"`
 	Attempt   int    `json:"attempt"`
+	// BytesDone is filled at read time from the initial replication progress (never more than Size).
+	BytesDone int64 `json:"-"`
 }
 
 // ActivityEvent is one entry of the replication activity log.
@@ -194,6 +196,8 @@ func (s *ActivityStore) Get(ctx context.Context, replID string, generation int64
 	h, _, st := activityKeys(replID, generation)
 	pipe := s.client.Pipeline()
 	flyCmd := pipe.HGetAll(ctx, h)
+	_, _, progKey := initBytesKeys(replID, generation)
+	progCmd := pipe.HGetAll(ctx, progKey)
 	var evCmd *redis.XMessageSliceCmd
 	if after == "" {
 		evCmd = pipe.XRevRangeN(ctx, st, "+", "-", int64(limit))
@@ -205,10 +209,17 @@ func (s *ActivityStore) Get(ctx context.Context, replID string, generation int64
 	}
 	res := ActivitySnapshot{NextCursor: after}
 	stale := now.Add(-ActivityInFlightMaxAge).UnixMilli()
-	for _, raw := range flyCmd.Val() {
+	progress := progCmd.Val()
+	for field, raw := range flyCmd.Val() {
 		var e ActivityInFlight
 		if json.Unmarshal([]byte(raw), &e) != nil || e.StartedAt < stale {
 			continue
+		}
+		if v, ok := progress[field]; ok {
+			e.BytesDone, _ = strconv.ParseInt(v, 10, 64)
+			if e.BytesDone < 0 || (e.Size > 0 && e.BytesDone > e.Size) {
+				e.BytesDone = max(0, min(e.BytesDone, e.Size))
+			}
 		}
 		res.InFlight = append(res.InFlight, e)
 	}

@@ -41,7 +41,7 @@ func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) error {
 	if err == nil && t.Type() == tasks.TypeMigrateObjCopy {
 		var p tasks.MigrateObjCopyPayload
 		if json.Unmarshal(t.Payload(), &p) == nil {
-			s.addInitDoneBytes(ctx, p.ID, p.Generation, p.Obj.Size)
+			s.addInitDoneBytes(ctx, p.ID, p.Generation, p.Obj.Name, p.Obj.VersionID, p.Obj.Size)
 		}
 	}
 	return err
@@ -71,6 +71,18 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	if act != nil {
 		ctx = copy.WithOutcome(ctx, &outcome)
 		defer func() { act.finish(ctx, err, &outcome) }()
+	}
+
+	if t.Type() == tasks.TypeMigrateObjCopy {
+		// bytes of the running copy feed the initial replication progress; HandleMigrationObjCopy settles them
+		var prog *initProgress
+		ctx, prog = s.startInitProgress(ctx, p.ID, p.Generation, p.Obj.Name, p.Obj.VersionID, p.Obj.Size)
+		defer func() {
+			prog.stop()
+			if err != nil {
+				prog.clear(ctx)
+			}
+		}()
 	}
 
 	domObj := dom.Object{
