@@ -13,6 +13,7 @@ permissions and * limitations under the License. */
   import { useI18n } from 'vue-i18n';
   import i18nMonitoring from './i18nMonitoring';
   import { useNumberFormat } from './useNumberFormat';
+  import ReplicationInitProgress from '@/components/tutti/replications/ReplicationInitProgress/ReplicationInitProgress.vue';
   import Callout from '@/components/ui/Callout.vue';
   import SectionCard from '@/components/ui/SectionCard.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
@@ -47,17 +48,6 @@ permissions and * limitations under the License. */
     const { user, fromStorage, toStorage, fromBucket } = replication.id;
 
     return `${user}: ${fromStorage} → ${toStorage}${fromBucket ? ` (${fromBucket})` : ''}`;
-  }
-
-  function initText(r: TuttiReplication): string {
-    if (r.isInitDone) return t('initDone');
-
-    const listed = num(r.initObjListed);
-    const done = num(r.initObjDone);
-
-    return `${fmt(done)} / ${fmt(listed)}${
-      listed > 0 ? ` (${Math.round((done / listed) * 100)} %)` : ''
-    }`;
   }
 </script>
 
@@ -177,7 +167,13 @@ permissions and * limitations under the License. */
                 :label="fmt(num(r.eventLag))"
               />
             </td>
-            <td>{{ initText(r) }}</td>
+            <td>
+              <template v-if="r.isInitDone">{{ t('initDone') }}</template>
+              <ReplicationInitProgress
+                v-else
+                :replication="r"
+              />
+            </td>
             <td>
               <StatusTag
                 :variant="r.isPaused ? 'warning' : 'info'"

@@ -169,6 +169,14 @@ export interface TuttiReplication {
   isInitDone: boolean;
   initObjListed: string;
   initObjDone: string;
+  /** initial replication bytes (int64 as strings); absent/0 when not tracked */
+  initBytesTotal?: string;
+  initBytesDone?: string;
+  initBytesPerSecond?: string;
+  /** seconds, 0 = unknown */
+  initEtaSeconds?: string;
+  /** false: initBytesTotal is only what was listed so far */
+  initListingComplete?: boolean;
   events: string;
   eventsDone: string;
   eventLag: string;

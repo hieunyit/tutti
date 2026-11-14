@@ -18,6 +18,7 @@
   import { useI18n } from 'vue-i18n';
   import { computed } from 'vue';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
+  import ReplicationInitProgress from '@/components/tutti/replications/ReplicationInitProgress/ReplicationInitProgress.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
   import type { StatusVariant } from '@/components/ui/status';
   import type { TuttiReplication } from '@/utils/types/tuttiCore';
@@ -51,11 +52,9 @@
   });
 
   const initialText = computed<string>(() => {
-    const { isInitDone, initObjDone, initObjListed } = props.replication;
-
-    return isInitDone
+    return props.replication.isInitDone
       ? `${t('initialReplication')}: ${t('statusDone')}`
-      : `${t('initialReplication')}: ${initObjDone} / ${initObjListed} ${t('labelObjects').toLowerCase()}`;
+      : t('initialReplication');
   });
 
   const liveText = computed<string | null>(() => {
@@ -80,6 +79,10 @@
       :label="primary.label"
     />
     <span class="replication-status-cell__secondary">{{ initialText }}</span>
+    <ReplicationInitProgress
+      v-if="!replication.isInitDone"
+      :replication="replication"
+    />
     <span
       v-if="liveText"
       class="replication-status-cell__secondary"
