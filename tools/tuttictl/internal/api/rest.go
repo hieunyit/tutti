@@ -65,6 +65,7 @@ var restRoutes = map[string]route{
 	pb.Policy_AvailableBuckets_FullMethodName:       {http.MethodPost, "/replication/list-buckets"},
 	pb.Policy_AddReplication_FullMethodName:         {http.MethodPost, "/replication/add"},
 	pb.Policy_GetReplication_FullMethodName:         {http.MethodPost, "/replication/get"},
+	pb.Policy_GetReplicationActivity_FullMethodName: {http.MethodPost, "/replication/activity"},
 	pb.Policy_ListReplications_FullMethodName:       {http.MethodPost, "/replication"},
 	pb.Policy_PauseReplication_FullMethodName:       {http.MethodPut, "/replication/pause"},
 	pb.Policy_ResumeReplication_FullMethodName:      {http.MethodPut, "/replication/resume"},
