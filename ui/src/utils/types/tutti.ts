@@ -362,3 +362,45 @@ export interface TuttiUpdateSystemSettingsRequest {
   webhook?: TuttiSystemWebhookSettings;
 }
 
+
+export interface TuttiWorkerStat {
+  workerId: string;
+  startedAt?: string;
+  updatedAt?: string;
+  concurrency?: number;
+  bulkConcurrency?: number;
+  liveConcurrency?: number;
+  inFlight?: number;
+  copiedObjectsTotal?: TuttiInt64;
+  copiedBytesTotal?: TuttiInt64;
+  failedTotal?: TuttiInt64;
+  objectsPerSec1m?: number;
+  bytesPerSec1m?: number;
+  objectsPerSec5m?: number;
+  bytesPerSec5m?: number;
+  avgCopySeconds1m?: number;
+  bufferTotalBytes?: TuttiInt64;
+  bufferUsedBytes?: TuttiInt64;
+  bufferWaiters?: number;
+  bufferWaitSecondsTotal?: number;
+}
+
+export interface TuttiWorkerStatsTotals {
+  inFlight?: number;
+  concurrency?: number;
+  objectsPerSec1m?: number;
+  bytesPerSec1m?: number;
+  objectsPerSec5m?: number;
+  bytesPerSec5m?: number;
+  bufferTotalBytes?: TuttiInt64;
+  bufferUsedBytes?: TuttiInt64;
+  bufferWaiters?: number;
+  copiedObjectsTotal?: TuttiInt64;
+  copiedBytesTotal?: TuttiInt64;
+  failedTotal?: TuttiInt64;
+}
+
+export interface TuttiWorkerStatsResponse {
+  workers?: TuttiWorkerStat[];
+  totals?: TuttiWorkerStatsTotals;
+}

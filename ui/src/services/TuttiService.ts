@@ -35,6 +35,7 @@ import type {
   TuttiStatsRange,
   TuttiSystemSettings,
   TuttiUpdateSystemSettingsRequest,
+  TuttiWorkerStatsResponse,
 } from '@/utils/types/tutti';
 import type {
   ConsoleUserCreateRequest,
@@ -422,5 +423,16 @@ export abstract class TuttiService {
     } finally {
       invalidate(DedupeKey.PROXIES);
     }
+  }
+
+  static async getWorkerStats(
+    signal?: AbortSignal,
+  ): Promise<TuttiWorkerStatsResponse> {
+    const { data } = await apiClient.get<TuttiWorkerStatsResponse>(
+      ApiHelper.getChorusAPIUrl('/tutti/worker-stats'),
+      { signal },
+    );
+
+    return data;
   }
 }
