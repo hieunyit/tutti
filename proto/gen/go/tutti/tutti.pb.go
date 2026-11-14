@@ -6158,24 +6158,26 @@ func (x *SystemFeaturesSettings) GetVersioning() bool {
 }
 
 type SystemWorkerSettings struct {
-	state                    protoimpl.MessageState `protogen:"open.v1"`
-	Concurrency              *int32                 `protobuf:"varint,1,opt,name=concurrency,proto3,oneof" json:"concurrency,omitempty"`
-	ShutdownTimeout          *durationpb.Duration   `protobuf:"bytes,2,opt,name=shutdown_timeout,json=shutdownTimeout,proto3" json:"shutdown_timeout,omitempty"`
-	QueueUpdateInterval      *durationpb.Duration   `protobuf:"bytes,3,opt,name=queue_update_interval,json=queueUpdateInterval,proto3" json:"queue_update_interval,omitempty"`
-	TaskCheckInterval        *durationpb.Duration   `protobuf:"bytes,4,opt,name=task_check_interval,json=taskCheckInterval,proto3" json:"task_check_interval,omitempty"`
-	DelayedTaskCheckInterval *durationpb.Duration   `protobuf:"bytes,5,opt,name=delayed_task_check_interval,json=delayedTaskCheckInterval,proto3" json:"delayed_task_check_interval,omitempty"`
-	SwiftRetryInterval       *durationpb.Duration   `protobuf:"bytes,6,opt,name=swift_retry_interval,json=swiftRetryInterval,proto3" json:"swift_retry_interval,omitempty"`
-	PauseRetryInterval       *durationpb.Duration   `protobuf:"bytes,7,opt,name=pause_retry_interval,json=pauseRetryInterval,proto3" json:"pause_retry_interval,omitempty"`
-	SwitchRetryInterval      *durationpb.Duration   `protobuf:"bytes,8,opt,name=switch_retry_interval,json=switchRetryInterval,proto3" json:"switch_retry_interval,omitempty"`
-	BacklogHighWatermark     *int32                 `protobuf:"varint,9,opt,name=backlog_high_watermark,json=backlogHighWatermark,proto3,oneof" json:"backlog_high_watermark,omitempty"`
-	BacklogLowWatermark      *int32                 `protobuf:"varint,10,opt,name=backlog_low_watermark,json=backlogLowWatermark,proto3,oneof" json:"backlog_low_watermark,omitempty"`
-	BandwidthLimitBytes      *int64                 `protobuf:"varint,11,opt,name=bandwidth_limit_bytes,json=bandwidthLimitBytes,proto3,oneof" json:"bandwidth_limit_bytes,omitempty"`
-	BufferBudgetBytes        *int64                 `protobuf:"varint,12,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3,oneof" json:"buffer_budget_bytes,omitempty"`
-	// Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 0 = auto (derived from detected hardware).
+	Concurrency              *int32               `protobuf:"varint,1,opt,name=concurrency,proto3,oneof" json:"concurrency,omitempty"`
+	ShutdownTimeout          *durationpb.Duration `protobuf:"bytes,2,opt,name=shutdown_timeout,json=shutdownTimeout,proto3" json:"shutdown_timeout,omitempty"`
+	QueueUpdateInterval      *durationpb.Duration `protobuf:"bytes,3,opt,name=queue_update_interval,json=queueUpdateInterval,proto3" json:"queue_update_interval,omitempty"`
+	TaskCheckInterval        *durationpb.Duration `protobuf:"bytes,4,opt,name=task_check_interval,json=taskCheckInterval,proto3" json:"task_check_interval,omitempty"`
+	DelayedTaskCheckInterval *durationpb.Duration `protobuf:"bytes,5,opt,name=delayed_task_check_interval,json=delayedTaskCheckInterval,proto3" json:"delayed_task_check_interval,omitempty"`
+	SwiftRetryInterval       *durationpb.Duration `protobuf:"bytes,6,opt,name=swift_retry_interval,json=swiftRetryInterval,proto3" json:"swift_retry_interval,omitempty"`
+	PauseRetryInterval       *durationpb.Duration `protobuf:"bytes,7,opt,name=pause_retry_interval,json=pauseRetryInterval,proto3" json:"pause_retry_interval,omitempty"`
+	SwitchRetryInterval      *durationpb.Duration `protobuf:"bytes,8,opt,name=switch_retry_interval,json=switchRetryInterval,proto3" json:"switch_retry_interval,omitempty"`
+	BacklogHighWatermark     *int32               `protobuf:"varint,9,opt,name=backlog_high_watermark,json=backlogHighWatermark,proto3,oneof" json:"backlog_high_watermark,omitempty"`
+	BacklogLowWatermark      *int32               `protobuf:"varint,10,opt,name=backlog_low_watermark,json=backlogLowWatermark,proto3,oneof" json:"backlog_low_watermark,omitempty"`
+	BandwidthLimitBytes      *int64               `protobuf:"varint,11,opt,name=bandwidth_limit_bytes,json=bandwidthLimitBytes,proto3,oneof" json:"bandwidth_limit_bytes,omitempty"`
+	// 0 = auto (derived from detected hardware), otherwise at least 16 MiB. Never unlimited.
+	BufferBudgetBytes *int64 `protobuf:"varint,12,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3,oneof" json:"buffer_budget_bytes,omitempty"`
+	// Share of concurrency given to bulk migration: 0 = auto (20..40 by CPU) or 5..95. Read at worker start only.
 	BulkConcurrencyPercent *int32 `protobuf:"varint,13,opt,name=bulk_concurrency_percent,json=bulkConcurrencyPercent,proto3,oneof" json:"bulk_concurrency_percent,omitempty"`
-	// Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
+	// Parallel parts per multipart upload: 0 = auto (1) or 1..16. Applied live to the next copy.
 	MultipartThreads *int32 `protobuf:"varint,14,opt,name=multipart_threads,json=multipartThreads,proto3,oneof" json:"multipart_threads,omitempty"`
-	// Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
+	// Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy.
 	MultipartPartSizeMib *int32 `protobuf:"varint,15,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3,oneof" json:"multipart_part_size_mib,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -6413,13 +6415,21 @@ func (x *SystemWebhookSettings) GetBaseUrl() string {
 }
 
 type SystemSettings struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Version       int64                   `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp  `protobuf:"bytes,2,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Features      *SystemFeaturesSettings `protobuf:"bytes,3,opt,name=features,proto3" json:"features,omitempty"`
-	Worker        *SystemWorkerSettings   `protobuf:"bytes,4,opt,name=worker,proto3" json:"worker,omitempty"`
-	Lock          *SystemLockSettings     `protobuf:"bytes,5,opt,name=lock,proto3" json:"lock,omitempty"`
-	Webhook       *SystemWebhookSettings  `protobuf:"bytes,6,opt,name=webhook,proto3" json:"webhook,omitempty"`
+	state     protoimpl.MessageState  `protogen:"open.v1"`
+	Version   int64                   `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	UpdatedAt *timestamppb.Timestamp  `protobuf:"bytes,2,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Features  *SystemFeaturesSettings `protobuf:"bytes,3,opt,name=features,proto3" json:"features,omitempty"`
+	Worker    *SystemWorkerSettings   `protobuf:"bytes,4,opt,name=worker,proto3" json:"worker,omitempty"`
+	Lock      *SystemLockSettings     `protobuf:"bytes,5,opt,name=lock,proto3" json:"lock,omitempty"`
+	Webhook   *SystemWebhookSettings  `protobuf:"bytes,6,opt,name=webhook,proto3" json:"webhook,omitempty"`
+	// Read-only, filled by the server. Hardware available to the worker process (cgroup/Kubernetes limits aware).
+	Hardware *HardwareInfo `protobuf:"bytes,7,opt,name=hardware,proto3" json:"hardware,omitempty"`
+	// Read-only. Settings derived from the detected hardware (concurrency, bulk percent, buffer budget, multipart).
+	Recommended *SystemWorkerSettings `protobuf:"bytes,8,opt,name=recommended,proto3" json:"recommended,omitempty"`
+	// Read-only. The values in effect now: the explicit setting, or the recommended one when unset.
+	Effective *SystemWorkerSettings `protobuf:"bytes,9,opt,name=effective,proto3" json:"effective,omitempty"`
+	// Read-only. Whether each effective value is auto (derived from hardware) or explicit.
+	TuningSources *WorkerTuningSources `protobuf:"bytes,10,opt,name=tuning_sources,json=tuningSources,proto3" json:"tuning_sources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6496,6 +6506,191 @@ func (x *SystemSettings) GetWebhook() *SystemWebhookSettings {
 	return nil
 }
 
+func (x *SystemSettings) GetHardware() *HardwareInfo {
+	if x != nil {
+		return x.Hardware
+	}
+	return nil
+}
+
+func (x *SystemSettings) GetRecommended() *SystemWorkerSettings {
+	if x != nil {
+		return x.Recommended
+	}
+	return nil
+}
+
+func (x *SystemSettings) GetEffective() *SystemWorkerSettings {
+	if x != nil {
+		return x.Effective
+	}
+	return nil
+}
+
+func (x *SystemSettings) GetTuningSources() *WorkerTuningSources {
+	if x != nil {
+		return x.TuningSources
+	}
+	return nil
+}
+
+type HardwareInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Effective CPU count (fractional quota rounded up, min 1) and the unrounded value.
+	Cpu           int32   `protobuf:"varint,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	CpuFractional float64 `protobuf:"fixed64,2,opt,name=cpu_fractional,json=cpuFractional,proto3" json:"cpu_fractional,omitempty"`
+	// Effective memory: min(host RAM, cgroup limit).
+	MemoryBytes int64 `protobuf:"varint,3,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
+	// host | cgroup-v1 | cgroup-v2: where the binding limit came from.
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	// True when a cgroup memory limit below host RAM applies.
+	MemoryLimited bool `protobuf:"varint,5,opt,name=memory_limited,json=memoryLimited,proto3" json:"memory_limited,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HardwareInfo) Reset() {
+	*x = HardwareInfo{}
+	mi := &file_tutti_tutti_proto_msgTypes[89]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardwareInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardwareInfo) ProtoMessage() {}
+
+func (x *HardwareInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_tutti_proto_msgTypes[89]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HardwareInfo.ProtoReflect.Descriptor instead.
+func (*HardwareInfo) Descriptor() ([]byte, []int) {
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *HardwareInfo) GetCpu() int32 {
+	if x != nil {
+		return x.Cpu
+	}
+	return 0
+}
+
+func (x *HardwareInfo) GetCpuFractional() float64 {
+	if x != nil {
+		return x.CpuFractional
+	}
+	return 0
+}
+
+func (x *HardwareInfo) GetMemoryBytes() int64 {
+	if x != nil {
+		return x.MemoryBytes
+	}
+	return 0
+}
+
+func (x *HardwareInfo) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *HardwareInfo) GetMemoryLimited() bool {
+	if x != nil {
+		return x.MemoryLimited
+	}
+	return false
+}
+
+// Each field is "auto" or "explicit".
+type WorkerTuningSources struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	Concurrency            string                 `protobuf:"bytes,1,opt,name=concurrency,proto3" json:"concurrency,omitempty"`
+	BulkConcurrencyPercent string                 `protobuf:"bytes,2,opt,name=bulk_concurrency_percent,json=bulkConcurrencyPercent,proto3" json:"bulk_concurrency_percent,omitempty"`
+	BufferBudgetBytes      string                 `protobuf:"bytes,3,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3" json:"buffer_budget_bytes,omitempty"`
+	MultipartThreads       string                 `protobuf:"bytes,4,opt,name=multipart_threads,json=multipartThreads,proto3" json:"multipart_threads,omitempty"`
+	MultipartPartSizeMib   string                 `protobuf:"bytes,5,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3" json:"multipart_part_size_mib,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *WorkerTuningSources) Reset() {
+	*x = WorkerTuningSources{}
+	mi := &file_tutti_tutti_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkerTuningSources) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerTuningSources) ProtoMessage() {}
+
+func (x *WorkerTuningSources) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_tutti_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerTuningSources.ProtoReflect.Descriptor instead.
+func (*WorkerTuningSources) Descriptor() ([]byte, []int) {
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *WorkerTuningSources) GetConcurrency() string {
+	if x != nil {
+		return x.Concurrency
+	}
+	return ""
+}
+
+func (x *WorkerTuningSources) GetBulkConcurrencyPercent() string {
+	if x != nil {
+		return x.BulkConcurrencyPercent
+	}
+	return ""
+}
+
+func (x *WorkerTuningSources) GetBufferBudgetBytes() string {
+	if x != nil {
+		return x.BufferBudgetBytes
+	}
+	return ""
+}
+
+func (x *WorkerTuningSources) GetMultipartThreads() string {
+	if x != nil {
+		return x.MultipartThreads
+	}
+	return ""
+}
+
+func (x *WorkerTuningSources) GetMultipartPartSizeMib() string {
+	if x != nil {
+		return x.MultipartPartSizeMib
+	}
+	return ""
+}
+
 type UpdateSystemSettingsRequest struct {
 	state           protoimpl.MessageState  `protogen:"open.v1"`
 	ExpectedVersion *int64                  `protobuf:"varint,1,opt,name=expected_version,json=expectedVersion,proto3,oneof" json:"expected_version,omitempty"`
@@ -6509,7 +6704,7 @@ type UpdateSystemSettingsRequest struct {
 
 func (x *UpdateSystemSettingsRequest) Reset() {
 	*x = UpdateSystemSettingsRequest{}
-	mi := &file_tutti_tutti_proto_msgTypes[89]
+	mi := &file_tutti_tutti_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6521,7 +6716,7 @@ func (x *UpdateSystemSettingsRequest) String() string {
 func (*UpdateSystemSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateSystemSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_tutti_proto_msgTypes[89]
+	mi := &file_tutti_tutti_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6534,7 +6729,7 @@ func (x *UpdateSystemSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSystemSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSystemSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_tutti_tutti_proto_rawDescGZIP(), []int{89}
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *UpdateSystemSettingsRequest) GetExpectedVersion() int64 {
@@ -6599,7 +6794,7 @@ type WorkerStatsSnapshot struct {
 
 func (x *WorkerStatsSnapshot) Reset() {
 	*x = WorkerStatsSnapshot{}
-	mi := &file_tutti_tutti_proto_msgTypes[90]
+	mi := &file_tutti_tutti_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6611,7 +6806,7 @@ func (x *WorkerStatsSnapshot) String() string {
 func (*WorkerStatsSnapshot) ProtoMessage() {}
 
 func (x *WorkerStatsSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_tutti_proto_msgTypes[90]
+	mi := &file_tutti_tutti_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6624,7 +6819,7 @@ func (x *WorkerStatsSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkerStatsSnapshot.ProtoReflect.Descriptor instead.
 func (*WorkerStatsSnapshot) Descriptor() ([]byte, []int) {
-	return file_tutti_tutti_proto_rawDescGZIP(), []int{90}
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *WorkerStatsSnapshot) GetWorkerId() string {
@@ -6780,7 +6975,7 @@ type WorkerStatsTotals struct {
 
 func (x *WorkerStatsTotals) Reset() {
 	*x = WorkerStatsTotals{}
-	mi := &file_tutti_tutti_proto_msgTypes[91]
+	mi := &file_tutti_tutti_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6792,7 +6987,7 @@ func (x *WorkerStatsTotals) String() string {
 func (*WorkerStatsTotals) ProtoMessage() {}
 
 func (x *WorkerStatsTotals) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_tutti_proto_msgTypes[91]
+	mi := &file_tutti_tutti_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6805,7 +7000,7 @@ func (x *WorkerStatsTotals) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkerStatsTotals.ProtoReflect.Descriptor instead.
 func (*WorkerStatsTotals) Descriptor() ([]byte, []int) {
-	return file_tutti_tutti_proto_rawDescGZIP(), []int{91}
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *WorkerStatsTotals) GetInFlight() int64 {
@@ -6902,7 +7097,7 @@ type WorkerStatsResponse struct {
 
 func (x *WorkerStatsResponse) Reset() {
 	*x = WorkerStatsResponse{}
-	mi := &file_tutti_tutti_proto_msgTypes[92]
+	mi := &file_tutti_tutti_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6914,7 +7109,7 @@ func (x *WorkerStatsResponse) String() string {
 func (*WorkerStatsResponse) ProtoMessage() {}
 
 func (x *WorkerStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_tutti_proto_msgTypes[92]
+	mi := &file_tutti_tutti_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6927,7 +7122,7 @@ func (x *WorkerStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkerStatsResponse.ProtoReflect.Descriptor instead.
 func (*WorkerStatsResponse) Descriptor() ([]byte, []int) {
-	return file_tutti_tutti_proto_rawDescGZIP(), []int{92}
+	return file_tutti_tutti_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *WorkerStatsResponse) GetWorkers() []*WorkerStatsSnapshot {
@@ -7517,7 +7712,7 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\aoverlap\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\aoverlap\"L\n" +
 	"\x15SystemWebhookSettings\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
-	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\"\xbc\x02\n" +
+	"\bbase_url\x18\x02 \x01(\tR\abaseUrl\"\xaa\x04\n" +
 	"\x0eSystemSettings\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x03R\aversion\x129\n" +
 	"\n" +
@@ -7525,7 +7720,24 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\bfeatures\x18\x03 \x01(\v2\x1d.tutti.SystemFeaturesSettingsR\bfeatures\x123\n" +
 	"\x06worker\x18\x04 \x01(\v2\x1b.tutti.SystemWorkerSettingsR\x06worker\x12-\n" +
 	"\x04lock\x18\x05 \x01(\v2\x19.tutti.SystemLockSettingsR\x04lock\x126\n" +
-	"\awebhook\x18\x06 \x01(\v2\x1c.tutti.SystemWebhookSettingsR\awebhook\"\xb9\x02\n" +
+	"\awebhook\x18\x06 \x01(\v2\x1c.tutti.SystemWebhookSettingsR\awebhook\x12/\n" +
+	"\bhardware\x18\a \x01(\v2\x13.tutti.HardwareInfoR\bhardware\x12=\n" +
+	"\vrecommended\x18\b \x01(\v2\x1b.tutti.SystemWorkerSettingsR\vrecommended\x129\n" +
+	"\teffective\x18\t \x01(\v2\x1b.tutti.SystemWorkerSettingsR\teffective\x12A\n" +
+	"\x0etuning_sources\x18\n" +
+	" \x01(\v2\x1a.tutti.WorkerTuningSourcesR\rtuningSources\"\xa9\x01\n" +
+	"\fHardwareInfo\x12\x10\n" +
+	"\x03cpu\x18\x01 \x01(\x05R\x03cpu\x12%\n" +
+	"\x0ecpu_fractional\x18\x02 \x01(\x01R\rcpuFractional\x12!\n" +
+	"\fmemory_bytes\x18\x03 \x01(\x03R\vmemoryBytes\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\x12%\n" +
+	"\x0ememory_limited\x18\x05 \x01(\bR\rmemoryLimited\"\x85\x02\n" +
+	"\x13WorkerTuningSources\x12 \n" +
+	"\vconcurrency\x18\x01 \x01(\tR\vconcurrency\x128\n" +
+	"\x18bulk_concurrency_percent\x18\x02 \x01(\tR\x16bulkConcurrencyPercent\x12.\n" +
+	"\x13buffer_budget_bytes\x18\x03 \x01(\tR\x11bufferBudgetBytes\x12+\n" +
+	"\x11multipart_threads\x18\x04 \x01(\tR\x10multipartThreads\x125\n" +
+	"\x17multipart_part_size_mib\x18\x05 \x01(\tR\x14multipartPartSizeMib\"\xb9\x02\n" +
 	"\x1bUpdateSystemSettingsRequest\x12.\n" +
 	"\x10expected_version\x18\x01 \x01(\x03H\x00R\x0fexpectedVersion\x88\x01\x01\x129\n" +
 	"\bfeatures\x18\x02 \x01(\v2\x1d.tutti.SystemFeaturesSettingsR\bfeatures\x123\n" +
@@ -7628,7 +7840,7 @@ func file_tutti_tutti_proto_rawDescGZIP() []byte {
 	return file_tutti_tutti_proto_rawDescData
 }
 
-var file_tutti_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 99)
+var file_tutti_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 101)
 var file_tutti_tutti_proto_goTypes = []any{
 	(*CreateProxyAccountRequest)(nil),             // 0: tutti.CreateProxyAccountRequest
 	(*ProxyAccountSecret)(nil),                    // 1: tutti.ProxyAccountSecret
@@ -7719,70 +7931,72 @@ var file_tutti_tutti_proto_goTypes = []any{
 	(*SystemLockSettings)(nil),                    // 86: tutti.SystemLockSettings
 	(*SystemWebhookSettings)(nil),                 // 87: tutti.SystemWebhookSettings
 	(*SystemSettings)(nil),                        // 88: tutti.SystemSettings
-	(*UpdateSystemSettingsRequest)(nil),           // 89: tutti.UpdateSystemSettingsRequest
-	(*WorkerStatsSnapshot)(nil),                   // 90: tutti.WorkerStatsSnapshot
-	(*WorkerStatsTotals)(nil),                     // 91: tutti.WorkerStatsTotals
-	(*WorkerStatsResponse)(nil),                   // 92: tutti.WorkerStatsResponse
-	nil,                                           // 93: tutti.TrafficRates.RequestsByClassEntry
-	nil,                                           // 94: tutti.TrafficRates.RequestsByStorageEntry
-	nil,                                           // 95: tutti.TrafficStats.RequestsByClassEntry
-	nil,                                           // 96: tutti.TrafficStats.RequestsByStorageEntry
-	nil,                                           // 97: tutti.ProxyFleetConfig.GroupsEntry
-	nil,                                           // 98: tutti.SetProxyFleetConfigRequest.GroupsEntry
-	(*timestamppb.Timestamp)(nil),                 // 99: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),                   // 100: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                         // 101: google.protobuf.Empty
+	(*HardwareInfo)(nil),                          // 89: tutti.HardwareInfo
+	(*WorkerTuningSources)(nil),                   // 90: tutti.WorkerTuningSources
+	(*UpdateSystemSettingsRequest)(nil),           // 91: tutti.UpdateSystemSettingsRequest
+	(*WorkerStatsSnapshot)(nil),                   // 92: tutti.WorkerStatsSnapshot
+	(*WorkerStatsTotals)(nil),                     // 93: tutti.WorkerStatsTotals
+	(*WorkerStatsResponse)(nil),                   // 94: tutti.WorkerStatsResponse
+	nil,                                           // 95: tutti.TrafficRates.RequestsByClassEntry
+	nil,                                           // 96: tutti.TrafficRates.RequestsByStorageEntry
+	nil,                                           // 97: tutti.TrafficStats.RequestsByClassEntry
+	nil,                                           // 98: tutti.TrafficStats.RequestsByStorageEntry
+	nil,                                           // 99: tutti.ProxyFleetConfig.GroupsEntry
+	nil,                                           // 100: tutti.SetProxyFleetConfigRequest.GroupsEntry
+	(*timestamppb.Timestamp)(nil),                 // 101: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),                   // 102: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                         // 103: google.protobuf.Empty
 }
 var file_tutti_tutti_proto_depIdxs = []int32{
-	99,  // 0: tutti.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	100, // 1: tutti.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	99,  // 2: tutti.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	99,  // 3: tutti.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	99,  // 4: tutti.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	101, // 0: tutti.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	102, // 1: tutti.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	101, // 2: tutti.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	101, // 3: tutti.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	101, // 4: tutti.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
 	6,   // 5: tutti.AccessPolicyList.policies:type_name -> tutti.AccessPolicy
 	6,   // 6: tutti.ProxyAccount.policy:type_name -> tutti.AccessPolicy
 	5,   // 7: tutti.ProxyAccount.dynamic_keys:type_name -> tutti.ProxyAccessKey
 	9,   // 8: tutti.ProxyAccountList.accounts:type_name -> tutti.ProxyAccount
 	11,  // 9: tutti.ProxyAccountList.dynamic_accounts:type_name -> tutti.DynamicAccountsStatus
-	99,  // 10: tutti.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	100, // 11: tutti.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	100, // 12: tutti.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	101, // 10: tutti.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	102, // 11: tutti.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	102, // 12: tutti.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
 	13,  // 13: tutti.ReplicationSettings.sync:type_name -> tutti.SyncSettings
-	100, // 14: tutti.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	100, // 15: tutti.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	100, // 16: tutti.FailoverSettings.after:type_name -> google.protobuf.Duration
+	102, // 14: tutti.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	102, // 15: tutti.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	102, // 16: tutti.FailoverSettings.after:type_name -> google.protobuf.Duration
 	14,  // 17: tutti.ProxySettings.replication:type_name -> tutti.ReplicationSettings
 	15,  // 18: tutti.ProxySettings.health:type_name -> tutti.HealthSettings
 	16,  // 19: tutti.ProxySettings.failover:type_name -> tutti.FailoverSettings
-	100, // 20: tutti.ProxySettings.read_header_timeout:type_name -> google.protobuf.Duration
-	100, // 21: tutti.ProxySettings.writer_lease:type_name -> google.protobuf.Duration
-	100, // 22: tutti.ProxySettings.drain_delay:type_name -> google.protobuf.Duration
-	100, // 23: tutti.ProxySettings.ready_max_staleness:type_name -> google.protobuf.Duration
-	99,  // 24: tutti.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	99,  // 25: tutti.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	102, // 20: tutti.ProxySettings.read_header_timeout:type_name -> google.protobuf.Duration
+	102, // 21: tutti.ProxySettings.writer_lease:type_name -> google.protobuf.Duration
+	102, // 22: tutti.ProxySettings.drain_delay:type_name -> google.protobuf.Duration
+	102, // 23: tutti.ProxySettings.ready_max_staleness:type_name -> google.protobuf.Duration
+	101, // 24: tutti.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	101, // 25: tutti.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
 	12,  // 26: tutti.ProxyStatus.storages:type_name -> tutti.StorageHealth
 	17,  // 27: tutti.ProxyStatus.settings:type_name -> tutti.ProxySettings
 	24,  // 28: tutti.ProxyStatus.stats:type_name -> tutti.TrafficStats
 	19,  // 29: tutti.ProxyStatus.rates:type_name -> tutti.TrafficRates
-	93,  // 30: tutti.TrafficRates.requests_by_class:type_name -> tutti.TrafficRates.RequestsByClassEntry
-	94,  // 31: tutti.TrafficRates.requests_by_storage:type_name -> tutti.TrafficRates.RequestsByStorageEntry
-	99,  // 32: tutti.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	95,  // 30: tutti.TrafficRates.requests_by_class:type_name -> tutti.TrafficRates.RequestsByClassEntry
+	96,  // 31: tutti.TrafficRates.requests_by_storage:type_name -> tutti.TrafficRates.RequestsByStorageEntry
+	101, // 32: tutti.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
 	19,  // 33: tutti.StatsHistoryPoint.rates:type_name -> tutti.TrafficRates
-	99,  // 34: tutti.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	101, // 34: tutti.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
 	19,  // 35: tutti.ProxyLatestRates.rates:type_name -> tutti.TrafficRates
-	100, // 36: tutti.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	102, // 36: tutti.StatsHistory.bucket:type_name -> google.protobuf.Duration
 	21,  // 37: tutti.StatsHistory.points:type_name -> tutti.StatsHistoryPoint
 	22,  // 38: tutti.StatsHistory.proxies:type_name -> tutti.ProxyLatestRates
-	99,  // 39: tutti.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	99,  // 40: tutti.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	95,  // 41: tutti.TrafficStats.requests_by_class:type_name -> tutti.TrafficStats.RequestsByClassEntry
-	96,  // 42: tutti.TrafficStats.requests_by_storage:type_name -> tutti.TrafficStats.RequestsByStorageEntry
+	101, // 39: tutti.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	101, // 40: tutti.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	97,  // 41: tutti.TrafficStats.requests_by_class:type_name -> tutti.TrafficStats.RequestsByClassEntry
+	98,  // 42: tutti.TrafficStats.requests_by_storage:type_name -> tutti.TrafficStats.RequestsByStorageEntry
 	25,  // 43: tutti.TrafficStats.latency:type_name -> tutti.LatencyHistogram
 	18,  // 44: tutti.ProxyStatusList.proxies:type_name -> tutti.ProxyStatus
 	19,  // 45: tutti.ProxyStatusList.total_rates:type_name -> tutti.TrafficRates
-	100, // 46: tutti.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	102, // 46: tutti.FailoverPolicy.after:type_name -> google.protobuf.Duration
 	27,  // 47: tutti.FailoverPolicyList.policies:type_name -> tutti.FailoverPolicy
-	99,  // 48: tutti.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	101, // 48: tutti.FailoverEvent.time:type_name -> google.protobuf.Timestamp
 	30,  // 49: tutti.FailoverEventList.events:type_name -> tutti.FailoverEvent
 	33,  // 50: tutti.S3User.storages:type_name -> tutti.S3UserStorage
 	34,  // 51: tutti.S3User.access_keys:type_name -> tutti.S3UserAccessKeys
@@ -7795,21 +8009,21 @@ var file_tutti_tutti_proto_depIdxs = []int32{
 	40,  // 58: tutti.CreateS3UserResponse.verification:type_name -> tutti.S3UserVerifyResult
 	38,  // 59: tutti.UpdateS3UserCredentialsRequest.credential:type_name -> tutti.S3UserCredential
 	38,  // 60: tutti.TestS3UserCredentialsRequest.credential:type_name -> tutti.S3UserCredential
-	99,  // 61: tutti.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
-	99,  // 62: tutti.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
-	99,  // 63: tutti.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
-	99,  // 64: tutti.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
+	101, // 61: tutti.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
+	101, // 62: tutti.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
+	101, // 63: tutti.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
+	101, // 64: tutti.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
 	48,  // 65: tutti.ConsoleUserList.users:type_name -> tutti.ConsoleUser
 	48,  // 66: tutti.CreateConsoleUserResponse.user:type_name -> tutti.ConsoleUser
-	100, // 67: tutti.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
-	100, // 68: tutti.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
+	102, // 67: tutti.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
+	102, // 68: tutti.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
 	57,  // 69: tutti.RuntimeStorage.rate_limit:type_name -> tutti.RuntimeStorageRateLimit
 	58,  // 70: tutti.RuntimeStorage.users:type_name -> tutti.RuntimeStorageUser
-	99,  // 71: tutti.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
-	99,  // 72: tutti.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
+	101, // 71: tutti.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
+	101, // 72: tutti.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
 	67,  // 73: tutti.RuntimeStorage.connection_account:type_name -> tutti.ConnectionAccountInfo
 	71,  // 74: tutti.RuntimeStorage.last_test:type_name -> tutti.StorageTestResult
-	99,  // 75: tutti.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
+	101, // 75: tutti.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
 	56,  // 76: tutti.RuntimeStorageList.storages:type_name -> tutti.RuntimeStorage
 	56,  // 77: tutti.CreateRuntimeStorageRequest.storage:type_name -> tutti.RuntimeStorage
 	59,  // 78: tutti.CreateRuntimeStorageRequest.credentials:type_name -> tutti.RuntimeStorageCredential
@@ -7821,144 +8035,148 @@ var file_tutti_tutti_proto_depIdxs = []int32{
 	69,  // 84: tutti.UpdateRuntimeStorageRequest.test_options:type_name -> tutti.StorageTestOptions
 	56,  // 85: tutti.TestRuntimeStorageRequest.storage:type_name -> tutti.RuntimeStorage
 	59,  // 86: tutti.TestRuntimeStorageRequest.credential:type_name -> tutti.RuntimeStorageCredential
-	99,  // 87: tutti.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
-	99,  // 88: tutti.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
+	101, // 87: tutti.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
+	101, // 88: tutti.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
 	68,  // 89: tutti.StorageTestOptions.features:type_name -> tutti.StorageTestFeatures
-	99,  // 90: tutti.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
+	101, // 90: tutti.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
 	70,  // 91: tutti.StorageTestResult.steps:type_name -> tutti.StorageTestStep
 	56,  // 92: tutti.TestStorageConnectionRequest.storage:type_name -> tutti.RuntimeStorage
 	66,  // 93: tutti.TestStorageConnectionRequest.connection_account:type_name -> tutti.ConnectionAccount
 	69,  // 94: tutti.TestStorageConnectionRequest.options:type_name -> tutti.StorageTestOptions
 	66,  // 95: tutti.RotateStorageConnectionAccountRequest.new_account:type_name -> tutti.ConnectionAccount
 	69,  // 96: tutti.RotateStorageConnectionAccountRequest.options:type_name -> tutti.StorageTestOptions
-	100, // 97: tutti.ProxySyncSettingsOverride.timeout:type_name -> google.protobuf.Duration
-	100, // 98: tutti.ProxyReplicationSettingsOverride.event_retry_budget:type_name -> google.protobuf.Duration
+	102, // 97: tutti.ProxySyncSettingsOverride.timeout:type_name -> google.protobuf.Duration
+	102, // 98: tutti.ProxyReplicationSettingsOverride.event_retry_budget:type_name -> google.protobuf.Duration
 	74,  // 99: tutti.ProxyReplicationSettingsOverride.sync:type_name -> tutti.ProxySyncSettingsOverride
-	100, // 100: tutti.ProxyHealthSettingsOverride.open_duration:type_name -> google.protobuf.Duration
-	100, // 101: tutti.ProxyFailoverSettingsOverride.check_interval:type_name -> google.protobuf.Duration
-	100, // 102: tutti.ProxyFailoverSettingsOverride.after:type_name -> google.protobuf.Duration
+	102, // 100: tutti.ProxyHealthSettingsOverride.open_duration:type_name -> google.protobuf.Duration
+	102, // 101: tutti.ProxyFailoverSettingsOverride.check_interval:type_name -> google.protobuf.Duration
+	102, // 102: tutti.ProxyFailoverSettingsOverride.after:type_name -> google.protobuf.Duration
 	75,  // 103: tutti.ProxySettingsOverride.replication:type_name -> tutti.ProxyReplicationSettingsOverride
 	76,  // 104: tutti.ProxySettingsOverride.health:type_name -> tutti.ProxyHealthSettingsOverride
 	77,  // 105: tutti.ProxySettingsOverride.failover:type_name -> tutti.ProxyFailoverSettingsOverride
-	100, // 106: tutti.ProxySettingsOverride.read_header_timeout:type_name -> google.protobuf.Duration
-	100, // 107: tutti.ProxySettingsOverride.writer_lease:type_name -> google.protobuf.Duration
-	100, // 108: tutti.ProxySettingsOverride.drain_delay:type_name -> google.protobuf.Duration
-	100, // 109: tutti.ProxySettingsOverride.ready_max_staleness:type_name -> google.protobuf.Duration
-	99,  // 110: tutti.ProxyFleetConfig.updated_at:type_name -> google.protobuf.Timestamp
+	102, // 106: tutti.ProxySettingsOverride.read_header_timeout:type_name -> google.protobuf.Duration
+	102, // 107: tutti.ProxySettingsOverride.writer_lease:type_name -> google.protobuf.Duration
+	102, // 108: tutti.ProxySettingsOverride.drain_delay:type_name -> google.protobuf.Duration
+	102, // 109: tutti.ProxySettingsOverride.ready_max_staleness:type_name -> google.protobuf.Duration
+	101, // 110: tutti.ProxyFleetConfig.updated_at:type_name -> google.protobuf.Timestamp
 	78,  // 111: tutti.ProxyFleetConfig.defaults:type_name -> tutti.ProxySettingsOverride
-	97,  // 112: tutti.ProxyFleetConfig.groups:type_name -> tutti.ProxyFleetConfig.GroupsEntry
+	99,  // 112: tutti.ProxyFleetConfig.groups:type_name -> tutti.ProxyFleetConfig.GroupsEntry
 	78,  // 113: tutti.SetProxyFleetConfigRequest.defaults:type_name -> tutti.ProxySettingsOverride
-	98,  // 114: tutti.SetProxyFleetConfigRequest.groups:type_name -> tutti.SetProxyFleetConfigRequest.GroupsEntry
-	99,  // 115: tutti.ListAuditLogRequest.since:type_name -> google.protobuf.Timestamp
-	99,  // 116: tutti.ListAuditLogRequest.until:type_name -> google.protobuf.Timestamp
-	99,  // 117: tutti.AuditLogEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	100, // 114: tutti.SetProxyFleetConfigRequest.groups:type_name -> tutti.SetProxyFleetConfigRequest.GroupsEntry
+	101, // 115: tutti.ListAuditLogRequest.since:type_name -> google.protobuf.Timestamp
+	101, // 116: tutti.ListAuditLogRequest.until:type_name -> google.protobuf.Timestamp
+	101, // 117: tutti.AuditLogEntry.occurred_at:type_name -> google.protobuf.Timestamp
 	82,  // 118: tutti.AuditLogList.entries:type_name -> tutti.AuditLogEntry
-	100, // 119: tutti.SystemWorkerSettings.shutdown_timeout:type_name -> google.protobuf.Duration
-	100, // 120: tutti.SystemWorkerSettings.queue_update_interval:type_name -> google.protobuf.Duration
-	100, // 121: tutti.SystemWorkerSettings.task_check_interval:type_name -> google.protobuf.Duration
-	100, // 122: tutti.SystemWorkerSettings.delayed_task_check_interval:type_name -> google.protobuf.Duration
-	100, // 123: tutti.SystemWorkerSettings.swift_retry_interval:type_name -> google.protobuf.Duration
-	100, // 124: tutti.SystemWorkerSettings.pause_retry_interval:type_name -> google.protobuf.Duration
-	100, // 125: tutti.SystemWorkerSettings.switch_retry_interval:type_name -> google.protobuf.Duration
-	100, // 126: tutti.SystemLockSettings.overlap:type_name -> google.protobuf.Duration
-	99,  // 127: tutti.SystemSettings.updated_at:type_name -> google.protobuf.Timestamp
+	102, // 119: tutti.SystemWorkerSettings.shutdown_timeout:type_name -> google.protobuf.Duration
+	102, // 120: tutti.SystemWorkerSettings.queue_update_interval:type_name -> google.protobuf.Duration
+	102, // 121: tutti.SystemWorkerSettings.task_check_interval:type_name -> google.protobuf.Duration
+	102, // 122: tutti.SystemWorkerSettings.delayed_task_check_interval:type_name -> google.protobuf.Duration
+	102, // 123: tutti.SystemWorkerSettings.swift_retry_interval:type_name -> google.protobuf.Duration
+	102, // 124: tutti.SystemWorkerSettings.pause_retry_interval:type_name -> google.protobuf.Duration
+	102, // 125: tutti.SystemWorkerSettings.switch_retry_interval:type_name -> google.protobuf.Duration
+	102, // 126: tutti.SystemLockSettings.overlap:type_name -> google.protobuf.Duration
+	101, // 127: tutti.SystemSettings.updated_at:type_name -> google.protobuf.Timestamp
 	84,  // 128: tutti.SystemSettings.features:type_name -> tutti.SystemFeaturesSettings
 	85,  // 129: tutti.SystemSettings.worker:type_name -> tutti.SystemWorkerSettings
 	86,  // 130: tutti.SystemSettings.lock:type_name -> tutti.SystemLockSettings
 	87,  // 131: tutti.SystemSettings.webhook:type_name -> tutti.SystemWebhookSettings
-	84,  // 132: tutti.UpdateSystemSettingsRequest.features:type_name -> tutti.SystemFeaturesSettings
-	85,  // 133: tutti.UpdateSystemSettingsRequest.worker:type_name -> tutti.SystemWorkerSettings
-	86,  // 134: tutti.UpdateSystemSettingsRequest.lock:type_name -> tutti.SystemLockSettings
-	87,  // 135: tutti.UpdateSystemSettingsRequest.webhook:type_name -> tutti.SystemWebhookSettings
-	90,  // 136: tutti.WorkerStatsResponse.workers:type_name -> tutti.WorkerStatsSnapshot
-	91,  // 137: tutti.WorkerStatsResponse.totals:type_name -> tutti.WorkerStatsTotals
-	78,  // 138: tutti.ProxyFleetConfig.GroupsEntry.value:type_name -> tutti.ProxySettingsOverride
-	78,  // 139: tutti.SetProxyFleetConfigRequest.GroupsEntry.value:type_name -> tutti.ProxySettingsOverride
-	60,  // 140: tutti.Resilience.ListRuntimeStorages:input_type -> tutti.ListRuntimeStoragesRequest
-	62,  // 141: tutti.Resilience.CreateRuntimeStorage:input_type -> tutti.CreateRuntimeStorageRequest
-	63,  // 142: tutti.Resilience.UpdateRuntimeStorage:input_type -> tutti.UpdateRuntimeStorageRequest
-	64,  // 143: tutti.Resilience.DeleteRuntimeStorage:input_type -> tutti.RuntimeStorageName
-	65,  // 144: tutti.Resilience.TestRuntimeStorage:input_type -> tutti.TestRuntimeStorageRequest
-	64,  // 145: tutti.Resilience.GetRuntimeStorage:input_type -> tutti.RuntimeStorageName
-	72,  // 146: tutti.Resilience.TestStorageConnection:input_type -> tutti.TestStorageConnectionRequest
-	73,  // 147: tutti.Resilience.RotateStorageConnectionAccount:input_type -> tutti.RotateStorageConnectionAccountRequest
-	101, // 148: tutti.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
-	20,  // 149: tutti.Resilience.GetStatsHistory:input_type -> tutti.StatsHistoryRequest
-	101, // 150: tutti.Resilience.GetWorkerStats:input_type -> google.protobuf.Empty
-	101, // 151: tutti.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
-	27,  // 152: tutti.Resilience.SetFailoverPolicy:input_type -> tutti.FailoverPolicy
-	29,  // 153: tutti.Resilience.DeleteFailoverPolicy:input_type -> tutti.FailoverPolicySource
-	101, // 154: tutti.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
-	32,  // 155: tutti.Resilience.DeleteFailoverEvent:input_type -> tutti.FailoverEventID
-	101, // 156: tutti.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
-	6,   // 157: tutti.Resilience.SetAccessPolicy:input_type -> tutti.AccessPolicy
-	8,   // 158: tutti.Resilience.DeleteAccessPolicy:input_type -> tutti.AccessPolicyUser
-	101, // 159: tutti.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
-	0,   // 160: tutti.Resilience.CreateProxyAccount:input_type -> tutti.CreateProxyAccountRequest
-	2,   // 161: tutti.Resilience.RotateProxyAccountSecret:input_type -> tutti.RotateProxyAccountSecretRequest
-	3,   // 162: tutti.Resilience.SetProxyAccountStatus:input_type -> tutti.SetProxyAccountStatusRequest
-	4,   // 163: tutti.Resilience.DeleteProxyAccount:input_type -> tutti.ProxyAccountKey
-	101, // 164: tutti.Resilience.ListS3Users:input_type -> google.protobuf.Empty
-	39,  // 165: tutti.Resilience.CreateS3User:input_type -> tutti.CreateS3UserRequest
-	42,  // 166: tutti.Resilience.UpdateS3UserCredentials:input_type -> tutti.UpdateS3UserCredentialsRequest
-	43,  // 167: tutti.Resilience.DeleteS3UserCredentials:input_type -> tutti.DeleteS3UserCredentialsRequest
-	44,  // 168: tutti.Resilience.DeleteS3User:input_type -> tutti.DeleteS3UserRequest
-	46,  // 169: tutti.Resilience.TestS3UserCredentials:input_type -> tutti.TestS3UserCredentialsRequest
-	101, // 170: tutti.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
-	51,  // 171: tutti.Resilience.CreateConsoleUser:input_type -> tutti.CreateConsoleUserRequest
-	53,  // 172: tutti.Resilience.UpdateConsoleUser:input_type -> tutti.UpdateConsoleUserRequest
-	54,  // 173: tutti.Resilience.ResetConsoleUserPassword:input_type -> tutti.ResetConsoleUserPasswordRequest
-	50,  // 174: tutti.Resilience.DeleteConsoleUser:input_type -> tutti.ConsoleUserName
-	101, // 175: tutti.Resilience.GetProxyFleetConfig:input_type -> google.protobuf.Empty
-	80,  // 176: tutti.Resilience.SetProxyFleetConfig:input_type -> tutti.SetProxyFleetConfigRequest
-	81,  // 177: tutti.Resilience.ListAuditLog:input_type -> tutti.ListAuditLogRequest
-	101, // 178: tutti.Resilience.GetSystemSettings:input_type -> google.protobuf.Empty
-	89,  // 179: tutti.Resilience.UpdateSystemSettings:input_type -> tutti.UpdateSystemSettingsRequest
-	61,  // 180: tutti.Resilience.ListRuntimeStorages:output_type -> tutti.RuntimeStorageList
-	56,  // 181: tutti.Resilience.CreateRuntimeStorage:output_type -> tutti.RuntimeStorage
-	56,  // 182: tutti.Resilience.UpdateRuntimeStorage:output_type -> tutti.RuntimeStorage
-	101, // 183: tutti.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
-	47,  // 184: tutti.Resilience.TestRuntimeStorage:output_type -> tutti.TestS3UserCredentialsResponse
-	56,  // 185: tutti.Resilience.GetRuntimeStorage:output_type -> tutti.RuntimeStorage
-	71,  // 186: tutti.Resilience.TestStorageConnection:output_type -> tutti.StorageTestResult
-	56,  // 187: tutti.Resilience.RotateStorageConnectionAccount:output_type -> tutti.RuntimeStorage
-	26,  // 188: tutti.Resilience.GetProxyStatus:output_type -> tutti.ProxyStatusList
-	23,  // 189: tutti.Resilience.GetStatsHistory:output_type -> tutti.StatsHistory
-	92,  // 190: tutti.Resilience.GetWorkerStats:output_type -> tutti.WorkerStatsResponse
-	28,  // 191: tutti.Resilience.ListFailoverPolicies:output_type -> tutti.FailoverPolicyList
-	101, // 192: tutti.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	101, // 193: tutti.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	31,  // 194: tutti.Resilience.ListFailoverEvents:output_type -> tutti.FailoverEventList
-	101, // 195: tutti.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,   // 196: tutti.Resilience.ListAccessPolicies:output_type -> tutti.AccessPolicyList
-	101, // 197: tutti.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	101, // 198: tutti.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10,  // 199: tutti.Resilience.ListProxyAccounts:output_type -> tutti.ProxyAccountList
-	1,   // 200: tutti.Resilience.CreateProxyAccount:output_type -> tutti.ProxyAccountSecret
-	1,   // 201: tutti.Resilience.RotateProxyAccountSecret:output_type -> tutti.ProxyAccountSecret
-	101, // 202: tutti.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	101, // 203: tutti.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	37,  // 204: tutti.Resilience.ListS3Users:output_type -> tutti.S3UserList
-	41,  // 205: tutti.Resilience.CreateS3User:output_type -> tutti.CreateS3UserResponse
-	101, // 206: tutti.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
-	101, // 207: tutti.Resilience.DeleteS3UserCredentials:output_type -> google.protobuf.Empty
-	45,  // 208: tutti.Resilience.DeleteS3User:output_type -> tutti.DeleteS3UserResponse
-	47,  // 209: tutti.Resilience.TestS3UserCredentials:output_type -> tutti.TestS3UserCredentialsResponse
-	49,  // 210: tutti.Resilience.ListConsoleUsers:output_type -> tutti.ConsoleUserList
-	52,  // 211: tutti.Resilience.CreateConsoleUser:output_type -> tutti.CreateConsoleUserResponse
-	101, // 212: tutti.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
-	55,  // 213: tutti.Resilience.ResetConsoleUserPassword:output_type -> tutti.ResetConsoleUserPasswordResponse
-	101, // 214: tutti.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
-	79,  // 215: tutti.Resilience.GetProxyFleetConfig:output_type -> tutti.ProxyFleetConfig
-	79,  // 216: tutti.Resilience.SetProxyFleetConfig:output_type -> tutti.ProxyFleetConfig
-	83,  // 217: tutti.Resilience.ListAuditLog:output_type -> tutti.AuditLogList
-	88,  // 218: tutti.Resilience.GetSystemSettings:output_type -> tutti.SystemSettings
-	88,  // 219: tutti.Resilience.UpdateSystemSettings:output_type -> tutti.SystemSettings
-	180, // [180:220] is the sub-list for method output_type
-	140, // [140:180] is the sub-list for method input_type
-	140, // [140:140] is the sub-list for extension type_name
-	140, // [140:140] is the sub-list for extension extendee
-	0,   // [0:140] is the sub-list for field type_name
+	89,  // 132: tutti.SystemSettings.hardware:type_name -> tutti.HardwareInfo
+	85,  // 133: tutti.SystemSettings.recommended:type_name -> tutti.SystemWorkerSettings
+	85,  // 134: tutti.SystemSettings.effective:type_name -> tutti.SystemWorkerSettings
+	90,  // 135: tutti.SystemSettings.tuning_sources:type_name -> tutti.WorkerTuningSources
+	84,  // 136: tutti.UpdateSystemSettingsRequest.features:type_name -> tutti.SystemFeaturesSettings
+	85,  // 137: tutti.UpdateSystemSettingsRequest.worker:type_name -> tutti.SystemWorkerSettings
+	86,  // 138: tutti.UpdateSystemSettingsRequest.lock:type_name -> tutti.SystemLockSettings
+	87,  // 139: tutti.UpdateSystemSettingsRequest.webhook:type_name -> tutti.SystemWebhookSettings
+	92,  // 140: tutti.WorkerStatsResponse.workers:type_name -> tutti.WorkerStatsSnapshot
+	93,  // 141: tutti.WorkerStatsResponse.totals:type_name -> tutti.WorkerStatsTotals
+	78,  // 142: tutti.ProxyFleetConfig.GroupsEntry.value:type_name -> tutti.ProxySettingsOverride
+	78,  // 143: tutti.SetProxyFleetConfigRequest.GroupsEntry.value:type_name -> tutti.ProxySettingsOverride
+	60,  // 144: tutti.Resilience.ListRuntimeStorages:input_type -> tutti.ListRuntimeStoragesRequest
+	62,  // 145: tutti.Resilience.CreateRuntimeStorage:input_type -> tutti.CreateRuntimeStorageRequest
+	63,  // 146: tutti.Resilience.UpdateRuntimeStorage:input_type -> tutti.UpdateRuntimeStorageRequest
+	64,  // 147: tutti.Resilience.DeleteRuntimeStorage:input_type -> tutti.RuntimeStorageName
+	65,  // 148: tutti.Resilience.TestRuntimeStorage:input_type -> tutti.TestRuntimeStorageRequest
+	64,  // 149: tutti.Resilience.GetRuntimeStorage:input_type -> tutti.RuntimeStorageName
+	72,  // 150: tutti.Resilience.TestStorageConnection:input_type -> tutti.TestStorageConnectionRequest
+	73,  // 151: tutti.Resilience.RotateStorageConnectionAccount:input_type -> tutti.RotateStorageConnectionAccountRequest
+	103, // 152: tutti.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	20,  // 153: tutti.Resilience.GetStatsHistory:input_type -> tutti.StatsHistoryRequest
+	103, // 154: tutti.Resilience.GetWorkerStats:input_type -> google.protobuf.Empty
+	103, // 155: tutti.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	27,  // 156: tutti.Resilience.SetFailoverPolicy:input_type -> tutti.FailoverPolicy
+	29,  // 157: tutti.Resilience.DeleteFailoverPolicy:input_type -> tutti.FailoverPolicySource
+	103, // 158: tutti.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	32,  // 159: tutti.Resilience.DeleteFailoverEvent:input_type -> tutti.FailoverEventID
+	103, // 160: tutti.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	6,   // 161: tutti.Resilience.SetAccessPolicy:input_type -> tutti.AccessPolicy
+	8,   // 162: tutti.Resilience.DeleteAccessPolicy:input_type -> tutti.AccessPolicyUser
+	103, // 163: tutti.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	0,   // 164: tutti.Resilience.CreateProxyAccount:input_type -> tutti.CreateProxyAccountRequest
+	2,   // 165: tutti.Resilience.RotateProxyAccountSecret:input_type -> tutti.RotateProxyAccountSecretRequest
+	3,   // 166: tutti.Resilience.SetProxyAccountStatus:input_type -> tutti.SetProxyAccountStatusRequest
+	4,   // 167: tutti.Resilience.DeleteProxyAccount:input_type -> tutti.ProxyAccountKey
+	103, // 168: tutti.Resilience.ListS3Users:input_type -> google.protobuf.Empty
+	39,  // 169: tutti.Resilience.CreateS3User:input_type -> tutti.CreateS3UserRequest
+	42,  // 170: tutti.Resilience.UpdateS3UserCredentials:input_type -> tutti.UpdateS3UserCredentialsRequest
+	43,  // 171: tutti.Resilience.DeleteS3UserCredentials:input_type -> tutti.DeleteS3UserCredentialsRequest
+	44,  // 172: tutti.Resilience.DeleteS3User:input_type -> tutti.DeleteS3UserRequest
+	46,  // 173: tutti.Resilience.TestS3UserCredentials:input_type -> tutti.TestS3UserCredentialsRequest
+	103, // 174: tutti.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
+	51,  // 175: tutti.Resilience.CreateConsoleUser:input_type -> tutti.CreateConsoleUserRequest
+	53,  // 176: tutti.Resilience.UpdateConsoleUser:input_type -> tutti.UpdateConsoleUserRequest
+	54,  // 177: tutti.Resilience.ResetConsoleUserPassword:input_type -> tutti.ResetConsoleUserPasswordRequest
+	50,  // 178: tutti.Resilience.DeleteConsoleUser:input_type -> tutti.ConsoleUserName
+	103, // 179: tutti.Resilience.GetProxyFleetConfig:input_type -> google.protobuf.Empty
+	80,  // 180: tutti.Resilience.SetProxyFleetConfig:input_type -> tutti.SetProxyFleetConfigRequest
+	81,  // 181: tutti.Resilience.ListAuditLog:input_type -> tutti.ListAuditLogRequest
+	103, // 182: tutti.Resilience.GetSystemSettings:input_type -> google.protobuf.Empty
+	91,  // 183: tutti.Resilience.UpdateSystemSettings:input_type -> tutti.UpdateSystemSettingsRequest
+	61,  // 184: tutti.Resilience.ListRuntimeStorages:output_type -> tutti.RuntimeStorageList
+	56,  // 185: tutti.Resilience.CreateRuntimeStorage:output_type -> tutti.RuntimeStorage
+	56,  // 186: tutti.Resilience.UpdateRuntimeStorage:output_type -> tutti.RuntimeStorage
+	103, // 187: tutti.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
+	47,  // 188: tutti.Resilience.TestRuntimeStorage:output_type -> tutti.TestS3UserCredentialsResponse
+	56,  // 189: tutti.Resilience.GetRuntimeStorage:output_type -> tutti.RuntimeStorage
+	71,  // 190: tutti.Resilience.TestStorageConnection:output_type -> tutti.StorageTestResult
+	56,  // 191: tutti.Resilience.RotateStorageConnectionAccount:output_type -> tutti.RuntimeStorage
+	26,  // 192: tutti.Resilience.GetProxyStatus:output_type -> tutti.ProxyStatusList
+	23,  // 193: tutti.Resilience.GetStatsHistory:output_type -> tutti.StatsHistory
+	94,  // 194: tutti.Resilience.GetWorkerStats:output_type -> tutti.WorkerStatsResponse
+	28,  // 195: tutti.Resilience.ListFailoverPolicies:output_type -> tutti.FailoverPolicyList
+	103, // 196: tutti.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	103, // 197: tutti.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31,  // 198: tutti.Resilience.ListFailoverEvents:output_type -> tutti.FailoverEventList
+	103, // 199: tutti.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,   // 200: tutti.Resilience.ListAccessPolicies:output_type -> tutti.AccessPolicyList
+	103, // 201: tutti.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	103, // 202: tutti.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10,  // 203: tutti.Resilience.ListProxyAccounts:output_type -> tutti.ProxyAccountList
+	1,   // 204: tutti.Resilience.CreateProxyAccount:output_type -> tutti.ProxyAccountSecret
+	1,   // 205: tutti.Resilience.RotateProxyAccountSecret:output_type -> tutti.ProxyAccountSecret
+	103, // 206: tutti.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	103, // 207: tutti.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	37,  // 208: tutti.Resilience.ListS3Users:output_type -> tutti.S3UserList
+	41,  // 209: tutti.Resilience.CreateS3User:output_type -> tutti.CreateS3UserResponse
+	103, // 210: tutti.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
+	103, // 211: tutti.Resilience.DeleteS3UserCredentials:output_type -> google.protobuf.Empty
+	45,  // 212: tutti.Resilience.DeleteS3User:output_type -> tutti.DeleteS3UserResponse
+	47,  // 213: tutti.Resilience.TestS3UserCredentials:output_type -> tutti.TestS3UserCredentialsResponse
+	49,  // 214: tutti.Resilience.ListConsoleUsers:output_type -> tutti.ConsoleUserList
+	52,  // 215: tutti.Resilience.CreateConsoleUser:output_type -> tutti.CreateConsoleUserResponse
+	103, // 216: tutti.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
+	55,  // 217: tutti.Resilience.ResetConsoleUserPassword:output_type -> tutti.ResetConsoleUserPasswordResponse
+	103, // 218: tutti.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
+	79,  // 219: tutti.Resilience.GetProxyFleetConfig:output_type -> tutti.ProxyFleetConfig
+	79,  // 220: tutti.Resilience.SetProxyFleetConfig:output_type -> tutti.ProxyFleetConfig
+	83,  // 221: tutti.Resilience.ListAuditLog:output_type -> tutti.AuditLogList
+	88,  // 222: tutti.Resilience.GetSystemSettings:output_type -> tutti.SystemSettings
+	88,  // 223: tutti.Resilience.UpdateSystemSettings:output_type -> tutti.SystemSettings
+	184, // [184:224] is the sub-list for method output_type
+	144, // [144:184] is the sub-list for method input_type
+	144, // [144:144] is the sub-list for extension type_name
+	144, // [144:144] is the sub-list for extension extendee
+	0,   // [0:144] is the sub-list for field type_name
 }
 
 func init() { file_tutti_tutti_proto_init() }
@@ -7978,14 +8196,14 @@ func file_tutti_tutti_proto_init() {
 	file_tutti_tutti_proto_msgTypes[78].OneofWrappers = []any{}
 	file_tutti_tutti_proto_msgTypes[80].OneofWrappers = []any{}
 	file_tutti_tutti_proto_msgTypes[85].OneofWrappers = []any{}
-	file_tutti_tutti_proto_msgTypes[89].OneofWrappers = []any{}
+	file_tutti_tutti_proto_msgTypes[91].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tutti_tutti_proto_rawDesc), len(file_tutti_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   99,
+			NumMessages:   101,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -916,6 +916,7 @@ message SystemFeaturesSettings {
 }
 
 message SystemWorkerSettings {
+  // 0 = auto (derived from detected hardware).
   optional int32 concurrency = 1;
   google.protobuf.Duration shutdown_timeout = 2;
   google.protobuf.Duration queue_update_interval = 3;
@@ -927,12 +928,13 @@ message SystemWorkerSettings {
   optional int32 backlog_high_watermark = 9;
   optional int32 backlog_low_watermark = 10;
   optional int64 bandwidth_limit_bytes = 11;
+  // 0 = auto (derived from detected hardware), otherwise at least 16 MiB. Never unlimited.
   optional int64 buffer_budget_bytes = 12;
-  // Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
+  // Share of concurrency given to bulk migration: 0 = auto (20..40 by CPU) or 5..95. Read at worker start only.
   optional int32 bulk_concurrency_percent = 13;
-  // Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
+  // Parallel parts per multipart upload: 0 = auto (1) or 1..16. Applied live to the next copy.
   optional int32 multipart_threads = 14;
-  // Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
+  // Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy.
   optional int32 multipart_part_size_mib = 15;
 }
 
@@ -952,6 +954,35 @@ message SystemSettings {
   SystemWorkerSettings worker = 4;
   SystemLockSettings lock = 5;
   SystemWebhookSettings webhook = 6;
+  // Read-only, filled by the server. Hardware available to the worker process (cgroup/Kubernetes limits aware).
+  HardwareInfo hardware = 7;
+  // Read-only. Settings derived from the detected hardware (concurrency, bulk percent, buffer budget, multipart).
+  SystemWorkerSettings recommended = 8;
+  // Read-only. The values in effect now: the explicit setting, or the recommended one when unset.
+  SystemWorkerSettings effective = 9;
+  // Read-only. Whether each effective value is auto (derived from hardware) or explicit.
+  WorkerTuningSources tuning_sources = 10;
+}
+
+message HardwareInfo {
+  // Effective CPU count (fractional quota rounded up, min 1) and the unrounded value.
+  int32 cpu = 1;
+  double cpu_fractional = 2;
+  // Effective memory: min(host RAM, cgroup limit).
+  int64 memory_bytes = 3;
+  // host | cgroup-v1 | cgroup-v2: where the binding limit came from.
+  string source = 4;
+  // True when a cgroup memory limit below host RAM applies.
+  bool memory_limited = 5;
+}
+
+// Each field is "auto" or "explicit".
+message WorkerTuningSources {
+  string concurrency = 1;
+  string bulk_concurrency_percent = 2;
+  string buffer_budget_bytes = 3;
+  string multipart_threads = 4;
+  string multipart_part_size_mib = 5;
 }
 
 message UpdateSystemSettingsRequest {

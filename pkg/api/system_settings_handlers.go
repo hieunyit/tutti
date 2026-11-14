@@ -35,7 +35,7 @@ func DefaultSystemSettings() controlplane.SystemSettings {
 			Versioning:        false,
 		},
 		Worker: controlplane.SystemWorkerSettings{
-			Concurrency:              10,
+			Concurrency:              0, // 0 = auto (derived from detected hardware)
 			ShutdownTimeout:          5 * time.Second,
 			QueueUpdateInterval:      3 * time.Second,
 			TaskCheckInterval:        1 * time.Second,
@@ -45,8 +45,8 @@ func DefaultSystemSettings() controlplane.SystemSettings {
 			SwitchRetryInterval:      30 * time.Second,
 			BacklogHighWatermark:     10000,
 			BacklogLowWatermark:      5000,
-			BandwidthLimitBytes:      0,                 // 0 = unlimited
-			BufferBudgetBytes:        256 * 1024 * 1024, // 256 MiB default
+			BandwidthLimitBytes:      0, // 0 = unlimited
+			BufferBudgetBytes:        0, // 0 = auto (derived from detected hardware)
 		},
 		Lock: controlplane.SystemLockSettings{
 			Overlap: 2 * time.Second,
@@ -216,7 +216,39 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			BaseUrl: s.Webhook.BaseURL,
 		},
 	}
+	addHardwareInfo(out, s.Worker)
 	return out
+}
+
+// addHardwareInfo fills the read-only hardware, recommended, effective and tuning-source fields.
+func addHardwareInfo(out *pb.SystemSettings, w controlplane.SystemWorkerSettings) {
+	hw, rec, ok := systemsettings.Hardware()
+	if !ok {
+		return
+	}
+	eff := systemsettings.ResolveEffective(w)
+	out.Hardware = &pb.HardwareInfo{Cpu: int32(hw.CPU), CpuFractional: hw.CPUFractional, MemoryBytes: hw.MemoryBytes, Source: hw.Source, MemoryLimited: hw.MemoryLimited}
+	out.Recommended = &pb.SystemWorkerSettings{
+		Concurrency:            proto.Int32(int32(rec.Concurrency)),
+		BulkConcurrencyPercent: proto.Int32(int32(rec.BulkConcurrencyPercent)),
+		BufferBudgetBytes:      proto.Int64(rec.BufferBudgetBytes),
+		MultipartThreads:       proto.Int32(int32(rec.MultipartThreads)),
+		MultipartPartSizeMib:   proto.Int32(int32(rec.MultipartPartSizeMiB)),
+	}
+	out.Effective = &pb.SystemWorkerSettings{
+		Concurrency:            proto.Int32(int32(eff.Concurrency.Value)),
+		BulkConcurrencyPercent: proto.Int32(int32(eff.BulkConcurrencyPercent.Value)),
+		BufferBudgetBytes:      proto.Int64(eff.BufferBudgetBytes.Value),
+		MultipartThreads:       proto.Int32(int32(eff.MultipartThreads.Value)),
+		MultipartPartSizeMib:   proto.Int32(int32(eff.MultipartPartSizeMiB.Value)),
+	}
+	out.TuningSources = &pb.WorkerTuningSources{
+		Concurrency:            eff.Concurrency.Source,
+		BulkConcurrencyPercent: eff.BulkConcurrencyPercent.Source,
+		BufferBudgetBytes:      eff.BufferBudgetBytes.Source,
+		MultipartThreads:       eff.MultipartThreads.Source,
+		MultipartPartSizeMib:   eff.MultipartPartSizeMiB.Source,
+	}
 }
 
 // currentSystemSettings returns the stored settings (PostgreSQL, then Redis projection), or defaults if none exist.
@@ -276,8 +308,8 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 		if w.BandwidthLimitBytes != nil && *w.BandwidthLimitBytes < 0 {
 			return out, fmt.Errorf("%w: worker.bandwidthLimitBytes must not be negative", dom.ErrInvalidArg)
 		}
-		if w.BufferBudgetBytes != nil && *w.BufferBudgetBytes < minBufferBudgetBytes {
-			return out, fmt.Errorf("%w: worker.bufferBudgetBytes must be at least %d (16 MiB); 0 would remove memory protection", dom.ErrInvalidArg, minBufferBudgetBytes)
+		if w.BufferBudgetBytes != nil && *w.BufferBudgetBytes != 0 && *w.BufferBudgetBytes < minBufferBudgetBytes {
+			return out, fmt.Errorf("%w: worker.bufferBudgetBytes must be 0 (auto, derived from hardware) or at least %d (16 MiB); the budget is never unlimited", dom.ErrInvalidArg, minBufferBudgetBytes)
 		}
 		if v := w.BulkConcurrencyPercent; v != nil && *v != 0 && (*v < 5 || *v > 95) {
 			return out, fmt.Errorf("%w: worker.bulkConcurrencyPercent must be 0 (default) or in 5..95: %d", dom.ErrInvalidArg, *v)
@@ -300,10 +332,7 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 			out.Worker.MultipartPartSizeMiB = int(*w.MultipartPartSizeMib)
 		}
 		if w.Concurrency != nil {
-			out.Worker.Concurrency = int(*w.Concurrency)
-			if *w.Concurrency == 0 {
-				out.Worker.Concurrency = def.Concurrency
-			}
+			out.Worker.Concurrency = int(*w.Concurrency) // 0 = auto
 		}
 		if w.BacklogHighWatermark != nil {
 			out.Worker.BacklogHighWatermark = int(*w.BacklogHighWatermark)

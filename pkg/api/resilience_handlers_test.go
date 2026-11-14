@@ -412,7 +412,7 @@ func TestResilience_SystemSettings(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s0)
 	require.False(t, s0.Features.Tagging)
-	require.EqualValues(t, 10, s0.Worker.GetConcurrency())
+	require.EqualValues(t, 0, s0.Worker.GetConcurrency()) // 0 = auto
 
 	// Update features & worker settings
 	s1, err := c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{

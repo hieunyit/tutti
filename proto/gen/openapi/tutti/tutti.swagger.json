@@ -3766,6 +3766,33 @@
         }
       }
     },
+    "tuttiHardwareInfo": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Effective CPU count (fractional quota rounded up, min 1) and the unrounded value."
+        },
+        "cpuFractional": {
+          "type": "number",
+          "format": "double"
+        },
+        "memoryBytes": {
+          "type": "string",
+          "format": "int64",
+          "description": "Effective memory: min(host RAM, cgroup limit)."
+        },
+        "source": {
+          "type": "string",
+          "description": "host | cgroup-v1 | cgroup-v2: where the binding limit came from."
+        },
+        "memoryLimited": {
+          "type": "boolean",
+          "description": "True when a cgroup memory limit below host RAM applies."
+        }
+      }
+    },
     "tuttiHealthSettings": {
       "type": "object",
       "properties": {
@@ -5700,6 +5727,22 @@
         },
         "webhook": {
           "$ref": "#/definitions/tuttiSystemWebhookSettings"
+        },
+        "hardware": {
+          "$ref": "#/definitions/tuttiHardwareInfo",
+          "description": "Read-only, filled by the server. Hardware available to the worker process (cgroup/Kubernetes limits aware)."
+        },
+        "recommended": {
+          "$ref": "#/definitions/tuttiSystemWorkerSettings",
+          "description": "Read-only. Settings derived from the detected hardware (concurrency, bulk percent, buffer budget, multipart)."
+        },
+        "effective": {
+          "$ref": "#/definitions/tuttiSystemWorkerSettings",
+          "description": "Read-only. The values in effect now: the explicit setting, or the recommended one when unset."
+        },
+        "tuningSources": {
+          "$ref": "#/definitions/tuttiWorkerTuningSources",
+          "description": "Read-only. Whether each effective value is auto (derived from hardware) or explicit."
         }
       }
     },
@@ -5719,7 +5762,8 @@
       "properties": {
         "concurrency": {
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "description": "0 = auto (derived from detected hardware)."
         },
         "shutdownTimeout": {
           "type": "string"
@@ -5756,22 +5800,23 @@
         },
         "bufferBudgetBytes": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "0 = auto (derived from detected hardware), otherwise at least 16 MiB. Never unlimited."
         },
         "bulkConcurrencyPercent": {
           "type": "integer",
           "format": "int32",
-          "description": "Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only."
+          "description": "Share of concurrency given to bulk migration: 0 = auto (20..40 by CPU) or 5..95. Read at worker start only."
         },
         "multipartThreads": {
           "type": "integer",
           "format": "int32",
-          "description": "Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy."
+          "description": "Parallel parts per multipart upload: 0 = auto (1) or 1..16. Applied live to the next copy."
         },
         "multipartPartSizeMib": {
           "type": "integer",
           "format": "int32",
-          "description": "Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy."
+          "description": "Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy."
         }
       }
     },
@@ -6345,6 +6390,27 @@
           "format": "int64"
         }
       }
+    },
+    "tuttiWorkerTuningSources": {
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "type": "string"
+        },
+        "bulkConcurrencyPercent": {
+          "type": "string"
+        },
+        "bufferBudgetBytes": {
+          "type": "string"
+        },
+        "multipartThreads": {
+          "type": "string"
+        },
+        "multipartPartSizeMib": {
+          "type": "string"
+        }
+      },
+      "description": "Each field is \"auto\" or \"explicit\"."
     }
   }
 }

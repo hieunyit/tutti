@@ -204,13 +204,17 @@ func TestSystemSettingsFromPb_ExplicitZero(t *testing.T) {
 
 func TestSystemSettingsFromPb_BufferBudgetMinimum(t *testing.T) {
 	base := DefaultSystemSettings()
-	for _, v := range []int64{0, 1, 16<<20 - 1} {
+	for _, v := range []int64{1, 16<<20 - 1} {
 		_, err := systemSettingsFromPb(&pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(v)}}, base)
 		require.ErrorIs(t, err, dom.ErrInvalidArg, "%d", v)
 	}
 	out, err := systemSettingsFromPb(&pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(16 << 20)}}, base)
 	require.NoError(t, err)
 	require.EqualValues(t, 16<<20, out.Worker.BufferBudgetBytes)
+	// 0 means auto (hardware-derived), never unlimited.
+	out, err = systemSettingsFromPb(&pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(0)}}, out)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, out.Worker.BufferBudgetBytes)
 }
 
 func TestResilience_UpdateSystemSettings_PartialPutRoundTrip(t *testing.T) {
@@ -229,8 +233,10 @@ func TestResilience_UpdateSystemSettings_PartialPutRoundTrip(t *testing.T) {
 	require.EqualValues(t, 256<<20, got.Worker.GetBufferBudgetBytes())
 	require.EqualValues(t, 4, got.Worker.GetMultipartThreads())
 
-	_, err = c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(0)}})
+	_, err = c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(1)}})
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
+	_, err = c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{BufferBudgetBytes: proto.Int64(256 << 20)}})
+	require.NoError(t, err)
 
 	_, err = c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{
 		MultipartThreads: proto.Int32(0), BandwidthLimitBytes: proto.Int64(0)}})
