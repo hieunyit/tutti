@@ -916,7 +916,7 @@ message SystemFeaturesSettings {
 }
 
 message SystemWorkerSettings {
-  int32 concurrency = 1;
+  optional int32 concurrency = 1;
   google.protobuf.Duration shutdown_timeout = 2;
   google.protobuf.Duration queue_update_interval = 3;
   google.protobuf.Duration task_check_interval = 4;
@@ -924,16 +924,16 @@ message SystemWorkerSettings {
   google.protobuf.Duration swift_retry_interval = 6;
   google.protobuf.Duration pause_retry_interval = 7;
   google.protobuf.Duration switch_retry_interval = 8;
-  int32 backlog_high_watermark = 9;
-  int32 backlog_low_watermark = 10;
-  int64 bandwidth_limit_bytes = 11;
-  int64 buffer_budget_bytes = 12;
+  optional int32 backlog_high_watermark = 9;
+  optional int32 backlog_low_watermark = 10;
+  optional int64 bandwidth_limit_bytes = 11;
+  optional int64 buffer_budget_bytes = 12;
   // Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
-  int32 bulk_concurrency_percent = 13;
+  optional int32 bulk_concurrency_percent = 13;
   // Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
-  int32 multipart_threads = 14;
+  optional int32 multipart_threads = 14;
   // Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
-  int32 multipart_part_size_mib = 15;
+  optional int32 multipart_part_size_mib = 15;
 }
 
 message SystemLockSettings {

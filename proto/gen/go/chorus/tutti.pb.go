@@ -6159,7 +6159,7 @@ func (x *SystemFeaturesSettings) GetVersioning() bool {
 
 type SystemWorkerSettings struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
-	Concurrency              int32                  `protobuf:"varint,1,opt,name=concurrency,proto3" json:"concurrency,omitempty"`
+	Concurrency              *int32                 `protobuf:"varint,1,opt,name=concurrency,proto3,oneof" json:"concurrency,omitempty"`
 	ShutdownTimeout          *durationpb.Duration   `protobuf:"bytes,2,opt,name=shutdown_timeout,json=shutdownTimeout,proto3" json:"shutdown_timeout,omitempty"`
 	QueueUpdateInterval      *durationpb.Duration   `protobuf:"bytes,3,opt,name=queue_update_interval,json=queueUpdateInterval,proto3" json:"queue_update_interval,omitempty"`
 	TaskCheckInterval        *durationpb.Duration   `protobuf:"bytes,4,opt,name=task_check_interval,json=taskCheckInterval,proto3" json:"task_check_interval,omitempty"`
@@ -6167,16 +6167,16 @@ type SystemWorkerSettings struct {
 	SwiftRetryInterval       *durationpb.Duration   `protobuf:"bytes,6,opt,name=swift_retry_interval,json=swiftRetryInterval,proto3" json:"swift_retry_interval,omitempty"`
 	PauseRetryInterval       *durationpb.Duration   `protobuf:"bytes,7,opt,name=pause_retry_interval,json=pauseRetryInterval,proto3" json:"pause_retry_interval,omitempty"`
 	SwitchRetryInterval      *durationpb.Duration   `protobuf:"bytes,8,opt,name=switch_retry_interval,json=switchRetryInterval,proto3" json:"switch_retry_interval,omitempty"`
-	BacklogHighWatermark     int32                  `protobuf:"varint,9,opt,name=backlog_high_watermark,json=backlogHighWatermark,proto3" json:"backlog_high_watermark,omitempty"`
-	BacklogLowWatermark      int32                  `protobuf:"varint,10,opt,name=backlog_low_watermark,json=backlogLowWatermark,proto3" json:"backlog_low_watermark,omitempty"`
-	BandwidthLimitBytes      int64                  `protobuf:"varint,11,opt,name=bandwidth_limit_bytes,json=bandwidthLimitBytes,proto3" json:"bandwidth_limit_bytes,omitempty"`
-	BufferBudgetBytes        int64                  `protobuf:"varint,12,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3" json:"buffer_budget_bytes,omitempty"`
+	BacklogHighWatermark     *int32                 `protobuf:"varint,9,opt,name=backlog_high_watermark,json=backlogHighWatermark,proto3,oneof" json:"backlog_high_watermark,omitempty"`
+	BacklogLowWatermark      *int32                 `protobuf:"varint,10,opt,name=backlog_low_watermark,json=backlogLowWatermark,proto3,oneof" json:"backlog_low_watermark,omitempty"`
+	BandwidthLimitBytes      *int64                 `protobuf:"varint,11,opt,name=bandwidth_limit_bytes,json=bandwidthLimitBytes,proto3,oneof" json:"bandwidth_limit_bytes,omitempty"`
+	BufferBudgetBytes        *int64                 `protobuf:"varint,12,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3,oneof" json:"buffer_budget_bytes,omitempty"`
 	// Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
-	BulkConcurrencyPercent int32 `protobuf:"varint,13,opt,name=bulk_concurrency_percent,json=bulkConcurrencyPercent,proto3" json:"bulk_concurrency_percent,omitempty"`
+	BulkConcurrencyPercent *int32 `protobuf:"varint,13,opt,name=bulk_concurrency_percent,json=bulkConcurrencyPercent,proto3,oneof" json:"bulk_concurrency_percent,omitempty"`
 	// Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
-	MultipartThreads int32 `protobuf:"varint,14,opt,name=multipart_threads,json=multipartThreads,proto3" json:"multipart_threads,omitempty"`
+	MultipartThreads *int32 `protobuf:"varint,14,opt,name=multipart_threads,json=multipartThreads,proto3,oneof" json:"multipart_threads,omitempty"`
 	// Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
-	MultipartPartSizeMib int32 `protobuf:"varint,15,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3" json:"multipart_part_size_mib,omitempty"`
+	MultipartPartSizeMib *int32 `protobuf:"varint,15,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3,oneof" json:"multipart_part_size_mib,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -6212,8 +6212,8 @@ func (*SystemWorkerSettings) Descriptor() ([]byte, []int) {
 }
 
 func (x *SystemWorkerSettings) GetConcurrency() int32 {
-	if x != nil {
-		return x.Concurrency
+	if x != nil && x.Concurrency != nil {
+		return *x.Concurrency
 	}
 	return 0
 }
@@ -6268,50 +6268,50 @@ func (x *SystemWorkerSettings) GetSwitchRetryInterval() *durationpb.Duration {
 }
 
 func (x *SystemWorkerSettings) GetBacklogHighWatermark() int32 {
-	if x != nil {
-		return x.BacklogHighWatermark
+	if x != nil && x.BacklogHighWatermark != nil {
+		return *x.BacklogHighWatermark
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetBacklogLowWatermark() int32 {
-	if x != nil {
-		return x.BacklogLowWatermark
+	if x != nil && x.BacklogLowWatermark != nil {
+		return *x.BacklogLowWatermark
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetBandwidthLimitBytes() int64 {
-	if x != nil {
-		return x.BandwidthLimitBytes
+	if x != nil && x.BandwidthLimitBytes != nil {
+		return *x.BandwidthLimitBytes
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetBufferBudgetBytes() int64 {
-	if x != nil {
-		return x.BufferBudgetBytes
+	if x != nil && x.BufferBudgetBytes != nil {
+		return *x.BufferBudgetBytes
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetBulkConcurrencyPercent() int32 {
-	if x != nil {
-		return x.BulkConcurrencyPercent
+	if x != nil && x.BulkConcurrencyPercent != nil {
+		return *x.BulkConcurrencyPercent
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetMultipartThreads() int32 {
-	if x != nil {
-		return x.MultipartThreads
+	if x != nil && x.MultipartThreads != nil {
+		return *x.MultipartThreads
 	}
 	return 0
 }
 
 func (x *SystemWorkerSettings) GetMultipartPartSizeMib() int32 {
-	if x != nil {
-		return x.MultipartPartSizeMib
+	if x != nil && x.MultipartPartSizeMib != nil {
+		return *x.MultipartPartSizeMib
 	}
 	return 0
 }
@@ -7487,24 +7487,32 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x13preserve_acl_grants\x18\x05 \x01(\bR\x11preserveAclGrants\x12\x1e\n" +
 	"\n" +
 	"versioning\x18\x06 \x01(\bR\n" +
-	"versioning\"\xc7\a\n" +
-	"\x14SystemWorkerSettings\x12 \n" +
-	"\vconcurrency\x18\x01 \x01(\x05R\vconcurrency\x12D\n" +
+	"versioning\"\xb5\t\n" +
+	"\x14SystemWorkerSettings\x12%\n" +
+	"\vconcurrency\x18\x01 \x01(\x05H\x00R\vconcurrency\x88\x01\x01\x12D\n" +
 	"\x10shutdown_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x0fshutdownTimeout\x12M\n" +
 	"\x15queue_update_interval\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x13queueUpdateInterval\x12I\n" +
 	"\x13task_check_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x11taskCheckInterval\x12X\n" +
 	"\x1bdelayed_task_check_interval\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x18delayedTaskCheckInterval\x12K\n" +
 	"\x14swift_retry_interval\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\x12swiftRetryInterval\x12K\n" +
 	"\x14pause_retry_interval\x18\a \x01(\v2\x19.google.protobuf.DurationR\x12pauseRetryInterval\x12M\n" +
-	"\x15switch_retry_interval\x18\b \x01(\v2\x19.google.protobuf.DurationR\x13switchRetryInterval\x124\n" +
-	"\x16backlog_high_watermark\x18\t \x01(\x05R\x14backlogHighWatermark\x122\n" +
+	"\x15switch_retry_interval\x18\b \x01(\v2\x19.google.protobuf.DurationR\x13switchRetryInterval\x129\n" +
+	"\x16backlog_high_watermark\x18\t \x01(\x05H\x01R\x14backlogHighWatermark\x88\x01\x01\x127\n" +
 	"\x15backlog_low_watermark\x18\n" +
-	" \x01(\x05R\x13backlogLowWatermark\x122\n" +
-	"\x15bandwidth_limit_bytes\x18\v \x01(\x03R\x13bandwidthLimitBytes\x12.\n" +
-	"\x13buffer_budget_bytes\x18\f \x01(\x03R\x11bufferBudgetBytes\x128\n" +
-	"\x18bulk_concurrency_percent\x18\r \x01(\x05R\x16bulkConcurrencyPercent\x12+\n" +
-	"\x11multipart_threads\x18\x0e \x01(\x05R\x10multipartThreads\x125\n" +
-	"\x17multipart_part_size_mib\x18\x0f \x01(\x05R\x14multipartPartSizeMib\"I\n" +
+	" \x01(\x05H\x02R\x13backlogLowWatermark\x88\x01\x01\x127\n" +
+	"\x15bandwidth_limit_bytes\x18\v \x01(\x03H\x03R\x13bandwidthLimitBytes\x88\x01\x01\x123\n" +
+	"\x13buffer_budget_bytes\x18\f \x01(\x03H\x04R\x11bufferBudgetBytes\x88\x01\x01\x12=\n" +
+	"\x18bulk_concurrency_percent\x18\r \x01(\x05H\x05R\x16bulkConcurrencyPercent\x88\x01\x01\x120\n" +
+	"\x11multipart_threads\x18\x0e \x01(\x05H\x06R\x10multipartThreads\x88\x01\x01\x12:\n" +
+	"\x17multipart_part_size_mib\x18\x0f \x01(\x05H\aR\x14multipartPartSizeMib\x88\x01\x01B\x0e\n" +
+	"\f_concurrencyB\x19\n" +
+	"\x17_backlog_high_watermarkB\x18\n" +
+	"\x16_backlog_low_watermarkB\x18\n" +
+	"\x16_bandwidth_limit_bytesB\x16\n" +
+	"\x14_buffer_budget_bytesB\x1b\n" +
+	"\x19_bulk_concurrency_percentB\x14\n" +
+	"\x12_multipart_threadsB\x1a\n" +
+	"\x18_multipart_part_size_mib\"I\n" +
 	"\x12SystemLockSettings\x123\n" +
 	"\aoverlap\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\aoverlap\"L\n" +
 	"\x15SystemWebhookSettings\x12\x18\n" +
@@ -7969,6 +7977,7 @@ func file_chorus_tutti_proto_init() {
 	file_chorus_tutti_proto_msgTypes[77].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[78].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[80].OneofWrappers = []any{}
+	file_chorus_tutti_proto_msgTypes[85].OneofWrappers = []any{}
 	file_chorus_tutti_proto_msgTypes[89].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

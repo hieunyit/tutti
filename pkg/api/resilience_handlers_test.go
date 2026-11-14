@@ -412,7 +412,7 @@ func TestResilience_SystemSettings(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, s0)
 	require.False(t, s0.Features.Tagging)
-	require.EqualValues(t, 10, s0.Worker.Concurrency)
+	require.EqualValues(t, 10, s0.Worker.GetConcurrency())
 
 	// Update features & worker settings
 	s1, err := c.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{
@@ -422,7 +422,7 @@ func TestResilience_SystemSettings(t *testing.T) {
 			Policy:  true,
 		},
 		Worker: &pb.SystemWorkerSettings{
-			Concurrency: 24,
+			Concurrency: proto.Int32(24),
 		},
 		Lock: &pb.SystemLockSettings{
 			Overlap: durationpb.New(3 * time.Second),
@@ -437,7 +437,7 @@ func TestResilience_SystemSettings(t *testing.T) {
 	require.True(t, s1.Features.Tagging)
 	require.True(t, s1.Features.Acl)
 	require.True(t, s1.Features.Policy)
-	require.EqualValues(t, 24, s1.Worker.Concurrency)
+	require.EqualValues(t, 24, s1.Worker.GetConcurrency())
 	require.True(t, s1.Webhook.Enabled)
 	require.Equal(t, "http://webhook.internal", s1.Webhook.BaseUrl)
 
@@ -450,6 +450,6 @@ func TestResilience_SystemSettings(t *testing.T) {
 	s2, err := c.GetSystemSettings(ctx, &emptypb.Empty{})
 	require.NoError(t, err)
 	require.True(t, s2.Features.Tagging)
-	require.EqualValues(t, 24, s2.Worker.Concurrency)
+	require.EqualValues(t, 24, s2.Worker.GetConcurrency())
 }
 

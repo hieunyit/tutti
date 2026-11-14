@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -240,10 +241,10 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 	// Update system settings in PostgreSQL
 	settingsResp, err := h.UpdateSystemSettings(ctx, &pb.UpdateSystemSettingsRequest{
 		Features: &pb.SystemFeaturesSettings{Tagging: true, Acl: true},
-		Worker:   &pb.SystemWorkerSettings{Concurrency: 32},
+		Worker:   &pb.SystemWorkerSettings{Concurrency: proto.Int32(32)},
 	})
 	require.NoError(t, err)
-	require.EqualValues(t, 32, settingsResp.Worker.Concurrency)
+	require.EqualValues(t, 32, settingsResp.Worker.GetConcurrency())
 	require.True(t, settingsResp.Features.Tagging)
 
 	// 6. Drain outbox to Redis so Redis has the warm projection
@@ -287,7 +288,7 @@ func TestControlPlanePostgresWiringAndFallback(t *testing.T) {
 	// Fallback read from Redis
 	gotSettings, err := h.GetSystemSettings(ctx, &emptypb.Empty{})
 	require.NoError(t, err)
-	require.EqualValues(t, 32, gotSettings.Worker.Concurrency)
+	require.EqualValues(t, 32, gotSettings.Worker.GetConcurrency())
 
 	// Write while PG is down returns ErrUnavailable -> gRPC Unavailable (503)
 	_, err = h.SetAccessPolicy(ctx, &pb.AccessPolicy{

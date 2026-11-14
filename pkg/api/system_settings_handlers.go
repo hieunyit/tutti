@@ -9,6 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -191,7 +192,7 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			Versioning:        s.Features.Versioning,
 		},
 		Worker: &pb.SystemWorkerSettings{
-			Concurrency:              int32(s.Worker.Concurrency),
+			Concurrency:              proto.Int32(int32(s.Worker.Concurrency)),
 			ShutdownTimeout:          durationpb.New(s.Worker.ShutdownTimeout),
 			QueueUpdateInterval:      durationpb.New(s.Worker.QueueUpdateInterval),
 			TaskCheckInterval:        durationpb.New(s.Worker.TaskCheckInterval),
@@ -199,13 +200,13 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			SwiftRetryInterval:       durationpb.New(s.Worker.SwiftRetryInterval),
 			PauseRetryInterval:       durationpb.New(s.Worker.PauseRetryInterval),
 			SwitchRetryInterval:      durationpb.New(s.Worker.SwitchRetryInterval),
-			BacklogHighWatermark:     int32(s.Worker.BacklogHighWatermark),
-			BacklogLowWatermark:      int32(s.Worker.BacklogLowWatermark),
-			BandwidthLimitBytes:      s.Worker.BandwidthLimitBytes,
-			BufferBudgetBytes:        s.Worker.BufferBudgetBytes,
-			BulkConcurrencyPercent:   int32(s.Worker.BulkConcurrencyPercent),
-			MultipartThreads:         int32(s.Worker.MultipartThreads),
-			MultipartPartSizeMib:     int32(s.Worker.MultipartPartSizeMiB),
+			BacklogHighWatermark:     proto.Int32(int32(s.Worker.BacklogHighWatermark)),
+			BacklogLowWatermark:      proto.Int32(int32(s.Worker.BacklogLowWatermark)),
+			BandwidthLimitBytes:      proto.Int64(s.Worker.BandwidthLimitBytes),
+			BufferBudgetBytes:        proto.Int64(s.Worker.BufferBudgetBytes),
+			BulkConcurrencyPercent:   proto.Int32(int32(s.Worker.BulkConcurrencyPercent)),
+			MultipartThreads:         proto.Int32(int32(s.Worker.MultipartThreads)),
+			MultipartPartSizeMib:     proto.Int32(int32(s.Worker.MultipartPartSizeMiB)),
 		},
 		Lock: &pb.SystemLockSettings{
 			Overlap: durationpb.New(s.Lock.Overlap),
@@ -241,8 +242,11 @@ func (h *resilienceHandlers) currentSystemSettings(ctx context.Context) (control
 	return DefaultSystemSettings(), nil
 }
 
-// systemSettingsFromPb merges the request over base: omitted blocks (and zero-valued worker/lock
-// numeric fields) keep their current value. Negative values and inverted watermarks are rejected.
+// minBufferBudgetBytes is the smallest accepted worker buffer budget (16 MiB).
+const minBufferBudgetBytes int64 = 16 * 1024 * 1024
+
+// systemSettingsFromPb merges the request over base: omitted blocks and absent optional worker
+// fields keep their current value (explicit 0 resets to default; see below). Negative values and inverted watermarks are rejected.
 func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane.SystemSettings) (controlplane.SystemSettings, error) {
 	out := base
 
@@ -257,30 +261,67 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 
 	if req.Worker != nil {
 		w := req.Worker
-		if w.Concurrency < 0 || w.BacklogHighWatermark < 0 || w.BacklogLowWatermark < 0 || w.BandwidthLimitBytes < 0 || w.BufferBudgetBytes < 0 {
-			return out, fmt.Errorf("%w: worker numeric settings must not be negative", dom.ErrInvalidArg)
+		def := DefaultSystemSettings().Worker
+		neg := func(name string, v *int32) error {
+			if v != nil && *v < 0 {
+				return fmt.Errorf("%w: worker.%s must not be negative: %d", dom.ErrInvalidArg, name, *v)
+			}
+			return nil
 		}
-		if w.BulkConcurrencyPercent != 0 && (w.BulkConcurrencyPercent < 5 || w.BulkConcurrencyPercent > 95) {
-			return out, fmt.Errorf("%w: worker.bulkConcurrencyPercent must be 0 (default) or in 5..95: %d", dom.ErrInvalidArg, w.BulkConcurrencyPercent)
+		for name, v := range map[string]*int32{"concurrency": w.Concurrency, "backlogHighWatermark": w.BacklogHighWatermark, "backlogLowWatermark": w.BacklogLowWatermark} {
+			if err := neg(name, v); err != nil {
+				return out, err
+			}
 		}
-		if w.MultipartThreads < 0 || w.MultipartThreads > 16 {
-			return out, fmt.Errorf("%w: worker.multipartThreads must be 0 (default) or in 1..16: %d", dom.ErrInvalidArg, w.MultipartThreads)
+		if w.BandwidthLimitBytes != nil && *w.BandwidthLimitBytes < 0 {
+			return out, fmt.Errorf("%w: worker.bandwidthLimitBytes must not be negative", dom.ErrInvalidArg)
 		}
-		if w.MultipartPartSizeMib != 0 && (w.MultipartPartSizeMib < 5 || w.MultipartPartSizeMib > 512) {
-			return out, fmt.Errorf("%w: worker.multipartPartSizeMib must be 0 (default) or in 5..512: %d", dom.ErrInvalidArg, w.MultipartPartSizeMib)
+		if w.BufferBudgetBytes != nil && *w.BufferBudgetBytes < minBufferBudgetBytes {
+			return out, fmt.Errorf("%w: worker.bufferBudgetBytes must be at least %d (16 MiB); 0 would remove memory protection", dom.ErrInvalidArg, minBufferBudgetBytes)
 		}
-		// 0 means "omitted": the stored value is kept like for the other numeric worker fields.
-		if w.BulkConcurrencyPercent != 0 {
-			out.Worker.BulkConcurrencyPercent = int(w.BulkConcurrencyPercent)
+		if v := w.BulkConcurrencyPercent; v != nil && *v != 0 && (*v < 5 || *v > 95) {
+			return out, fmt.Errorf("%w: worker.bulkConcurrencyPercent must be 0 (default) or in 5..95: %d", dom.ErrInvalidArg, *v)
 		}
-		if w.MultipartThreads != 0 {
-			out.Worker.MultipartThreads = int(w.MultipartThreads)
+		if v := w.MultipartThreads; v != nil && (*v < 0 || *v > 16) {
+			return out, fmt.Errorf("%w: worker.multipartThreads must be 0 (default) or in 1..16: %d", dom.ErrInvalidArg, *v)
 		}
-		if w.MultipartPartSizeMib != 0 {
-			out.Worker.MultipartPartSizeMiB = int(w.MultipartPartSizeMib)
+		if v := w.MultipartPartSizeMib; v != nil && *v != 0 && (*v < 5 || *v > 512) {
+			return out, fmt.Errorf("%w: worker.multipartPartSizeMib must be 0 (default) or in 5..512: %d", dom.ErrInvalidArg, *v)
 		}
-		if req.Worker.Concurrency > 0 {
-			out.Worker.Concurrency = int(req.Worker.Concurrency)
+		// Absent keeps the stored value; an explicit 0 resets to the built-in default
+		// (bandwidth: unlimited). Stored 0 already means "default" for the multipart/bulk knobs.
+		if w.BulkConcurrencyPercent != nil {
+			out.Worker.BulkConcurrencyPercent = int(*w.BulkConcurrencyPercent)
+		}
+		if w.MultipartThreads != nil {
+			out.Worker.MultipartThreads = int(*w.MultipartThreads)
+		}
+		if w.MultipartPartSizeMib != nil {
+			out.Worker.MultipartPartSizeMiB = int(*w.MultipartPartSizeMib)
+		}
+		if w.Concurrency != nil {
+			out.Worker.Concurrency = int(*w.Concurrency)
+			if *w.Concurrency == 0 {
+				out.Worker.Concurrency = def.Concurrency
+			}
+		}
+		if w.BacklogHighWatermark != nil {
+			out.Worker.BacklogHighWatermark = int(*w.BacklogHighWatermark)
+			if *w.BacklogHighWatermark == 0 {
+				out.Worker.BacklogHighWatermark = def.BacklogHighWatermark
+			}
+		}
+		if w.BacklogLowWatermark != nil {
+			out.Worker.BacklogLowWatermark = int(*w.BacklogLowWatermark)
+			if *w.BacklogLowWatermark == 0 {
+				out.Worker.BacklogLowWatermark = def.BacklogLowWatermark
+			}
+		}
+		if w.BandwidthLimitBytes != nil {
+			out.Worker.BandwidthLimitBytes = *w.BandwidthLimitBytes
+		}
+		if w.BufferBudgetBytes != nil {
+			out.Worker.BufferBudgetBytes = *w.BufferBudgetBytes
 		}
 		if d, err := durationPtrFromPb("worker.shutdownTimeout", req.Worker.ShutdownTimeout); err != nil {
 			return out, err
@@ -330,18 +371,6 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 			return out, fmt.Errorf("%w: durations must not be negative", dom.ErrInvalidArg)
 		} else if d != nil && *d > 0 {
 			out.Worker.SwitchRetryInterval = *d
-		}
-		if req.Worker.BacklogHighWatermark > 0 {
-			out.Worker.BacklogHighWatermark = int(req.Worker.BacklogHighWatermark)
-		}
-		if req.Worker.BacklogLowWatermark > 0 {
-			out.Worker.BacklogLowWatermark = int(req.Worker.BacklogLowWatermark)
-		}
-		if req.Worker.BandwidthLimitBytes >= 0 {
-			out.Worker.BandwidthLimitBytes = req.Worker.BandwidthLimitBytes
-		}
-		if req.Worker.BufferBudgetBytes >= 0 {
-			out.Worker.BufferBudgetBytes = req.Worker.BufferBudgetBytes
 		}
 	}
 
