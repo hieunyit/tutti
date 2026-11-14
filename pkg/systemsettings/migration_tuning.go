@@ -1,5 +1,7 @@
 package systemsettings
 
+import "sync/atomic"
+
 const (
 	DefaultBulkConcurrencyPercent = 20
 	MinBulkConcurrencyPercent     = 5
@@ -42,4 +44,55 @@ func MultipartTuning(threads, partSizeMiB int) (int, uint64) {
 		partSizeMiB = DefaultMultipartPartSizeMiB
 	}
 	return threads, uint64(partSizeMiB) << 20
+}
+
+// Precedence of the tuning knobs: system setting (non-zero) > YAML/env > built-in default.
+
+var yamlBulkPercent, yamlMultipartThreads, yamlMultipartPartMiB atomic.Int64
+
+// SetConfigFallbacks records the YAML/env values used when the system setting is 0.
+func SetConfigFallbacks(bulkPercent, multipartThreads, multipartPartSizeMiB int) {
+	yamlBulkPercent.Store(int64(bulkPercent))
+	yamlMultipartThreads.Store(int64(multipartThreads))
+	yamlMultipartPartMiB.Store(int64(multipartPartSizeMiB))
+}
+
+// ResolveBulkPercent applies the precedence for bulkConcurrencyPercent.
+func ResolveBulkPercent(setting, yaml int) int {
+	if setting >= MinBulkConcurrencyPercent && setting <= MaxBulkConcurrencyPercent {
+		return setting
+	}
+	if yaml >= MinBulkConcurrencyPercent && yaml <= MaxBulkConcurrencyPercent {
+		return yaml
+	}
+	return DefaultBulkConcurrencyPercent
+}
+
+// ResolveMultipart applies the precedence for the multipart knobs. partExplicit reports whether the part
+// size was configured (setting or YAML) rather than the built-in default.
+func ResolveMultipart(settingThreads, settingPartMiB, yamlThreads, yamlPartMiB int) (threads, partMiB int, partExplicit bool) {
+	threads = settingThreads
+	if threads < 1 {
+		threads = yamlThreads
+	}
+	partMiB = settingPartMiB
+	if partMiB < MinMultipartPartSizeMiB {
+		partMiB = yamlPartMiB
+	}
+	partExplicit = partMiB >= MinMultipartPartSizeMiB
+	t, p := MultipartTuning(threads, partMiB)
+	return t, int(p >> 20), partExplicit
+}
+
+// EffectiveBulkPercent resolves bulkConcurrencyPercent from the active settings and YAML fallback.
+func EffectiveBulkPercent() int {
+	return ResolveBulkPercent(Current().Worker.BulkConcurrencyPercent, int(yamlBulkPercent.Load()))
+}
+
+// EffectiveMultipart resolves the multipart knobs from the active settings (read at copy time, so changes
+// apply to the next copy) and the YAML fallback.
+func EffectiveMultipart() (threads int, partSize uint64, partExplicit bool) {
+	w := Current().Worker
+	t, mib, explicit := ResolveMultipart(w.MultipartThreads, w.MultipartPartSizeMiB, int(yamlMultipartThreads.Load()), int(yamlMultipartPartMiB.Load()))
+	return t, uint64(mib) << 20, explicit
 }

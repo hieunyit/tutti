@@ -18,6 +18,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane/pg"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/metrics"
 )
 
 // BufferExceedsBudgetError is returned when a request is larger than the whole buffer budget; retrying cannot help.
@@ -44,7 +45,35 @@ var (
 	bufferTotal   int64
 	bufferUsed    int64
 	bufferWaiters []*bufferWaiter
+	bufferWait    time.Duration
+	// bufferNow is the clock used to measure the wait time (replaced in tests).
+	bufferNow = time.Now
 )
+
+// BufferStats is a point-in-time view of the buffer budget.
+type BufferStats struct {
+	TotalBytes  int64
+	UsedBytes   int64
+	Waiters     int64
+	WaitSeconds float64 // cumulative time spent blocked in AcquireBufferBudget
+}
+
+// CurrentBufferStats returns the buffer budget gauges and the cumulative wait time.
+func CurrentBufferStats() BufferStats {
+	bufferPoolMu.Lock()
+	defer bufferPoolMu.Unlock()
+	return BufferStats{TotalBytes: bufferTotal, UsedBytes: bufferUsed, Waiters: int64(len(bufferWaiters)), WaitSeconds: bufferWait.Seconds()}
+}
+
+func recordBufferWaitLocked(start time.Time) {
+	d := bufferNow().Sub(start)
+	if d > 0 {
+		bufferWait += d
+		metrics.AddCopyBufferWait(d)
+	}
+}
+
+func exportBufferLocked() { metrics.SetCopyBuffer(bufferUsed, bufferTotal) }
 
 func init() {
 	def := controlplane.SystemSettings{
@@ -116,6 +145,7 @@ func ApplyWorkerLimiting(s controlplane.SystemSettings) {
 }
 
 func notifyBufferWaitersLocked() {
+	defer exportBufferLocked()
 	for len(bufferWaiters) > 0 {
 		first := bufferWaiters[0]
 		grantSize := first.bytes
@@ -168,6 +198,7 @@ func AcquireBufferBudget(ctx context.Context, bytes int64) (func(), error) {
 	if bufferTotal <= 0 || (len(bufferWaiters) == 0 && bufferUsed+bytes <= bufferTotal) {
 		bufferUsed += bytes
 		granted := bytes
+		exportBufferLocked()
 		bufferPoolMu.Unlock()
 
 		var released atomic.Bool
@@ -186,10 +217,14 @@ func AcquireBufferBudget(ctx context.Context, bytes int64) (func(), error) {
 		ready: make(chan struct{}),
 	}
 	bufferWaiters = append(bufferWaiters, w)
+	waitStart := bufferNow()
 	bufferPoolMu.Unlock()
 
 	select {
 	case <-w.ready:
+		bufferPoolMu.Lock()
+		recordBufferWaitLocked(waitStart)
+		bufferPoolMu.Unlock()
 		if w.oversize {
 			return nil, &BufferExceedsBudgetError{Requested: w.bytes, Budget: w.budget}
 		}
@@ -204,6 +239,7 @@ func AcquireBufferBudget(ctx context.Context, bytes int64) (func(), error) {
 		}, nil
 	case <-ctx.Done():
 		bufferPoolMu.Lock()
+		recordBufferWaitLocked(waitStart)
 		select {
 		case <-w.ready:
 			if !w.oversize {
