@@ -70,4 +70,3 @@ proxy:
 worker:
   replicas: 2
   config:
-    concurrency: 10

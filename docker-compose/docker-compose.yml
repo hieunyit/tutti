@@ -53,6 +53,10 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+    # The worker tunes concurrency and the copy buffer from the CPU/memory it can use. Uncomment to cap it, e.g.
+    # mem_limit: 4g, cpus: 2 (compose v2 keys); `docker run --memory/--cpus` work the same way.
+    # mem_limit: 4g
+    # cpus: 2
     build:
       context: ../
       args:

@@ -272,6 +272,11 @@ worker:
     tag: "" # Defaults to Chart.appVersion
     pullPolicy: IfNotPresent
 
+  # The worker auto-tunes concurrency and its copy buffer from these limits (cgroup-aware); an empty value
+  # tunes for the whole node, which is rarely what you want. Recommended: requests equal to limits, e.g.
+  # resources:
+  #   requests: {cpu: "4", memory: 8Gi}
+  #   limits:   {cpu: "4", memory: 8Gi}
   resources: {}
 
   podLabels: {}
@@ -305,8 +310,14 @@ worker:
     type: ClusterIP
     annotations: {}
 
+  # Auto tuning: the worker detects the CPU/memory of the container (resources.limits; falls back to the node
+  # when no limit is set) and derives concurrency, bulkConcurrencyPercent and the buffer budget from it.
+  # Set requests = limits for predictable tuning. See docs/tutti/configuration.md#hardware-aware-defaults.
+  # Example: limits cpu 4 / memory 8Gi -> concurrency 40, bulk share 30%, buffer 2 GiB.
+  # Do not set GOMAXPROCS (Go reads the CPU limit itself); GOMEMLIMIT is set to 90% of the memory limit
+  # automatically unless you set it.
   config:
-    concurrency: 10
+    concurrency: 0 # 0 = auto (hardware-derived); any positive value is an explicit override
 
     api:
       enabled: true

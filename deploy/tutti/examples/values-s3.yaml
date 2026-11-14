@@ -55,7 +55,7 @@ proxy:
 worker:
   replicas: 3
   config:
-    concurrency: 20
+    concurrency: 20 # explicit; remove (or 0) to derive from the worker resource limits
 
 # Enable UI
 ui:

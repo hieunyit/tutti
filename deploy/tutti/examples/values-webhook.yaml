@@ -23,7 +23,6 @@ proxy:
 worker:
   replicas: 2
   config:
-    concurrency: 10
     api:
       enabled: true
       grpcPort: 9670

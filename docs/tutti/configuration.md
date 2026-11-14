@@ -353,16 +353,33 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 
 ## Replication throughput tuning
 
-| Knob | System setting (`worker.*`) | YAML / env | Default | Applies |
+### Hardware-aware defaults
+
+At startup the worker detects the CPU and memory **actually available to the process**: the smaller of host values and the container limit (cgroup v2 `cpu.max`/`memory.max`, cgroup v1 `cfs_quota`/`limit_in_bytes`), also capped by an explicitly set `GOMAXPROCS`. In Kubernetes these are the pod `resources.limits` (set requests equal to limits for predictable tuning); with Docker, `--memory`/`--cpus` (compose `mem_limit`/`cpus`). A fractional CPU quota is rounded up for the CPU count (1500m is 2) and the fractional value is kept and shown. When a cgroup memory limit applies and `GOMEMLIMIT` is unset, the worker sets `GOMEMLIMIT` to 90% of it.
+
+Knobs with no explicit value (stored setting `0`, YAML/env `0`) use a value derived from that hardware. Explicit values always win. One log line at startup lists the detected hardware and each effective value as `auto` or `explicit`; `GET /tutti/system-settings` returns `hardware`, `recommended`, `effective` and `tuningSources`, and the console shows the detected hardware and an Auto badge.
+
+| Knob | System setting (`worker.*`) | YAML / env | Auto value | Applies |
 |---|---|---|---|---|
-| Bulk share of concurrency | `bulkConcurrencyPercent` (0 or 5..95) | `bulkConcurrencyPercent` / `CFG_BULKCONCURRENCYPERCENT` | 20 | worker restart |
+| Task concurrency | `concurrency` (0 = auto, else 1..1000) | `concurrency` / `CFG_CONCURRENCY` | about 10 per CPU, at most 128, at most buffer budget / 32 MiB, at least 10 | worker restart |
+| Bulk share of concurrency | `bulkConcurrencyPercent` (0 or 5..95) | `bulkConcurrencyPercent` / `CFG_BULKCONCURRENCYPERCENT` | 20 (up to 3 CPUs), 30 (4..7), 40 (8+) | worker restart |
+| Buffer budget | `bufferBudgetBytes` (0 = auto, else at least 16 MiB; never unlimited) | none | 25% of memory, clamped to 256 MiB..8 GiB | next copy, no restart |
 | Parallel multipart parts | `multipartThreads` (0 or 1..16) | `multipartThreads` | 1 | next copy, no restart |
 | Multipart part size | `multipartPartSizeMib` (0 or 5..512) | `multipartPartSizeMiB` | 16 MiB | next copy, no restart |
 
-`multipartThreads` is optional and stays at 1 unless you change it. Parallel parts were 3-4x slower than a single stream in local loopback tests (cause not isolated), so any gain over a WAN is unverified: raise it only after measuring on your own network, and revert if throughput does not improve.
+| CPU / memory | concurrency | bulk % | buffer budget |
+|---|---|---|---|
+| 1 / 1 GiB | 10 | 20 | 256 MiB |
+| 2 / 4 GiB | 20 | 20 | 1 GiB |
+| 4 / 32 GiB | 40 | 30 | 8 GiB |
+| 16 / 64 GiB | 128 | 40 | 8 GiB |
 
-In the System settings API an omitted worker field keeps the stored value, an explicit `0` resets it to the default (`bandwidthLimitBytes`: unlimited) and `bufferBudgetBytes` must be at least 16 MiB.
+The floors equal the former static defaults (10, 20%, 256 MiB), so small hosts are never worse than before. The buffer never exceeds a quarter of memory (above the 256 MiB floor) so Go heap overhead, TLS and GC headroom remain.
 
-Precedence: non-zero system setting, then YAML/env, then the built-in default. The buffer budget (`bufferBudgetBytes`) also applies live; a multipart copy reserves `threads x partSize` of it, capped at the object size.
+`multipartThreads` stays at 1 unless you set it. Parallel parts were 3-4x slower than a single stream in local loopback tests (cause not isolated), so any gain over a WAN is unverified: raise it only after measuring on your own network, and revert if throughput does not improve.
+
+In the System settings API an omitted worker field keeps the stored value; an explicit `0` resets it to auto (`bandwidthLimitBytes`: unlimited).
+
+Precedence: non-zero system setting, then non-zero YAML/env, then the hardware-derived value. **Upgrading:** installations created before this feature stored `concurrency: 10` and `bufferBudgetBytes: 268435456` as explicit values; they stay in force. Set both to `0` (console: Settings, Worker, Use auto) to switch to auto tuning. The Helm chart no longer sets `worker.config.concurrency`; remove such an override from your values if you want auto tuning.
 
 Throughput is visible at `GET /tutti/worker-stats` and as Prometheus metrics `tutti_copy_objects_total{result}`, `tutti_copy_bytes_total`, `tutti_copy_duration_seconds`, `tutti_copy_inflight`, `tutti_copy_buffer_wait_seconds_total`, `tutti_copy_buffer_used_bytes`, `tutti_copy_buffer_total_bytes`. A growing `bufferWaitSecondsTotal` means the buffer budget limits throughput.
