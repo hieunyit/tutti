@@ -263,6 +263,19 @@ curl -X POST http://localhost:9671/replication/list-buckets -H "Authorization: B
 
 `list-buckets` returns `{"buckets":[...],"replicatedBuckets":[...],"coveredBuckets":[{"bucket","ownerKind","ownerId"}]}`. `buckets` are the ones that can be replicated now; `coveredBuckets` lists buckets already covered for that `from -> to` edge by a protection group (`ownerKind: "group"`) or another replication (`"replication"`), with the owner id. A storage with no connection account yields an error naming that storage.
 
+**Display name.** `POST /replication/add` accepts an optional `name`, and `PUT /replication/rename` (`{"id":{...},"name":"..."}`, empty clears it) changes it later; `get`, `list` and the stream return `name` (empty when unnamed). The name is a label only: at most 64 characters (counted as characters, after trimming), no control characters, not unique, and never part of the replication id, the scope lock or the overlap rule, so renaming does not touch copy progress or routing. A longer or invalid name is `400`. Renaming needs an admin account like the other replication mutations and is audited as `RENAME`. Unnamed replications keep working; the console shows `<from> → <to> · <bucket|all buckets>` for them.
+
+```bash
+curl -X POST http://localhost:9671/replication/add -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2"},"name":"prod to dr"}'
+curl -X PUT http://localhost:9671/replication/rename -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2"},"name":"prod to dr (nightly)"}'
+```
+
+With the PostgreSQL control plane the name is stored in `replication_status.name` (migration `0004_replication_name.sql`) and projected to the Redis status hash field `name`. `tuttictl repl add --name`, `tuttictl repl rename --name` and the `NAME` column of `tuttictl repl` use it.
+
 **Overlap rule and 409.** Creating a replication, creating a group and updating a group all use the same rule:
 
 | Case | Example | Result |
