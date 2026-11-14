@@ -19,7 +19,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import { useReplicationsWidget } from '@/components/chorus/home/ReplicationsWidget/useReplicationsWidget';
+  import { useReplicationsWidget } from '@/components/tutti/home/ReplicationsWidget/useReplicationsWidget';
   import SectionCard from '@/components/ui/SectionCard.vue';
   import StatusTag from '@/components/ui/StatusTag.vue';
   import EmptyState from '@/components/ui/EmptyState.vue';
@@ -31,12 +31,12 @@
     type ReplicationState,
   } from '@/utils/helpers/DashboardHelper';
   import { IconName } from '@/utils/types/icon';
-  import type { ChorusReplication } from '@/utils/types/chorus';
+  import type { TuttiReplication } from '@/utils/types/tuttiCore';
   import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
     breakdown: ReplicationBreakdown;
-    replications: ChorusReplication[];
+    replications: TuttiReplication[];
   }>();
 
   const { t } = useI18n({ messages: i18nDashboard });
@@ -117,7 +117,7 @@
     class="dashboard-replications"
     :title="t('replicationsTitle')"
     :link-label="t('storagesViewAll')"
-    :link-to="{ name: RouteName.CHORUS_REPLICATION }"
+    :link-to="{ name: RouteName.TUTTI_REPLICATION }"
     flush
   >
     <EmptyState
@@ -130,7 +130,7 @@
         <button
           type="button"
           class="dashboard-replications__add"
-          @click="$router.push({ name: RouteName.CHORUS_ADD_REPLICATION })"
+          @click="$router.push({ name: RouteName.TUTTI_ADD_REPLICATION })"
         >
           {{ t('replicationsAdd') }}
         </button>

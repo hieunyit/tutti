@@ -75,7 +75,7 @@ export function useLoginFlow() {
   function goAfterLogin() {
     return router.replace(
       AuthHelper.getSafeRedirect(route.query.redirect) ?? {
-        name: RouteName.CHORUS_HOME,
+        name: RouteName.TUTTI_HOME,
       },
     );
   }

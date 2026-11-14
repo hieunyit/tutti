@@ -22,10 +22,10 @@ import useVuelidate from '@vuelidate/core';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   AddDiffReportStepName,
-  type ChorusStorage,
-} from '@/utils/types/chorus';
-import { ChorusService } from '@/services/ChorusService';
-import i18nAddDiffReport from '@/components/chorus/add-diff-report/i18nAddDiffReport';
+  type TuttiStorage,
+} from '@/utils/types/tuttiCore';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
+import i18nAddDiffReport from '@/components/tutti/add-diff-report/i18nAddDiffReport';
 import {
   hasNoAdjacentPeriods,
   hasValidChars,
@@ -36,14 +36,14 @@ import {
   isValidLength,
 } from '@/utils/validators/s3BucketNameValidator';
 
-interface ChorusAddDiffReportState {
+interface TuttiAddDiffReportState {
   isLoading: boolean;
   hasError: boolean;
 
-  storages: ChorusStorage[];
-  fromStorage: ChorusStorage | null;
+  storages: TuttiStorage[];
+  fromStorage: TuttiStorage | null;
   fromBucketName: string;
-  toStorage: ChorusStorage | null;
+  toStorage: TuttiStorage | null;
   toBucketName: string;
 
   selectedUser: string | null;
@@ -58,7 +58,7 @@ interface ChorusAddDiffReportState {
   isSubmitting: boolean;
 }
 
-function getInitialState(): ChorusAddDiffReportState {
+function getInitialState(): TuttiAddDiffReportState {
   return {
     isLoading: false,
     hasError: false,
@@ -83,9 +83,9 @@ function getInitialState(): ChorusAddDiffReportState {
 }
 
 export const useTuttiAddDiffReportStore = defineStore(
-  'chorusAddDiffReport',
+  'tuttiAddDiffReport',
   () => {
-    const state = reactive<ChorusAddDiffReportState>(getInitialState());
+    const state = reactive<TuttiAddDiffReportState>(getInitialState());
     const { t } = useStoreI18n({
       messages: i18nAddDiffReport,
     });
@@ -153,14 +153,14 @@ export const useTuttiAddDiffReportStore = defineStore(
       fromStorage: {
         required: helpers.withMessage(
           t('fromStorageRequired'),
-          (value: ChorusStorage | null) => !!value,
+          (value: TuttiStorage | null) => !!value,
         ),
       },
       fromBucketName: bucketNameValidationRules(),
       toStorage: {
         required: helpers.withMessage(
           t('toStorageRequired'),
-          (value: ChorusStorage | null) => !!value,
+          (value: TuttiStorage | null) => !!value,
         ),
       },
       toBucketName: bucketNameValidationRules(),
@@ -197,7 +197,7 @@ export const useTuttiAddDiffReportStore = defineStore(
       state.hasError = false;
 
       try {
-        const { storages } = await ChorusService.getStorages();
+        const { storages } = await TuttiCoreService.getStorages();
 
         state.storages = storages;
         prepareForm();
@@ -209,8 +209,8 @@ export const useTuttiAddDiffReportStore = defineStore(
     }
 
     function findStorageToCompare(
-      excludedStorage: ChorusStorage,
-    ): ChorusStorage | null {
+      excludedStorage: TuttiStorage,
+    ): TuttiStorage | null {
       return (
         state.storages.find(
           (storage) => storage.name !== excludedStorage.name,
@@ -258,7 +258,7 @@ export const useTuttiAddDiffReportStore = defineStore(
       state.isSubmitting = true;
 
       try {
-        await ChorusService.addDiffReport({
+        await TuttiCoreService.addDiffReport({
           locations: [
             { storage: fromStorage.name, bucket: state.fromBucketName },
             { storage: toStorage.name, bucket: state.toBucketName },

@@ -18,12 +18,12 @@ import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { useRoute } from 'vue-router';
 import { usePolling } from '@/utils/composables/usePolling';
-import type { DiffReport, DiffReportLocation } from '@/utils/types/chorus';
-import { ChorusService } from '@/services/ChorusService';
+import type { DiffReport, DiffReportLocation } from '@/utils/types/tuttiCore';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 
-interface ChorusDiffReportDetailState {
+interface TuttiDiffReportDetailState {
   isLoading: boolean;
   isRestartLoading: boolean;
   hasError: boolean;
@@ -34,7 +34,7 @@ interface ChorusDiffReportDetailState {
 
 const POLL_INTERVAL_MS = 5000;
 
-function getInitialState(): ChorusDiffReportDetailState {
+function getInitialState(): TuttiDiffReportDetailState {
   return {
     isLoading: false,
     isRestartLoading: false,
@@ -46,9 +46,9 @@ function getInitialState(): ChorusDiffReportDetailState {
 }
 
 export const useTuttiDiffReportDetailStore = defineStore(
-  'chorusDiffReportDetail',
+  'tuttiDiffReportDetail',
   () => {
-    const state = reactive<ChorusDiffReportDetailState>(getInitialState());
+    const state = reactive<TuttiDiffReportDetailState>(getInitialState());
     const polling = usePolling();
     const route = useRoute();
 
@@ -73,7 +73,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
     async function getDiffReport(currentGen: number) {
       if (!state.locations) return;
 
-      const res = await ChorusService.getDiffReport({
+      const res = await TuttiCoreService.getDiffReport({
         locations: state.locations,
       });
 
@@ -147,7 +147,7 @@ export const useTuttiDiffReportDetailStore = defineStore(
       const currentGen = generation;
 
       try {
-        await ChorusService.restartDiffReport({
+        await TuttiCoreService.restartDiffReport({
           locations: state.locations,
         });
       } finally {

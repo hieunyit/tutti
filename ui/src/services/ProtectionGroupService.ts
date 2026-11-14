@@ -30,7 +30,7 @@ const BASE = '/tutti/protection-groups';
 export abstract class ProtectionGroupService {
   static async list(): Promise<ProtectionGroupListResponse> {
     const { data } = await apiClient.get<ProtectionGroupListResponse>(
-      ApiHelper.getChorusAPIUrl(BASE),
+      ApiHelper.getTuttiAPIUrl(BASE),
     );
 
     return data;
@@ -38,7 +38,7 @@ export abstract class ProtectionGroupService {
 
   static async get(id: string): Promise<ProtectionGroupStatus> {
     const { data } = await apiClient.get<ProtectionGroupStatus>(
-      ApiHelper.getChorusAPIUrl(`${BASE}/${encodeURIComponent(id)}`),
+      ApiHelper.getTuttiAPIUrl(`${BASE}/${encodeURIComponent(id)}`),
     );
 
     return data;
@@ -48,7 +48,7 @@ export abstract class ProtectionGroupService {
     request: ProtectionGroupCreateRequest,
   ): Promise<ProtectionGroup> {
     const { data } = await apiClient.post<ProtectionGroup>(
-      ApiHelper.getChorusAPIUrl(BASE),
+      ApiHelper.getTuttiAPIUrl(BASE),
       request,
     );
 
@@ -57,7 +57,7 @@ export abstract class ProtectionGroupService {
 
   static async update(group: ProtectionGroup): Promise<ProtectionGroup> {
     const { data } = await apiClient.put<ProtectionGroup>(
-      ApiHelper.getChorusAPIUrl(BASE),
+      ApiHelper.getTuttiAPIUrl(BASE),
       group,
     );
 
@@ -66,39 +66,39 @@ export abstract class ProtectionGroupService {
 
   /** Detaches management only; routing, replication and objects stay. */
   static async remove(id: string): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl(`${BASE}/delete`), { id });
+    await apiClient.post(ApiHelper.getTuttiAPIUrl(`${BASE}/delete`), { id });
   }
 
   static async switchover(id: string, target: string): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl(`${BASE}/switchover`), {
+    await apiClient.post(ApiHelper.getTuttiAPIUrl(`${BASE}/switchover`), {
       id,
       target,
     });
   }
 
   static async abortSwitch(id: string): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl(`${BASE}/abort-switch`), {
+    await apiClient.post(ApiHelper.getTuttiAPIUrl(`${BASE}/abort-switch`), {
       id,
     });
   }
 
   static async getAutomaticFreeze(): Promise<boolean> {
     const { data } = await apiClient.get<{ frozen?: boolean }>(
-      ApiHelper.getChorusAPIUrl(`${BASE}/automatic-freeze/status`),
+      ApiHelper.getTuttiAPIUrl(`${BASE}/automatic-freeze/status`),
     );
 
     return data.frozen === true;
   }
 
   static async setAutomaticFreeze(frozen: boolean): Promise<void> {
-    await apiClient.put(ApiHelper.getChorusAPIUrl(`${BASE}/automatic-freeze`), {
+    await apiClient.put(ApiHelper.getTuttiAPIUrl(`${BASE}/automatic-freeze`), {
       frozen,
     });
   }
 
   static async listWriters(id: string): Promise<ProtectionWriters> {
     const { data } = await apiClient.get<ProtectionWriters>(
-      ApiHelper.getChorusAPIUrl(`${BASE}/${encodeURIComponent(id)}/writers`),
+      ApiHelper.getTuttiAPIUrl(`${BASE}/${encodeURIComponent(id)}/writers`),
     );
 
     return data;
@@ -108,7 +108,7 @@ export abstract class ProtectionGroupService {
     request: ProtectionWriterClearRequest,
   ): Promise<void> {
     await apiClient.post(
-      ApiHelper.getChorusAPIUrl(`${BASE}/clear-writer`),
+      ApiHelper.getTuttiAPIUrl(`${BASE}/clear-writer`),
       request,
     );
   }

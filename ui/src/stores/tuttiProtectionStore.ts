@@ -17,7 +17,7 @@
 import axios from 'axios';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
 import { TuttiService } from '@/services/TuttiService';
 import { usePolling } from '@/utils/composables/usePolling';
@@ -189,7 +189,7 @@ export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
   async function loadOptions() {
     const [users, storages, proxies] = await Promise.all([
       TuttiService.getUsers().catch(() => null),
-      ChorusService.getStorages().catch(() => null),
+      TuttiCoreService.getStorages().catch(() => null),
       TuttiService.getProxies().catch(() => null),
     ]);
 

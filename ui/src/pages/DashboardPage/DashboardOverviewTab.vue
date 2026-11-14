@@ -23,8 +23,8 @@
   import DashboardKpis from '@/components/tutti/dashboard/DashboardKpis.vue';
   import DashboardReplications from '@/components/tutti/dashboard/DashboardReplications.vue';
   import DashboardStorages from '@/components/tutti/dashboard/DashboardStorages.vue';
-  import ProxyUptimeWidget from '@/components/chorus/home/ProxyUptimeWidget/ProxyUptimeWidget.vue';
-  import WorkerUptimeWidget from '@/components/chorus/home/WorkerUptimeWidget/WorkerUptimeWidget.vue';
+  import ProxyUptimeWidget from '@/components/tutti/home/ProxyUptimeWidget/ProxyUptimeWidget.vue';
+  import WorkerUptimeWidget from '@/components/tutti/home/WorkerUptimeWidget/WorkerUptimeWidget.vue';
   import { Callout } from '@/components/kit';
   import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
   import { useNow } from '@/utils/composables/useNow';

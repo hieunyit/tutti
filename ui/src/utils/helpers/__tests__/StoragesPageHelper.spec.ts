@@ -19,7 +19,7 @@ import {
   StoragesPageHelper,
   type StoragesSources,
 } from '../StoragesPageHelper';
-import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
+import type { TuttiReplication, TuttiStorage } from '@/utils/types/tuttiCore';
 import type { TuttiProxyStatus } from '@/utils/types/tutti';
 import type { S3User } from '@/utils/types/users';
 
@@ -28,7 +28,7 @@ const NOW = Date.parse('2026-11-10T13:05:00Z');
 const storages = [
   { name: 'main', isMain: true, address: 'http://a:9000', provider: 'S3' },
   { name: 'follower', isMain: false, address: 'http://b:9000', provider: 'S3' },
-] as ChorusStorage[];
+] as TuttiStorage[];
 
 function proxy(id: string, mainUp: boolean): TuttiProxyStatus {
   return {
@@ -73,7 +73,7 @@ const users: S3User[] = [
 ];
 
 const replication = (
-  over: Partial<ChorusReplication> & { id: ChorusReplication['id'] },
+  over: Partial<TuttiReplication> & { id: TuttiReplication['id'] },
 ) =>
   ({
     isArchived: false,
@@ -81,7 +81,7 @@ const replication = (
     isInitDone: true,
     eventLag: '0',
     ...over,
-  }) as ChorusReplication;
+  }) as TuttiReplication;
 
 function sources(): StoragesSources {
   return {

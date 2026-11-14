@@ -16,13 +16,13 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BucketDiscoveryHelper } from '../BucketDiscoveryHelper';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
-import { StorageProvider } from '@/utils/types/chorus';
+import { StorageProvider } from '@/utils/types/tuttiCore';
 import type { ProtectionGroupListResponse } from '@/utils/types/protection';
 
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getStorages: vi.fn(),
     getBucketsForReplication: vi.fn(),
   },
@@ -59,7 +59,7 @@ describe('BucketDiscoveryHelper', () => {
 
     vi.mocked(ProtectionGroupService.list).mockResolvedValue(mockGroups);
 
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({
       storages: [
         {
           name: 'st1',
@@ -71,7 +71,7 @@ describe('BucketDiscoveryHelper', () => {
       ],
     });
 
-    vi.mocked(ChorusService.getBucketsForReplication).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getBucketsForReplication).mockResolvedValue({
       buckets: ['bucket-st1', 'shared-bucket'],
       replicatedBuckets: ['bucket-repl'],
     });
@@ -87,7 +87,7 @@ describe('BucketDiscoveryHelper', () => {
   });
 
   it('discovers storage-specific buckets', async () => {
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({
       storages: [
         {
           name: 'st1',
@@ -106,7 +106,7 @@ describe('BucketDiscoveryHelper', () => {
       ],
     });
 
-    vi.mocked(ChorusService.getBucketsForReplication).mockImplementation(
+    vi.mocked(TuttiCoreService.getBucketsForReplication).mockImplementation(
       async (req) => {
         if (req.fromStorage === 'st1') {
           return { buckets: ['b1'], replicatedBuckets: [] };
@@ -129,13 +129,13 @@ describe('BucketDiscoveryHelper', () => {
 
   it('lists buckets without a user and includes covered buckets', async () => {
     vi.mocked(ProtectionGroupService.list).mockResolvedValue({ groups: [] });
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({
       storages: [
         { name: 'st1', isMain: true, address: '', credentials: [] },
         { name: 'st2', isMain: false, address: '', credentials: [] },
       ],
     } as never);
-    vi.mocked(ChorusService.getBucketsForReplication).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getBucketsForReplication).mockResolvedValue({
       buckets: ['b1'],
       replicatedBuckets: [],
       coveredBuckets: [{ bucket: 'b2', ownerKind: 'group', ownerId: 'g1' }],
@@ -148,22 +148,22 @@ describe('BucketDiscoveryHelper', () => {
       { bucket: 'b2', storage: 'st1' },
     ]);
 
-    const request = vi.mocked(ChorusService.getBucketsForReplication).mock
+    const request = vi.mocked(TuttiCoreService.getBucketsForReplication).mock
       .calls[0]![0];
 
     expect('user' in request).toBe(false);
   });
 
   it('passes an explicit user through when the caller has one', async () => {
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({
       storages: [{ name: 'st1', isMain: true }],
     } as never);
-    vi.mocked(ChorusService.getBucketsForReplication).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getBucketsForReplication).mockResolvedValue({
       buckets: [],
       replicatedBuckets: [],
     });
     await BucketDiscoveryHelper.discoverStorageBuckets(['st1'], 'u1');
-    expect(ChorusService.getBucketsForReplication).toHaveBeenCalledWith(
+    expect(TuttiCoreService.getBucketsForReplication).toHaveBeenCalledWith(
       expect.objectContaining({ user: 'u1' }),
     );
   });

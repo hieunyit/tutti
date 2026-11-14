@@ -8,8 +8,8 @@ import type { RuntimeStorageList } from '@/utils/types/runtimeStorage';
 vi.mock('@/services/RuntimeStorageService', () => ({
   RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getReplications: vi.fn().mockResolvedValue({ replications: [] }),
     getRoutingPolicies: vi
       .fn()

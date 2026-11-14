@@ -15,7 +15,7 @@ import type {
 } from '@/utils/types/runtimeStorage';
 
 const url = (suffix = '') =>
-  ApiHelper.getChorusAPIUrl(`/tutti/storages${suffix}`);
+  ApiHelper.getTuttiAPIUrl(`/tutti/storages${suffix}`);
 
 export abstract class RuntimeStorageService {
   static async list(signal?: AbortSignal): Promise<RuntimeStorageList> {

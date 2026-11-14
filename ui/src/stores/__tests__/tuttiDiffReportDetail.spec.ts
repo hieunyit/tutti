@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiDiffReportDetailStore } from '../tuttiDiffReportDetailStore';
-import { ChorusService } from '@/services/ChorusService';
-import type { DiffReportDetailResponse } from '@/utils/types/chorus';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
+import type { DiffReportDetailResponse } from '@/utils/types/tuttiCore';
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({
@@ -13,8 +13,8 @@ vi.mock('vue-router', () => ({
   }),
 }));
 
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getDiffReport: vi.fn(),
     restartDiffReport: vi.fn(),
   },
@@ -39,7 +39,9 @@ describe('tuttiDiffReportDetailStore', () => {
       resolveReq = resolve;
     });
 
-    vi.mocked(ChorusService.getDiffReport).mockImplementation(() => pendingPromise);
+    vi.mocked(TuttiCoreService.getDiffReport).mockImplementation(
+      () => pendingPromise,
+    );
 
     const store = useTuttiDiffReportDetailStore();
 
@@ -48,7 +50,7 @@ describe('tuttiDiffReportDetailStore', () => {
     const initPromise = store.initDiffReportDetailsPage();
 
     // Verify getDiffReport was called
-    expect(ChorusService.getDiffReport).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getDiffReport).toHaveBeenCalledTimes(1);
 
     // Now unmount / reset the store while request is still pending
     store.$reset();
@@ -70,7 +72,7 @@ describe('tuttiDiffReportDetailStore', () => {
     await vi.advanceTimersByTimeAsync(10000);
 
     // getDiffReport should NOT have been called again (polling was stopped, not revived)
-    expect(ChorusService.getDiffReport).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getDiffReport).toHaveBeenCalledTimes(1);
   });
 
   it('does not revive polling after $reset during in-flight restartDiffReport', async () => {
@@ -79,8 +81,10 @@ describe('tuttiDiffReportDetailStore', () => {
       resolveRestart = resolve;
     });
 
-    vi.mocked(ChorusService.restartDiffReport).mockImplementation(() => pendingRestart);
-    vi.mocked(ChorusService.getDiffReport).mockResolvedValue({
+    vi.mocked(TuttiCoreService.restartDiffReport).mockImplementation(
+      () => pendingRestart,
+    );
+    vi.mocked(TuttiCoreService.getDiffReport).mockResolvedValue({
       check: { consistent: true, fixReady: false },
     } as DiffReportDetailResponse);
 
@@ -88,7 +92,7 @@ describe('tuttiDiffReportDetailStore', () => {
 
     const restartPromise = store.restartDiffReport();
 
-    expect(ChorusService.restartDiffReport).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.restartDiffReport).toHaveBeenCalledTimes(1);
 
     // Unmount / reset store while restartDiffReport is in-flight
     store.$reset();
@@ -101,11 +105,11 @@ describe('tuttiDiffReportDetailStore', () => {
     await vi.advanceTimersByTimeAsync(10000);
 
     // getDiffReport should not have been called to start new polling
-    expect(ChorusService.getDiffReport).not.toHaveBeenCalled();
+    expect(TuttiCoreService.getDiffReport).not.toHaveBeenCalled();
   });
 
   it('re-parses locations from route on initDiffReportDetailsPage after $reset', async () => {
-    vi.mocked(ChorusService.getDiffReport).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getDiffReport).mockResolvedValue({
       check: { consistent: true, fixReady: false },
     } as DiffReportDetailResponse);
 
@@ -122,17 +126,19 @@ describe('tuttiDiffReportDetailStore', () => {
 
     // Locations must be re-parsed and polling started
     expect(store.locations.length).toBe(2);
-    expect(ChorusService.getDiffReport).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getDiffReport).toHaveBeenCalledTimes(1);
   });
 
   it('continues polling after transient 503 error without crashing timer loop', async () => {
     let callCount = 0;
 
-    vi.mocked(ChorusService.getDiffReport).mockImplementation(async () => {
+    vi.mocked(TuttiCoreService.getDiffReport).mockImplementation(async () => {
       callCount++;
 
       if (callCount === 1) {
-        const err = new Error('Service Unavailable') as Error & { response?: { status: number } };
+        const err = new Error('Service Unavailable') as Error & {
+          response?: { status: number };
+        };
 
         err.response = { status: 503 };
         throw err;

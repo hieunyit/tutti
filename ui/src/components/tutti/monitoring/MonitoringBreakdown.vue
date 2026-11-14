@@ -110,7 +110,7 @@ permissions and * limitations under the License. */
             <td class="monitoring-breakdown__name">
               <RouterLink
                 :to="{
-                  name: RouteName.CHORUS_STORAGE_DETAILS,
+                  name: RouteName.TUTTI_STORAGE_DETAILS,
                   params: { storageName: row.name },
                 }"
               >

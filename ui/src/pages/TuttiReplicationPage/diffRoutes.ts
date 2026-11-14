@@ -16,7 +16,7 @@
 
 import type { RouteLocationRaw } from 'vue-router';
 import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
-import type { DiffReportLocation } from '@/utils/types/chorus';
+import type { DiffReportLocation } from '@/utils/types/tuttiCore';
 import { RouteName } from '@/utils/types/router';
 
 /** "<storage:bucket>~<storage:bucket>": the id of a diff report in the URL. */

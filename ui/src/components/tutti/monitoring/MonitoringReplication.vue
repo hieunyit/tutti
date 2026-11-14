@@ -18,7 +18,7 @@ permissions and * limitations under the License. */
   import StatusTag from '@/components/ui/StatusTag.vue';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
-  import type { ChorusReplication } from '@/utils/types/chorus';
+  import type { TuttiReplication } from '@/utils/types/tuttiCore';
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nMonitoring });
@@ -43,13 +43,13 @@ permissions and * limitations under the License. */
     () => replications.value.filter((r) => store.isLagging(r)).length,
   );
 
-  function label(replication: ChorusReplication): string {
+  function label(replication: TuttiReplication): string {
     const { user, fromStorage, toStorage, fromBucket } = replication.id;
 
     return `${user}: ${fromStorage} → ${toStorage}${fromBucket ? ` (${fromBucket})` : ''}`;
   }
 
-  function initText(r: ChorusReplication): string {
+  function initText(r: TuttiReplication): string {
     if (r.isInitDone) return t('initDone');
 
     const listed = num(r.initObjListed);
@@ -119,7 +119,7 @@ permissions and * limitations under the License. */
         class="monitoring-replication__empty monitoring-replication__empty--padded"
       >
         {{ t('backlogEmpty') }}
-        <RouterLink :to="{ name: RouteName.CHORUS_REPLICATION }">
+        <RouterLink :to="{ name: RouteName.TUTTI_REPLICATION }">
           {{ t('backlogLink') }}
         </RouterLink>
       </p>

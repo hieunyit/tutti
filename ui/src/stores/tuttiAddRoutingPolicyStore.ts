@@ -20,11 +20,11 @@ import { computed, reactive, toRefs, watch } from 'vue';
 import { helpers } from '@vuelidate/validators';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
-  ChorusStorage,
+  TuttiStorage,
   RoutingPolicyAddRequest,
   RoutingPolicyEditRequest,
-} from '@/utils/types/chorus';
-import { ChorusService } from '@/services/ChorusService';
+} from '@/utils/types/tuttiCore';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import { BucketDiscoveryHelper } from '@/utils/helpers/BucketDiscoveryHelper';
 import {
@@ -37,14 +37,14 @@ import {
   isValidLength,
 } from '@/utils/validators/s3BucketNameValidator';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-import i18nAddRoutingPolicy from '@/components/chorus/add-routing-policies/i18nAddRoutingPolicy';
+import i18nAddRoutingPolicy from '@/components/tutti/add-routing-policies/i18nAddRoutingPolicy';
 
-interface ChorusAddRoutingPolicyState {
+interface TuttiAddRoutingPolicyState {
   isLoading: boolean;
   hasError: boolean;
-  storages: ChorusStorage[];
+  storages: TuttiStorage[];
   s3Users: string[];
-  selectedToStorage: ChorusStorage | null;
+  selectedToStorage: TuttiStorage | null;
   selectedUser: string | null;
   bucketName: string | null;
   isForAllBuckets: boolean;
@@ -54,7 +54,7 @@ interface ChorusAddRoutingPolicyState {
   isBucketsLoading: boolean;
 }
 
-function getInitialState(): ChorusAddRoutingPolicyState {
+function getInitialState(): TuttiAddRoutingPolicyState {
   return {
     isLoading: false,
     hasError: false,
@@ -72,9 +72,9 @@ function getInitialState(): ChorusAddRoutingPolicyState {
 }
 
 export const useTuttiAddRoutingPolicyStore = defineStore(
-  'chorusAddRoutingPolicy',
+  'tuttiAddRoutingPolicy',
   () => {
-    const state = reactive<ChorusAddRoutingPolicyState>(getInitialState());
+    const state = reactive<TuttiAddRoutingPolicyState>(getInitialState());
 
     const { t } = useStoreI18n({
       messages: i18nAddRoutingPolicy,
@@ -127,7 +127,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
 
       try {
         const [storagesRes, usersRes] = await Promise.all([
-          ChorusService.getStorages(),
+          TuttiCoreService.getStorages(),
           TuttiService.getUsers().catch(() => null),
         ]);
 
@@ -155,7 +155,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       selectedToStorage: {
         required: helpers.withMessage(
           t('storageSelectionRequired'),
-          (value: ChorusStorage | null) => state.isBlocked || !!value,
+          (value: TuttiStorage | null) => state.isBlocked || !!value,
         ),
       },
       bucketName: {
@@ -246,7 +246,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       };
 
       try {
-        await ChorusService.addRoutingPolicy(addPolicyRequestData);
+        await TuttiCoreService.addRoutingPolicy(addPolicyRequestData);
       } catch (addError: unknown) {
         const addReason =
           ErrorHelper.getReason(addError) || t('addRoutingPolicyErrorUnknown');
@@ -268,7 +268,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       const editPolicyRequestData: RoutingPolicyEditRequest = { user, bucket };
 
       try {
-        await ChorusService.blockRoutingPolicy(editPolicyRequestData);
+        await TuttiCoreService.blockRoutingPolicy(editPolicyRequestData);
       } catch (blockError: unknown) {
         if (hasCreationRollback) {
           return handleCreationRollback(editPolicyRequestData);
@@ -286,7 +286,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       editPolicyRequestData: RoutingPolicyEditRequest,
     ) {
       try {
-        await ChorusService.deleteRoutingPolicy(editPolicyRequestData);
+        await TuttiCoreService.deleteRoutingPolicy(editPolicyRequestData);
       } catch (deleteError: unknown) {
         throw new Error(
           ErrorHelper.getReason(deleteError) ||

@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TuttiService } from '../TuttiService';
-import { ChorusService } from '../ChorusService';
+import { TuttiCoreService } from '../TuttiCoreService';
 import { apiClient } from '@/http';
 
 vi.mock('@/http', () => ({
@@ -49,7 +49,7 @@ describe('TuttiService', () => {
     mocked.get.mockResolvedValue({ data: { proxies: [] } });
     mocked.post.mockResolvedValue({ data: { replications: [] } });
     await TuttiService.getProxies(controller.signal);
-    await ChorusService.getReplications(controller.signal);
+    await TuttiCoreService.getReplications(controller.signal);
     expect(mocked.get).toHaveBeenCalledWith(
       expect.stringContaining('/tutti/proxies'),
       { signal: controller.signal },

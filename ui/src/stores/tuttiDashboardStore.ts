@@ -16,11 +16,11 @@
 
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import { useAuthStore } from '@/stores/authStore';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
+import type { TuttiReplication, TuttiStorage } from '@/utils/types/tuttiCore';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -38,8 +38,8 @@ interface DashboardState {
   isRefreshing: boolean;
   /** ms since epoch of the last refresh that delivered data */
   lastUpdated: number | null;
-  storages: ChorusStorage[] | null;
-  replications: ChorusReplication[] | null;
+  storages: TuttiStorage[] | null;
+  replications: TuttiReplication[] | null;
   proxies: TuttiProxyStatus[] | null;
   events: TuttiFailoverEvent[] | null;
   /** null for viewers (not readable) or when the request failed */
@@ -98,8 +98,8 @@ export const useTuttiDashboardStore = defineStore('tuttiDashboard', () => {
 
     const [storages, replications, proxies, events, policies] =
       await Promise.allSettled([
-        ChorusService.getStorages(),
-        ChorusService.getReplications(),
+        TuttiCoreService.getStorages(),
+        TuttiCoreService.getReplications(),
         TuttiService.getProxies(),
         TuttiService.getFailoverEvents(),
         // optional and admin-only: used to detect "failover off while

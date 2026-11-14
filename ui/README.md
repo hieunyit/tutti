@@ -17,7 +17,7 @@ Based on the Chorus UI by Clyso GmbH (AGPL-3.0).
 
 - [Node.js](https://nodejs.org/) 20+
 - [Yarn](https://classic.yarnpkg.com/) 1.x (`yarn@1.22.22` pinned via `packageManager`)
-- A running Chorus backend (default: `http://localhost:9671`)
+- A running Tutti backend (default: `http://localhost:9671`)
 
 ## Getting Started
 
@@ -33,13 +33,13 @@ The Vite dev server proxies `/api` requests to `http://localhost:9671`. See [vit
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `yarn dev` | Start Vite dev server |
-| `yarn build` | Production build to `build/` |
-| `yarn preview` | Preview production build locally |
-| `yarn lint` | Run all linters (types, eslint, oxlint, stylelint, prettier) |
-| `yarn fix` | Auto-fix all linters |
+| Command        | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| `yarn dev`     | Start Vite dev server                                        |
+| `yarn build`   | Production build to `build/`                                 |
+| `yarn preview` | Preview production build locally                             |
+| `yarn lint`    | Run all linters (types, eslint, oxlint, stylelint, prettier) |
+| `yarn fix`     | Auto-fix all linters                                         |
 
 ## Project Structure
 
@@ -51,7 +51,7 @@ src/
 ├── i18n/            # Translations (en, de)
 ├── pages/           # Route-level page components
 ├── router/          # Vue Router config and guards
-├── services/        # API service layers (Chorus, Prometheus)
+├── services/        # API service layers (Tutti, Prometheus)
 ├── stores/          # Pinia stores (per feature + forms)
 ├── styles/          # Global SCSS
 └── utils/           # Helpers, types, composables, constants
@@ -68,7 +68,6 @@ src/
 - **Charts:** [Chart.js](https://www.chartjs.org/)
 - **Validation:** [Vuelidate](https://vuelidate-next.netlify.app/)
 - **i18n:** [Vue I18n](https://vue-i18n.intlify.dev/)
-
 
 ## License
 

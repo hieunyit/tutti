@@ -24,22 +24,25 @@ import { useNotification } from '@clyso/clyso-ui-kit';
 import { usePolling } from '@/utils/composables/usePolling';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import type {
-  ChorusReplication,
-  ChorusReplicationId,
-} from '@/utils/types/chorus';
-import { ReplicationStatusFilter, ReplicationType } from '@/utils/types/chorus';
+  TuttiReplication,
+  TuttiReplicationId,
+} from '@/utils/types/tuttiCore';
+import {
+  ReplicationStatusFilter,
+  ReplicationType,
+} from '@/utils/types/tuttiCore';
 import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
 import type { AddId } from '@/utils/types/helper';
-import { ChorusService } from '@/services/ChorusService';
-import ReplicationsShortList from '@/components/chorus/replications/ReplicationsShortList/ReplicationsShortList.vue';
-import i18nReplications from '@/components/chorus/replications/i18nReplications';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
+import ReplicationsShortList from '@/components/tutti/replications/ReplicationsShortList/ReplicationsShortList.vue';
+import i18nReplications from '@/components/tutti/replications/i18nReplications';
 import { createChangeDetector } from '@/utils/helpers/changeDetector';
 import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
 
-interface ChorusReplicationsState {
+interface TuttiReplicationsState {
   isLoading: boolean;
   hasError: boolean;
-  replications: AddId<ChorusReplication>[];
+  replications: AddId<TuttiReplication>[];
   sorter: DataTableSortState | null;
   page: number;
   pageSize: number;
@@ -60,7 +63,7 @@ interface ChorusReplicationsState {
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 const POLL_INTERVAL_MS = 5000;
 
-function getChorusReplicationId(replicationId: ChorusReplicationId): string {
+function getTuttiReplicationId(replicationId: TuttiReplicationId): string {
   return (
     `${replicationId.user}${replicationId.fromBucket}` +
     `${replicationId.toBucket}${replicationId.fromStorage}` +
@@ -69,14 +72,14 @@ function getChorusReplicationId(replicationId: ChorusReplicationId): string {
 }
 
 function getReplicationType(
-  replicationId: ChorusReplicationId,
+  replicationId: TuttiReplicationId,
 ): ReplicationType {
   return replicationId.fromBucket && replicationId.toBucket
     ? ReplicationType.BUCKET
     : ReplicationType.USER;
 }
 
-function getInitialState(): ChorusReplicationsState {
+function getInitialState(): TuttiReplicationsState {
   return {
     isLoading: false,
     hasError: false,
@@ -99,9 +102,9 @@ function getInitialState(): ChorusReplicationsState {
 }
 
 export const useTuttiReplicationsStore = defineStore(
-  'chorusReplications',
+  'tuttiReplications',
   () => {
-    const state = reactive<ChorusReplicationsState>(getInitialState());
+    const state = reactive<TuttiReplicationsState>(getInitialState());
     const polling = usePolling();
     const changes = createChangeDetector();
 
@@ -113,7 +116,7 @@ export const useTuttiReplicationsStore = defineStore(
 
     const hasNoData = computed<boolean>(() => state.replications.length === 0);
 
-    const filteredReplications = computed<AddId<ChorusReplication>[]>(() =>
+    const filteredReplications = computed<AddId<TuttiReplication>[]>(() =>
       state.replications.filter((replication) => {
         const isUserMatched =
           !state.filterUsers.length ||
@@ -172,7 +175,7 @@ export const useTuttiReplicationsStore = defineStore(
       state.filterType = null;
     }
 
-    const computedReplications = computed<AddId<ChorusReplication>[]>(() => {
+    const computedReplications = computed<AddId<TuttiReplication>[]>(() => {
       const pageReplications = state.sorter
         ? GeneralHelper.orderBy(
             filteredReplications.value,
@@ -208,13 +211,13 @@ export const useTuttiReplicationsStore = defineStore(
     }));
 
     async function getReplications() {
-      const res = await ChorusService.getReplications();
+      const res = await TuttiCoreService.getReplications();
 
       if (!changes.hasChanged(res)) return;
 
       state.replications = (res.replications ?? []).map((replication) => ({
         ...replication,
-        idStr: getChorusReplicationId(replication.id),
+        idStr: getTuttiReplicationId(replication.id),
         replicationType: getReplicationType(replication.id),
       }));
     }
@@ -245,7 +248,7 @@ export const useTuttiReplicationsStore = defineStore(
 
     function setReplicationById(
       id: string | number,
-      partialReplication: Partial<AddId<ChorusReplication>>,
+      partialReplication: Partial<AddId<TuttiReplication>>,
     ) {
       const index = state.replications.findIndex(
         (replication) => replication.idStr === id,
@@ -268,7 +271,7 @@ export const useTuttiReplicationsStore = defineStore(
     }
 
     async function setReplicationPaused(
-      replication: AddId<ChorusReplication>,
+      replication: AddId<TuttiReplication>,
       isPaused: boolean,
     ) {
       const replicationIndex = state.replications.findIndex(
@@ -285,8 +288,8 @@ export const useTuttiReplicationsStore = defineStore(
       await stopReplicationPolling();
       await (
         isPaused
-          ? ChorusService.pauseBucketReplication
-          : ChorusService.resumeBucketReplication
+          ? TuttiCoreService.pauseBucketReplication
+          : TuttiCoreService.resumeBucketReplication
       )({
         user,
         fromBucket,
@@ -302,7 +305,7 @@ export const useTuttiReplicationsStore = defineStore(
       startReplicationPolling();
     }
 
-    async function deleteReplication(replication: AddId<ChorusReplication>) {
+    async function deleteReplication(replication: AddId<TuttiReplication>) {
       let replicationIndex = state.replications.findIndex(
         ({ id }) => replication.id === id,
       );
@@ -312,7 +315,7 @@ export const useTuttiReplicationsStore = defineStore(
       }
 
       await stopReplicationPolling();
-      await ChorusService.deleteReplication(replication.id);
+      await TuttiCoreService.deleteReplication(replication.id);
 
       replicationIndex = state.replications.findIndex(
         ({ id }) => replication.id === id,
@@ -328,7 +331,7 @@ export const useTuttiReplicationsStore = defineStore(
     const isAnyReplicationsSelected = computed(
       () => state.selectedReplicationIds.length !== 0,
     );
-    const selectedReplications = computed<AddId<ChorusReplication>[]>(() =>
+    const selectedReplications = computed<AddId<TuttiReplication>[]>(() =>
       state.replications.filter((replication) =>
         state.selectedReplicationIds.includes(replication.idStr),
       ),
@@ -341,13 +344,11 @@ export const useTuttiReplicationsStore = defineStore(
         state.isDeleteSelectedProcessing,
     );
 
-    async function resumeReplications(
-      replications: AddId<ChorusReplication>[],
-    ) {
+    async function resumeReplications(replications: AddId<TuttiReplication>[]) {
       state.isResumeSelectedProcessing = true;
 
-      const successList: AddId<ChorusReplication>[] = [];
-      const errorList: AddId<ChorusReplication>[] = [];
+      const successList: AddId<TuttiReplication>[] = [];
+      const errorList: AddId<TuttiReplication>[] = [];
 
       await Promise.all(
         replications.map(async (replication) => {
@@ -355,7 +356,7 @@ export const useTuttiReplicationsStore = defineStore(
             replication.id;
 
           try {
-            await ChorusService.resumeBucketReplication({
+            await TuttiCoreService.resumeBucketReplication({
               fromStorage,
               toStorage,
               user,
@@ -410,11 +411,11 @@ export const useTuttiReplicationsStore = defineStore(
       state.isResumeSelectedProcessing = false;
     }
 
-    async function pauseReplications(replications: AddId<ChorusReplication>[]) {
+    async function pauseReplications(replications: AddId<TuttiReplication>[]) {
       state.isPauseSelectedProcessing = true;
 
-      const successList: AddId<ChorusReplication>[] = [];
-      const errorList: AddId<ChorusReplication>[] = [];
+      const successList: AddId<TuttiReplication>[] = [];
+      const errorList: AddId<TuttiReplication>[] = [];
 
       await Promise.all(
         replications.map(async (replication) => {
@@ -422,7 +423,7 @@ export const useTuttiReplicationsStore = defineStore(
             replication.id;
 
           try {
-            await ChorusService.pauseBucketReplication({
+            await TuttiCoreService.pauseBucketReplication({
               fromStorage,
               toStorage,
               user,
@@ -477,18 +478,16 @@ export const useTuttiReplicationsStore = defineStore(
       state.isPauseSelectedProcessing = false;
     }
 
-    async function deleteReplications(
-      replications: AddId<ChorusReplication>[],
-    ) {
+    async function deleteReplications(replications: AddId<TuttiReplication>[]) {
       state.isDeleteSelectedProcessing = true;
 
-      const successList: AddId<ChorusReplication>[] = [];
-      const errorList: AddId<ChorusReplication>[] = [];
+      const successList: AddId<TuttiReplication>[] = [];
+      const errorList: AddId<TuttiReplication>[] = [];
 
       await Promise.all(
         replications.map(async (replication) => {
           try {
-            await ChorusService.deleteReplication(replication.id);
+            await TuttiCoreService.deleteReplication(replication.id);
             successList.push(replication);
           } catch {
             errorList.push(replication);

@@ -16,10 +16,10 @@
 
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import { RuntimeStorageService } from '@/services/RuntimeStorageService';
-import { StorageProvider } from '@/utils/types/chorus';
+import { StorageProvider } from '@/utils/types/tuttiCore';
 import type { RuntimeStorage } from '@/utils/types/runtimeStorage';
 import { RuntimeStorageHelper } from '@/utils/helpers/RuntimeStorageHelper';
 import { createChangeDetector } from '@/utils/helpers/changeDetector';
@@ -29,10 +29,10 @@ import {
 } from '@/utils/helpers/StoragesPageHelper';
 import type {
   BucketRoutingPolicy,
-  ChorusReplication,
-  ChorusStorage,
+  TuttiReplication,
+  TuttiStorage,
   UserRoutingPolicy,
-} from '@/utils/types/chorus';
+} from '@/utils/types/tuttiCore';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -48,7 +48,7 @@ interface TuttiStoragesState {
   isLoading: boolean;
   hasError: boolean;
   isLoaded: boolean;
-  storages: ChorusStorage[];
+  storages: TuttiStorage[];
   runtimeStorages: RuntimeStorage[];
   /** per-storage users, loaded on the detail page only */
   storageUsers: Record<string, NonNullable<RuntimeStorage['users']>>;
@@ -57,7 +57,7 @@ interface TuttiStoragesState {
   proxies: TuttiProxyStatus[];
   users: S3User[];
   mainStorage: string;
-  replications: ChorusReplication[];
+  replications: TuttiReplication[];
   policies: TuttiFailoverPolicy[];
   events: TuttiFailoverEvent[];
   routings: (UserRoutingPolicy | BucketRoutingPolicy)[];
@@ -133,11 +133,11 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
       await Promise.all([
         RuntimeStorageService.listSummary(),
         TuttiService.getUsers().catch(() => null),
-        ChorusService.getReplications().catch(() => null),
+        TuttiCoreService.getReplications().catch(() => null),
         // not readable by every role: the page works without
         TuttiService.getFailoverPolicies().catch(() => null),
         TuttiService.getFailoverEvents().catch(() => null),
-        ChorusService.getRoutingPolicies({
+        TuttiCoreService.getRoutingPolicies({
           hideUserRoutings: false,
           hideBucketRoutings: false,
         }).catch(() => null),

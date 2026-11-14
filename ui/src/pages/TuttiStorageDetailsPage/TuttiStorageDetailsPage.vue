@@ -115,7 +115,7 @@
 
   async function deleted() {
     await store.refresh();
-    await router.push({ name: RouteName.CHORUS_STORAGES });
+    await router.push({ name: RouteName.TUTTI_STORAGES });
   }
 </script>
 
@@ -133,7 +133,7 @@
   >
     <template #back>
       <BackLink
-        :to="{ name: RouteName.CHORUS_STORAGES }"
+        :to="{ name: RouteName.TUTTI_STORAGES }"
         :label="t('backToStorages')"
       />
     </template>
@@ -146,7 +146,7 @@
     </template>
     <template #empty>
       <EmptyBlock :title="t('notFound')">
-        <RouterLink :to="{ name: RouteName.CHORUS_STORAGES }">
+        <RouterLink :to="{ name: RouteName.TUTTI_STORAGES }">
           <NButton>{{ t('backToStorages') }}</NButton>
         </RouterLink>
       </EmptyBlock>

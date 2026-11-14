@@ -25,8 +25,8 @@ vi.mock('@/components/tutti/storages/AddStorageDialog.vue', () => ({
 vi.mock('@/services/RuntimeStorageService', () => ({
   RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getReplications: vi.fn().mockResolvedValue({ replications: [] }),
     getRoutingPolicies: vi
       .fn()
@@ -48,7 +48,7 @@ function mountPage() {
     routes: [
       {
         path: '/storages/:storageName',
-        name: RouteName.CHORUS_STORAGE_DETAILS,
+        name: RouteName.TUTTI_STORAGE_DETAILS,
         component: { template: '<div />' },
       },
       { path: '/:p(.*)*', component: { template: '<div />' } },

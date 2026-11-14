@@ -58,7 +58,7 @@
     });
 
     if (
-      (name === RouteName.CHORUS_STORAGE_DETAILS ||
+      (name === RouteName.TUTTI_STORAGE_DETAILS ||
         name === RouteName.TUTTI_USER_DETAIL ||
         name === RouteName.TUTTI_PROTECTION_GROUP_DETAIL) &&
       entityName

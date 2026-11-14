@@ -4,7 +4,7 @@ import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiAddReplicationStore } from '../tuttiAddReplicationStore';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 
 const push = vi.hoisted(() => vi.fn());
 const notify = vi.hoisted(() => vi.fn());
@@ -17,8 +17,8 @@ vi.mock('@clyso/clyso-ui-kit', () => ({
   I18nLocale: { EN: 'en', DE: 'de' },
   useNotification: () => ({ createNotification: notify }),
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getStorages: vi.fn(),
     getBucketsForReplication: vi.fn(),
     addReplication: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock('@/services/TuttiService', () => ({
   TuttiService: { getUsers: vi.fn() },
 }));
 
-const add = vi.mocked(ChorusService.addReplication);
+const add = vi.mocked(TuttiCoreService.addReplication);
 
 function rejection(reason: string) {
   return new AxiosError('conflict', 'ERR_BAD_REQUEST', undefined, undefined, {

@@ -21,7 +21,7 @@ import {
   useTuttiHealthStore,
 } from '../tuttiHealthStore';
 import { TuttiService } from '@/services/TuttiService';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 
 vi.mock('@/services/TuttiService', () => ({
   TuttiService: {
@@ -33,8 +33,8 @@ vi.mock('@/services/TuttiService', () => ({
     deleteFailoverEvent: vi.fn(),
   },
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: { getStorages: vi.fn() },
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: { getStorages: vi.fn() },
 }));
 
 type MockFn = ReturnType<typeof vi.fn>;
@@ -48,7 +48,7 @@ const svc = TuttiService as unknown as {
     | 'deleteFailoverPolicy'
     | 'deleteFailoverEvent']: MockFn;
 };
-const chorus = ChorusService as unknown as { getStorages: MockFn };
+const tutti = TuttiCoreService as unknown as { getStorages: MockFn };
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -109,7 +109,7 @@ describe('tuttiFailoverStore', () => {
         { appId: '3' },
       ],
     });
-    chorus.getStorages.mockResolvedValue({
+    tutti.getStorages.mockResolvedValue({
       storages: [{ name: 'a' }, { name: 'b' }],
     });
     const store = useTuttiFailoverStore();
@@ -126,7 +126,7 @@ describe('tuttiFailoverStore', () => {
     svc.getFailoverPolicies.mockRejectedValue(new Error('x'));
     svc.getFailoverEvents.mockResolvedValue({});
     svc.getProxies.mockResolvedValue({});
-    chorus.getStorages.mockResolvedValue({});
+    tutti.getStorages.mockResolvedValue({});
     const store = useTuttiFailoverStore();
 
     await store.init();

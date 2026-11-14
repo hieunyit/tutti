@@ -23,11 +23,11 @@
     type WizardStep,
   } from '@/components/kit';
   import { Callout } from '@/components/kit';
-  import ChorusWizardPage from '@/components/chorus/common/ChorusWizardPage/ChorusWizardPage.vue';
-  import FromStorageFormStep from '@/components/chorus/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
-  import ToStorageFormStep from '@/components/chorus/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
-  import BucketsFormStep from '@/components/chorus/add-replication/BucketsFormStep/BucketsFormStep.vue';
-  import AddReplicationSummary from '@/components/chorus/add-replication/AddReplicationSummary/AddReplicationSummary.vue';
+  import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
+  import FromStorageFormStep from '@/components/tutti/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
+  import ToStorageFormStep from '@/components/tutti/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
+  import BucketsFormStep from '@/components/tutti/add-replication/BucketsFormStep/BucketsFormStep.vue';
+  import AddReplicationSummary from '@/components/tutti/add-replication/AddReplicationSummary/AddReplicationSummary.vue';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
@@ -139,7 +139,7 @@
 </script>
 
 <template>
-  <ChorusWizardPage
+  <TuttiWizardPage
     :title="t('addReplicationTitle')"
     :description="t('addReplicationDescription')"
     :state="isLoading ? 'loading' : hasError ? 'error' : 'ready'"
@@ -174,7 +174,7 @@
         <AddReplicationSummary />
       </template>
     </WizardShell>
-  </ChorusWizardPage>
+  </TuttiWizardPage>
 </template>
 
 <style lang="scss" scoped>

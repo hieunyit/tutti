@@ -54,15 +54,15 @@ vi.mock('@/utils/composables/useTuttiNotification', () => ({
   useTuttiNotification: () => ({ createNotification: vi.fn() }),
 }));
 vi.mock(
-  '@/components/chorus/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue',
+  '@/components/tutti/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue',
   () => ({ default: { template: '<div />' } }),
 );
 vi.mock(
-  '@/components/chorus/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue',
+  '@/components/tutti/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue',
   () => ({ default: { template: '<div />' } }),
 );
 vi.mock(
-  '@/components/chorus/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue',
+  '@/components/tutti/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue',
   () => ({ default: { template: '<div />' } }),
 );
 

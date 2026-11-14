@@ -19,12 +19,12 @@ import { defineComponent, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDashboardData } from '../useDashboardData';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
 
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: { getStorages: vi.fn(), getReplications: vi.fn() },
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: { getStorages: vi.fn(), getReplications: vi.fn() },
 }));
 vi.mock('@/services/TuttiService', () => ({
   TuttiService: {
@@ -69,8 +69,8 @@ afterEach(() => {
 
 describe('useDashboardData', () => {
   it('is loading, then ready when the store delivers data', async () => {
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({ storages: [] });
-    vi.mocked(ChorusService.getReplications).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({ storages: [] });
+    vi.mocked(TuttiCoreService.getReplications).mockResolvedValue({
       replications: [],
     });
     vi.mocked(TuttiService.getProxies).mockResolvedValue({ proxies: [] });
@@ -85,8 +85,10 @@ describe('useDashboardData', () => {
   });
 
   it('is error when every request rejects, and recovers on refresh', async () => {
-    vi.mocked(ChorusService.getStorages).mockRejectedValue(new Error('down'));
-    vi.mocked(ChorusService.getReplications).mockRejectedValue(
+    vi.mocked(TuttiCoreService.getStorages).mockRejectedValue(
+      new Error('down'),
+    );
+    vi.mocked(TuttiCoreService.getReplications).mockRejectedValue(
       new Error('down'),
     );
     vi.mocked(TuttiService.getProxies).mockRejectedValue(new Error('down'));
@@ -98,7 +100,7 @@ describe('useDashboardData', () => {
     await settle();
     expect(result.state.value).toBe('error');
 
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({ storages: [] });
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({ storages: [] });
     await result.refresh();
     await settle();
     expect(result.state.value).toBe('ready');
@@ -106,8 +108,8 @@ describe('useDashboardData', () => {
   });
 
   it('stops polling when the component unmounts', async () => {
-    vi.mocked(ChorusService.getStorages).mockResolvedValue({ storages: [] });
-    vi.mocked(ChorusService.getReplications).mockResolvedValue({
+    vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({ storages: [] });
+    vi.mocked(TuttiCoreService.getReplications).mockResolvedValue({
       replications: [],
     });
     vi.mocked(TuttiService.getProxies).mockResolvedValue({ proxies: [] });
@@ -117,6 +119,6 @@ describe('useDashboardData', () => {
     await settle();
     wrapper.unmount();
     await vi.advanceTimersByTimeAsync(60000);
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(1);
   });
 });

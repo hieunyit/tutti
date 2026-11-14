@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TuttiService } from '@/services/TuttiService';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import {
   MONITORING_HISTORY_REFRESH_MS,
   MONITORING_POLL_INTERVAL_MS,
@@ -11,13 +11,13 @@ import type {
   TuttiProxyStatusListResponse,
   TuttiStatsHistory,
 } from '@/utils/types/tutti';
-import type { ChorusReplicationListResponse } from '@/utils/types/chorus';
+import type { TuttiReplicationListResponse } from '@/utils/types/tuttiCore';
 
 vi.mock('@/services/TuttiService', () => ({
   TuttiService: { getProxies: vi.fn(), getStatsHistory: vi.fn() },
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: { getReplications: vi.fn() },
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: { getReplications: vi.fn() },
 }));
 
 const NOW = Date.parse('2026-01-01T12:00:00Z');
@@ -63,7 +63,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
   vi.resetAllMocks();
   window.localStorage.clear();
-  vi.mocked(ChorusService.getReplications).mockResolvedValue({
+  vi.mocked(TuttiCoreService.getReplications).mockResolvedValue({
     replications: [],
   });
   vi.mocked(TuttiService.getStatsHistory).mockResolvedValue({ points: [] });
@@ -283,8 +283,8 @@ describe('monitoring store', () => {
   });
 
   it('guards and invalidates replication requests', async () => {
-    const oldRequest = deferred<ChorusReplicationListResponse>();
-    const getReplications = vi.mocked(ChorusService.getReplications);
+    const oldRequest = deferred<TuttiReplicationListResponse>();
+    const getReplications = vi.mocked(TuttiCoreService.getReplications);
 
     getReplications.mockReturnValueOnce(oldRequest.promise);
     const store = useTuttiMonitoringStore();

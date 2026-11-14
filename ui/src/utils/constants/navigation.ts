@@ -81,7 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'storage',
     items: [
-      { routeName: RouteName.CHORUS_STORAGES, iconPath: ICONS.storages },
+      { routeName: RouteName.TUTTI_STORAGES, iconPath: ICONS.storages },
       { routeName: RouteName.TUTTI_PROXIES, iconPath: ICONS.proxies },
     ],
   },
@@ -93,7 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
         iconPath: ICONS.protection,
         badgeKey: 'protection',
       },
-      { routeName: RouteName.CHORUS_REPLICATION, iconPath: ICONS.replication },
+      { routeName: RouteName.TUTTI_REPLICATION, iconPath: ICONS.replication },
     ],
   },
   {

@@ -76,7 +76,7 @@
   );
 
   const detail = (storageName: string) => ({
-    name: RouteName.CHORUS_STORAGE_DETAILS,
+    name: RouteName.TUTTI_STORAGE_DETAILS,
     params: { storageName },
   });
   const healthTone = (status: string): StatusTone =>

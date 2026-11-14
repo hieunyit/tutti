@@ -34,9 +34,9 @@
     type StatusTone,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import DiffReportDetailEntries from '@/components/chorus/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue';
-  import DiffReportDetailOverview from '@/components/chorus/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue';
-  import DiffReportDetailProgress from '@/components/chorus/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue';
+  import DiffReportDetailEntries from '@/components/tutti/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue';
+  import DiffReportDetailOverview from '@/components/tutti/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue';
+  import DiffReportDetailProgress from '@/components/tutti/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue';
   import { parseDiffId } from '@/pages/TuttiReplicationPage/diffRoutes';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
@@ -166,7 +166,7 @@
   >
     <template #back>
       <BackLink
-        :to="{ name: RouteName.CHORUS_REPLICATION, query: { tab: 'diff' } }"
+        :to="{ name: RouteName.TUTTI_REPLICATION, query: { tab: 'diff' } }"
         :label="t('backToDiffReports')"
       />
     </template>

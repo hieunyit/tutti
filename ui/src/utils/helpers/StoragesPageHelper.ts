@@ -21,7 +21,7 @@ import {
   StorageHealthHelper,
   type StorageHealthSummary,
 } from '@/utils/helpers/StorageHealthHelper';
-import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
+import type { TuttiReplication, TuttiStorage } from '@/utils/types/tuttiCore';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -30,10 +30,10 @@ import type {
 import type { S3User } from '@/utils/types/users';
 
 export interface StoragesSources {
-  storages: ChorusStorage[];
+  storages: TuttiStorage[];
   proxies: TuttiProxyStatus[] | null;
   users: S3User[];
-  replications: ChorusReplication[];
+  replications: TuttiReplication[];
   policies: TuttiFailoverPolicy[];
   events: TuttiFailoverEvent[];
 }

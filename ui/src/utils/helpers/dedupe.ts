@@ -80,5 +80,5 @@ export function clearDedupeCache(): void {
 export const DedupeKey = {
   PROXIES: 'tutti:proxies',
   USERS: 'tutti:users',
-  STORAGES: 'chorus:storages',
+  STORAGES: 'tutti:storages',
 } as const;

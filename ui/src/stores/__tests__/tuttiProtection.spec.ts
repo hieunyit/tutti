@@ -26,7 +26,7 @@ vi.mock('@/services/ProtectionGroupService', () => ({
     getAutomaticFreeze: vi.fn(),
   },
 }));
-vi.mock('@/services/ChorusService', () => ({ ChorusService: {} }));
+vi.mock('@/services/TuttiCoreService', () => ({ TuttiCoreService: {} }));
 vi.mock('@/services/TuttiService', () => ({ TuttiService: {} }));
 
 const groups = [{ id: 'a' }, { id: 'b' }];

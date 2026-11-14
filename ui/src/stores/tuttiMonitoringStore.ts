@@ -16,7 +16,7 @@
 
 import { defineStore } from 'pinia';
 import { reactive, shallowRef, toRefs } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import {
   DEFAULT_STATS_RANGE,
@@ -32,7 +32,7 @@ import {
 } from '@/utils/helpers/MonitoringHelper';
 import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
 import { LocalStorageItem } from '@/utils/types/localStorage';
-import type { ChorusReplication } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
 import type { TuttiProxyStatus, TuttiStatsRange } from '@/utils/types/tutti';
 
 /** Live values: one small request every 5 s (paused while the tab is hidden). */
@@ -73,7 +73,7 @@ interface MonitoringState {
   range: TuttiStatsRange;
   /** end of the chart window (ms since epoch) */
   windowEnd: number;
-  replications: ChorusReplication[];
+  replications: TuttiReplication[];
   replicationsLoaded: boolean;
   replicationsError: boolean;
   /** consecutive polls with eventLag > 0, by replication idStr */
@@ -158,7 +158,7 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
   let historyTimer: ReturnType<typeof setInterval> | null = null;
   let replicationTimer: ReturnType<typeof setInterval> | null = null;
 
-  function isLagging(replication: ChorusReplication): boolean {
+  function isLagging(replication: TuttiReplication): boolean {
     return (
       (state.lagStreaks[replication.idStr] ?? 0) >= MONITORING_LAG_WARN_POLLS
     );
@@ -262,7 +262,7 @@ export const useTuttiMonitoringStore = defineStore('tuttiMonitoring', () => {
     replicationRequest = request;
 
     try {
-      const res = await ChorusService.getReplications(request.signal);
+      const res = await TuttiCoreService.getReplications(request.signal);
 
       if (replicationRequest !== request) return;
 

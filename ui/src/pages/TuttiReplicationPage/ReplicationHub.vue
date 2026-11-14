@@ -54,17 +54,17 @@
   const addAction = computed(() => {
     if (activeTab.value === 'routing')
       return {
-        to: RouteName.CHORUS_ADD_ROUTING_POLICY,
+        to: RouteName.TUTTI_ADD_ROUTING_POLICY,
         label: t('addRoutingPolicy'),
       };
 
     if (activeTab.value === 'diff')
       return {
-        to: RouteName.CHORUS_ADD_DIFF_REPORT,
+        to: RouteName.TUTTI_ADD_DIFF_REPORT,
         label: t('addDiffReport'),
       };
 
-    return { to: RouteName.CHORUS_ADD_REPLICATION, label: t('addReplication') };
+    return { to: RouteName.TUTTI_ADD_REPLICATION, label: t('addReplication') };
   });
 </script>
 

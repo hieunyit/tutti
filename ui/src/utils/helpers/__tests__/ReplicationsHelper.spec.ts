@@ -16,10 +16,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReplicationsHelper } from '../ReplicationsHelper';
-import type { ChorusReplication } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
 
-function repl(id: ChorusReplication['id']): ChorusReplication {
-  return { id } as ChorusReplication;
+function repl(id: TuttiReplication['id']): TuttiReplication {
+  return { id } as TuttiReplication;
 }
 
 describe('ReplicationsHelper.getSubjectLabel', () => {

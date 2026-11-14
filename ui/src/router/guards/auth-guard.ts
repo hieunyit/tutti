@@ -25,7 +25,7 @@ const authGuard: NavigationGuard = async (to) => {
 
   if (to.name === RouteName.LOGIN) {
     // nothing to log into, or already logged in
-    return auth.isAuthenticated ? { name: RouteName.CHORUS_HOME } : true;
+    return auth.isAuthenticated ? { name: RouteName.TUTTI_HOME } : true;
   }
 
   if (!auth.isAuthenticated) {
@@ -45,15 +45,15 @@ const authGuard: NavigationGuard = async (to) => {
   }
 
   if (to.name === RouteName.TUTTI_CHANGE_PASSWORD) {
-    return { name: RouteName.CHORUS_HOME };
+    return { name: RouteName.TUTTI_HOME };
   }
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: RouteName.CHORUS_HOME };
+    return { name: RouteName.TUTTI_HOME };
   }
 
   if (to.meta.requiresWrite && !auth.canWrite) {
-    return { name: RouteName.CHORUS_HOME };
+    return { name: RouteName.TUTTI_HOME };
   }
 
   return true;

@@ -23,32 +23,32 @@ import { useRouter } from 'vue-router';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   AddReplicationStepName,
-  type ChorusBucketListRequest,
-  type ChorusCoveredBucket,
-  type ChorusReplicationId,
-  type ChorusStorage,
-} from '@/utils/types/chorus';
-import { ChorusService } from '@/services/ChorusService';
-import i18nAddReplication from '@/components/chorus/add-replication/i18nAddReplication';
+  type TuttiBucketListRequest,
+  type TuttiCoveredBucket,
+  type TuttiReplicationId,
+  type TuttiStorage,
+} from '@/utils/types/tuttiCore';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
+import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 
-interface ChorusAddReplicationState {
+interface TuttiAddReplicationState {
   isLoading: boolean;
   hasError: boolean;
-  storages: ChorusStorage[];
+  storages: TuttiStorage[];
   isMainAsSourceAlertShown: boolean;
-  selectedFromStorage: ChorusStorage | null;
-  selectedToStorage: ChorusStorage | null;
+  selectedFromStorage: TuttiStorage | null;
+  selectedToStorage: TuttiStorage | null;
   isForAllBuckets: boolean;
   isBucketsListLoading: boolean;
   hasBucketsError: boolean;
   bucketsError: string;
   isReplicatedShown: boolean;
-  bucketsRequestOptions: ChorusBucketListRequest | null;
+  bucketsRequestOptions: TuttiBucketListRequest | null;
   bucketsList: string[];
   replicatedBucketsList: string[];
-  coveredBucketsList: ChorusCoveredBucket[];
+  coveredBucketsList: TuttiCoveredBucket[];
   /** server text of the last failed create, shown on the page */
   createError: string;
   selectedBuckets: string[];
@@ -57,7 +57,7 @@ interface ChorusAddReplicationState {
   isSubmitting: boolean;
 }
 
-function getInitialState(): ChorusAddReplicationState {
+function getInitialState(): TuttiAddReplicationState {
   return {
     isLoading: false,
     hasError: false,
@@ -85,7 +85,7 @@ function getInitialState(): ChorusAddReplicationState {
 export const useTuttiAddReplicationStore = defineStore(
   'tuttiAddReplication',
   () => {
-    const state = reactive<ChorusAddReplicationState>(getInitialState());
+    const state = reactive<TuttiAddReplicationState>(getInitialState());
     const router = useRouter();
 
     async function initAddReplicationPage() {
@@ -93,7 +93,7 @@ export const useTuttiAddReplicationStore = defineStore(
       state.hasError = false;
 
       try {
-        const { storages } = await ChorusService.getStorages();
+        const { storages } = await TuttiCoreService.getStorages();
 
         state.storages = storages;
         prepareForm();
@@ -147,7 +147,7 @@ export const useTuttiAddReplicationStore = defineStore(
       };
 
       const { buckets, replicatedBuckets, coveredBuckets } =
-        await ChorusService.getBucketsForReplication(
+        await TuttiCoreService.getBucketsForReplication(
           state.bucketsRequestOptions,
         );
 
@@ -159,7 +159,7 @@ export const useTuttiAddReplicationStore = defineStore(
       if (state.coveredBucketsList.length > 0) state.isForAllBuckets = false;
     }
 
-    function coveredReason(covered: ChorusCoveredBucket): string {
+    function coveredReason(covered: TuttiCoveredBucket): string {
       return t('coveredReason', {
         kind: covered.ownerKind,
         id: covered.ownerId,
@@ -253,15 +253,15 @@ export const useTuttiAddReplicationStore = defineStore(
       state.isSubmitting = true;
       state.createError = '';
 
-      const successList: ChorusReplicationId[] = [];
-      const errorList: [ChorusReplicationId, string][] = [];
+      const successList: TuttiReplicationId[] = [];
+      const errorList: [TuttiReplicationId, string][] = [];
 
-      const baseReplicationId: ChorusReplicationId = {
+      const baseReplicationId: TuttiReplicationId = {
         fromStorage: selectedFromStorage.name,
         toStorage: selectedToStorage.name,
       };
 
-      const replicationIds: ChorusReplicationId[] = isForAllBuckets
+      const replicationIds: TuttiReplicationId[] = isForAllBuckets
         ? [{ ...baseReplicationId }]
         : selectedBuckets.map((bucket) => ({
             ...baseReplicationId,
@@ -273,7 +273,7 @@ export const useTuttiAddReplicationStore = defineStore(
       // requests would make the later ones fail with "storage is being modified; retry".
       for (const replicationId of replicationIds) {
         try {
-          await ChorusService.addReplication({
+          await TuttiCoreService.addReplication({
             id: replicationId,
           });
           successList.push(replicationId);
@@ -304,7 +304,7 @@ export const useTuttiAddReplicationStore = defineStore(
         state.createError = content.join('; ');
         showCreateError(state.createError);
       } else {
-        router.push({ name: RouteName.CHORUS_REPLICATION });
+        router.push({ name: RouteName.TUTTI_REPLICATION });
       }
 
       if (successList.length !== 0) {

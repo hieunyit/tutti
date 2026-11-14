@@ -15,7 +15,7 @@
  */
 
 import { RouteName } from '@/utils/types/router';
-import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
+import type { TuttiReplication, TuttiStorage } from '@/utils/types/tuttiCore';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -81,8 +81,8 @@ export interface AttentionItem {
 }
 
 export interface DashboardSources {
-  storages: ChorusStorage[] | null;
-  replications: ChorusReplication[] | null;
+  storages: TuttiStorage[] | null;
+  replications: TuttiReplication[] | null;
   proxies: TuttiProxyStatus[] | null;
   events: TuttiFailoverEvent[] | null;
   /** optional: failover policies (not readable by viewers) */
@@ -111,7 +111,7 @@ export abstract class DashboardHelper {
     );
   }
 
-  static replicationLabel(replication: ChorusReplication): string {
+  static replicationLabel(replication: TuttiReplication): string {
     const { user, fromStorage, toStorage, fromBucket } = replication.id;
 
     return `${user}: ${fromStorage} → ${toStorage}${fromBucket ? ` (${fromBucket})` : ''}`;
@@ -119,12 +119,12 @@ export abstract class DashboardHelper {
 
   /** Non-archived replications only. */
   static activeReplications(
-    replications: ChorusReplication[],
-  ): ChorusReplication[] {
+    replications: TuttiReplication[],
+  ): TuttiReplication[] {
     return replications.filter((replication) => !replication.isArchived);
   }
 
-  static replicationState(replication: ChorusReplication): ReplicationState {
+  static replicationState(replication: TuttiReplication): ReplicationState {
     if (replication.isPaused) return 'paused';
 
     if (!replication.isInitDone) return 'initial';
@@ -137,9 +137,9 @@ export abstract class DashboardHelper {
    * (most lag first), then the rest in the given order, at most `limit`.
    */
   static summaryReplications(
-    replications: ChorusReplication[],
+    replications: TuttiReplication[],
     limit = 5,
-  ): ChorusReplication[] {
+  ): TuttiReplication[] {
     const rank: Record<ReplicationState, number> = {
       paused: 0,
       behind: 1,
@@ -161,13 +161,13 @@ export abstract class DashboardHelper {
       .map((entry) => entry.replication);
   }
 
-  static eventLag(replication: ChorusReplication): number {
+  static eventLag(replication: TuttiReplication): number {
     return Math.max(0, TrafficStatsHelper.toNumber(replication.eventLag));
   }
 
   /** Health per storage aggregated over all proxies (any proxy down = down). */
   static getStorageHealth(
-    storages: ChorusStorage[],
+    storages: TuttiStorage[],
     proxies: TuttiProxyStatus[] | null,
     now = Date.now(),
   ): StorageHealthRow[] {
@@ -201,7 +201,7 @@ export abstract class DashboardHelper {
   }
 
   static getReplicationBreakdown(
-    all: ChorusReplication[],
+    all: TuttiReplication[],
   ): ReplicationBreakdown {
     const replications = DashboardHelper.activeReplications(all);
     const result: ReplicationBreakdown = {
@@ -315,7 +315,7 @@ export abstract class DashboardHelper {
             kind: 'storageDown',
             severity: 'error',
             params: { name: row.name, failures: row.failures },
-            route: RouteName.CHORUS_STORAGES,
+            route: RouteName.TUTTI_STORAGES,
           }),
         );
     }
@@ -346,7 +346,7 @@ export abstract class DashboardHelper {
             kind: 'replicationPaused',
             severity: 'warning',
             params: { name: label },
-            route: RouteName.CHORUS_REPLICATION,
+            route: RouteName.TUTTI_REPLICATION,
           });
 
           return;
@@ -358,7 +358,7 @@ export abstract class DashboardHelper {
             kind: 'replicationBehind',
             severity: 'warning',
             params: { name: label, lag },
-            route: RouteName.CHORUS_REPLICATION,
+            route: RouteName.TUTTI_REPLICATION,
           });
         }
       },
@@ -388,7 +388,7 @@ export abstract class DashboardHelper {
             name: proxy.appId,
             since: proxy.updatedAt ?? '',
           },
-          route: RouteName.CHORUS_STORAGES,
+          route: RouteName.TUTTI_STORAGES,
         }),
     );
 

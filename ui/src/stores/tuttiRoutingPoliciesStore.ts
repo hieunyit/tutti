@@ -28,12 +28,12 @@ import {
   type RoutingPolicyListRequest,
   type RoutingPolicy,
   type RoutingPolicyEditRequest,
-} from '@/utils/types/chorus';
-import { ChorusService } from '@/services/ChorusService';
+} from '@/utils/types/tuttiCore';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-import i18nRoutingPolicies from '@/components/chorus/routing-policies/i18nRoutingPolicies';
+import i18nRoutingPolicies from '@/components/tutti/routing-policies/i18nRoutingPolicies';
 
-interface ChorusRoutingPoliciesState {
+interface TuttiRoutingPoliciesState {
   isLoading: boolean;
   hasError: boolean;
   routingPolicies: RoutingPolicy[];
@@ -54,7 +54,7 @@ interface ChorusRoutingPoliciesState {
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 const POLL_INTERVAL_MS = 5000;
 
-function getInitialState(): ChorusRoutingPoliciesState {
+function getInitialState(): TuttiRoutingPoliciesState {
   return {
     isLoading: false,
     hasError: false,
@@ -75,9 +75,9 @@ function getInitialState(): ChorusRoutingPoliciesState {
 }
 
 export const useTuttiRoutingPoliciesStore = defineStore(
-  'chorusRoutingPolicies',
+  'tuttiRoutingPolicies',
   () => {
-    const state = reactive<ChorusRoutingPoliciesState>(getInitialState());
+    const state = reactive<TuttiRoutingPoliciesState>(getInitialState());
     const polling = usePolling();
     const changes = createChangeDetector();
 
@@ -150,7 +150,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
         hideBucketRoutings: false,
       };
 
-      const res = await ChorusService.getRoutingPolicies(
+      const res = await TuttiCoreService.getRoutingPolicies(
         state.routingPoliciesRequestOptions,
       );
 
@@ -229,7 +229,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       await stopRoutingPoliciesPolling();
 
       try {
-        await ChorusService.deleteRoutingPolicy(deleteRequestData);
+        await TuttiCoreService.deleteRoutingPolicy(deleteRequestData);
       } catch (error: unknown) {
         const reason =
           ErrorHelper.getReason(error) || t('deleteRoutingPolicyErrorUnknown');
@@ -246,7 +246,7 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       routingPolicy: RoutingPolicy,
       toStorage: string,
     ) {
-      await ChorusService.updateRoutingPolicy({
+      await TuttiCoreService.updateRoutingPolicy({
         user: routingPolicy.user,
         bucket: routingPolicy.bucket === '*' ? null : routingPolicy.bucket,
         toStorage,
@@ -329,8 +329,8 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       try {
         await (
           setBlock
-            ? ChorusService.blockRoutingPolicy
-            : ChorusService.unblockRoutingPolicy
+            ? TuttiCoreService.blockRoutingPolicy
+            : TuttiCoreService.unblockRoutingPolicy
         )(blockRequestData);
       } catch (error: unknown) {
         const reason =

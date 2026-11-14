@@ -15,10 +15,10 @@
  */
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 import { FailoverHelper } from '@/utils/helpers/FailoverHelper';
-import type { ChorusReplication } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
 import type {
   TuttiFailoverEvent,
   TuttiFailoverPolicy,
@@ -33,7 +33,7 @@ interface TuttiFailoverState {
   events: TuttiFailoverEvent[];
   proxies: TuttiProxyStatus[];
   /** null when the list could not be loaded (readiness is then unknown) */
-  replications: ChorusReplication[] | null;
+  replications: TuttiReplication[] | null;
   storageNames: string[];
   isSaving: boolean;
   saveError: string | null;
@@ -73,10 +73,10 @@ export const useTuttiFailoverStore = defineStore('tuttiFailover', () => {
           TuttiService.getFailoverPolicies(),
           TuttiService.getFailoverEvents(),
           TuttiService.getProxies(),
-          ChorusService.getStorages(),
+          TuttiCoreService.getStorages(),
           // best effort: only needed for the "will it trigger" evaluation
           Promise.resolve()
-            .then(() => ChorusService.getReplications())
+            .then(() => TuttiCoreService.getReplications())
             .then((res) => res.replications ?? [])
             .catch(() => null),
         ]);

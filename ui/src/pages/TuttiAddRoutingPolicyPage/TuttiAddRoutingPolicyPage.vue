@@ -23,12 +23,12 @@
     WizardShell,
     type WizardStep,
   } from '@/components/kit';
-  import ChorusWizardPage from '@/components/chorus/common/ChorusWizardPage/ChorusWizardPage.vue';
-  import UserSelection from '@/components/chorus/add-routing-policies/UserSelection/UserSelection.vue';
-  import StorageSelection from '@/components/chorus/add-routing-policies/StorageSelection/StorageSelection.vue';
-  import BucketSelection from '@/components/chorus/add-routing-policies/BucketSelection/BucketSelection.vue';
-  import StatusSelection from '@/components/chorus/add-routing-policies/StatusSelection/StatusSelection.vue';
-  import AddRoutingPolicySummary from '@/components/chorus/add-routing-policies/AddRoutingPolicySummary/AddRoutingPolicySummary.vue';
+  import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
+  import UserSelection from '@/components/tutti/add-routing-policies/UserSelection/UserSelection.vue';
+  import StorageSelection from '@/components/tutti/add-routing-policies/StorageSelection/StorageSelection.vue';
+  import BucketSelection from '@/components/tutti/add-routing-policies/BucketSelection/BucketSelection.vue';
+  import StatusSelection from '@/components/tutti/add-routing-policies/StatusSelection/StatusSelection.vue';
+  import AddRoutingPolicySummary from '@/components/tutti/add-routing-policies/AddRoutingPolicySummary/AddRoutingPolicySummary.vue';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
@@ -121,7 +121,7 @@
       });
       clearWizardDraft(DRAFT_KEY);
       router.push({
-        name: RouteName.CHORUS_REPLICATION,
+        name: RouteName.TUTTI_REPLICATION,
         query: { tab: 'routing' },
       });
     } catch (error: unknown) {
@@ -150,7 +150,7 @@
 </script>
 
 <template>
-  <ChorusWizardPage
+  <TuttiWizardPage
     :title="t('addRoutingTitle')"
     :description="t('addRoutingDescription')"
     :state="isLoading ? 'loading' : hasError ? 'error' : 'ready'"
@@ -182,5 +182,5 @@
         <AddRoutingPolicySummary />
       </template>
     </WizardShell>
-  </ChorusWizardPage>
+  </TuttiWizardPage>
 </template>

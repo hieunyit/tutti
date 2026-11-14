@@ -23,12 +23,12 @@
     WizardShell,
     type WizardStep,
   } from '@/components/kit';
-  import ChorusWizardPage from '@/components/chorus/common/ChorusWizardPage/ChorusWizardPage.vue';
-  import FromStep from '@/components/chorus/add-diff-report/FromStep/FromStep.vue';
-  import ToStep from '@/components/chorus/add-diff-report/ToStep/ToStep.vue';
-  import UserStep from '@/components/chorus/add-diff-report/UserStep/UserStep.vue';
-  import AdditionalSettingsStep from '@/components/chorus/add-diff-report/AdditionalSettingsStep/AdditionalSettingsStep.vue';
-  import AddDiffReportSummary from '@/components/chorus/add-diff-report/AddDiffReportSummary/AddDiffReportSummary.vue';
+  import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
+  import FromStep from '@/components/tutti/add-diff-report/FromStep/FromStep.vue';
+  import ToStep from '@/components/tutti/add-diff-report/ToStep/ToStep.vue';
+  import UserStep from '@/components/tutti/add-diff-report/UserStep/UserStep.vue';
+  import AdditionalSettingsStep from '@/components/tutti/add-diff-report/AdditionalSettingsStep/AdditionalSettingsStep.vue';
+  import AddDiffReportSummary from '@/components/tutti/add-diff-report/AddDiffReportSummary/AddDiffReportSummary.vue';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
@@ -152,7 +152,7 @@
       });
       clearWizardDraft(DRAFT_KEY);
       router.push({
-        name: RouteName.CHORUS_REPLICATION,
+        name: RouteName.TUTTI_REPLICATION,
         query: { tab: 'diff' },
       });
     } catch (error: unknown) {
@@ -179,7 +179,7 @@
 </script>
 
 <template>
-  <ChorusWizardPage
+  <TuttiWizardPage
     :title="t('addDiffTitle')"
     :description="t('addDiffDescription')"
     :state="
@@ -213,5 +213,5 @@
         <AddDiffReportSummary />
       </template>
     </WizardShell>
-  </ChorusWizardPage>
+  </TuttiWizardPage>
 </template>

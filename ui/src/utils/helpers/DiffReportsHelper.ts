@@ -19,7 +19,7 @@ import {
   DiffReportStatusFilter,
   type DiffReport,
   type DiffReportLocation,
-} from '@/utils/types/chorus';
+} from '@/utils/types/tuttiCore';
 
 export abstract class DiffReportsHelper {
   static getDiffReportId(locations: DiffReport['locations']): string {

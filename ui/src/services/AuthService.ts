@@ -26,7 +26,7 @@ import type {
 export abstract class AuthService {
   static async login(payload: AuthLoginRequest): Promise<AuthLoginResponse> {
     const { data } = await apiClient.post<AuthLoginResponse>(
-      ApiHelper.getChorusAPIUrl('/auth/login'),
+      ApiHelper.getTuttiAPIUrl('/auth/login'),
       payload,
     );
 
@@ -34,12 +34,12 @@ export abstract class AuthService {
   }
 
   static async logout(): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl('/auth/logout'));
+    await apiClient.post(ApiHelper.getTuttiAPIUrl('/auth/logout'));
   }
 
   static async me(): Promise<AuthMeResponse> {
     const { data } = await apiClient.get<AuthMeResponse>(
-      ApiHelper.getChorusAPIUrl('/auth/me'),
+      ApiHelper.getTuttiAPIUrl('/auth/me'),
     );
 
     return data;
@@ -48,7 +48,7 @@ export abstract class AuthService {
   /** Extends the idle deadline; 401 when expired or at the absolute cap. */
   static async refresh(): Promise<AuthSessionTimes> {
     const { data } = await apiClient.post<AuthSessionTimes>(
-      ApiHelper.getChorusAPIUrl('/auth/refresh'),
+      ApiHelper.getTuttiAPIUrl('/auth/refresh'),
     );
 
     return data;
@@ -58,7 +58,7 @@ export abstract class AuthService {
     currentPassword: string,
     newPassword: string,
   ): Promise<void> {
-    await apiClient.post(ApiHelper.getChorusAPIUrl('/auth/password'), {
+    await apiClient.post(ApiHelper.getTuttiAPIUrl('/auth/password'), {
       currentPassword,
       newPassword,
     });

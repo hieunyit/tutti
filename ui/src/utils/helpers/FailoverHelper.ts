@@ -16,7 +16,7 @@
 
 import axios from 'axios';
 import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
-import type { ChorusReplication } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
 import {
   TuttiPolicyValidationError,
   type TuttiFailoverPolicy,
@@ -219,8 +219,8 @@ export abstract class FailoverHelper {
   private static replicationsTowards(
     source: string,
     target: string,
-    replications: ChorusReplication[],
-  ): ChorusReplication[] {
+    replications: TuttiReplication[],
+  ): TuttiReplication[] {
     return DashboardHelper.activeReplications(replications).filter(
       (replication) =>
         replication.id.fromStorage === source &&
@@ -232,7 +232,7 @@ export abstract class FailoverHelper {
   static targetReplicationState(
     source: string,
     target: string,
-    replications: ChorusReplication[],
+    replications: TuttiReplication[],
     maxLag: number,
   ): TargetReplicationState {
     const list = FailoverHelper.replicationsTowards(
@@ -262,7 +262,7 @@ export abstract class FailoverHelper {
   static evaluatePolicy(
     policy: TuttiFailoverPolicy,
     proxies: TuttiProxyStatus[] | null,
-    replications: ChorusReplication[] | null,
+    replications: TuttiReplication[] | null,
     now = Date.now(),
   ): FailoverTrigger {
     if (policy.enabled === false) return { state: 'disabled' };
@@ -294,7 +294,7 @@ export abstract class FailoverHelper {
   static getReadiness(
     policies: TuttiFailoverPolicy[],
     proxies: TuttiProxyStatus[] | null,
-    replications: ChorusReplication[] | null,
+    replications: TuttiReplication[] | null,
     now = Date.now(),
   ): FailoverReadiness {
     const reporting = FailoverHelper.reportingProxies(proxies, now);

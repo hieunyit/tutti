@@ -16,18 +16,18 @@
 
 import { describe, expect, it } from 'vitest';
 import { DashboardHelper, DASHBOARD_PROXY_STALE_MS } from '../DashboardHelper';
-import type { ChorusReplication, ChorusStorage } from '@/utils/types/chorus';
+import type { TuttiReplication, TuttiStorage } from '@/utils/types/tuttiCore';
 import type { TuttiProxyStatus } from '@/utils/types/tutti';
 import { RouteName } from '@/utils/types/router';
 
 const NOW = Date.parse('2026-01-01T00:10:00Z');
 
 const storage = (name: string, isMain = false) =>
-  ({ name, isMain, address: `${name}:9000`, provider: 'S3' }) as ChorusStorage;
+  ({ name, isMain, address: `${name}:9000`, provider: 'S3' }) as TuttiStorage;
 
 const replication = (
-  over: Partial<ChorusReplication> & { to?: string } = {},
-): ChorusReplication =>
+  over: Partial<TuttiReplication> & { to?: string } = {},
+): TuttiReplication =>
   ({
     id: { user: 'u', fromStorage: 'main', toStorage: over.to ?? 'b' },
     idStr: over.idStr ?? 'r1',
@@ -36,7 +36,7 @@ const replication = (
     isArchived: false,
     eventLag: '0',
     ...over,
-  }) as ChorusReplication;
+  }) as TuttiReplication;
 
 const proxy = (over: Partial<TuttiProxyStatus> = {}): TuttiProxyStatus => ({
   appId: 'p1',

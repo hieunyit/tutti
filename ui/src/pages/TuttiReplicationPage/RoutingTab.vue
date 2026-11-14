@@ -27,18 +27,18 @@
     type FilterChip,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import ChorusRowActions from '@/components/chorus/common/ChorusRowActions/ChorusRowActions.vue';
-  import RowActionsConfirm from '@/components/chorus/common/ChorusRowActions/RowActionsConfirm.vue';
-  import RoutingPoliciesFilters from '@/components/chorus/routing-policies/RoutingPoliciesFilters/RoutingPoliciesFilters.vue';
-  import RoutingPolicyBucketCell from '@/components/chorus/routing-policies/RoutingPolicyBucketCell/RoutingPolicyBucketCell.vue';
-  import RoutingPolicyStatusCell from '@/components/chorus/routing-policies/RoutingPolicyStatusCell/RoutingPolicyStatusCell.vue';
-  import RoutingPolicyStorageCell from '@/components/chorus/routing-policies/RoutingPolicyStorageCell/RoutingPolicyStorageCell.vue';
-  import RoutingPolicyEditModal from '@/components/chorus/routing-policies/RoutingPolicyEditModal/RoutingPolicyEditModal.vue';
+  import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
+  import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
+  import RoutingPoliciesFilters from '@/components/tutti/routing-policies/RoutingPoliciesFilters/RoutingPoliciesFilters.vue';
+  import RoutingPolicyBucketCell from '@/components/tutti/routing-policies/RoutingPolicyBucketCell/RoutingPolicyBucketCell.vue';
+  import RoutingPolicyStatusCell from '@/components/tutti/routing-policies/RoutingPolicyStatusCell/RoutingPolicyStatusCell.vue';
+  import RoutingPolicyStorageCell from '@/components/tutti/routing-policies/RoutingPolicyStorageCell/RoutingPolicyStorageCell.vue';
+  import RoutingPolicyEditModal from '@/components/tutti/routing-policies/RoutingPolicyEditModal/RoutingPolicyEditModal.vue';
   import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
-  import type { RoutingPolicy } from '@/utils/types/chorus';
+  import type { RoutingPolicy } from '@/utils/types/tuttiCore';
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nReplicationHub });
@@ -159,7 +159,7 @@
       key: 'actions',
       width: 300,
       render: (row) =>
-        h(ChorusRowActions, {
+        h(TuttiRowActions, {
           actions: actionsFor(row).filter(
             (action) => action.key !== (row.isBlocked ? 'block' : 'unblock'),
           ),
@@ -264,7 +264,7 @@
           "
         >
           <WriteGate v-if="!isFiltered && !search">
-            <RouterLink :to="{ name: RouteName.CHORUS_ADD_ROUTING_POLICY }">
+            <RouterLink :to="{ name: RouteName.TUTTI_ADD_ROUTING_POLICY }">
               <NButton
                 type="primary"
                 tag="span"

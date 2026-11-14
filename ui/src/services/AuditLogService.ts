@@ -83,7 +83,7 @@ export abstract class AuditLogService {
     }
 
     const { data } = await apiClient.get<RawAuditLogList>(
-      ApiHelper.getChorusAPIUrl(BASE),
+      ApiHelper.getTuttiAPIUrl(BASE),
       { params: query },
     );
 

@@ -56,7 +56,7 @@
     :title="t('storagesTitle')"
     :meta="p95 ? t('storagesP95', { value: p95 }) : undefined"
     :link-label="t('storagesViewAll')"
-    :link-to="{ name: RouteName.CHORUS_STORAGES }"
+    :link-to="{ name: RouteName.TUTTI_STORAGES }"
     flush
   >
     <p
@@ -98,7 +98,7 @@
           <td class="dashboard-storages__name">
             <RouterLink
               :to="{
-                name: RouteName.CHORUS_STORAGE_DETAILS,
+                name: RouteName.TUTTI_STORAGE_DETAILS,
                 params: { storageName: storage.name },
               }"
             >

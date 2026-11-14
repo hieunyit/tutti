@@ -20,12 +20,12 @@ import {
 } from '@clyso/clyso-ui-kit';
 import { defineStore, storeToRefs } from 'pinia';
 import { computed, reactive, toRefs, watch } from 'vue';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
-import type { DiffReportEntry } from '@/utils/types/chorus';
+import type { DiffReportEntry } from '@/utils/types/tuttiCore';
 import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
 
-interface ChorusDiffReportEntriesState {
+interface TuttiDiffReportEntriesState {
   isLoading: boolean;
   hasError: boolean;
   entries: DiffReportEntry[];
@@ -39,7 +39,7 @@ interface ChorusDiffReportEntriesState {
 
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 
-function getInitialState(): ChorusDiffReportEntriesState {
+function getInitialState(): TuttiDiffReportEntriesState {
   return {
     isLoading: false,
     hasError: false,
@@ -54,9 +54,9 @@ function getInitialState(): ChorusDiffReportEntriesState {
 }
 
 export const useTuttiDiffReportEntriesStore = defineStore(
-  'chorusDiffReportEntries',
+  'tuttiDiffReportEntries',
   () => {
-    const state = reactive<ChorusDiffReportEntriesState>(getInitialState());
+    const state = reactive<TuttiDiffReportEntriesState>(getInitialState());
 
     const { report, locations } = storeToRefs(useTuttiDiffReportDetailStore());
 
@@ -135,7 +135,7 @@ export const useTuttiDiffReportEntriesStore = defineStore(
       state.isLoading = true;
 
       try {
-        const res = await ChorusService.getDiffReportEntries({
+        const res = await TuttiCoreService.getDiffReportEntries({
           locations: locations.value,
         });
 

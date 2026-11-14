@@ -18,7 +18,7 @@ import { ApiVersion } from '../types/api';
 import { API_BASE_URL, API_PREFIX } from '@/utils/constants/env';
 
 export abstract class ApiHelper {
-  static getChorusAPIUrl(resourcePath: string): string {
+  static getTuttiAPIUrl(resourcePath: string): string {
     return `${API_BASE_URL}${API_PREFIX}${resourcePath}`;
   }
 

@@ -24,7 +24,7 @@ const push = vi.fn();
 
 vi.mock('@/router', () => ({
   default: {
-    currentRoute: { value: { name: 'CHORUS_HOME', fullPath: '/storages?x=1' } },
+    currentRoute: { value: { name: 'TUTTI_HOME', fullPath: '/storages?x=1' } },
     push: (...a: unknown[]) => push(...a),
   },
 }));

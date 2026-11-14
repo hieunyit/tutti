@@ -19,8 +19,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiAddReplicationStore } from '../tuttiAddReplicationStore';
 import { TuttiService } from '@/services/TuttiService';
-import { ChorusService } from '@/services/ChorusService';
-import { AddReplicationStepName } from '@/utils/types/chorus';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
+import { AddReplicationStepName } from '@/utils/types/tuttiCore';
 
 const push = vi.hoisted(() => vi.fn());
 
@@ -35,8 +35,8 @@ vi.mock('@clyso/clyso-ui-kit', () => ({
   I18nLocale: { EN: 'en', DE: 'de' },
   useNotification: () => ({ createNotification: vi.fn() }),
 }));
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: {
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: {
     getStorages: vi.fn(),
     getBucketsForReplication: vi.fn(),
     addReplication: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock('@/services/TuttiService', () => ({
 
 type Mocks = Record<string, ReturnType<typeof vi.fn>>;
 
-const chorus = ChorusService as unknown as Required<Mocks>;
+const tuttiCore = TuttiCoreService as unknown as Required<Mocks>;
 const tutti = TuttiService as unknown as Required<Mocks>;
 
 function conflictError(reason: string) {
@@ -69,18 +69,18 @@ function conflictError(reason: string) {
 beforeEach(() => {
   setActivePinia(createPinia());
   vi.clearAllMocks();
-  chorus.getStorages!.mockResolvedValue({
+  tuttiCore.getStorages!.mockResolvedValue({
     storages: [
       { name: 'main', isMain: true, credentials: [{ alias: 'default' }] },
       { name: 'backup', isMain: false, credentials: [] },
     ],
   });
-  chorus.getBucketsForReplication!.mockResolvedValue({
+  tuttiCore.getBucketsForReplication!.mockResolvedValue({
     buckets: ['b1'],
     replicatedBuckets: [],
     coveredBuckets: [],
   });
-  chorus.addReplication!.mockResolvedValue({});
+  tuttiCore.addReplication!.mockResolvedValue({});
 });
 
 describe('tuttiAddReplicationStore', () => {
@@ -103,7 +103,7 @@ describe('tuttiAddReplicationStore', () => {
     await store.initAddReplicationPage();
     await store.initBucketsList();
 
-    const request = chorus.getBucketsForReplication!.mock.calls[0]![0];
+    const request = tuttiCore.getBucketsForReplication!.mock.calls[0]![0];
 
     expect(request).toEqual({
       fromStorage: 'main',
@@ -115,7 +115,7 @@ describe('tuttiAddReplicationStore', () => {
   });
 
   it('exposes covered buckets as disabled rows with the owner as reason', async () => {
-    chorus.getBucketsForReplication!.mockResolvedValue({
+    tuttiCore.getBucketsForReplication!.mockResolvedValue({
       buckets: ['b1'],
       replicatedBuckets: [],
       coveredBuckets: [
@@ -147,7 +147,7 @@ describe('tuttiAddReplicationStore', () => {
   });
 
   it('does not create an all-buckets replication when a bucket is covered', async () => {
-    chorus.getBucketsForReplication!.mockResolvedValue({
+    tuttiCore.getBucketsForReplication!.mockResolvedValue({
       buckets: [],
       coveredBuckets: [{ bucket: 'b2', ownerKind: 'group', ownerId: 'g1' }],
     });
@@ -158,7 +158,7 @@ describe('tuttiAddReplicationStore', () => {
     store.isForAllBuckets = true;
 
     expect(await store.createReplication()).toBe(false);
-    expect(chorus.addReplication).not.toHaveBeenCalled();
+    expect(tuttiCore.addReplication).not.toHaveBeenCalled();
   });
 
   it('creates the replication with an id that has no user', async () => {
@@ -168,7 +168,7 @@ describe('tuttiAddReplicationStore', () => {
     store.isForAllBuckets = true;
     await store.createReplication();
 
-    const request = chorus.addReplication!.mock.calls[0]![0];
+    const request = tuttiCore.addReplication!.mock.calls[0]![0];
 
     expect(request).toEqual({
       id: { fromStorage: 'main', toStorage: 'backup' },
@@ -183,7 +183,7 @@ describe('tuttiAddReplicationStore', () => {
     store.selectedBuckets = ['b1'];
     await store.createReplication();
 
-    expect(chorus.addReplication).toHaveBeenCalledWith({
+    expect(tuttiCore.addReplication).toHaveBeenCalledWith({
       id: {
         fromStorage: 'main',
         toStorage: 'backup',
@@ -197,7 +197,7 @@ describe('tuttiAddReplicationStore', () => {
     const reason =
       'bucket "b1" on main->backup is already covered by group "g1"';
 
-    chorus.addReplication!.mockRejectedValue(conflictError(reason));
+    tuttiCore.addReplication!.mockRejectedValue(conflictError(reason));
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
@@ -213,7 +213,7 @@ describe('tuttiAddReplicationStore', () => {
   });
 
   it('stays on the wizard and reports failure when every request fails', async () => {
-    chorus.addReplication!.mockRejectedValue(new Error('boom'));
+    tuttiCore.addReplication!.mockRejectedValue(new Error('boom'));
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
@@ -228,7 +228,7 @@ describe('tuttiAddReplicationStore', () => {
   });
 
   it('keeps only the failed buckets selected after a partial failure', async () => {
-    chorus.addReplication!.mockImplementation(
+    tuttiCore.addReplication!.mockImplementation(
       async ({ id }: { id: { fromBucket?: string } }) => {
         if (id.fromBucket === 'b2') throw new Error('boom');
       },
@@ -249,7 +249,7 @@ describe('tuttiAddReplicationStore', () => {
     let maxRunning = 0;
     const order: string[] = [];
 
-    chorus.addReplication!.mockImplementation(
+    tuttiCore.addReplication!.mockImplementation(
       async ({ id }: { id: { fromBucket?: string } }) => {
         running += 1;
         maxRunning = Math.max(maxRunning, running);

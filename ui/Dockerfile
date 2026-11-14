@@ -36,6 +36,6 @@ ENV GIT_COMMIT=$GIT_COMMIT
 ENV GIT_TAG=$GIT_TAG
 ENV BUILD_DATE=$BUILD_DATE
 
-# when run with docker, provide chorus worker management api URL in envar:
+# when run with docker, provide tutti worker management api URL in envar:
 # docker run -p 80:80 -e BACKEND_URL=http://127.0.0.1:9090
 

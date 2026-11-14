@@ -27,12 +27,12 @@
     type FilterChip,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import ChorusRowActions from '@/components/chorus/common/ChorusRowActions/ChorusRowActions.vue';
-  import RowActionsConfirm from '@/components/chorus/common/ChorusRowActions/RowActionsConfirm.vue';
-  import ReplicationBucketCell from '@/components/chorus/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
-  import ReplicationDirectionCell from '@/components/chorus/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
-  import ReplicationStatusCell from '@/components/chorus/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
-  import ReplicationsFilters from '@/components/chorus/replications/ReplicationsFilters/ReplicationsFilters.vue';
+  import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
+  import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
+  import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
+  import ReplicationDirectionCell from '@/components/tutti/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
+  import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
+  import ReplicationsFilters from '@/components/tutti/replications/ReplicationsFilters/ReplicationsFilters.vue';
   import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
@@ -40,12 +40,12 @@
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import {
     ReplicationType,
-    type ChorusReplication,
-  } from '@/utils/types/chorus';
+    type TuttiReplication,
+  } from '@/utils/types/tuttiCore';
   import type { AddId } from '@/utils/types/helper';
   import { RouteName } from '@/utils/types/router';
 
-  type Row = AddId<ChorusReplication>;
+  type Row = AddId<TuttiReplication>;
 
   const { t } = useI18n({ messages: i18nReplicationHub });
   const store = useTuttiReplicationsStore();
@@ -155,7 +155,7 @@
       key: 'actions',
       width: 260,
       render: (row) =>
-        h(ChorusRowActions, {
+        h(TuttiRowActions, {
           actions: actionsFor(row).filter(
             (action) => action.key !== (row.isPaused ? 'pause' : 'resume'),
           ),
@@ -265,7 +265,7 @@
           "
         >
           <WriteGate v-if="!isFiltered && !search">
-            <RouterLink :to="{ name: RouteName.CHORUS_ADD_REPLICATION }">
+            <RouterLink :to="{ name: RouteName.TUTTI_ADD_REPLICATION }">
               <NButton
                 type="primary"
                 tag="span"

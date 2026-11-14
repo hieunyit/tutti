@@ -20,7 +20,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
   import { CopyValue } from '@/components/kit';
-  import { ChorusService } from '@/services/ChorusService';
+  import { TuttiCoreService } from '@/services/TuttiCoreService';
   import { useAuthStore } from '@/stores/authStore';
   import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
   import { RouteName } from '@/utils/types/router';
@@ -47,7 +47,8 @@
     isLoading.value = true;
 
     try {
-      address.value = (await ChorusService.getProxyCredentials()).address ?? '';
+      address.value =
+        (await TuttiCoreService.getProxyCredentials()).address ?? '';
     } catch (error: unknown) {
       if (ErrorHelper.getStatusCode(error) === 403) isForbidden.value = true;
       else hasError.value = true;

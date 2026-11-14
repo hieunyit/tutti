@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
 
 export interface StorageBucketEntry {
@@ -44,9 +44,9 @@ export abstract class BucketDiscoveryHelper {
       // Best-effort
     }
 
-    // 2. Query storages via Chorus replication list-buckets API
+    // 2. Query storages via Tutti replication list-buckets API
     try {
-      const { storages } = await ChorusService.getStorages();
+      const { storages } = await TuttiCoreService.getStorages();
 
       if (storages && storages.length > 0) {
         for (let i = 0; i < storages.length; i++) {
@@ -58,7 +58,7 @@ export abstract class BucketDiscoveryHelper {
             storages.find((candidate) => candidate.name !== from)?.name ?? from;
 
           try {
-            const res = await ChorusService.getBucketsForReplication({
+            const res = await TuttiCoreService.getBucketsForReplication({
               ...(userName ? { user: userName } : {}),
               fromStorage: from,
               toStorage: to,
@@ -100,7 +100,7 @@ export abstract class BucketDiscoveryHelper {
     const seen = new Set<string>();
 
     try {
-      const { storages: allStorages } = await ChorusService.getStorages();
+      const { storages: allStorages } = await TuttiCoreService.getStorages();
 
       if (!allStorages || allStorages.length === 0) return [];
 
@@ -112,7 +112,7 @@ export abstract class BucketDiscoveryHelper {
           allStorages.find((s) => s.name !== storageName)?.name || storageName;
 
         try {
-          const res = await ChorusService.getBucketsForReplication({
+          const res = await TuttiCoreService.getBucketsForReplication({
             ...(userName ? { user: userName } : {}),
             fromStorage: storageName,
             toStorage: other,

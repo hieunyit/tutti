@@ -76,5 +76,5 @@ it('denies console administration to viewers', async () => {
     await run(RouteName.TUTTI_CONSOLE_USERS, '/console-users', {
       requiresAdmin: true,
     }),
-  ).toEqual({ name: RouteName.CHORUS_HOME });
+  ).toEqual({ name: RouteName.TUTTI_HOME });
 });

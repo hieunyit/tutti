@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { FailoverHelper } from '../FailoverHelper';
-import type { ChorusReplication } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
 import {
   TuttiPolicyValidationError as E,
   type TuttiFailoverPolicy,
@@ -192,7 +192,7 @@ describe('FailoverHelper readiness and trigger evaluation', () => {
       isArchived: false,
       eventLag: '0',
       ...over,
-    }) as unknown as ChorusReplication;
+    }) as unknown as TuttiReplication;
 
   it('says no when a reporting proxy has failover off', () => {
     expect(

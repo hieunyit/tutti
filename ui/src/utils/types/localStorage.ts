@@ -15,9 +15,9 @@
  */
 
 export enum LocalStorageItem {
-  AUTH_META_KEY = 'chorus-auth',
-  I18N_LOCALE = 'chorus-locale',
-  COLOR_SCHEME = 'chorus-color-scheme',
+  AUTH_META_KEY = 'tutti-auth',
+  I18N_LOCALE = 'tutti-locale',
+  COLOR_SCHEME = 'tutti-color-scheme',
   SIDEBAR_COLLAPSED = 'tutti-sidebar-collapsed',
   MONITORING_RANGE = 'tutti-monitoring-range',
 }

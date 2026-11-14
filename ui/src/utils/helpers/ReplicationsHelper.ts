@@ -15,12 +15,15 @@
  */
 
 import type { AddId } from '@/utils/types/helper';
-import type { ChorusReplication } from '@/utils/types/chorus';
-import { ReplicationStatusFilter, ReplicationType } from '@/utils/types/chorus';
+import type { TuttiReplication } from '@/utils/types/tuttiCore';
+import {
+  ReplicationStatusFilter,
+  ReplicationType,
+} from '@/utils/types/tuttiCore';
 
 export abstract class ReplicationsHelper {
   static getLiveReplicationEventsDifference(
-    replication: ChorusReplication,
+    replication: TuttiReplication,
   ): number {
     const { events, eventsDone } = replication;
 
@@ -31,12 +34,12 @@ export abstract class ReplicationsHelper {
     return Number(events) - Number(eventsDone);
   }
 
-  static isLiveReplicationBehind(replication: ChorusReplication): boolean {
+  static isLiveReplicationBehind(replication: TuttiReplication): boolean {
     return this.getLiveReplicationEventsDifference(replication) > 0;
   }
 
   static isReplicationStatusMatched(
-    replication: AddId<ChorusReplication>,
+    replication: AddId<TuttiReplication>,
     status: ReplicationStatusFilter | null,
   ): boolean {
     if (status === ReplicationStatusFilter.ACTIVE) {
@@ -69,7 +72,7 @@ export abstract class ReplicationsHelper {
   }
 
   static isReplicationCreateAtMatched(
-    replication: AddId<ChorusReplication>,
+    replication: AddId<TuttiReplication>,
     [rangeStartMs, rangeEndMs]: [number, number],
   ): boolean {
     const createdAtMs = new Date(replication.createdAt).getTime();
@@ -77,7 +80,7 @@ export abstract class ReplicationsHelper {
     return createdAtMs >= rangeStartMs && createdAtMs <= rangeEndMs;
   }
 
-  static getDirectionPairString(replication: ChorusReplication): string {
+  static getDirectionPairString(replication: TuttiReplication): string {
     return `${replication.id.fromStorage} → ${replication.id.toStorage}`;
   }
 
@@ -85,7 +88,7 @@ export abstract class ReplicationsHelper {
    * What a row is about: its bucket, else its real user, else "A → B" for a
    * storage-level replication (empty user).
    */
-  static getSubjectLabel(replication: ChorusReplication): string {
+  static getSubjectLabel(replication: TuttiReplication): string {
     const { fromBucket, user } = replication.id;
 
     return fromBucket || user || this.getDirectionPairString(replication);
@@ -95,7 +98,7 @@ export abstract class ReplicationsHelper {
    * Returns the bucket pair string (e.g. "from → to") for a given replication.
    * Returns an empty string for user replications as they have no bucket pair.
    */
-  static getBucketPairString(replication: ChorusReplication): string {
+  static getBucketPairString(replication: TuttiReplication): string {
     if (replication.replicationType === ReplicationType.BUCKET) {
       return `${replication.id.fromBucket} → ${replication.id.toBucket}`;
     }

@@ -29,19 +29,19 @@
     type FilterChip,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import ChorusRowActions from '@/components/chorus/common/ChorusRowActions/ChorusRowActions.vue';
-  import RowActionsConfirm from '@/components/chorus/common/ChorusRowActions/RowActionsConfirm.vue';
-  import ChorusDiffReportsProgress from '@/components/chorus/common/ChorusDiffReportProgress/ChorusDiffReportsProgress.vue';
-  import DiffReportsBucketCell from '@/components/chorus/diff-reports/DiffReportsBucketCell/DiffReportsBucketCell.vue';
-  import DiffReportsDirectionCell from '@/components/chorus/diff-reports/DiffReportsDirectionCell/DiffReportsDirectionCell.vue';
-  import DiffReportsFilters from '@/components/chorus/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
-  import DiffReportsStatusCell from '@/components/chorus/diff-reports/DiffReportsStatusCell/DiffReportsStatusCell.vue';
+  import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
+  import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
+  import TuttiDiffReportsProgress from '@/components/tutti/common/TuttiDiffReportProgress/TuttiDiffReportsProgress.vue';
+  import DiffReportsBucketCell from '@/components/tutti/diff-reports/DiffReportsBucketCell/DiffReportsBucketCell.vue';
+  import DiffReportsDirectionCell from '@/components/tutti/diff-reports/DiffReportsDirectionCell/DiffReportsDirectionCell.vue';
+  import DiffReportsFilters from '@/components/tutti/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
+  import DiffReportsStatusCell from '@/components/tutti/diff-reports/DiffReportsStatusCell/DiffReportsStatusCell.vue';
   import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
-  import type { DiffReport, DiffReportLocation } from '@/utils/types/chorus';
+  import type { DiffReport, DiffReportLocation } from '@/utils/types/tuttiCore';
   import type { AddId } from '@/utils/types/helper';
   import { RouteName } from '@/utils/types/router';
 
@@ -146,7 +146,7 @@
       key: 'progress',
       minWidth: 140,
       render: (row) =>
-        isTwo(row) ? h(ChorusDiffReportsProgress, { report: row }) : null,
+        isTwo(row) ? h(TuttiDiffReportsProgress, { report: row }) : null,
     },
     {
       title: t('colDirection'),
@@ -172,7 +172,7 @@
       width: 300,
       render: (row) => {
         if (!isTwo(row))
-          return h(ChorusRowActions, {
+          return h(TuttiRowActions, {
             actions: actionsFor(row).filter((a) => a.key === 'delete'),
           });
 
@@ -202,7 +202,7 @@
                   ),
               },
             ),
-            h(ChorusRowActions, { actions: actionsFor(row) }),
+            h(TuttiRowActions, { actions: actionsFor(row) }),
           ],
         );
       },
@@ -294,7 +294,7 @@
           "
         >
           <WriteGate v-if="!isFiltered && !search">
-            <RouterLink :to="{ name: RouteName.CHORUS_ADD_DIFF_REPORT }">
+            <RouterLink :to="{ name: RouteName.TUTTI_ADD_DIFF_REPORT }">
               <NButton
                 type="primary"
                 tag="span"

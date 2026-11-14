@@ -19,7 +19,7 @@
     await router.replace(
       typeof redirect === 'string' && !redirect.startsWith('/change-password')
         ? redirect
-        : { name: RouteName.CHORUS_HOME },
+        : { name: RouteName.TUTTI_HOME },
     );
   }
 

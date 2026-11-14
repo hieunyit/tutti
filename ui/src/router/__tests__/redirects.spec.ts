@@ -111,12 +111,12 @@ describe('old URLs redirect to the new routes (spec section 2)', () => {
 
 describe('old route names still resolve (names are never removed)', () => {
   it.each([
-    [RouteName.CHORUS_HOME, '/dashboard', {}],
-    [RouteName.CHORUS_MONITORING, '/dashboard', { tab: 'metrics' }],
-    [RouteName.CHORUS_ROUTING_POLICIES, '/replication', { tab: 'routing' }],
-    [RouteName.CHORUS_DIFF_REPORTS, '/replication', { tab: 'diff' }],
-    [RouteName.CHORUS_ADD_ROUTING_POLICY, '/replication/routing/add', {}],
-    [RouteName.CHORUS_ADD_DIFF_REPORT, '/replication/diff/add', {}],
+    [RouteName.TUTTI_HOME, '/dashboard', {}],
+    [RouteName.TUTTI_MONITORING, '/dashboard', { tab: 'metrics' }],
+    [RouteName.TUTTI_ROUTING_POLICIES, '/replication', { tab: 'routing' }],
+    [RouteName.TUTTI_DIFF_REPORTS, '/replication', { tab: 'diff' }],
+    [RouteName.TUTTI_ADD_ROUTING_POLICY, '/replication/routing/add', {}],
+    [RouteName.TUTTI_ADD_DIFF_REPORT, '/replication/diff/add', {}],
   ])('%s -> %s', async (name, path, query) => {
     const route = await land({ name });
 
@@ -124,9 +124,9 @@ describe('old route names still resolve (names are never removed)', () => {
     expect(route.query).toEqual(query);
   });
 
-  it('CHORUS_DIFF_REPORT_DETAIL with from/to lands on the new detail route', async () => {
+  it('TUTTI_DIFF_REPORT_DETAIL with from/to lands on the new detail route', async () => {
     const route = await land({
-      name: RouteName.CHORUS_DIFF_REPORT_DETAIL,
+      name: RouteName.TUTTI_DIFF_REPORT_DETAIL,
       query: { from: 's1:b', to: 's2:b' },
     });
 
@@ -139,7 +139,7 @@ describe('new routes', () => {
   it('serves the dashboard and replication sub-pages', async () => {
     expect((await land('/dashboard')).name).toBe(RouteName.TUTTI_DASHBOARD);
     expect((await land('/replication?tab=diff')).name).toBe(
-      RouteName.CHORUS_REPLICATION,
+      RouteName.TUTTI_REPLICATION,
     );
     expect((await land('/replication/diff/abc')).name).toBe(
       RouteName.TUTTI_REPLICATION_DIFF_DETAIL,
@@ -170,7 +170,7 @@ describe('legacy credentials URL', () => {
   it('/storages/s1/credentials opens the storage users tab', async () => {
     const route = await land('/storages/s1/credentials');
 
-    expect(route.name).toBe(RouteName.CHORUS_STORAGE_DETAILS);
+    expect(route.name).toBe(RouteName.TUTTI_STORAGE_DETAILS);
     expect(route.params.storageName).toBe('s1');
     expect(route.query).toEqual({ tab: 'users' });
   });

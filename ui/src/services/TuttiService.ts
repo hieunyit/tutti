@@ -56,7 +56,7 @@ export abstract class TuttiService {
   ): Promise<TuttiProxyStatusListResponse> {
     const fetchProxies = async () => {
       const { data } = await apiClient.get<TuttiProxyStatusListResponse>(
-        ApiHelper.getChorusAPIUrl('/tutti/proxies'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxies'),
         { signal },
       );
 
@@ -71,7 +71,7 @@ export abstract class TuttiService {
     signal?: AbortSignal,
   ): Promise<TuttiProxyFleetConfig> {
     const { data } = await apiClient.get<TuttiProxyFleetConfig>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
+      ApiHelper.getTuttiAPIUrl('/tutti/proxy-config'),
       { signal },
     );
 
@@ -86,7 +86,7 @@ export abstract class TuttiService {
   }): Promise<TuttiProxyFleetConfig> {
     try {
       const { data } = await apiClient.put<TuttiProxyFleetConfig>(
-        ApiHelper.getChorusAPIUrl('/tutti/proxy-config'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxy-config'),
         payload,
       );
 
@@ -101,7 +101,7 @@ export abstract class TuttiService {
     signal?: AbortSignal,
   ): Promise<TuttiStatsHistory> {
     const { data } = await apiClient.get<TuttiStatsHistory>(
-      ApiHelper.getChorusAPIUrl('/tutti/stats/history'),
+      ApiHelper.getTuttiAPIUrl('/tutti/stats/history'),
       { params: { range }, signal },
     );
 
@@ -110,7 +110,7 @@ export abstract class TuttiService {
 
   static async getFailoverPolicies(): Promise<TuttiFailoverPolicyListResponse> {
     const { data } = await apiClient.get<TuttiFailoverPolicyListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/failover/policies'),
+      ApiHelper.getTuttiAPIUrl('/tutti/failover/policies'),
     );
 
     return data;
@@ -119,7 +119,7 @@ export abstract class TuttiService {
   static async setFailoverPolicy(policy: TuttiFailoverPolicy): Promise<void> {
     try {
       await apiClient.post(
-        ApiHelper.getChorusAPIUrl('/tutti/failover/policies'),
+        ApiHelper.getTuttiAPIUrl('/tutti/failover/policies'),
         policy,
       );
     } finally {
@@ -130,7 +130,7 @@ export abstract class TuttiService {
   static async deleteFailoverPolicy(source: string): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/failover/policies/delete'),
+        ApiHelper.getTuttiAPIUrl('/tutti/failover/policies/delete'),
         { source },
       );
     } finally {
@@ -140,7 +140,7 @@ export abstract class TuttiService {
 
   static async getFailoverEvents(): Promise<TuttiFailoverEventListResponse> {
     const { data } = await apiClient.get<TuttiFailoverEventListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/failover/events'),
+      ApiHelper.getTuttiAPIUrl('/tutti/failover/events'),
     );
 
     return data;
@@ -148,14 +148,14 @@ export abstract class TuttiService {
 
   static async deleteFailoverEvent(id: TuttiFailoverEventId): Promise<void> {
     await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/failover/events/delete'),
+      ApiHelper.getTuttiAPIUrl('/tutti/failover/events/delete'),
       id,
     );
   }
 
   static async getProxyAccounts(): Promise<TuttiProxyAccountListResponse> {
     const { data } = await apiClient.get<TuttiProxyAccountListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
+      ApiHelper.getTuttiAPIUrl('/tutti/proxy-accounts'),
     );
 
     return data;
@@ -163,7 +163,7 @@ export abstract class TuttiService {
 
   static async getAccessPolicies(): Promise<TuttiAccessPolicyListResponse> {
     const { data } = await apiClient.get<TuttiAccessPolicyListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
+      ApiHelper.getTuttiAPIUrl('/tutti/access-policies'),
     );
 
     return data;
@@ -172,7 +172,7 @@ export abstract class TuttiService {
   static async setAccessPolicy(policy: TuttiAccessPolicy): Promise<void> {
     try {
       await apiClient.post(
-        ApiHelper.getChorusAPIUrl('/tutti/access-policies'),
+        ApiHelper.getTuttiAPIUrl('/tutti/access-policies'),
         policy,
       );
     } finally {
@@ -183,7 +183,7 @@ export abstract class TuttiService {
   static async deleteAccessPolicy(user: string): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/access-policies/delete'),
+        ApiHelper.getTuttiAPIUrl('/tutti/access-policies/delete'),
         { user },
       );
     } finally {
@@ -197,7 +197,7 @@ export abstract class TuttiService {
   ): Promise<TuttiProxyAccountSecret> {
     try {
       const { data } = await apiClient.post<TuttiProxyAccountSecret>(
-        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxy-accounts'),
         { user, description },
       );
 
@@ -213,7 +213,7 @@ export abstract class TuttiService {
   ): Promise<TuttiProxyAccountSecret> {
     try {
       const { data } = await apiClient.put<TuttiProxyAccountSecret>(
-        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/rotate'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxy-accounts/rotate'),
         { accessKeyId, gracePeriod },
       );
 
@@ -229,7 +229,7 @@ export abstract class TuttiService {
   ): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/status'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxy-accounts/status'),
         { accessKeyId, status },
       );
     } finally {
@@ -240,7 +240,7 @@ export abstract class TuttiService {
   static async deleteProxyAccount(accessKeyId: string): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/proxy-accounts/delete'),
+        ApiHelper.getTuttiAPIUrl('/tutti/proxy-accounts/delete'),
         { accessKeyId },
       );
     } finally {
@@ -251,7 +251,7 @@ export abstract class TuttiService {
   static async getUsers(signal?: AbortSignal): Promise<S3UserListResponse> {
     const fetchUsers = async () => {
       const { data } = await apiClient.get<S3UserListResponse>(
-        ApiHelper.getChorusAPIUrl('/tutti/users'),
+        ApiHelper.getTuttiAPIUrl('/tutti/users'),
         { signal },
       );
 
@@ -266,7 +266,7 @@ export abstract class TuttiService {
   ): Promise<S3UserCreateResponse> {
     try {
       const { data } = await apiClient.post<S3UserCreateResponse>(
-        ApiHelper.getChorusAPIUrl('/tutti/users'),
+        ApiHelper.getTuttiAPIUrl('/tutti/users'),
         payload,
       );
 
@@ -285,7 +285,7 @@ export abstract class TuttiService {
   }): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/users/credentials'),
+        ApiHelper.getTuttiAPIUrl('/tutti/users/credentials'),
         {
           user: payload.name,
           credential: {
@@ -308,7 +308,7 @@ export abstract class TuttiService {
   ): Promise<void> {
     try {
       await apiClient.put(
-        ApiHelper.getChorusAPIUrl('/tutti/users/credentials/delete'),
+        ApiHelper.getTuttiAPIUrl('/tutti/users/credentials/delete'),
         { name, storage },
       );
     } finally {
@@ -318,7 +318,7 @@ export abstract class TuttiService {
 
   static async deleteUser(name: string, force: boolean): Promise<void> {
     try {
-      await apiClient.put(ApiHelper.getChorusAPIUrl('/tutti/users/delete'), {
+      await apiClient.put(ApiHelper.getTuttiAPIUrl('/tutti/users/delete'), {
         name,
         force,
       });
@@ -331,7 +331,7 @@ export abstract class TuttiService {
     payload: S3UserTestRequest,
   ): Promise<S3UserTestResponse> {
     const { data } = await apiClient.post<S3UserTestResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/users/test'),
+      ApiHelper.getTuttiAPIUrl('/tutti/users/test'),
       {
         user: payload.name,
         storage: payload.storage,
@@ -353,7 +353,7 @@ export abstract class TuttiService {
 
   static async getConsoleUsers(): Promise<ConsoleUserListResponse> {
     const { data } = await apiClient.get<ConsoleUserListResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+      ApiHelper.getTuttiAPIUrl('/tutti/console-users'),
     );
 
     return data;
@@ -363,7 +363,7 @@ export abstract class TuttiService {
     payload: ConsoleUserCreateRequest,
   ): Promise<ConsoleUserCreateResponse> {
     const { data } = await apiClient.post<ConsoleUserCreateResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+      ApiHelper.getTuttiAPIUrl('/tutti/console-users'),
       payload,
     );
 
@@ -376,7 +376,7 @@ export abstract class TuttiService {
     disabled?: boolean;
   }): Promise<void> {
     await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/console-users'),
+      ApiHelper.getTuttiAPIUrl('/tutti/console-users'),
       payload,
     );
   }
@@ -385,7 +385,7 @@ export abstract class TuttiService {
     payload: ConsoleUserPasswordRequest,
   ): Promise<ConsoleUserPasswordResponse> {
     const { data } = await apiClient.put<ConsoleUserPasswordResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/console-users/password'),
+      ApiHelper.getTuttiAPIUrl('/tutti/console-users/password'),
       payload,
     );
 
@@ -394,7 +394,7 @@ export abstract class TuttiService {
 
   static async deleteConsoleUser(username: string): Promise<void> {
     await apiClient.put(
-      ApiHelper.getChorusAPIUrl('/tutti/console-users/delete'),
+      ApiHelper.getTuttiAPIUrl('/tutti/console-users/delete'),
       { username },
     );
   }
@@ -403,7 +403,7 @@ export abstract class TuttiService {
     signal?: AbortSignal,
   ): Promise<TuttiSystemSettings> {
     const { data } = await apiClient.get<TuttiSystemSettings>(
-      ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
+      ApiHelper.getTuttiAPIUrl('/tutti/system-settings'),
       { signal },
     );
 
@@ -415,7 +415,7 @@ export abstract class TuttiService {
   ): Promise<TuttiSystemSettings> {
     try {
       const { data } = await apiClient.put<TuttiSystemSettings>(
-        ApiHelper.getChorusAPIUrl('/tutti/system-settings'),
+        ApiHelper.getTuttiAPIUrl('/tutti/system-settings'),
         payload,
       );
 
@@ -429,7 +429,7 @@ export abstract class TuttiService {
     signal?: AbortSignal,
   ): Promise<TuttiWorkerStatsResponse> {
     const { data } = await apiClient.get<TuttiWorkerStatsResponse>(
-      ApiHelper.getChorusAPIUrl('/tutti/worker-stats'),
+      ApiHelper.getTuttiAPIUrl('/tutti/worker-stats'),
       { signal },
     );
 

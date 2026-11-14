@@ -22,13 +22,13 @@ import type {
 } from '@clyso/clyso-ui-kit';
 import { usePolling } from '@/utils/composables/usePolling';
 import { createChangeDetector } from '@/utils/helpers/changeDetector';
-import type { DiffReport } from '@/utils/types/chorus';
-import { DiffReportStatusFilter } from '@/utils/types/chorus';
+import type { DiffReport } from '@/utils/types/tuttiCore';
+import { DiffReportStatusFilter } from '@/utils/types/tuttiCore';
 import type { AddId } from '@/utils/types/helper';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
 
-interface ChorusDiffReportsState {
+interface TuttiDiffReportsState {
   isLoading: boolean;
   hasError: boolean;
   reports: AddId<DiffReport>[];
@@ -48,7 +48,7 @@ interface ChorusDiffReportsState {
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 const POLL_INTERVAL_MS = 5000;
 
-function getInitialState(): ChorusDiffReportsState {
+function getInitialState(): TuttiDiffReportsState {
   return {
     isLoading: false,
     hasError: false,
@@ -67,8 +67,8 @@ function getInitialState(): ChorusDiffReportsState {
   };
 }
 
-export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
-  const state = reactive<ChorusDiffReportsState>(getInitialState());
+export const useTuttiDiffReportsStore = defineStore('tuttiDiffReport', () => {
+  const state = reactive<TuttiDiffReportsState>(getInitialState());
   const polling = usePolling();
   const changes = createChangeDetector();
 
@@ -173,7 +173,7 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
     await Promise.all(
       reports.map(async (report) => {
         try {
-          await ChorusService.deleteDiffReport({
+          await TuttiCoreService.deleteDiffReport({
             locations: report.locations,
           });
           successList.push(report);
@@ -216,7 +216,7 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
     await Promise.all(
       reports.map(async (report) => {
         try {
-          await ChorusService.restartDiffReport({
+          await TuttiCoreService.restartDiffReport({
             locations: report.locations,
           });
           successList.push(report);
@@ -233,7 +233,7 @@ export const useTuttiDiffReportsStore = defineStore('chorusDiffReport', () => {
   }
 
   async function getDiffReports() {
-    const res = await ChorusService.getDiffReports();
+    const res = await TuttiCoreService.getDiffReports();
 
     if (!changes.hasChanged(res)) return;
 

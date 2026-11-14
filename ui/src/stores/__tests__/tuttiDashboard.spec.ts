@@ -4,11 +4,11 @@ import {
   DASHBOARD_REFRESH_INTERVAL_MS,
   useTuttiDashboardStore,
 } from '../tuttiDashboardStore';
-import { ChorusService } from '@/services/ChorusService';
+import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { TuttiService } from '@/services/TuttiService';
 
-vi.mock('@/services/ChorusService', () => ({
-  ChorusService: { getStorages: vi.fn(), getReplications: vi.fn() },
+vi.mock('@/services/TuttiCoreService', () => ({
+  TuttiCoreService: { getStorages: vi.fn(), getReplications: vi.fn() },
 }));
 vi.mock('@/services/TuttiService', () => ({
   TuttiService: { getProxies: vi.fn(), getFailoverEvents: vi.fn() },
@@ -19,8 +19,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
   vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
-  vi.mocked(ChorusService.getStorages).mockResolvedValue({ storages: [] });
-  vi.mocked(ChorusService.getReplications).mockResolvedValue({
+  vi.mocked(TuttiCoreService.getStorages).mockResolvedValue({ storages: [] });
+  vi.mocked(TuttiCoreService.getReplications).mockResolvedValue({
     replications: [],
   });
   vi.mocked(TuttiService.getProxies).mockResolvedValue({ proxies: [] });
@@ -39,31 +39,31 @@ describe('tuttiDashboardStore', () => {
 
     store.startPolling();
     await vi.advanceTimersByTimeAsync(0);
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS);
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(2);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(2);
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
     await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS * 2);
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(2);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(2);
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
     document.dispatchEvent(new Event('visibilitychange'));
     await vi.advanceTimersByTimeAsync(0);
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(3);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(3);
   });
 
   it('does not start requests when mounted in a hidden tab', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
     useTuttiDashboardStore().startPolling();
     await vi.advanceTimersByTimeAsync(DASHBOARD_REFRESH_INTERVAL_MS);
-    expect(ChorusService.getStorages).not.toHaveBeenCalled();
+    expect(TuttiCoreService.getStorages).not.toHaveBeenCalled();
   });
 
   it('ignores stale completion after reset and permits a fresh request', async () => {
     let resolveOld!: (
-      value: Awaited<ReturnType<typeof ChorusService.getStorages>>,
+      value: Awaited<ReturnType<typeof TuttiCoreService.getStorages>>,
     ) => void;
 
-    vi.mocked(ChorusService.getStorages).mockImplementationOnce(
+    vi.mocked(TuttiCoreService.getStorages).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           resolveOld = resolve;
@@ -73,7 +73,7 @@ describe('tuttiDashboardStore', () => {
     const old = store.refresh();
 
     await store.refresh();
-    expect(ChorusService.getStorages).toHaveBeenCalledTimes(1);
+    expect(TuttiCoreService.getStorages).toHaveBeenCalledTimes(1);
     store.$reset();
     await store.refresh();
     expect(store.storages).toEqual([]);
@@ -84,10 +84,10 @@ describe('tuttiDashboardStore', () => {
   });
 
   it('does not let optional event success hide total core-source failure', async () => {
-    vi.mocked(ChorusService.getStorages).mockRejectedValue(
+    vi.mocked(TuttiCoreService.getStorages).mockRejectedValue(
       new Error('offline'),
     );
-    vi.mocked(ChorusService.getReplications).mockRejectedValue(
+    vi.mocked(TuttiCoreService.getReplications).mockRejectedValue(
       new Error('offline'),
     );
     vi.mocked(TuttiService.getProxies).mockRejectedValue(new Error('offline'));
@@ -109,7 +109,7 @@ describe('tuttiDashboardStore', () => {
     expect(store.hasFatalError).toBe(false);
     expect(store.failed.events).toBe(false);
     expect(store.events).toBeNull();
-    vi.mocked(ChorusService.getStorages).mockRejectedValue(
+    vi.mocked(TuttiCoreService.getStorages).mockRejectedValue(
       new Error('offline'),
     );
     await store.refresh();

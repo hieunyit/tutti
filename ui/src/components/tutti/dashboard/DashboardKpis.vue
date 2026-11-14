@@ -150,21 +150,21 @@
       :value="storagesCard.value"
       :hint="storagesCard.hint"
       :tone="storagesCard.tone"
-      :to="{ name: RouteName.CHORUS_STORAGES }"
+      :to="{ name: RouteName.TUTTI_STORAGES }"
     />
     <StatTile
       :label="t('kpiReplications')"
       :value="replicationsCard.value"
       :hint="replicationsCard.hint"
       :tone="replicationsCard.tone"
-      :to="{ name: RouteName.CHORUS_REPLICATION }"
+      :to="{ name: RouteName.TUTTI_REPLICATION }"
     />
     <StatTile
       :label="t('kpiLag')"
       :value="lagCard.value"
       :hint="lagCard.hint"
       :tone="lagCard.tone"
-      :to="{ name: RouteName.CHORUS_REPLICATION }"
+      :to="{ name: RouteName.TUTTI_REPLICATION }"
     />
     <StatTile
       :label="t('kpiRequests')"
@@ -184,7 +184,7 @@
       :value="proxiesCard.value"
       :hint="proxiesCard.hint"
       :tone="proxiesCard.tone"
-      :to="{ name: RouteName.CHORUS_STORAGES }"
+      :to="{ name: RouteName.TUTTI_STORAGES }"
     />
   </section>
 </template>

@@ -51,18 +51,18 @@ beforeEach(() => {
 describe('auth guard', () => {
   it('lets everything through when auth is disabled and hides /login', async () => {
     me.mockResolvedValue({ authEnabled: false });
-    expect(await run(route(RouteName.CHORUS_REPLICATION, '/replication'))).toBe(
+    expect(await run(route(RouteName.TUTTI_REPLICATION, '/replication'))).toBe(
       true,
     );
     expect(await run(route(RouteName.LOGIN, '/login'))).toEqual({
-      name: RouteName.CHORUS_HOME,
+      name: RouteName.TUTTI_HOME,
     });
   });
 
   it('redirects to login preserving the target when unauthenticated', async () => {
     me.mockRejectedValue({ isAxiosError: true, response: { status: 401 } });
     expect(
-      await run(route(RouteName.CHORUS_REPLICATION, '/replication?a=1')),
+      await run(route(RouteName.TUTTI_REPLICATION, '/replication?a=1')),
     ).toEqual({
       name: RouteName.LOGIN,
       query: { redirect: '/replication?a=1' },
@@ -80,10 +80,10 @@ describe('auth guard', () => {
     });
     expect(
       await run(
-        route(RouteName.CHORUS_ADD_REPLICATION, '/replication/add', true),
+        route(RouteName.TUTTI_ADD_REPLICATION, '/replication/add', true),
       ),
-    ).toEqual({ name: RouteName.CHORUS_HOME });
-    expect(await run(route(RouteName.CHORUS_REPLICATION, '/replication'))).toBe(
+    ).toEqual({ name: RouteName.TUTTI_HOME });
+    expect(await run(route(RouteName.TUTTI_REPLICATION, '/replication'))).toBe(
       true,
     );
   });

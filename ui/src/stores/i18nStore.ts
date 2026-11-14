@@ -22,6 +22,8 @@ import { APP_LOCALES, type AppLocale } from '@/i18n/locales';
 import LocalStorageHelper from '@/utils/helpers/LocalStorageHelper';
 import { LocalStorageItem } from '@/utils/types/localStorage';
 
+const LEGACY_LOCALE_KEY = 'chorus-locale';
+
 export const useI18nStore = defineStore('i18n', () => {
   const locale = computed<AppLocale>(
     () => i18n.global.locale.value as AppLocale,
@@ -38,6 +40,17 @@ export const useI18nStore = defineStore('i18n', () => {
   }
 
   function initLocale() {
+    // Legacy key from before the rename: read once and migrate to the new key.
+    const legacyLocale = LocalStorageHelper.get<AppLocale>(LEGACY_LOCALE_KEY);
+
+    if (legacyLocale) {
+      if (!LocalStorageHelper.get<AppLocale>(LocalStorageItem.I18N_LOCALE)) {
+        LocalStorageHelper.set(LocalStorageItem.I18N_LOCALE, legacyLocale);
+      }
+
+      window.localStorage.removeItem(LEGACY_LOCALE_KEY);
+    }
+
     const restoredLocale: AppLocale =
       LocalStorageHelper.get<AppLocale>(LocalStorageItem.I18N_LOCALE) ||
       (navigator.language.slice(0, 2) as AppLocale);
