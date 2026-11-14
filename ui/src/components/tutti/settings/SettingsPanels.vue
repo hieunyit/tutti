@@ -89,6 +89,26 @@
     draft.value.worker![key] = value ?? 0;
   }
 
+  /** The buffer budget is stored as 0 when auto: show it empty with the derived value as placeholder. */
+  function byteValue(key: (typeof BYTE_KEYS)[number]): string {
+    const v = draft.value.worker![key];
+
+    return key === 'bufferBudgetBytes' && (v === '0' || v === '')
+      ? ''
+      : (v ?? '');
+  }
+
+  function bytePlaceholder(key: (typeof BYTE_KEYS)[number]): string {
+    return key === 'bufferBudgetBytes'
+      ? String(store.settings?.effective?.bufferBudgetBytes ?? '')
+      : '';
+  }
+
+  function setByte(key: (typeof BYTE_KEYS)[number], value: string) {
+    draft.value.worker![key] =
+      key === 'bufferBudgetBytes' && value.trim() === '' ? '0' : value;
+  }
+
   const status = (key: string) => (errors.value[key] ? 'error' : undefined);
 </script>
 
@@ -171,10 +191,12 @@
         :auto-title="t('autoBadgeTitle')"
       >
         <NInput
-          v-model:value="draft.worker![key]"
+          :value="byteValue(key)"
           :disabled="disabled"
+          :placeholder="bytePlaceholder(key)"
           :status="status(key)"
           :input-props="{ ...inputProps(key), inputmode: 'numeric' }"
+          @update:value="(v) => setByte(key, v)"
         />
       </SettingsField>
     </FormSection>
@@ -199,11 +221,13 @@
         :auto-title="t('autoBadgeTitle')"
       >
         <NInputNumber
-          v-model:value="draft.worker!.concurrency"
+          :value="draft.worker!.concurrency || null"
           :disabled="disabled"
           :min="0"
           :max="1000"
           :precision="0"
+          :placeholder="String(store.settings?.effective?.concurrency ?? 10)"
+          @update:value="(v) => (draft.worker!.concurrency = v ?? 0)"
           :status="status('concurrency')"
           :input-props="inputProps('concurrency')"
         />
