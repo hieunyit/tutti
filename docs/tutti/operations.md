@@ -167,6 +167,12 @@ Failback never happens automatically. After the old storage is repaired:
 
 Until step 5 the event stays listed; it has no effect on routing.
 
+## Replication activity log
+
+The console opens a detail view when you click a replication name (`/replication/detail?from=..&to=..[&user=..&fromBucket=..&toBucket=..]`, deep-linkable, read-only accounts can open it). It shows the status and initial replication progress, a table of the copies running right now (object, size, elapsed, attempt) and a console style log of recent events: `started` (dim), `done` with duration and speed (green), `retry` (amber), `failed` (red) and `skipped`. The log polls every 2 seconds with a cursor while the tab is visible, keeps at most 2000 lines in the browser, can be filtered by level and text, paused (Live switch), cleared, copied and downloaded as a `.log` file. The same data is available with `tuttictl repl logs <id> [-f] [--tail N]` and `POST /replication/activity` ([API](api.md)).
+
+The worker writes the feed to the queue Redis (keys `p:repl_act:{<id>:<generation>}:fly|flyz|ev`) so a re-created replication starts clean. The event log is capped at about 1000 events (24 h expiry), the in-flight set at 500 entries with a 2 h safety expiry. The initial replication logs every object; the live-event flow is sampled to 20 objects per second per replication (failures and retries are always kept). Writes are best effort with a 250 ms timeout and never fail or delay a copy beyond that.
+
 ## Replication throughput tuning
 
 The defaults are a safe starting point. Tune only with measurements from `GET /tutti/worker-stats` and the `tutti_copy_*` metrics. `multipartThreads` is optional, defaults to 1 and has an unverified gain: parallel parts were slower than one stream in local tests, so measure on your own network before raising it. The knobs are listed in [Replication throughput tuning](./configuration.md#replication-throughput-tuning).

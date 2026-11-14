@@ -21,7 +21,14 @@
    * turns itself off when the user scrolls up. Lines are plain text, so the
    * selection and the copy button give exactly what is shown.
    */
-  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+  import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+  } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton } from 'naive-ui';
   import ActivityConsoleToolbar from './ActivityConsoleToolbar.vue';
@@ -137,6 +144,10 @@
     URL.revokeObjectURL(url);
   }
 
+  // lines may already be loaded when the console mounts
+  onMounted(() => {
+    if (autoScroll.value) scrollToEnd();
+  });
   onBeforeUnmount(() => {
     if (noticeTimer) clearTimeout(noticeTimer);
   });
