@@ -32,6 +32,7 @@
   import { ReplicationDetailHelper } from '@/utils/helpers/ReplicationDetailHelper';
   import ReplicationNameCell from '@/components/tutti/replications/ReplicationNameCell/ReplicationNameCell.vue';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
   import ReplicationDirectionCell from '@/components/tutti/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
   import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
@@ -50,8 +51,12 @@
 
   type Row = AddId<TuttiReplication>;
 
-  const { t } = useI18n({ messages: i18nReplicationHub });
-  const { t: tn } = useI18n({ messages: i18nReplicationName });
+  // One local composer only: a second useI18n({ messages }) in the same component returns the first composer and
+  // silently drops its messages (the name column title rendered as its raw key).
+  const { t } = useI18n({
+    messages: mergeMessages(i18nReplicationHub, i18nReplicationName),
+  });
+  const tn = t;
   const store = useTuttiReplicationsStore();
   const {
     isLoading,
