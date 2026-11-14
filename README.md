@@ -4,7 +4,7 @@
 
 Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the vendor-agnostic tool for backup, migration and routing of S3 and OpenStack Swift object storage, extended with resilience features ported from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4): it accepts the streaming uploads of `mc`/`minio-go`, never silently loses a replication event, can replicate synchronously with a write quorum, fails fast on dead storages with per-storage circuit breakers, and can automatically fail routing over to a replica. Everything is opt-in or upstream-compatible by default, and all Chorus features (replication, live migration, routing, diff check, `tuttictl`, Web UI) are retained.
 
-## What Tutti adds to Chorus
+## What Tutti adds to Tutti
 
 | Feature | Config key | Default | Why |
 |---|---|---|---|
@@ -27,9 +27,9 @@ Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the v
 - [Storage Accounts & Live Connection Testing](./docs/tutti/storage-accounts.md)
 - [Changelog](./CHANGELOG.md)
 
-## What Chorus provides
+## What Tutti provides
 
-Chorus enables:
+Tutti enables:
  - Faster data transfers between storages using multiple machines.
  - Resumable transfers with checkpointing on failure.
  - Syncing of existing buckets, objects, and metadata (e.g., ACLs) from source to destination.
@@ -42,8 +42,8 @@ Chorus enables:
 Listed features can be configured per S3 user and per bucket with [management CLI](./tools/tuttictl), [REST](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/clyso/chorus/refs/heads/main/proto/gen/openapi/chorus/chorus.swagger.json)/[gRPC](./proto/chorus/chorus.proto) API, or [WebUI](./ui/). The Tutti additions to the API are in [proto/chorus/tutti.proto](./proto/chorus/tutti.proto).
 
 ## Components
-[Chorus S3 Proxy](./service/proxy) service responsible for routing S3 requests and capturing data change events.
-[Chorus Worker](./service/worker) service does actual data replication. Worker also hosts management API and webhook endpoints, so it is a central and the only required component to start.
+[Tutti S3 Proxy](./service/proxy) service responsible for routing S3 requests and capturing data change events.
+[Tutti Worker](./service/worker) service does actual data replication. Worker also hosts management API and webhook endpoints, so it is a central and the only required component to start.
 Communication between Proxy and Worker is done over work queue.
 [Asynq](https://github.com/hibiken/asynq) with [Redis](https://github.com/redis/redis) is used as a work queue.
 
@@ -75,7 +75,7 @@ docker compose up --build
 # if you left it empty, read the generated password (printed once):
 docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
 # lost it? reset:
-docker compose exec worker /bin/chorus admin reset-password
+docker compose exec worker /bin/tutti admin reset-password
 ```
 See [First login and password recovery](./docs/tutti/operations.md#first-login-and-password-recovery).
 
@@ -109,7 +109,7 @@ export PATH=$PATH:$GOPATH/bin
 # Install binaries
 go install github.com/hieunyit/tutti/cmd/worker@latest
 go install github.com/hieunyit/tutti/cmd/proxy@latest
-go install github.com/hieunyit/tutti/cmd/chorus@latest
+go install github.com/hieunyit/tutti/cmd/tutti@latest
 
 # Run with config
 worker -config <path-to-worker.yaml>
@@ -119,6 +119,8 @@ worker -config <path-to-worker.yaml>
 Download binaries for Linux, Windows, and macOS from the GitHub releases page of this repository (upstream Chorus releases: [clyso/chorus](https://github.com/clyso/chorus/releases)).
 
 ### Docker
+
+Tutti images: `ghcr.io/hieunyit/tutti/proxy`, `ghcr.io/hieunyit/tutti/worker`, `ghcr.io/hieunyit/tutti/web-ui`.
 
 Upstream Chorus images (they do not contain the Tutti changes; build Tutti images from the [Dockerfile](./Dockerfile)):
 - `harbor.clyso.com/chorus/proxy`
@@ -137,13 +139,13 @@ See also [docker-compose](./docker-compose) example.
 ### Kubernetes
 Deploy with Helm:
 ```shell
-helm install <release name> oci://harbor.clyso.com/chorus/chorus
+helm install <release name> oci://ghcr.io/hieunyit/tutti/tutti
 ```
-The chart source is located in [deploy/chorus](./deploy/chorus).
+The chart source is located in [deploy/tutti](./deploy/tutti).
 
-See Helm example values in [deploy/chorus/examples/](./deploy/chorus/examples/).
+See Helm example values in [deploy/tutti/examples/](./deploy/tutti/examples/).
 
-Proxy and worker expose Prometheus metrics - see [exposed metrics](./deploy/chorus/README.md#exposed-metrics).
+Proxy and worker expose Prometheus metrics - see [exposed metrics](./deploy/tutti/README.md#exposed-metrics).
 
 ## Develop
 
@@ -156,7 +158,7 @@ Want to contribute? See our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 It starts:
 - 3 embedded [gofakes3](https://github.com/johannesboyne/gofakes3) S3 storages
 - embedded Redis [miniredis](https://github.com/alicebob/miniredis)
-- Chorus Worker and Proxy services
+- Tutti Worker and Proxy services
 
 All listed tools are written in go so test can be run without external dependencies just by:
 ```shell
@@ -167,22 +169,22 @@ Tests emulate real-world scenarios like:
 - replication of existing buckets and objects with metadata
 - capturing and syncing live bucket/object changes during migration
 - switching between S3 endpoints with and without downtime
-- access S3 with Chorus Proxy
+- access S3 with Tutti Proxy
 - data migration integrity check
 
 ### Add APIs
-Chorus worker [implements gRPC server](./pkg/api/) defined in [proto/tutti/chorus.proto](./proto/tutti/chorus.proto). It also provides REST API which is automatically generated from the proto file with [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). GRPC<->REST mappings are defined in [proto/http.yaml](./proto/http.yaml).
+Tutti worker [implements gRPC server](./pkg/api/) defined in [proto/tutti/core.proto](./proto/tutti/core.proto). It also provides REST API which is automatically generated from the proto file with [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). GRPC<->REST mappings are defined in [proto/http.yaml](./proto/http.yaml).
 
 Steps to add new API:
-1. Add new service or endpoint definition to [proto/tutti/chorus.proto](./proto/tutti/chorus.proto)
+1. Add new service or endpoint definition to [proto/tutti/core.proto](./proto/tutti/core.proto)
 2. Add corresponding mapping to [proto/http.yaml](./proto/http.yaml)
 3. Run `make proto-gen` to generate go client, server, and openapi definitions to [proto/gen](./proto/gen) directory.
 4. Implement new service or endpoint in [pkg/api](./pkg/api/)
 5. Support new API in [tuttictl](./tools/tuttictl) and [WebUI](./ui) clients.
 
-## Relationship to Chorus
+## Relationship to Tutti
 
-Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH. Component names (`tuttictl`, the `chorus` all-in-one binary, the `chorus.*` protobuf package) are unchanged to stay wire compatible with Chorus. Upstream documentation at [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview) applies to everything Tutti does not change; the differences are listed in [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md).
+Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH. Component names (the `tutti` all-in-one binary, `tuttictl`, the `tutti.*` protobuf package, Redis key prefixes and Prometheus metric names) were renamed from their Chorus equivalents, so Tutti is no longer wire compatible with an upstream Chorus deployment. Upstream documentation at [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview) applies to everything Tutti does not change; the differences are listed in [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md).
 
 ## License
 

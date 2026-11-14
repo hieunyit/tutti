@@ -19,7 +19,7 @@ version vectors, uploads, sessions and the dynamic credentials hash, **queue** t
 |---|---|---|---|---|---|
 | Runtime storages | HASH `tutti:storages` (name -> JSON, credentials sealed), STRING `tutti:storages:version` | `objstore.credsSvc` Create/Update/Delete/RotateConnectionAccount (`pkg/objstore/managed.go`) | worker API | worker + proxy poll the version (<= 2 s), rebuild their storage view | create-if-absent Lua + version INCR in one script; update/delete under the per-storage Redis lock `tutti:storage:lock:<name>`; the reference check on delete is check-then-act (LOGIC-06) |
 | Tutti user records (S3 identities) | HASH `tutti:s3users` (user -> `{createdAt}`), STRING `tutti:s3users:version` | `objstore` AddIdentity/RemoveIdentity (`connection.go`) | worker API (`pkg/s3users`) | worker + proxy poll the version | create-if-absent Lua + INCR; delete in MULTI |
-| Sealed dynamic credentials | HASH `chorus:dynamic_creds` (**meta role**): fields `version` (counter), `salt` (`<parallelism>:<b64>`), `S3:<storage>:<user>` / `SWIFT:...` (AES-GCM sealed JSON) | `objstore.credsSvc` SetS3Credentials/Delete (`credentials.go`) | worker API | worker + proxy poll `version` | MULTI HSET + HINCRBY; salt HSETNX (the salt must never change, sealed values depend on it) |
+| Sealed dynamic credentials | HASH `tutti:dynamic_creds` (**meta role**): fields `version` (counter), `salt` (`<parallelism>:<b64>`), `S3:<storage>:<user>` / `SWIFT:...` (AES-GCM sealed JSON) | `objstore.credsSvc` SetS3Credentials/Delete (`credentials.go`) | worker API | worker + proxy poll `version` | MULTI HSET + HINCRBY; salt HSETNX (the salt must never change, sealed values depend on it) |
 | Proxy access keys | HASH `tutti:proxy-accounts` (access key id -> JSON, secrets sealed) | `proxyaccount.Store` (`pkg/proxyaccount/store.go`) | worker API (`resilience_handlers.go`) | proxy `Cache` reloads every 5 s (no version key) | HSETNX create; Lua compare-and-set (`luaCAS`) for rotate / status |
 | Access policies | HASH `tutti:access-policies` (user -> JSON) | `accesspolicy.Store` | worker API | proxy `Cache` every 5 s; protection group credential validator | plain HSET/HDEL |
 | Console users | HASH `tutti:console-users` (user -> JSON incl. bcrypt hash), HASH `tutti:console-users:last-login` | `auth.UserStore` (`pkg/auth/userstore.go`) | worker API / login | worker auth | HSETNX create; Lua `consoleMutation` = CAS on the old value + "keep one enabled admin" check over the whole hash |
@@ -112,7 +112,7 @@ not audited (the latter still projects to Redis). The audit log carries before/a
 
 Every mutation also inserts an `outbox` row holding **idempotent Redis operations** that project the committed state
 into the keys the services already read (section 1.1): hash/set writes in the exact existing formats, the
-`tutti:storages:version` / `tutti:s3users:version` counters, the `version` field of `chorus:dynamic_creds`, and for
+`tutti:storages:version` / `tutti:s3users:version` counters, the `version` field of `tutti:dynamic_creds`, and for
 routing / replication `tutti:cfg:version` + `PUBLISH tutti:cfg:changed` (same script as `pkg/policy/change_notify.go`).
 So **proxies and workers keep working unchanged**: they read Redis, which is now a cache of PostgreSQL.
 
@@ -136,7 +136,7 @@ tutti-migrate-pg --redis-url redis://:pw@redis:6379/1 [--redis-meta-url redis://
                  --pg-dsn postgres://tutti:pw@db:5432/tutti?sslmode=verify-full  schema | migrate | verify | republish
 ```
 
-`--redis-url` is the **config** Redis (`redis.configDB`); `--redis-meta-url` the Redis with `chorus:dynamic_creds`
+`--redis-url` is the **config** Redis (`redis.configDB`); `--redis-meta-url` the Redis with `tutti:dynamic_creds`
 (`redis.metaDB`; defaults to `--redis-url`). Env: `TUTTI_REDIS_URL`, `TUTTI_REDIS_META_URL`, `TUTTI_PG_DSN`.
 Flags: `--dry-run`, `--format text|json`, `--out report.json`, `--timeout`.
 
@@ -158,7 +158,7 @@ Flags: `--dry-run`, `--format text|json`, `--out report.json`, `--timeout`.
   (4) wait until the publisher has applied everything enqueued (`--drain-timeout`, default 5m; a worker's publisher
   holding the lock is waited for, not an error); (5) only then verify. Without `--prune` the republish is **additive**
   (it overwrites and adds, Redis-only entries stay and are reported as a warning) and is not an exact rebuild; with
-  `--prune --force` it is. It restores configuration keys, `chorus:dynamic_creds` (meta Redis) and version counters.
+  `--prune --force` it is. It restores configuration keys, `tutti:dynamic_creds` (meta Redis) and version counters.
   **Protection groups are never republished**: Redis holds their runtime fields (promotion, fencing, scope index) in
   the same documents as the spec, so they are skipped (reported as a warning). Race note: changes written while the
   republish runs may show up as mismatches in the final check; run `verify` again.

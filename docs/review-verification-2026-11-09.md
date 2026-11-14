@@ -75,12 +75,12 @@ npm run build
 
 ## ESLint hiện tại
 
-- `ui/src/components/chorus/replications/ReplicationsList/ReplicationsList.vue:28`: import order.
-- `ui/src/components/chorus/set-credential/CredentialFormTile/CredentialFormTile.vue:31` và `:32`: hai biến storage/user không dùng.
+- `ui/src/components/tutti/replications/ReplicationsList/ReplicationsList.vue:28`: import order.
+- `ui/src/components/tutti/set-credential/CredentialFormTile/CredentialFormTile.vue:31` và `:32`: hai biến storage/user không dùng.
 - `ui/src/components/tutti/accounts/ProxyAccountKeysTable.vue:92`: thiếu dòng trống.
-- `ui/src/stores/chorusAddDiffReportStore.ts:20`: import order.
-- `ui/src/stores/chorusAddReplicationStore.ts:19`: import order.
-- `ui/src/stores/chorusSetCredentialStore.ts:22`: import order.
+- `ui/src/stores/tuttiAddDiffReportStore.ts:20`: import order.
+- `ui/src/stores/tuttiAddReplicationStore.ts:19`: import order.
+- `ui/src/stores/tuttiSetCredentialStore.ts:22`: import order.
 
 ## Giới hạn và ưu tiên
 

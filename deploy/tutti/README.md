@@ -98,6 +98,6 @@ The first start (empty database) creates the console user `admin`. Choose one:
 Lost the password? Reset it. All sessions of the user are revoked and a new random password is printed
 (the image has no shell, so `kubectl exec` cannot pass `TUTTI_ADMIN_NEW_PASSWORD`; change the generated one at first login):
 ```shell
-kubectl exec deploy/<release>-worker -- /bin/chorus admin reset-password
+kubectl exec deploy/<release>-worker -- /bin/tutti admin reset-password
 ```
 See [First login and password recovery](../../docs/tutti/operations.md#first-login-and-password-recovery).

@@ -2,11 +2,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "chorus.fullname" . }}-proxy
+  name: {{ include "tutti.fullname" . }}-proxy
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: proxy
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -19,7 +19,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "chorus.selectorLabels" . | nindent 6 }}
+      {{- include "tutti.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: proxy
 {{- end }}
 ---
@@ -27,11 +27,11 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "chorus.fullname" . }}-worker
+  name: {{ include "tutti.fullname" . }}-worker
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -44,6 +44,6 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "chorus.selectorLabels" . | nindent 6 }}
+      {{- include "tutti.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: worker
 {{- end }}

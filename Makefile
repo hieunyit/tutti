@@ -85,9 +85,6 @@ worker: worker-bin
 tuttictl: tuttictl-bin
 	cd tools/tuttictl; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/tuttictl main.go
 
-.PHONY: chorus
-chorus: tutti
-
 .PHONY: bench
 bench: bench-bin
 	cd tools/bench; go build -ldflags="-X 'main.date=$(BUILD_DATE)' -X 'main.version=$(GIT_TAG)' -X 'main.commit=$(GIT_COMMIT)'" -o ../../build/bench main.go

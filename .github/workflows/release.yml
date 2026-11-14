@@ -4,10 +4,13 @@ on:
     tags:
       - "*"
 env:
-  REGISTRY: harbor.clyso.com
+  REGISTRY: ghcr.io
 jobs:
   # build and publish docker images
   docker:
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         image:
@@ -34,8 +37,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -44,8 +47,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/chorus/${{ matrix.image.name }}:${{ github.ref_name }}
-            ${{ env.REGISTRY }}/chorus/${{ matrix.image.name }}:latest
+            ${{ env.REGISTRY }}/hieunyit/tutti/${{ matrix.image.name }}:${{ github.ref_name }}
+            ${{ env.REGISTRY }}/hieunyit/tutti/${{ matrix.image.name }}:latest
           build-args: |
             BUILD_DATE=${{ steps.date.outputs.date }}
             GIT_TAG=${{ github.ref_name }}
@@ -61,15 +64,15 @@ jobs:
         id: chartVer
         uses: mikefarah/yq@v4.43.1
         with:
-          cmd: yq '.version' deploy/chorus/Chart.yaml
+          cmd: yq '.version' deploy/tutti/Chart.yaml
       - name: Install helm
         uses: azure/setup-helm@v4.2.0
       - name: Publish chart
         run: |
           echo "${{ steps.chartVer.outputs.result }}"
-          helm registry login -u '${{ secrets.DOCKER_USER }}' -p ${{ secrets.DOCKER_PASSWORD }} ${{ env.REGISTRY }}
-          helm package ./deploy/chorus --app-version=${{ github.ref_name }}
-          helm push ./chorus-${{ steps.chartVer.outputs.result }}.tgz oci://${{ env.REGISTRY }}/chorus
+          helm registry login -u '${{ github.actor }}' -p ${{ secrets.GITHUB_TOKEN }} ${{ env.REGISTRY }}
+          helm package ./deploy/tutti --app-version=${{ github.ref_name }}
+          helm push ./tutti-${{ steps.chartVer.outputs.result }}.tgz oci://${{ env.REGISTRY }}/hieunyit/tutti
   # publish github Release
   release:
     needs: helm
@@ -92,7 +95,7 @@ jobs:
               platform_split=(${platform//\// })
               GOOS=${platform_split[0]}
               GOARCH=${platform_split[1]}
-              bin_name='chorus'
+              bin_name='tutti'
               output_name='standalone_'${{ github.ref_name }}'_'$GOOS'_'$GOARCH
               if [ $GOOS = "windows" ]; then
                   bin_name+='.exe'
@@ -100,7 +103,7 @@ jobs:
               else
                   output_name+='.tar.gz'
               fi
-              env GOOS=$GOOS GOARCH=$GOARCH go build -o $bin_name ./cmd/chorus
+              env GOOS=$GOOS GOARCH=$GOARCH go build -o $bin_name ./cmd/tutti
               if [ $? -ne 0 ]; then
                   echo 'An error has occurred! Aborting the script execution...'
                   exit 1
@@ -112,7 +115,7 @@ jobs:
               fi
               rm ./$bin_name
           done
-      - name: Generate token for chorus (release repo)
+      - name: Generate token for tutti (release repo)
         id: app-token
         uses: actions/create-github-app-token@v1
         with:

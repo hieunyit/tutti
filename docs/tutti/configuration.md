@@ -1,6 +1,6 @@
 # Tutti configuration reference
 
-Tutti adds the keys below to the Chorus proxy config ([service/proxy/config.yaml](../../service/proxy/config.yaml), embedded as the default config and overridden by your file). Everything else in the proxy and worker config is unchanged from Chorus.
+Tutti adds the keys below to the Tutti proxy config ([service/proxy/config.yaml](../../service/proxy/config.yaml), embedded as the default config and overridden by your file). Everything else in the proxy and worker config is unchanged from Tutti.
 
 Source: `service/proxy/config.go`, `service/proxy/auth/config.go`, `pkg/health/breaker.go`, `pkg/s3/config.go`.
 
@@ -279,7 +279,7 @@ drainDelay: 5s
 {"ready":true,"mode":"ok","snapshotLoaded":true,"snapshotVersion":"12","snapshotAgeSeconds":0.4,"redisReachable":true,"storages":2,"draining":false,"maxStalenessSeconds":30}
 ```
 
-`/ready` is a reserved path: only an unauthenticated request without query string is answered by it, so authenticated and presigned requests to a bucket that is named `ready` still reach the S3 chain. On SIGTERM/SIGINT the proxy first reports not ready (`draining: true`), waits `drainDelay` (default `5s`; set it to at least the load balancer's check interval times its unhealthy threshold), then stops the listener and waits for in-flight requests. `drainDelay: 0` skips the wait. The all-in-one `chorus` standalone binary builds its proxy config in code and uses no drain wait and the default snapshot settings. The worker has no plain HTTP server on its own port besides optional metrics, so it has no `/ready`.
+`/ready` is a reserved path: only an unauthenticated request without query string is answered by it, so authenticated and presigned requests to a bucket that is named `ready` still reach the S3 chain. On SIGTERM/SIGINT the proxy first reports not ready (`draining: true`), waits `drainDelay` (default `5s`; set it to at least the load balancer's check interval times its unhealthy threshold), then stops the listener and waits for in-flight requests. `drainDelay: 0` skips the wait. The all-in-one `tutti` standalone binary builds its proxy config in code and uses no drain wait and the default snapshot settings. The worker has no plain HTTP server on its own port besides optional metrics, so it has no `/ready`.
 
 ## Status
 

@@ -1,5 +1,5 @@
 # Example: S3 to S3 Replication
-# This example shows how to configure Chorus for replicating between two S3 storages
+# This example shows how to configure Tutti for replicating between two S3 storages
 
 storage:
   # Specify which storage is the main (source) storage

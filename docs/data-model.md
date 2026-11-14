@@ -1,6 +1,6 @@
-# Chorus data model
+# Tutti data model
 
-All chorus components are stateless and heavily relying on Redis for coordination and persistence. At the moment, there are no tenants in chorus, meaning that one installation of chorus should have its own redis DBs. Chorus installation needs 4 databases with the following defaults from [config](../pkg/config/config.yaml):
+All tutti components are stateless and heavily relying on Redis for coordination and persistence. At the moment, there are no tenants in tutti, meaning that one installation of tutti should have its own redis DBs. Tutti installation needs 4 databases with the following defaults from [config](../pkg/config/config.yaml):
 
 ```yaml
 redis:
@@ -23,7 +23,7 @@ Next sections will provide detailed overview of data layout in Redis per use-cas
 
 DB: `queueDB`.
 
-Chorus is using Redis-based work queue implementation named [Asynq](https://github.com/hibiken/asynq). It stores tasks in a dedicated Redis DB `queueDB`.
+Tutti is using Redis-based work queue implementation named [Asynq](https://github.com/hibiken/asynq). It stores tasks in a dedicated Redis DB `queueDB`.
 
 ## 2. Distributed locks
 
@@ -53,9 +53,9 @@ Relevant source code is located in [/pkg/storage/service.go](../pkg/storage/serv
 
 DB: `appDB`.
 
-When chorus captures bucket/object change event or syncs bucket in initial replication, it creates a task. This task contains only bucket/object id and no information about the change. Task processor then compares objects directly between source and destination and copy/remove data if needed. This makes tasks idempotent and works well with "at least once" delivery model used by many distributed queues.
+When tutti captures bucket/object change event or syncs bucket in initial replication, it creates a task. This task contains only bucket/object id and no information about the change. Task processor then compares objects directly between source and destination and copy/remove data if needed. This makes tasks idempotent and works well with "at least once" delivery model used by many distributed queues.
 
-Additionally, Chorus using [version vectors](https://en.wikipedia.org/wiki/Version_vector) to track synced changes. When proxy or agent captures change, it increases object version in source. Later, after worker syncs change, it updates version in destination.
+Additionally, Tutti using [version vectors](https://en.wikipedia.org/wiki/Version_vector) to track synced changes. When proxy or agent captures change, it increases object version in source. Later, after worker syncs change, it updates version in destination.
 
 Version metadata was introduced for two reasons:
 
@@ -106,8 +106,8 @@ Routing logic:
 
 ### 5.2 Replication
 
-- `SSET` `p:repl:<user> -> <from storage>:<to storage> -> <task priority 0-5>` - user-level replication policy. This policy allows to start sync automatically for newly created buckets. When such new bucket is created, chorus automatically creates bucket-level replication and starts sync. Sorted set allows to store integer along with string value. String stores source and destination storage names and integer stores task priority. Priority allows customizing sync scheduling per-bucket. Here `<from storage>` is always the same for all set members, meaning that replication is one-to-many relationship.
-- `SSET` `p:repl:<user>:<bucket> -> <from storage>:<to storage>[:<to bucket>] -> <task priority 0-5>` - bucket-level replication policy. Defines replication source and destination. Each replicated bucket has one. Chorus using these polices to start initial replication and to create proper replication tasks on receiving new data change event. Data layout is similar to user-level policy. The only difference is optional destiantion bucket name to support replication to custom bucket.
+- `SSET` `p:repl:<user> -> <from storage>:<to storage> -> <task priority 0-5>` - user-level replication policy. This policy allows to start sync automatically for newly created buckets. When such new bucket is created, tutti automatically creates bucket-level replication and starts sync. Sorted set allows to store integer along with string value. String stores source and destination storage names and integer stores task priority. Priority allows customizing sync scheduling per-bucket. Here `<from storage>` is always the same for all set members, meaning that replication is one-to-many relationship.
+- `SSET` `p:repl:<user>:<bucket> -> <from storage>:<to storage>[:<to bucket>] -> <task priority 0-5>` - bucket-level replication policy. Defines replication source and destination. Each replicated bucket has one. Tutti using these polices to start initial replication and to create proper replication tasks on receiving new data change event. Data layout is similar to user-level policy. The only difference is optional destiantion bucket name to support replication to custom bucket.
 - `HASH` `p:repl_st:<user>:<from bucket>:<from storage>:<to storage>[:<to bucket>]` - bucket replication status metadata. Each bucket-level policy has corresponding status `HASH`. Status stores migration progress. See `ReplicationPolicyStatus` struct in [pkg/policy/service.go](../pkg/policy/service.go). Workers use status to support policy remove/pause/resume feature.
 - `HASH` `p:switch:<user>:<bucket>` - bucket switch. Created when and if source and destination were switched in proxy. Holds information about previous source and switch status info. Relevant only for switch-replication feature. Cannot be used if replication was done to custom destination bucket. See struct `ReplicationSwitch` in [pkg/policy/service.go](../pkg/policy/service.go).
 

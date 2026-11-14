@@ -74,7 +74,7 @@ Tutti does **not** put S3 object bodies in Redis. Object bytes live in configure
 | Asynq task queues and pending replication work | Queue DB | Pending work may be lost; source and target objects can diverge until recovered by a full scan. |
 | Distributed locks | Lock DB | Ephemeral; stale locks may delay work, lost locks during active work can cause duplicate processing. |
 | Routing/replication/failover policies, managed storage definitions (`tutti:storages`), S3 user identities (`tutti:s3users`), access keys, users and access policies | Config DB | Administrative configuration can be lost. Managed storage definitions contain connection settings only, never secrets. |
-| Per-user sealed credentials for storages (`chorus:dynamic_creds`, including the `salt`) | Meta DB (app Redis) | Secrets can be lost; restore also requires the external master password. Without the `salt` and that password, sealed credentials cannot be decrypted. |
+| Per-user sealed credentials for storages (`tutti:dynamic_creds`, including the `salt`) | Meta DB (app Redis) | Secrets can be lost; restore also requires the external master password. Without the `salt` and that password, sealed credentials cannot be decrypted. |
 | Proxy sessions and live status | Meta/config DB | Sessions and status can be recreated; status keys have short TTLs. |
 | Traffic history | Config DB | Six-hour sample lists are capped and expire; loss affects historical charts only. |
 | S3 object bodies | S3 backends | Redis backup does not protect the underlying object bytes. |

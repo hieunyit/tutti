@@ -2,11 +2,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "chorus.fullname" . }}-api
+  name: {{ include "tutti.fullname" . }}-api
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list .Values.ingress.api.annotations .)) }}
+  {{- with (include "tutti.annotations" (list .Values.ingress.api.annotations .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -34,7 +34,7 @@ spec:
             pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "chorus.fullname" $ }}-rest
+                name: {{ include "tutti.fullname" $ }}-rest
                 port:
                   name: rest
           {{- end }}

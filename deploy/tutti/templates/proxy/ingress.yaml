@@ -2,11 +2,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "chorus.fullname" . }}-proxy
+  name: {{ include "tutti.fullname" . }}-proxy
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: proxy
-  {{- with (include "chorus.annotations" (list .Values.ingress.proxy.annotations .)) }}
+  {{- with (include "tutti.annotations" (list .Values.ingress.proxy.annotations .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -34,7 +34,7 @@ spec:
             pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "chorus.fullname" $ }}-proxy
+                name: {{ include "tutti.fullname" $ }}-proxy
                 port:
                   name: http
           {{- end }}

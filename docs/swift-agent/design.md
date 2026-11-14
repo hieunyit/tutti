@@ -2,15 +2,15 @@
 
 ## 1. Problem Statement
 
-Chorus replicates data for object storages like S3 and Swift. It can copy existing data and capture ongoing data changes to replicate changes that occur during initial data replication.
+Tutti replicates data for object storages like S3 and Swift. It can copy existing data and capture ongoing data changes to replicate changes that occur during initial data replication.
 
 Capturing ongoing changes serves two use cases:
 - **Migration**: Reduce downtime when migrating to a different storage
 - **Backup**: Continuous data backup to a different storage
 
-Currently, Chorus captures data changes through two mechanisms:
-1. [Chorus Proxy](../../service/proxy/): Intercepts S3/Swift requests directly
-2. [Chorus Agent](../../service/agent/): Receives [S3 bucket notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventNotifications.html) via webhook
+Currently, Tutti captures data changes through two mechanisms:
+1. [Tutti Proxy](../../service/proxy/): Intercepts S3/Swift requests directly
+2. [Tutti Agent](../../service/agent/): Receives [S3 bucket notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventNotifications.html) via webhook
 
 The S3 agent approach does not work for OpenStack Swift because Swift does not support the S3 bucket notification API. This document evaluates alternatives for implementing a Swift-compatible agent.
 
@@ -28,18 +28,18 @@ The S3 agent approach does not work for OpenStack Swift because Swift does not s
 
 | ID | Requirement | Target | Rationale |
 |----|-------------|--------|-----------|
-| N1 | Event capture latency | < 10 seconds | Chorus replicates asynchronously. Data copy takes time. Capture latency is tolerable when it is small compared to object copy time |
+| N1 | Event capture latency | < 10 seconds | Tutti replicates asynchronously. Data copy takes time. Capture latency is tolerable when it is small compared to object copy time |
 | N2 | Minimal impact on Swift hot path | No added latency to user requests, agent failure does not lead to Swift failure | Production safety |
 | N3 | Deployment without Swift source modification | Preferred | Operational simplicity |
 | N4 | Support Kubernetes deployment | Required | Primary deployment model |
 | N5 | Support non-containerized deployment | Should | Customer flexibility |
 | N6 | Extensibility to other storages (Ceph RGW) | Should | Broader applicability |
 
-### 1.2 Context: How Chorus Agent Integrates
+### 1.2 Context: How Tutti Agent Integrates
 
-Chorus uses a policy-based replication model:
+Tutti uses a policy-based replication model:
 
-1. User creates replication via Chorus API specifying: `user`, `from_storage`, `to_storage`, optionally `from_bucket`/`to_bucket`
+1. User creates replication via Tutti API specifying: `user`, `from_storage`, `to_storage`, optionally `from_bucket`/`to_bucket`
 2. Replication policy stored in Redis
 3. Agent receives events and queries policy service to determine if event matches active replication
 4. For matching events, agent creates tasks in work queue
@@ -107,7 +107,7 @@ pipeline = catch_errors gatekeeper healthcheck proxy-logging cache ... proxy-ser
 
 **Implementation complexity**: Middleware requires Python code deployed into Swift's proxy-server process. A minimal notification middleware (~100 lines) would:
 1. Intercept PUT/POST/DELETE requests
-2. After successful response, send HTTP notification to Chorus agent
+2. After successful response, send HTTP notification to Tutti agent
 3. Handle timeouts/failures gracefully to avoid blocking Swift
 
 **Deployment**: Requires modifying `proxy-server.conf` and restarting Swift proxy. Middleware packaged as Python wheel, installed via pip or system package.
@@ -183,7 +183,7 @@ Log parsing is recommended based on trade-off analysis:
 1. **Production safety** (high weight): Log parsing cannot cause Swift outages. A middleware bug on the hot path risks production availability.
 2. **Deployment simplicity** (high weight): No Swift configuration changes. Sidecar deployment is standard Kubernetes practice.
 3. **Extensibility** (medium weight): Same architecture supports multiple storage vendors with different parser configuration.
-4. **Maintenance** (medium weight): Go-only implementation aligns with Chorus codebase. No Python component to maintain.
+4. **Maintenance** (medium weight): Go-only implementation aligns with Tutti codebase. No Python component to maintain.
 5. **Latency trade-off** (acceptable): 1-10 second latency meets async replication requirements.
 6. **Durability trade-off** (acceptable): Modern log tailing/exporting libraries handle log rotation/truncation correctly.
 
@@ -205,14 +205,14 @@ Agent architecture is inspired by popular log collector [FluentBit](https://flue
    - Resource name: Account/Container/[Object]/[ObjectVersion]
 2. Agent filters out read requests and errors.
 3. Agent batches multiple entries into buffer.
-4. Agent sends batch of events to Chorus webhook.
+4. Agent sends batch of events to Tutti webhook.
 
 
 **Alternatives:**
 
-Agent can be redesigned to directly create replication tasks for chorus worker instead of sending S3-like notification webhook.
+Agent can be redesigned to directly create replication tasks for tutti worker instead of sending S3-like notification webhook.
 There are 2 drawbacks:
-- Task queue client requires Redis connection, meaning that Redis credentials should be distributed to log collectors and Redis port should be available outside of Chorus worker deployment.
+- Task queue client requires Redis connection, meaning that Redis credentials should be distributed to log collectors and Redis port should be available outside of Tutti worker deployment.
 - Agent will have to query replication policies to filter events, increasing complexity of agent logic.
 
 
@@ -260,7 +260,7 @@ swift_agent:
 
 ### 5.3 Alternative: parse logs with external log exporter
 
-Use an existing log collector for log tailing and parsing, then send parsed events to Chorus agent via HTTP.
+Use an existing log collector for log tailing and parsing, then send parsed events to Tutti agent via HTTP.
 The collector uses scripting (Lua, VRL, Ruby) to extract needed fields and map to Swift method.
 
 **Log collector options** (file tailing + scripting + HTTP output, permissive license):
@@ -399,26 +399,26 @@ end
 | Criterion | Built-in Agent | External Log Exporter + Webhook |
 |-----------|----------------|--------------------------------|
 | **Deployment** | Go sidecar | Log exporter sidecar (Fluent Bit, Vector, etc.) |
-| **Configuration** | Single YAML file | Exporter config + transform script + Chorus webhook |
+| **Configuration** | Single YAML file | Exporter config + transform script + Tutti webhook |
 | **Log format sync** | Can parse Swift `log_msg_template` directly | Must manually write regex matching the template |
 | **Testing** | Go unit tests for mapping logic | Transform script harder to test in CI |
 | **Maintenance** | More Go code to write | Less code, but transform logic in separate language |
-| **User familiarity** | Chorus-specific config | Log exporters widely known in ops community |
+| **User familiarity** | Tutti-specific config | Log exporters widely known in ops community |
 
 **Recommendation**: External Log Exporter + Webhook
 
 Rationale:
 
 1. **Log tailing is a solved problem**. Fluent Bit (and similar tools) handle file rotation, position tracking, backpressure, and crash recovery. Reimplementing this in Go means owning edge cases that these tools have already fixed over years of production use.
-2. **Separation of concerns**. Chorus is a replication tool, not a log collector. Embedding log-tailing logic increases the maintenance surface with code unrelated to Chorus's core purpose.
+2. **Separation of concerns**. Tutti is a replication tool, not a log collector. Embedding log-tailing logic increases the maintenance surface with code unrelated to Tutti's core purpose.
 3. **Operational familiarity**. Fluent Bit is a standard Kubernetes sidecar. Ops teams already know how to deploy, monitor, and troubleshoot it. A custom Go agent is another binary to learn.
-4. **Chorus webhook already exists**. The [existing S3 agent webhook](../../service/agent/http_handler.go) provides the integration point. Fluent Bit's HTTP output plugin sends parsed events directly to it.
+4. **Tutti webhook already exists**. The [existing S3 agent webhook](../../service/agent/http_handler.go) provides the integration point. Fluent Bit's HTTP output plugin sends parsed events directly to it.
 
 Trade-offs accepted:
 
-- **Log format sync**: Users must ensure the Fluent Bit parser regex matches their Swift `log_msg_template`. Mitigated by shipping a default parser config and Lua script in the Chorus Helm chart that matches the Swift default log format.
+- **Log format sync**: Users must ensure the Fluent Bit parser regex matches their Swift `log_msg_template`. Mitigated by shipping a default parser config and Lua script in the Tutti Helm chart that matches the Swift default log format.
 - **Lua testability**: The mapping logic lives in a Lua script rather than Go unit tests. Mitigated by keeping the script minimal (mapping only, no business logic) and providing example test inputs in documentation.
-- **Two artifacts**: Users deploy both Fluent Bit and the Chorus agent webhook. This is standard practice for sidecar-based log collection in Kubernetes.
+- **Two artifacts**: Users deploy both Fluent Bit and the Tutti agent webhook. This is standard practice for sidecar-based log collection in Kubernetes.
 
 **When to reconsider built-in agent**:
 - If log format synchronization proves to be a frequent support issue

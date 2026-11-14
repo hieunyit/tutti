@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature or enhancement for Chorus
+about: Suggest a new feature or enhancement for Tutti
 title: '[FEATURE] '
 labels: enhancement
 assignees: ''
@@ -16,7 +16,7 @@ A clear and concise description of the proposed feature.
 
 ### Problem or Use Case
 <!--
-What problem does this feature solve, or how does it enhance Chorus (e.g., S3 compatibility, performance, usability)?
+What problem does this feature solve, or how does it enhance Tutti (e.g., S3 compatibility, performance, usability)?
 -->
 
 ### Proposed Solution
@@ -33,7 +33,7 @@ Any alternative approaches or solutions you’ve considered.
 
 ### Backwards compatibility
 <!--
-Mention how this feature may affect backwards-compatibility with current chorus version:
+Mention how this feature may affect backwards-compatibility with current tutti version:
 - API changes
 - Redis metadata
 -->

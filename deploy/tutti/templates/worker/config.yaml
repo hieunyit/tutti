@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chorus.fullname" . }}-worker
+  name: {{ include "tutti.fullname" . }}-worker
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -19,4 +19,4 @@ data:
       {{- .Values.features | toYaml | nindent 6 }}
 
     {{- /* Storage config (worker version - includes authURL for Swift) */}}
-    {{- include "chorus.workerStorageConfig" . | nindent 4 }}
+    {{- include "tutti.workerStorageConfig" . | nindent 4 }}

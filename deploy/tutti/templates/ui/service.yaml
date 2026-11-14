@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "chorus.fullname" . }}-ui
+  name: {{ include "tutti.fullname" . }}-ui
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: ui
-  {{- with (include "chorus.annotations" (list .Values.ui.service.annotations .)) }}
+  {{- with (include "tutti.annotations" (list .Values.ui.service.annotations .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -18,6 +18,6 @@ spec:
       targetPort: http
       protocol: TCP
   selector:
-    {{- include "chorus.selectorLabels" . | nindent 4 }}
+    {{- include "tutti.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: ui
 {{- end }}

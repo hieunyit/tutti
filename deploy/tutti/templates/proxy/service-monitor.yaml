@@ -2,14 +2,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "chorus.fullname" . }}-proxy
+  name: {{ include "tutti.fullname" . }}-proxy
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: proxy
     {{- with .Values.metrics.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -17,9 +17,9 @@ spec:
   jobLabel: app.kubernetes.io/component
   selector:
     matchLabels:
-      {{- include "chorus.selectorLabels" . | nindent 6 }}
+      {{- include "tutti.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: proxy
-      chorus.clyso.com/metrics: "true"
+      tutti.hieunyit.github.io/metrics: "true"
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace }}

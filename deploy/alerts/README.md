@@ -20,7 +20,7 @@ promtool check rules deploy/alerts/tutti-alerts.yml
 python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' deploy/alerts/tutti-alerts.yml
 ```
 
-Prometheus Operator: wrap the `groups` list in a `PrometheusRule` object (`spec.groups`), with the labels your Prometheus `ruleSelector` expects. The Helm chart in `deploy/chorus` has a proxy ServiceMonitor and a worker metrics Service; the rules do not filter on `job`, so they apply to every scraped Tutti instance.
+Prometheus Operator: wrap the `groups` list in a `PrometheusRule` object (`spec.groups`), with the labels your Prometheus `ruleSelector` expects. The Helm chart in `deploy/tutti` has a proxy ServiceMonitor and a worker metrics Service; the rules do not filter on `job`, so they apply to every scraped Tutti instance.
 
 Runbook links (`runbook_url`) are relative to the repository (`docs/tutti/runbooks.md#...`). Replace the prefix with the URL where your team hosts the docs if you want clickable links in Alertmanager.
 

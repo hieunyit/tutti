@@ -6,11 +6,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "chorus.fullname" . }}-webhook
+  name: {{ include "tutti.fullname" . }}-webhook
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list .Values.ingress.webhook.annotations .)) }}
+  {{- with (include "tutti.annotations" (list .Values.ingress.webhook.annotations .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -41,11 +41,11 @@ spec:
                 {{- /* Dedicated webhook Service when the worker runs the webhook
                        on its own ports, otherwise the main REST API. */}}
                 {{- if and $.Values.worker.config.api.webhook.enabled (gt (int ($.Values.worker.config.api.webhook.grpcPort | default 0)) 0) }}
-                name: {{ include "chorus.fullname" $ }}-webhook
+                name: {{ include "tutti.fullname" $ }}-webhook
                 port:
                   name: http
                 {{- else }}
-                name: {{ include "chorus.fullname" $ }}-rest
+                name: {{ include "tutti.fullname" $ }}-rest
                 port:
                   name: rest
                 {{- end }}

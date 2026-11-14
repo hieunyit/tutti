@@ -95,7 +95,7 @@
 
 ### Task 4 (WP4): Replication hub — spec 4.7 (split into 4a and 4b if one agent runs out of context)
 
-**Files:** Create `ui/src/pages/TuttiReplicationPage/{ReplicationHub.vue,ReplicationsTab.vue,RoutingTab.vue,DiffTab.vue}`; Modify `ui/src/pages/{TuttiReplicationPage,TuttiRoutingPoliciesPage,TuttiDiffReportsPage,TuttiAddReplicationPage,TuttiAddRoutingPolicyPage,TuttiAddDiffReportPage,TuttiDiffReportDetailPage}/*` and the related `ui/src/components/chorus/**`; Create `ui/src/utils/composables/useRowActions.ts`.
+**Files:** Create `ui/src/pages/TuttiReplicationPage/{ReplicationHub.vue,ReplicationsTab.vue,RoutingTab.vue,DiffTab.vue}`; Modify `ui/src/pages/{TuttiReplicationPage,TuttiRoutingPoliciesPage,TuttiDiffReportsPage,TuttiAddReplicationPage,TuttiAddRoutingPolicyPage,TuttiAddDiffReportPage,TuttiDiffReportDetailPage}/*` and the related `ui/src/components/tutti/**`; Create `ui/src/utils/composables/useRowActions.ts`.
 **Interfaces — Consumes:** `DataTable`, `FilterBar`, `WizardShell`, `DetailLayout`, `useQueryTab`. **Produces:** `useRowActions<T>(defs: {key: string; label: string; danger?: boolean; run: (row: T) => Promise<void>; confirm?: (row: T) => string}[]): { actionsFor(row: T), running: Ref<Set<string>> }`.
 
 - [ ] **Step 1: Write failing tests** — `useRowActions.spec.ts`: a `danger` action with `confirm` opens the dialog and runs only after confirmation; `ReplicationHub.spec.ts`: `?tab=routing` and `?tab=diff` select the right tab; wizard draft test: after filling step 1 and remounting with the same `draftKey`, step 1 values are restored.

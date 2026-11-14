@@ -3,11 +3,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "chorus.fullname" . }}-webhook
+  name: {{ include "tutti.fullname" . }}-webhook
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list .Values.worker.webhookService.annotations .)) }}
+  {{- with (include "tutti.annotations" (list .Values.worker.webhookService.annotations .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -23,6 +23,6 @@ spec:
       targetPort: webhook-grpc
       protocol: TCP
   selector:
-    {{- include "chorus.selectorLabels" . | nindent 4 }}
+    {{- include "tutti.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: worker
 {{- end }}

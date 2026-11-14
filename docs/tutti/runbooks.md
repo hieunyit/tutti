@@ -377,7 +377,7 @@ Removing a storage: the API refuses deletion while anything references it (repli
 
 ### Why
 
-- The encryption key is derived from the master password and a salt stored in Redis (hash `chorus:dynamic_creds`, field `salt`, in the meta DB). A different password derives a different key.
+- The encryption key is derived from the master password and a salt stored in Redis (hash `tutti:dynamic_creds`, field `salt`, in the meta DB). A different password derives a different key.
 - Sealed secrets stored with the old key cannot be decrypted with the new one. Dynamic user storage credentials are then unusable (expected behaviour; confirm the exact error in staging). Proxy accounts that cannot be decrypted are skipped, with the warning "skipped accounts that cannot be decrypted (wrong master password?)".
 - No API returns stored secrets (`ListS3Users` and `GET /tutti/proxy-accounts` never return them). The only copy of the plaintext is the one you hold.
 - Config-defined credentials (in YAML) do not use the master key and are not affected.

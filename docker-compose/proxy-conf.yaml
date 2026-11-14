@@ -1,4 +1,4 @@
-address: "http://localhost:9669" # Chorus proxy s3 api address
+address: "http://localhost:9669" # Tutti proxy s3 api address
 port: 9669
 cors:
   enabled: true

@@ -1,7 +1,7 @@
-# Example: exposing Chorus with ingress-nginx.
+# Example: exposing Tutti with ingress-nginx.
 #
 # An overlay — combine it with a storage example, e.g.
-#   helm install chorus ./deploy/chorus \
+#   helm install tutti ./deploy/tutti \
 #     -f examples/values-s3.yaml -f examples/values-ingress-nginx.yaml
 #
 # WARNING: ingress.api has no authentication. Enable it behind auth at the
@@ -16,49 +16,49 @@ ingress:
       # larger uploads with 413. "0" disables the limit.
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts:
-      - host: s3.chorus.example.com
+      - host: s3.tutti.example.com
         paths:
           - path: /
     tls:
-      - secretName: chorus-s3-tls
+      - secretName: tutti-s3-tls
         hosts:
-          - s3.chorus.example.com
+          - s3.tutti.example.com
 
   api:
     enabled: true
     className: nginx
     hosts:
-      - host: chorus-api.example.com
+      - host: tutti-api.example.com
         paths:
           - path: /
     tls:
-      - secretName: chorus-api-tls
+      - secretName: tutti-api-tls
         hosts:
-          - chorus-api.example.com
+          - tutti-api.example.com
 
   webhook:
     enabled: true
     className: nginx
     hosts:
-      - host: chorus-webhook.example.com
+      - host: tutti-webhook.example.com
         paths:
           - path: /
     tls:
-      - secretName: chorus-webhook-tls
+      - secretName: tutti-webhook-tls
         hosts:
-          - chorus-webhook.example.com
+          - tutti-webhook.example.com
 
   ui:
     enabled: true
     className: nginx
     hosts:
-      - host: chorus.example.com
+      - host: tutti.example.com
         paths:
           - path: /
     tls:
-      - secretName: chorus-ui-tls
+      - secretName: tutti-ui-tls
         hosts:
-          - chorus.example.com
+          - tutti.example.com
 
 ui:
   enabled: true
@@ -68,7 +68,7 @@ worker:
     api:
       webhook:
         enabled: true
-        baseUrl: "https://chorus-webhook.example.com"
+        baseUrl: "https://tutti-webhook.example.com"
         # Separate ports put the webhook on its own Service, away from the
         # management API. Omit to serve webhooks on the main REST port.
         grpcPort: 9680

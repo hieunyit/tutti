@@ -1,4 +1,4 @@
-project_name: chorus
+project_name: tutti
 before:
   hooks:
     - go mod tidy
@@ -41,7 +41,7 @@ brews:
     commit_msg_template: Brew formula update for tuttictl version {{ .Tag }}
     folder: Formula
     homepage: https://github.com/clyso/chorus
-    description: Management CLI for chorus service
+    description: Management CLI for tutti service
     license: Apache-2.0
     test: |
       system "#{bin}/tuttictl --version"
@@ -50,7 +50,7 @@ brews:
 release:
   github:
     owner: clyso
-    name: chorus
+    name: tutti
   extra_files:
     - glob: ./standalone/*
 changelog:

@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chorus.fullname" . }}-proxy
+  name: {{ include "tutti.fullname" . }}-proxy
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: proxy
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -20,5 +20,5 @@ data:
       {{- .Values.features | toYaml | nindent 6 }}
 
     {{- /* Storage config (proxy version - uses storageURL for Swift) */}}
-    {{- include "chorus.proxyStorageConfig" . | nindent 4 }}
+    {{- include "tutti.proxyStorageConfig" . | nindent 4 }}
 {{- end }}

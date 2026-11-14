@@ -34,7 +34,7 @@ Locks are expected to expire on their own. Do not treat a lock as data.
 | Key | Content | Loss impact |
 |---|---|---|
 | version vectors, migration progress (`meta`, migration list state stores) | per-object and per-bucket versions, last processed listing position | replication state can be wrong; a full scan may be needed |
-| `chorus:dynamic_creds` (hash) | sealed storage credentials per user and storage, plus the `salt` used for the key | **not disposable**: lost secrets must be re-entered; the salt is needed with the master password |
+| `tutti:dynamic_creds` (hash) | sealed storage credentials per user and storage, plus the `salt` used for the key | **not disposable**: lost secrets must be re-entered; the salt is needed with the master password |
 | `tutti:session:*` | console sessions (TTL) | users sign in again |
 | `tutti:authfail:*`, `tutti:authknown:*` | login throttling counters (15 min) and known (user, IP) pairs (30 days) | throttling resets |
 | rate-limit counters | per-storage request limits | limits reset |
@@ -46,7 +46,7 @@ Proxy health and history are ephemeral, in the config DB:
 | `tutti:proxy-status:<app_id>` | 3 × `status.interval` (default 6 s) | live status per proxy |
 | `tutti:proxy-stats-history:<app_id>` | about 6 h | traffic samples for the UI |
 
-Note: the performance report lists "managed storage and key secrets" under the config DB. In code, the sealed per-user credentials (`chorus:dynamic_creds`) are in the meta DB; managed storage definitions are in the config DB. Back up both DBs anyway.
+Note: the performance report lists "managed storage and key secrets" under the config DB. In code, the sealed per-user credentials (`tutti:dynamic_creds`) are in the meta DB; managed storage definitions are in the config DB. Back up both DBs anyway.
 
 ## Persistence
 
@@ -78,7 +78,7 @@ An unset limit risks host OOM. A limit that is too small causes write failures (
 
 ## High availability with Redis Sentinel
 
-**Status: supported.** Tutti builds a Sentinel-aware client when `redis.sentinel.masterName` is set (`pkg/util/redis.go`), for the app clients and for the asynq queue client. The Helm chart has an external-Redis example for Sentinel (`deploy/chorus/examples/values-external-redis.yaml`). Unit tests cover the client selection, and `TestLiveSentinel` in `pkg/util` (run with `TUTTI_TEST_SENTINEL_ADDR` and `TUTTI_TEST_SENTINEL_MASTER`) was run against a real Redis 7 with one sentinel: a command and an asynq enqueue/delete through Sentinel worked. A full master failover under load was not tested in this repository; test it in your environment before relying on it.
+**Status: supported.** Tutti builds a Sentinel-aware client when `redis.sentinel.masterName` is set (`pkg/util/redis.go`), for the app clients and for the asynq queue client. The Helm chart has an external-Redis example for Sentinel (`deploy/tutti/examples/values-external-redis.yaml`). Unit tests cover the client selection, and `TestLiveSentinel` in `pkg/util` (run with `TUTTI_TEST_SENTINEL_ADDR` and `TUTTI_TEST_SENTINEL_MASTER`) was run against a real Redis 7 with one sentinel: a command and an asynq enqueue/delete through Sentinel worked. A full master failover under load was not tested in this repository; test it in your environment before relying on it.
 
 Tutti keys:
 

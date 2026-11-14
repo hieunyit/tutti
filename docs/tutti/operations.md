@@ -121,7 +121,7 @@ Every `checkInterval` the controller looks at the proxy's own breaker states. Fo
 
 ### Scopes
 
-A scope is a user-level or bucket-level routing target that is currently routed to the failed storage (by explicit routing, or implicitly because the storage is `main`) and has replications from it. Each scope is handled independently. User-level and bucket-level replications of the same user are mutually exclusive in Chorus.
+A scope is a user-level or bucket-level routing target that is currently routed to the failed storage (by explicit routing, or implicitly because the storage is `main`) and has replications from it. Each scope is handled independently. User-level and bucket-level replications of the same user are mutually exclusive in Tutti.
 
 ### Candidate checks
 
@@ -186,11 +186,11 @@ The password must have at least 12 characters (at most 72 bytes) and must not eq
 
 ```shell
 # Docker Compose: prints a new random password
-docker compose exec worker /bin/chorus admin reset-password
+docker compose exec worker /bin/tutti admin reset-password
 # choose the password yourself
-docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<min 12 characters>' worker /bin/chorus admin reset-password
+docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<min 12 characters>' worker /bin/tutti admin reset-password
 # Kubernetes
-kubectl exec deploy/<release>-worker -- /bin/chorus admin reset-password
+kubectl exec deploy/<release>-worker -- /bin/tutti admin reset-password
 # another user: add --user <name> (created as admin when missing); --password-env <VAR> reads another variable
 ```
 

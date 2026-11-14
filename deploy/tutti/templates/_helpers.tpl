@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "chorus.name" -}}
+{{- define "tutti.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "chorus.fullname" -}}
+{{- define "tutti.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "chorus.chart" -}}
+{{- define "tutti.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels (metadata only, never selectors)
 */}}
-{{- define "chorus.labels" -}}
-helm.sh/chart: {{ include "chorus.chart" . }}
-{{ include "chorus.selectorLabels" . }}
+{{- define "tutti.labels" -}}
+helm.sh/chart: {{ include "tutti.chart" . }}
+{{ include "tutti.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,9 +45,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/*
 Common annotations merged with a resource's own annotations (resource wins).
-Usage: {{- with (include "chorus.annotations" (list .Values.x.annotations .)) }}
+Usage: {{- with (include "tutti.annotations" (list .Values.x.annotations .)) }}
 */}}
-{{- define "chorus.annotations" -}}
+{{- define "tutti.annotations" -}}
 {{- $local := index . 0 | default dict -}}
 {{- $root := index . 1 -}}
 {{- $merged := merge (deepCopy $local) ($root.Values.commonAnnotations | default dict) -}}
@@ -60,7 +60,7 @@ Usage: {{- with (include "chorus.annotations" (list .Values.x.annotations .)) }}
 Pod-level user labels: podLabels merged over commonLabels (podLabels win).
 Emitted alongside the structural selector/component labels in pod templates.
 */}}
-{{- define "chorus.podLabels" -}}
+{{- define "tutti.podLabels" -}}
 {{- $local := index . 0 | default dict -}}
 {{- $root := index . 1 -}}
 {{- $merged := merge (deepCopy $local) ($root.Values.commonLabels | default dict) -}}
@@ -72,8 +72,8 @@ Emitted alongside the structural selector/component labels in pod templates.
 {{/*
 Selector labels
 */}}
-{{- define "chorus.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "chorus.name" . }}
+{{- define "tutti.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "tutti.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
@@ -81,16 +81,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Metrics port. Single source for the app (via CFG_METRICS_PORT), container port
 and metrics Service; matches the app default (pkg/config/config.yaml: metrics.port).
 */}}
-{{- define "chorus.metricsPort" -}}
+{{- define "tutti.metricsPort" -}}
 9090
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "chorus.serviceAccountName" -}}
+{{- define "tutti.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "chorus.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "tutti.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -99,18 +99,18 @@ Create the name of the service account to use
 {{/*
 Credentials secret name
 */}}
-{{- define "chorus.credentialsSecretName" -}}
+{{- define "tutti.credentialsSecretName" -}}
 {{- if .Values.existingCredentialsSecret }}
 {{- .Values.existingCredentialsSecret }}
 {{- else }}
-{{- printf "%s-credentials" (include "chorus.fullname" .) }}
+{{- printf "%s-credentials" (include "tutti.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Redis secret name
 */}}
-{{- define "chorus.redisSecretName" -}}
+{{- define "tutti.redisSecretName" -}}
 {{- if .Values.redis.enabled }}
 {{- if .Values.redis.auth.existingSecret }}
 {{- .Values.redis.auth.existingSecret }}
@@ -122,7 +122,7 @@ Redis secret name
 {{- if .Values.externalRedis.existingSecret }}
 {{- .Values.externalRedis.existingSecret }}
 {{- else }}
-{{- printf "%s-redis-external" (include "chorus.fullname" .) }}
+{{- printf "%s-redis-external" (include "tutti.fullname" .) }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -130,7 +130,7 @@ Redis secret name
 {{/*
 Redis secret key
 */}}
-{{- define "chorus.redisSecretKey" -}}
+{{- define "tutti.redisSecretKey" -}}
 {{- if .Values.redis.enabled }}
 {{- .Values.redis.auth.existingSecretPasswordKey | default "redis-password" }}
 {{- else }}
@@ -141,7 +141,7 @@ Redis secret key
 {{/*
 Redis addresses
 */}}
-{{- define "chorus.redisAddresses" -}}
+{{- define "tutti.redisAddresses" -}}
 {{- if .Values.redis.enabled }}
 {{- printf "%s-redis-master:6379" .Release.Name }}
 {{- else }}
@@ -152,7 +152,7 @@ Redis addresses
 {{/*
 Check if credentials secret should be created
 */}}
-{{- define "chorus.createCredentialsSecret" -}}
+{{- define "tutti.createCredentialsSecret" -}}
 {{- if and (not .Values.existingCredentialsSecret) .Values.credentials.storages }}
 true
 {{- end }}
@@ -161,25 +161,25 @@ true
 {{/*
 Dynamic credentials secret name
 */}}
-{{- define "chorus.dynamicCredentialsSecretName" -}}
+{{- define "tutti.dynamicCredentialsSecretName" -}}
 {{- if .Values.dynamicCredentials.existingSecret }}
 {{- .Values.dynamicCredentials.existingSecret }}
 {{- else }}
-{{- printf "%s-dynamic-credentials" (include "chorus.fullname" .) }}
+{{- printf "%s-dynamic-credentials" (include "tutti.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Dynamic credentials secret key
 */}}
-{{- define "chorus.dynamicCredentialsSecretKey" -}}
+{{- define "tutti.dynamicCredentialsSecretKey" -}}
 {{- .Values.dynamicCredentials.existingSecretKey | default "master-password" }}
 {{- end }}
 
 {{/*
 Check if dynamic credentials secret should be created
 */}}
-{{- define "chorus.createDynamicCredentialsSecret" -}}
+{{- define "tutti.createDynamicCredentialsSecret" -}}
 {{- if and .Values.dynamicCredentials.enabled (not .Values.dynamicCredentials.existingSecret) .Values.dynamicCredentials.masterPassword }}
 true
 {{- end }}
@@ -188,7 +188,7 @@ true
 {{/*
 Check if redis secret should be created (for external redis with inline password)
 */}}
-{{- define "chorus.createRedisSecret" -}}
+{{- define "tutti.createRedisSecret" -}}
 {{- if and (not .Values.redis.enabled) (not .Values.externalRedis.existingSecret) .Values.externalRedis.password }}
 true
 {{- end }}
@@ -197,7 +197,7 @@ true
 {{/*
 Build storage config for worker (full config including authURL for Swift)
 */}}
-{{- define "chorus.workerStorageConfig" -}}
+{{- define "tutti.workerStorageConfig" -}}
 storage:
   {{- if .Values.storage.main }}
   main: {{ .Values.storage.main | quote }}
@@ -225,7 +225,7 @@ storage:
 {{/*
 Build storage config for proxy (uses storageURL for Swift, excludes authURL and worker-only fields)
 */}}
-{{- define "chorus.proxyStorageConfig" -}}
+{{- define "tutti.proxyStorageConfig" -}}
 storage:
   {{- if .Values.storage.main }}
   main: {{ .Values.storage.main | quote }}
@@ -261,7 +261,7 @@ storage:
 {{/*
 Merge node selector with global
 */}}
-{{- define "chorus.nodeSelector" -}}
+{{- define "tutti.nodeSelector" -}}
 {{- $local := index . 0 }}
 {{- $global := index . 1 }}
 {{- $merged := merge ($local | default dict) ($global | default dict) }}
@@ -273,7 +273,7 @@ Merge node selector with global
 {{/*
 Merge tolerations with global
 */}}
-{{- define "chorus.tolerations" -}}
+{{- define "tutti.tolerations" -}}
 {{- $local := index . 0 }}
 {{- $global := index . 1 }}
 {{- $merged := concat ($local | default list) ($global | default list) }}
@@ -285,7 +285,7 @@ Merge tolerations with global
 {{/*
 Merge affinity with global
 */}}
-{{- define "chorus.affinity" -}}
+{{- define "tutti.affinity" -}}
 {{- $local := index . 0 }}
 {{- $global := index . 1 }}
 {{- $merged := merge ($local | default dict) ($global | default dict) }}

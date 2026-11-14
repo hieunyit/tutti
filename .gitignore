@@ -9,7 +9,7 @@ volumes
 **/*.lock
 !ui/yarn.lock
 **/override.yaml
-chorusui.tar.gz
+tuttiui.tar.gz
 ui-version.txt
 standalone
 standalone/

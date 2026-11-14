@@ -6,7 +6,7 @@
 # The worker exposes webhook endpoints for two event sources:
 #
 # 1. S3 bucket notifications (Ceph RGW):
-#    Chorus automatically creates topics and registers bucket notifications.
+#    Tutti automatically creates topics and registers bucket notifications.
 #    Endpoint: /webhook/<storage>/s3-notifications
 #
 # 2. Swift events (OpenStack Swift):
@@ -33,7 +33,7 @@ worker:
         enabled: true
         # Leave baseUrl empty to auto-generate from Kubernetes service URL.
         # Set explicitly when the storage pushes from outside the cluster:
-        # baseUrl: "https://chorus-webhook.example.com"
+        # baseUrl: "https://tutti-webhook.example.com"
 
         # Optional: run webhook on separate ports (both must be set, or both 0)
         # grpcPort: 9680
@@ -47,14 +47,14 @@ worker:
 #     annotations:
 #       nginx.ingress.kubernetes.io/proxy-body-size: "0"
 #     hosts:
-#       - host: chorus-webhook.example.com
+#       - host: tutti-webhook.example.com
 #         paths:
 #           - path: /
 #             pathType: Prefix
 #     tls:
-#       - secretName: chorus-webhook-tls
+#       - secretName: tutti-webhook-tls
 #         hosts:
-#           - chorus-webhook.example.com
+#           - tutti-webhook.example.com
 
 # Storage configuration
 storage:
@@ -88,7 +88,7 @@ credentials:
 # 1. Create replication with webhook event source:
 #    tuttictl repl add -u app-user -b mybucket -f main -t backup \
 #      --event-source s3-notification
-# 2. Chorus automatically creates the topic and registers bucket notifications.
+# 2. Tutti automatically creates the topic and registers bucket notifications.
 #    No manual configuration needed.
 #
 # After deployment (OpenStack Swift):

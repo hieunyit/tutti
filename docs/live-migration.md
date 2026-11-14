@@ -1,4 +1,4 @@
-# Chorus s3 live migration
+# Tutti s3 live migration
 
 [Edit link](https://www.planttext.com/?text=tLPDRzim3BtxLn3fAK1JeCqs80OMT1iMxB1Y0thOeUb1KHZNZIovajmq_twKB7-eZjkTTqaiy_6HUgHeNHlBjAqAaIGsjm9XSZi7aJyZ57cccSsLd2G9urPfc7ohZ5K5wWam0pmiaf88SfwNJ5g2F2XTcRNyhTNBqUDAzmHdYyLgjLZ4uDlvMjwmN7fSGGzmjbfzkPhFXx2L4a8TGkXTMBJmBRDimmnsyM_GClUsfgP5ybHXHO3lpoZjMlgLDw9xyTIOVsqUWQlos4UepMDa5xc96Dow1Noj-1uZyyQ_UJgjqn-bzs5N1__OAfKacLPL2J-Ot8fSPg1afjo_cOD6eZVM9D2MORRqGgTmEOM3pYqs8C9uospf54xXAh9x3cTe_NqTD9fIIOCzPz8mXVaK-0FoFUIxha70zn1k7HEXPiiN25nIsSO8CtfI9T1kYDrMMWuYrSwDRqSQPV1X2bL9bKLNbfhY6RMXD3faNT8KFbAs6XtMChFlx8rcANoQdau6vRRH_zRbyUf8ZEZkKuvGKUfNFV569ME2CjuU1u2-AgzBIbLnFHWwpNJcq7fUjQ14_SeBOlhR_1bj4Eu2pWM_9yB0D5lMNPgIL1oTIu-FOBLrjcnEQ1g7xI7gp3DiiWR6nNcfHCwFvoBV8JzoWHSN5wT9wOJ-kvy_dsqcFQLS2o6tfix-VJ6yQ_1nedZYeIIZ4NgxzmtXTYyOWQbS78sXK-AQMh821qhrOyDEgsB0PkfmxPc0pt3P0xafregWmfWxdLSuO6EflI6KZzyidKGkwb2XjyFNXyHlevtqpYESStEoYmWmtYgnCNBgzmzQFiunYelLRpDkAl26MfnP_a1gquwPpD3tL3sxJalcRV-_Paq3HrFua9DMOtEtCOwEsqvqhefIuBjVAxhkK19aoEYRO5vFuJv9Y1aiD8hlLEaYCN4F6w4eVlGvNijAqaKhrBA-D61HscD7rOb8OvjsJyuHHPZRr_HB5xU_)
 
@@ -9,15 +9,15 @@
 title "S3 live migration"
 
 actor "Customer" as customer
-participant "Chorus\nProxy" as proxy #99FF99
+participant "Tutti\nProxy" as proxy #99FF99
 participant "S3\nMain" as main #FFA233
 participant "S3\nFollower" as follower #FFA233
-database "Chorus\nMetadata" as meta
+database "Tutti\nMetadata" as meta
 queue "Event\nqueue" as eventq
 queue "Obj copy\nqueue" as objq
 queue "Obj list\nqueue" as listq
 queue "Bucket\nqueue" as bucketq
-participant "Chorus\nWorker" as worker #99FF99
+participant "Tutti\nWorker" as worker #99FF99
 
 
 group Handling ongoing s3 requests
@@ -103,12 +103,12 @@ end
 title "S3 live migration"
 
 actor "Customer" as customer
-participant "Chorus\nProxy" as proxy #99FF99
+participant "Tutti\nProxy" as proxy #99FF99
 participant "S3\nOld" as s3old #FFA233
 participant "S3\nNew" as s3new #FFA233
-database "Chorus\nMetadata" as meta
+database "Tutti\nMetadata" as meta
 queue "Task\nqueue" as queue
-participant "Chorus\nWorker" as worker #99FF99
+participant "Tutti\nWorker" as worker #99FF99
 
 
 == OLD is main, initial migration done ==

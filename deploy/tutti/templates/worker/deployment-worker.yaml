@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chorus.fullname" . }}-worker
+  name: {{ include "tutti.fullname" . }}-worker
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: worker
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -15,27 +15,27 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "chorus.selectorLabels" . | nindent 6 }}
+      {{- include "tutti.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: worker
   template:
     metadata:
       labels:
-        {{- include "chorus.selectorLabels" . | nindent 8 }}
+        {{- include "tutti.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: worker
-        {{- with (include "chorus.podLabels" (list .Values.worker.podLabels .)) }}
+        {{- with (include "tutti.podLabels" (list .Values.worker.podLabels .)) }}
         {{- . | nindent 8 }}
         {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/worker/config.yaml") . | sha256sum }}
-        {{- if include "chorus.createCredentialsSecret" . }}
+        {{- if include "tutti.createCredentialsSecret" . }}
         checksum/secret: {{ include (print $.Template.BasePath "/secrets/secret.yaml") . | sha256sum }}
         {{- end }}
         {{- if .Values.metrics.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
-        prometheus.io/port: {{ include "chorus.metricsPort" . | quote }}
+        prometheus.io/port: {{ include "tutti.metricsPort" . | quote }}
         {{- end }}
-        {{- with (include "chorus.annotations" (list .Values.worker.podAnnotations .)) }}
+        {{- with (include "tutti.annotations" (list .Values.worker.podAnnotations .)) }}
         {{- . | nindent 8 }}
         {{- end }}
     spec:
@@ -43,7 +43,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "chorus.serviceAccountName" . }}
+      serviceAccountName: {{ include "tutti.serviceAccountName" . }}
       {{- with .Values.worker.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -59,12 +59,12 @@ spec:
           {{- end }}
           env:
             - name: CFG_REDIS_ADDRESS
-              value: {{ include "chorus.redisAddresses" . | quote }}
+              value: {{ include "tutti.redisAddresses" . | quote }}
             - name: CFG_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "chorus.redisSecretName" . }}
-                  key: {{ include "chorus.redisSecretKey" . }}
+                  name: {{ include "tutti.redisSecretName" . }}
+                  key: {{ include "tutti.redisSecretKey" . }}
             {{- if and (not .Values.redis.enabled) .Values.externalRedis.sentinel.masterName }}
             - name: CFG_REDIS_SENTINEL_MASTERNAME
               value: {{ .Values.externalRedis.sentinel.masterName | quote }}
@@ -88,21 +88,21 @@ spec:
             - name: CFG_METRICS_ENABLED
               value: "true"
             - name: CFG_METRICS_PORT
-              value: {{ include "chorus.metricsPort" . | quote }}
+              value: {{ include "tutti.metricsPort" . | quote }}
             {{- end }}
             {{- if .Values.dynamicCredentials.enabled }}
             - name: CFG_STORAGE_DYNAMICCREDENTIALS_MASTERPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "chorus.dynamicCredentialsSecretName" . }}
-                  key: {{ include "chorus.dynamicCredentialsSecretKey" . }}
+                  name: {{ include "tutti.dynamicCredentialsSecretName" . }}
+                  key: {{ include "tutti.dynamicCredentialsSecretKey" . }}
             {{- end }}
             {{- if and .Values.worker.config.api.webhook.enabled (not .Values.worker.config.api.webhook.baseUrl) }}
             - name: CFG_API_WEBHOOK_BASEURL
               {{- if gt (int (.Values.worker.config.api.webhook.httpPort | default 0)) 0 }}
-              value: {{ printf "http://%s-webhook.%s.svc.cluster.local:%d" (include "chorus.fullname" .) .Release.Namespace (int .Values.worker.config.api.webhook.httpPort) | quote }}
+              value: {{ printf "http://%s-webhook.%s.svc.cluster.local:%d" (include "tutti.fullname" .) .Release.Namespace (int .Values.worker.config.api.webhook.httpPort) | quote }}
               {{- else }}
-              value: {{ printf "http://%s-rest.%s.svc.cluster.local:%d" (include "chorus.fullname" .) .Release.Namespace (int .Values.worker.restService.port) | quote }}
+              value: {{ printf "http://%s-rest.%s.svc.cluster.local:%d" (include "tutti.fullname" .) .Release.Namespace (int .Values.worker.restService.port) | quote }}
               {{- end }}
             {{- end }}
           ports:
@@ -124,7 +124,7 @@ spec:
             {{- end }}
             {{- if .Values.metrics.enabled }}
             - name: metrics
-              containerPort: {{ include "chorus.metricsPort" . }}
+              containerPort: {{ include "tutti.metricsPort" . }}
               protocol: TCP
             {{- end }}
           {{- with .Values.worker.resources }}
@@ -135,7 +135,7 @@ spec:
             - name: config
               mountPath: /bin/config/config.yaml
               subPath: config.yaml
-            {{- if or .Values.existingCredentialsSecret (include "chorus.createCredentialsSecret" .) }}
+            {{- if or .Values.existingCredentialsSecret (include "tutti.createCredentialsSecret" .) }}
             - name: credentials
               mountPath: /bin/config/override.yaml
               subPath: config.yaml
@@ -143,23 +143,23 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "chorus.fullname" . }}-worker
-        {{- if or .Values.existingCredentialsSecret (include "chorus.createCredentialsSecret" .) }}
+            name: {{ include "tutti.fullname" . }}-worker
+        {{- if or .Values.existingCredentialsSecret (include "tutti.createCredentialsSecret" .) }}
         - name: credentials
           secret:
-            secretName: {{ include "chorus.credentialsSecretName" . }}
+            secretName: {{ include "tutti.credentialsSecretName" . }}
         {{- end }}
-      {{- $nodeSelector := include "chorus.nodeSelector" (list .Values.worker.nodeSelector .Values.global.nodeSelector) }}
+      {{- $nodeSelector := include "tutti.nodeSelector" (list .Values.worker.nodeSelector .Values.global.nodeSelector) }}
       {{- if $nodeSelector }}
       nodeSelector:
         {{- $nodeSelector | nindent 8 }}
       {{- end }}
-      {{- $tolerations := include "chorus.tolerations" (list .Values.worker.tolerations .Values.global.tolerations) }}
+      {{- $tolerations := include "tutti.tolerations" (list .Values.worker.tolerations .Values.global.tolerations) }}
       {{- if $tolerations }}
       tolerations:
         {{- $tolerations | nindent 8 }}
       {{- end }}
-      {{- $affinity := include "chorus.affinity" (list .Values.worker.affinity .Values.global.affinity) }}
+      {{- $affinity := include "tutti.affinity" (list .Values.worker.affinity .Values.global.affinity) }}
       {{- if $affinity }}
       affinity:
         {{- $affinity | nindent 8 }}

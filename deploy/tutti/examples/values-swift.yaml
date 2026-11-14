@@ -1,5 +1,5 @@
 # Example: Swift Storage Configuration
-# This example shows how to configure Chorus with OpenStack Swift storage
+# This example shows how to configure Tutti with OpenStack Swift storage
 #
 # Note: Swift requires different configs for Worker and Proxy:
 # - Worker: Uses authURL for Keystone authentication

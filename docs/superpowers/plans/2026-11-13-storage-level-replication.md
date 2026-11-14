@@ -147,12 +147,12 @@ Rule (spec 4.4): conflict iff some edge pair has same `To`, or `a.From==b.To && 
 ### Task 6: UI — Add replication without a user, covered buckets disabled
 
 **Files:**
-- Modify: `ui/src/stores/tuttiAddReplicationStore.ts` (+ `__tests__/tuttiAddReplication.spec.ts`), `ui/src/components/chorus/add-replication/*` (BucketsFormStep, BucketsSelectionList, i18n), `ui/src/pages/TuttiAddReplicationPage/*`, `ui/src/utils/helpers/BucketDiscoveryHelper.ts` (+ spec), `ui/src/utils/types/chorus.ts`, `ui/src/services/ChorusService.ts`, replication list/row components that print the user (`ui/src/pages/TuttiReplicationPage/*`, `ReplicationsHelper.ts`)
+- Modify: `ui/src/stores/tuttiAddReplicationStore.ts` (+ `__tests__/tuttiAddReplication.spec.ts`), `ui/src/components/tutti/add-replication/*` (BucketsFormStep, BucketsSelectionList, i18n), `ui/src/pages/TuttiAddReplicationPage/*`, `ui/src/utils/helpers/BucketDiscoveryHelper.ts` (+ spec), `ui/src/utils/types/tuttiCore.ts`, `ui/src/services/TuttiCoreService.ts`, replication list/row components that print the user (`ui/src/pages/TuttiReplicationPage/*`, `ReplicationsHelper.ts`)
 
 **Interfaces — Consumes:** wire contract in Task 4 (`covered_buckets[]` with `bucket`, `ownerKind`, `ownerId`; `user` optional in requests).
 
 - [ ] **Step 1: Write failing tests** — store: no `selectedUser`/`users`/`eligibleUsers` required; `initBucketsList` calls `getBucketsForReplication` without `user`; covered buckets are exposed as disabled with a reason string containing owner kind and id; `createReplication` sends `id` without `user`; a 409 shows the server text on the page and keeps the wizard draft; replications table renders "A → B" when user is empty.
-- [ ] **Step 2: Run** `corepack yarn test:unit --run src/stores src/components/chorus src/utils/helpers` — Expected: FAIL.
+- [ ] **Step 2: Run** `corepack yarn test:unit --run src/stores src/components/tutti src/utils/helpers` — Expected: FAIL.
 - [ ] **Step 3: Implement** removal of the user select and user discovery from the Add replication flow; disabled rows with tooltip `owner_kind owner_id`; replace the generic list-buckets error with the server message; types updated.
 - [ ] **Step 4: Run UI gate** — Expected: PASS (`lint:types` 0 errors).
 - [ ] **Step 5: Commit** `feat(ui): add replication without a user and block covered buckets`.

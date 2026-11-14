@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help improve Chorus
+about: Report a bug to help improve Tutti
 title: '[BUG] '
 labels: bug
 assignees: ''
@@ -32,9 +32,9 @@ What actually happened.
 -->
 
 ### Environment
-- **Chorus Version**: [e.g., v0.5.5]
+- **Tutti Version**: [e.g., v0.5.5]
 - **S3 Provider**: [e.g., AWS S3, Ceph RGW, MinIO]
-- **Chorus Setup**: [e.g.,K8s, Docker Compose, standalone binary]
+- **Tutti Setup**: [e.g.,K8s, Docker Compose, standalone binary]
 - **Other Details**: [e.g., Redis version, network configuration]
 
 ### Additional Context

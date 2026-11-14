@@ -8,7 +8,7 @@
     ```shell
     brew install s3cmd
     ```
-- Chorus management CLI [tuttictl](../tools/tuttictl)
+- Tutti management CLI [tuttictl](../tools/tuttictl)
     ```shell
     brew install clyso/tap/tuttictl
     ```
@@ -16,13 +16,13 @@
 ```
 ├── docker-compose
 │   ├── docker-compose.yml    # docker-compose file
-│   ├── proxy-conf.yaml       # example config for chorus-proxy
+│   ├── proxy-conf.yaml       # example config for tutti-proxy
 │   ├── README.md
 │   ├── s3cmd-follower.conf   # s3cmd credentials for follower storage
 │   ├── s3cmd-main.conf       # s3cmd credentials for main storage
 │   ├── s3cmd-proxy.conf      # s3cmd credentials for proxy storage
-│   ├── s3-credentials.yaml   # chorus common config with S3 credentials
-│   └── worker-conf.yaml      # example config for chorus-worker
+│   ├── s3-credentials.yaml   # tutti common config with S3 credentials
+│   └── worker-conf.yaml      # example config for tutti-worker
 ```
 
 ## First login: the admin password
@@ -44,8 +44,8 @@ The first start creates the console user `admin`. Pick one way to get its passwo
 Sign in at http://localhost:8080 as `admin`; you are asked to change the password right away.
 The variable is only read while the database has no console users. If the password is lost, reset it:
 ```shell
-docker compose exec worker /bin/chorus admin reset-password            # prints a new random password
-# or set a given one: docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<new password>' worker /bin/chorus admin reset-password
+docker compose exec worker /bin/tutti admin reset-password            # prints a new random password
+# or set a given one: docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<new password>' worker /bin/tutti admin reset-password
 ```
 All sessions of that user are revoked. Details: [First login and password recovery](../docs/tutti/operations.md#first-login-and-password-recovery).
 
@@ -53,17 +53,17 @@ Please also review [docker-compose.yml](./docker-compose.yml) file. It contains 
 
 ## Bucket replication example
 
-To run chorus with docker compose:
+To run tutti with docker compose:
 1. Clone repo:
     ```shell 
-    git clone https://github.com/clyso/chorus.git && cd chorus
+    git clone https://github.com/hieunyit/tutti.git && cd tutti
     ```
-2. Start chorus `worker`,`proxy`. The stack ships no S3 backends: register your own S3 storages in the web UI (http://localhost:8080)
+2. Start tutti `worker`,`proxy`. The stack ships no S3 backends: register your own S3 storages in the web UI (http://localhost:8080)
    or with `tuttictl` after start-up, and use their endpoints and credentials in the steps below (edit the `s3cmd-*.conf` files accordingly):
     ```shell
     docker-compose -f ./docker-compose/docker-compose.yml --profile proxy up
     ```
-3. Check chorus config with CLI:
+3. Check tutti config with CLI:
     ```
     % tuttictl storage
     NAME            ADDRESS                          PROVIDER     USERS
@@ -186,7 +186,7 @@ Rebuild images with the latest source changes (`--build`):
 ```shell
 docker-compose -f ./docker-compose/docker-compose.yml --profile proxy --build up
 ```
-To use chorus images from registry instead of building from source replace in [docker-compose.yml](./docker-compose.yml):
+To use tutti images from registry instead of building from source replace in [docker-compose.yml](./docker-compose.yml):
 ```yaml
   worker:
     build:
@@ -198,7 +198,7 @@ to:
 
 ```yaml
   worker:
-    image: "harbor.clyso.com/chorus/worker:latest" 
+    image: "ghcr.io/hieunyit/tutti/worker:latest" 
 ```
 And similar for `web-ui` and `proxy`.
 

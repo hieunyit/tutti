@@ -18,7 +18,7 @@ Workflow per account:
 
 ## 2. Live migration
 
-Chorus Proxy will capture all data changes made to the source SWIFT storage during the initial migration and produce the following tasks for Chorus workers:
+Tutti Proxy will capture all data changes made to the source SWIFT storage during the initial migration and produce the following tasks for Tutti workers:
 
 ```mermaid
 ---
@@ -28,10 +28,10 @@ title: Capturing Live data changes
 sequenceDiagram
     autonumber
     Actor u as User
-    Participant p as Chorus<br>Proxy
+    Participant p as Tutti<br>Proxy
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over u,w: capture event
     u->>+p: write request<br>POST,PUT,DELETE
@@ -66,7 +66,7 @@ sequenceDiagram
     autonumber
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over w: produced by POST<br>account event
     w-)+w: enqueue task
@@ -105,7 +105,7 @@ sequenceDiagram
     autonumber
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over w: produced by<br>PUT,POST,DELETE<br>container event
     w-)w: enqueue task
@@ -140,7 +140,7 @@ sequenceDiagram
 
 ### Object
 
-Unlike accounts and containers, Chorus creates a separate task for each Swift object operation and handles them individually. Each Swift object sync task is shown in a separate diagram below.
+Unlike accounts and containers, Tutti creates a separate task for each Swift object operation and handles them individually. Each Swift object sync task is shown in a separate diagram below.
 
 | Method | Description | Task Type |
 |--------|-------------|------|
@@ -166,7 +166,7 @@ sequenceDiagram
     autonumber
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over w: produced by<br>POST object event
     w-)w: enqueue task
@@ -191,7 +191,7 @@ sequenceDiagram
 #### Object payload update
 
 Object payload update task is produced by `PUT` or `COPY` object event. 
-The Chorus worker does not distinguish between `PUT` and `COPY`, because for `COPY`, the destination storage might not have the latest object update.
+The Tutti worker does not distinguish between `PUT` and `COPY`, because for `COPY`, the destination storage might not have the latest object update.
 Therefore, both operations are handled by the same task type.
 
 open questions: 
@@ -209,7 +209,7 @@ sequenceDiagram
     autonumber
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over w: produced by<br>PUT,COPY<br>object event
     w-)w: enqueue task
@@ -265,7 +265,7 @@ sequenceDiagram
     autonumber
     Participant s as SWIFT<br>Source
     Participant d as SWIFT<br>Destination
-    Participant w as Chorus<br>Worker
+    Participant w as Tutti<br>Worker
 
     note over w: produced by<br>DELETE<br>object event
     w-)w: enqueue task

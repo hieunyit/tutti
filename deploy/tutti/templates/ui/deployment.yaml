@@ -2,11 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chorus.fullname" . }}-ui
+  name: {{ include "tutti.fullname" . }}-ui
   labels:
-    {{- include "chorus.labels" . | nindent 4 }}
+    {{- include "tutti.labels" . | nindent 4 }}
     app.kubernetes.io/component: ui
-  {{- with (include "chorus.annotations" (list dict .)) }}
+  {{- with (include "tutti.annotations" (list dict .)) }}
   annotations:
     {{- . | nindent 4 }}
   {{- end }}
@@ -14,17 +14,17 @@ spec:
   replicas: {{ .Values.ui.replicas }}
   selector:
     matchLabels:
-      {{- include "chorus.selectorLabels" . | nindent 6 }}
+      {{- include "tutti.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: ui
   template:
     metadata:
       labels:
-        {{- include "chorus.selectorLabels" . | nindent 8 }}
+        {{- include "tutti.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: ui
-        {{- with (include "chorus.podLabels" (list .Values.ui.podLabels .)) }}
+        {{- with (include "tutti.podLabels" (list .Values.ui.podLabels .)) }}
         {{- . | nindent 8 }}
         {{- end }}
-      {{- with (include "chorus.annotations" (list .Values.ui.podAnnotations .)) }}
+      {{- with (include "tutti.annotations" (list .Values.ui.podAnnotations .)) }}
       annotations:
         {{- . | nindent 8 }}
       {{- end }}
@@ -33,7 +33,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "chorus.serviceAccountName" . }}
+      serviceAccountName: {{ include "tutti.serviceAccountName" . }}
       {{- with .Values.ui.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -48,7 +48,7 @@ spec:
           {{- end }}
           env:
             - name: BACKEND_URL
-              value: {{ printf "http://%s-rest:%d" (include "chorus.fullname" .) (int .Values.worker.restService.port) | quote }}
+              value: {{ printf "http://%s-rest:%d" (include "tutti.fullname" .) (int .Values.worker.restService.port) | quote }}
           ports:
             - name: http
               containerPort: 80
@@ -67,17 +67,17 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- $nodeSelector := include "chorus.nodeSelector" (list .Values.ui.nodeSelector .Values.global.nodeSelector) }}
+      {{- $nodeSelector := include "tutti.nodeSelector" (list .Values.ui.nodeSelector .Values.global.nodeSelector) }}
       {{- if $nodeSelector }}
       nodeSelector:
         {{- $nodeSelector | nindent 8 }}
       {{- end }}
-      {{- $tolerations := include "chorus.tolerations" (list .Values.ui.tolerations .Values.global.tolerations) }}
+      {{- $tolerations := include "tutti.tolerations" (list .Values.ui.tolerations .Values.global.tolerations) }}
       {{- if $tolerations }}
       tolerations:
         {{- $tolerations | nindent 8 }}
       {{- end }}
-      {{- $affinity := include "chorus.affinity" (list .Values.ui.affinity .Values.global.affinity) }}
+      {{- $affinity := include "tutti.affinity" (list .Values.ui.affinity .Values.global.affinity) }}
       {{- if $affinity }}
       affinity:
         {{- $affinity | nindent 8 }}

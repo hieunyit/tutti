@@ -1,4 +1,4 @@
-# Chorus Helm Chart Values
+# Tutti Helm Chart Values
 # See README.md for documentation
 
 # =============================================================================
@@ -141,7 +141,7 @@ metrics:
 # =============================================================================
 # Bundled Redis (Bitnami chart)
 # When redis.enabled=true, a password is auto-generated and stored in a secret
-# The Chorus components use this secret for Redis authentication
+# The Tutti components use this secret for Redis authentication
 redis:
   enabled: true
   architecture: standalone
@@ -185,7 +185,7 @@ proxy:
   replicas: 2
 
   image:
-    repository: harbor.clyso.com/chorus/proxy
+    repository: ghcr.io/hieunyit/tutti/proxy
     tag: "" # Defaults to Chart.appVersion
     pullPolicy: IfNotPresent
 
@@ -268,7 +268,7 @@ worker:
   replicas: 2
 
   image:
-    repository: harbor.clyso.com/chorus/worker
+    repository: ghcr.io/hieunyit/tutti/worker
     tag: "" # Defaults to Chart.appVersion
     pullPolicy: IfNotPresent
 
@@ -344,7 +344,7 @@ ui:
   replicas: 1
 
   image:
-    repository: harbor.clyso.com/chorus/web-ui
+    repository: ghcr.io/hieunyit/tutti/web-ui
     tag: ""
     pullPolicy: IfNotPresent
 
@@ -398,7 +398,7 @@ ingress:
     className: ""
     annotations: {}
     hosts: []
-      # - host: chorus-api.example.com
+      # - host: tutti-api.example.com
       #   paths:
       #     - path: /
       #       pathType: Prefix  # optional, defaults to Prefix
@@ -412,7 +412,7 @@ ingress:
     annotations: {}
       # nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts: []
-      # - host: chorus-webhook.example.com
+      # - host: tutti-webhook.example.com
       #   paths:
       #     - path: /
       #       pathType: Prefix  # optional, defaults to Prefix
@@ -424,7 +424,7 @@ ingress:
     className: ""
     annotations: {}
     hosts: []
-      # - host: chorus.example.com
+      # - host: tutti.example.com
       #   paths:
       #     - path: /
       #       pathType: Prefix  # optional, defaults to Prefix

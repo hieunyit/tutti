@@ -20,7 +20,7 @@ externalRedis:
   # password: "redis-password"
 
   # Optional: Redis user (if ACL enabled)
-  # user: "chorus"
+  # user: "tutti"
 
   # TLS configuration
   tls:

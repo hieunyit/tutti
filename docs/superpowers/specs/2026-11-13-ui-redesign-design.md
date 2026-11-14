@@ -158,7 +158,7 @@ Thứ tự: WP0 chạy trước (nền tảng, tuần tự). Sau khi WP0 xong, W
 | WP1 Dashboard | `pages/TuttiHomePage`, `TuttiMonitoringPage` → `pages/DashboardPage`, `components/dashboard/*` | Mục 4.1 | sonnet |
 | WP2 Storage + Proxies | `TuttiStoragesPage`, `TuttiStorageDetailsPage`, `TuttiProxiesPage`, `TuttiHealthPage`, `components/tutti/storages|proxies|health` | 4.2, 4.3, 4.4 | sonnet |
 | WP3 Protection groups | `TuttiProtectionGroupsPage`, `TuttiProtectionGroupDetailPage`, `TuttiFailoverPage`, `components/tutti/protection*` | 4.5, 4.6 | sonnet |
-| WP4 Replication hub | `TuttiReplicationPage`, `TuttiRoutingPoliciesPage`, `TuttiDiffReportsPage`, các trang `TuttiAdd*`, `TuttiDiffReportDetailPage`, `components/chorus/*` liên quan | 4.7 | sonnet (tách 4a replications + wizard, 4b routing + diff nếu quá dài) |
+| WP4 Replication hub | `TuttiReplicationPage`, `TuttiRoutingPoliciesPage`, `TuttiDiffReportsPage`, các trang `TuttiAdd*`, `TuttiDiffReportDetailPage`, `components/tutti/*` liên quan | 4.7 | sonnet (tách 4a replications + wizard, 4b routing + diff nếu quá dài) |
 | WP5 Access | `TuttiUsersPage`, `TuttiUserCreatePage`, `TuttiUserDetailPage`, `TuttiProxyAccountsPage`, `TuttiConsoleUsersPage`, `components/tutti/users|access|proxy-accounts|console-users` | 4.8, 4.9, 4.10 | sonnet |
 | WP6 Admin | `TuttiSystemSettingsPage`, `TuttiAuditLogPage`, `components/tutti/settings|audit` | 4.11, 4.12 | sonnet |
 | WP7 Auth + Docs | `LoginPage`, `TuttiChangePasswordPage`, `DocsPage`, `components/auth/*`, `components/docs/*` | 4.13 | haiku/sonnet |
