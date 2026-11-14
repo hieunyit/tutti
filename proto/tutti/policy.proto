@@ -34,6 +34,10 @@ service Policy {
   rpc ResumeReplication(ReplicationID) returns (google.protobuf.Empty);
   // Deletes given replication
   rpc DeleteReplication(ReplicationID) returns (google.protobuf.Empty);
+  // Changes the display name of given replication. The name is a label only:
+  // it does not affect replication identity, progress or routing.
+  rpc UpdateReplicationName(UpdateReplicationNameRequest)
+      returns (google.protobuf.Empty);
 
   // Switches source<->destination replication targets without downtime.
   // Zero-downtime switch will take effect immediately on tutti proxy:
@@ -146,6 +150,17 @@ message AddReplicationRequest {
   ReplicationID id = 1;
   // OPTIONAL: Additional replication options.
   ReplicationOpts opts = 2;
+  // OPTIONAL: Display name, max 64 characters, no control characters. Not
+  // unique and not part of the replication identity. Empty means unnamed.
+  string name = 3;
+}
+
+// Renames a replication (display label only).
+message UpdateReplicationNameRequest {
+  // REQUIRED: Replication to rename.
+  ReplicationID id = 1;
+  // Display name, max 64 characters, no control characters. Empty clears it.
+  string name = 2;
 }
 
 // Determines how ongoing data change events are captured for replication.
@@ -278,6 +293,8 @@ message Replication {
   // Webhook endpoint URL for this replication (if event source uses webhook).
   // Read-only, computed by the server.
   string webhook_url = 16;
+  // Optional display name; empty when the replication is unnamed.
+  string name = 17;
 }
 
 // Request list of bucket available for replication for given user and from/to

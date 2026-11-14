@@ -28,6 +28,7 @@ const (
 	Policy_PauseReplication_FullMethodName       = "/tutti.Policy/PauseReplication"
 	Policy_ResumeReplication_FullMethodName      = "/tutti.Policy/ResumeReplication"
 	Policy_DeleteReplication_FullMethodName      = "/tutti.Policy/DeleteReplication"
+	Policy_UpdateReplicationName_FullMethodName  = "/tutti.Policy/UpdateReplicationName"
 	Policy_SwitchWithZeroDowntime_FullMethodName = "/tutti.Policy/SwitchWithZeroDowntime"
 	Policy_SwitchWithDowntime_FullMethodName     = "/tutti.Policy/SwitchWithDowntime"
 	Policy_DeleteSwitch_FullMethodName           = "/tutti.Policy/DeleteSwitch"
@@ -63,6 +64,9 @@ type PolicyClient interface {
 	ResumeReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Deletes given replication
 	DeleteReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Changes the display name of given replication. The name is a label only:
+	// it does not affect replication identity, progress or routing.
+	UpdateReplicationName(ctx context.Context, in *UpdateReplicationNameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -230,6 +234,16 @@ func (c *policyClient) DeleteReplication(ctx context.Context, in *ReplicationID,
 	return out, nil
 }
 
+func (c *policyClient) UpdateReplicationName(ctx context.Context, in *UpdateReplicationNameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_UpdateReplicationName_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *policyClient) SwitchWithZeroDowntime(ctx context.Context, in *SwitchZeroDowntimeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -362,6 +376,9 @@ type PolicyServer interface {
 	ResumeReplication(context.Context, *ReplicationID) (*emptypb.Empty, error)
 	// Deletes given replication
 	DeleteReplication(context.Context, *ReplicationID) (*emptypb.Empty, error)
+	// Changes the display name of given replication. The name is a label only:
+	// it does not affect replication identity, progress or routing.
+	UpdateReplicationName(context.Context, *UpdateReplicationNameRequest) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -462,6 +479,9 @@ func (UnimplementedPolicyServer) ResumeReplication(context.Context, *Replication
 }
 func (UnimplementedPolicyServer) DeleteReplication(context.Context, *ReplicationID) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteReplication not implemented")
+}
+func (UnimplementedPolicyServer) UpdateReplicationName(context.Context, *UpdateReplicationNameRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateReplicationName not implemented")
 }
 func (UnimplementedPolicyServer) SwitchWithZeroDowntime(context.Context, *SwitchZeroDowntimeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SwitchWithZeroDowntime not implemented")
@@ -649,6 +669,24 @@ func _Policy_DeleteReplication_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PolicyServer).DeleteReplication(ctx, req.(*ReplicationID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_UpdateReplicationName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateReplicationNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).UpdateReplicationName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_UpdateReplicationName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).UpdateReplicationName(ctx, req.(*UpdateReplicationNameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -885,6 +923,10 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteReplication",
 			Handler:    _Policy_DeleteReplication_Handler,
+		},
+		{
+			MethodName: "UpdateReplicationName",
+			Handler:    _Policy_UpdateReplicationName_Handler,
 		},
 		{
 			MethodName: "SwitchWithZeroDowntime",

@@ -516,6 +516,41 @@
         ]
       }
     },
+    "/replication/rename": {
+      "put": {
+        "summary": "Changes the display name of given replication. The name is a label only:\nit does not affect replication identity, progress or routing.",
+        "operationId": "Policy_UpdateReplicationName",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Renames a replication (display label only).",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiUpdateReplicationNameRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
     "/replication/resume": {
       "put": {
         "summary": "Resumes given replication",
@@ -2868,6 +2903,10 @@
         "opts": {
           "$ref": "#/definitions/tuttiReplicationOpts",
           "description": "OPTIONAL: Additional replication options."
+        },
+        "name": {
+          "type": "string",
+          "description": "OPTIONAL: Display name, max 64 characters, no control characters. Not\nunique and not part of the replication identity. Empty means unnamed."
         }
       },
       "description": "Configures new user-level or bucket-level replication."
@@ -4617,6 +4656,10 @@
         "webhookUrl": {
           "type": "string",
           "description": "Webhook endpoint URL for this replication (if event source uses webhook).\nRead-only, computed by the server."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional display name; empty when the replication is unnamed."
         }
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
@@ -6142,6 +6185,20 @@
           "description": "Unset keeps the current state."
         }
       }
+    },
+    "tuttiUpdateReplicationNameRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/tuttiReplicationID",
+          "description": "REQUIRED: Replication to rename."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name, max 64 characters, no control characters. Empty clears it."
+        }
+      },
+      "description": "Renames a replication (display label only)."
     },
     "tuttiUpdateRoutingRequest": {
       "type": "object",

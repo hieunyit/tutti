@@ -323,3 +323,26 @@ func StringToBucketReplicationPolicyConverter(value string) (entity.BucketReplic
 	}
 	return bucketID, nil
 }
+
+// SetName sets or clears (empty name) the display name of an existing status. Returns dom.ErrNotFound if the status
+// does not exist.
+func (r *BucketReplicationStatusStore) SetName(ctx context.Context, id entity.BucketReplicationPolicy, name string) error {
+	return setStatusName(ctx, r.status, id, name)
+}
+
+// SetName sets or clears (empty name) the display name of an existing status. Returns dom.ErrNotFound if the status
+// does not exist.
+func (r *UserReplicationStatusStore) SetName(ctx context.Context, id entity.UserReplicationPolicy, name string) error {
+	return setStatusName(ctx, r.status, id, name)
+}
+
+func setStatusName[ID any](ctx context.Context, h *RedisIDKeyHash[ID, entity.ReplicationStatus], id ID, name string) error {
+	if name != "" {
+		return h.SetFieldIfExists(ctx, id, "name", name)
+	}
+	if _, err := h.Get(ctx, id); err != nil {
+		return err
+	}
+	_, err := h.DelField(ctx, id, "name")
+	return err
+}

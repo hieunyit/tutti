@@ -227,7 +227,11 @@ func (h *policyHandlers) validateAddReplication(ctx context.Context, uid entity.
 	if req.Opts != nil {
 		eventSource = req.Opts.EventSource
 	}
-	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource)}
+	name, err := entity.NormalizeReplicationName(req.GetName())
+	if err != nil {
+		return entity.ReplicationOptions{}, err
+	}
+	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name}
 	if userRepl, ok := uid.AsUserID(); ok {
 		if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
 			return opts, fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)
@@ -732,6 +736,29 @@ func (h *policyHandlers) PauseReplication(ctx context.Context, req *pb.Replicati
 	}
 	if h.cpStore != nil {
 		_ = h.cpStore.Repos().Audit.Record(ctx, "PAUSE", "replication", uid.String(), req)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// UpdateReplicationName changes the display label of a replication. It takes the user lock like the other
+// mutations but never touches queues, routing, generations or the scope lock: the name is not part of the identity.
+func (h *policyHandlers) UpdateReplicationName(ctx context.Context, req *pb.UpdateReplicationNameRequest) (*emptypb.Empty, error) {
+	uid, err := pbToReplicationID(req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	name, err := entity.NormalizeReplicationName(req.GetName())
+	if err != nil {
+		return nil, err
+	}
+	err = h.inUserLock(ctx, uid.User(), func(ctx context.Context) error {
+		return h.policySvc.RenameReplication(ctx, uid, name)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "RENAME", "replication", uid.String(), req)
 	}
 	return &emptypb.Empty{}, nil
 }

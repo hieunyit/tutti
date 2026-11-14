@@ -1350,3 +1350,44 @@ func Test_DeleteReplication_ZeroDowntimeSwitchInProgress(t *testing.T) {
 		})
 	}
 }
+
+func Test_RenameReplication(t *testing.T) {
+	c := testutil.SetupRedis(t)
+	userPolicy := entity.UserReplicationPolicy{User: "user", FromStorage: "main", ToStorage: "follower"}
+	bucketPolicy := entity.BucketReplicationPolicy{User: "", FromStorage: "main", ToStorage: "follower", FromBucket: "bucket", ToBucket: "bucket"}
+	qs := tasks.QueueServiceMock{Queues: map[string]int{}, Paused: map[string]bool{}}
+	svc := NewService(c, &qs, "main")
+	ctx := t.Context()
+	r := require.New(t)
+
+	_, err := svc.AddUserReplicationPolicy(ctx, userPolicy, entity.ReplicationOptions{Name: "first"})
+	r.NoError(err)
+	genU, _ := svc.GetReplicationGeneration(ctx, entity.UniversalFromUserReplication(userPolicy))
+	_, err = svc.AddBucketReplicationPolicy(ctx, bucketPolicy, entity.ReplicationOptions{})
+	r.NoError(err)
+
+	uid := entity.UniversalFromUserReplication(userPolicy)
+	bid := entity.UniversalFromBucketReplication(bucketPolicy)
+	info, err := svc.GetReplicationPolicyInfoExtended(ctx, uid)
+	r.NoError(err)
+	r.Equal("first", info.Name)
+
+	r.NoError(svc.RenameReplication(ctx, uid, "second"))
+	r.NoError(svc.RenameReplication(ctx, bid, "bucket copy"))
+	info, _ = svc.GetReplicationPolicyInfoExtended(ctx, uid)
+	r.Equal("second", info.Name)
+	binfo, _ := svc.GetReplicationPolicyInfoExtended(ctx, bid)
+	r.Equal("bucket copy", binfo.Name)
+	list, err := svc.ListBucketReplicationsInfo(ctx, "")
+	r.NoError(err)
+	r.Equal("bucket copy", list[bucketPolicy].Name)
+	genAfter, _ := svc.GetReplicationGeneration(ctx, uid)
+	r.Equal(genU, genAfter)
+
+	r.NoError(svc.RenameReplication(ctx, uid, ""))
+	info, _ = svc.GetReplicationPolicyInfoExtended(ctx, uid)
+	r.Empty(info.Name)
+
+	missing := entity.UniversalFromUserReplication(entity.UserReplicationPolicy{User: "nobody", FromStorage: "main", ToStorage: "follower"})
+	r.ErrorIs(svc.RenameReplication(ctx, missing, "x"), dom.ErrNotFound)
+}

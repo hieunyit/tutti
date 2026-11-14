@@ -56,6 +56,9 @@ http:
     - selector: tutti.Policy.DeleteReplication
       put: /replication/delete
       body: "*"
+    - selector: tutti.Policy.UpdateReplicationName
+      put: /replication/rename
+      body: "*"
     - selector: tutti.Policy.SwitchWithZeroDowntime
       post: /replication/switch/zero-downtime
       body: "*"

@@ -48,6 +48,8 @@ type UserReplicationPolicy struct {
 type ReplicationOptions struct {
 	AgentURL    string
 	EventSource dom.EventSource
+	// Name is an optional display label, validated with NormalizeReplicationName.
+	Name string
 }
 
 func (p UserReplicationPolicy) LookupID() string {
@@ -101,6 +103,8 @@ type ReplicationStatus struct {
 	// TODO: add other replication options here, like copy origin timestamp, etc.
 	AgentURL    string `redis:"agent_url,omitempty"`
 	EventSource string `redis:"event_source,omitempty"`
+	// Name is an optional display label. It is not part of the replication identity.
+	Name string `redis:"name,omitempty"`
 
 	IsArchived bool `redis:"archived"`
 	// FailoverPending identifies a pause owned by an unfinished automatic failover.
@@ -112,6 +116,7 @@ func StatusFromOptions(opts ReplicationOptions) ReplicationStatus {
 	return ReplicationStatus{
 		AgentURL:    opts.AgentURL,
 		EventSource: string(opts.EventSource),
+		Name:        opts.Name,
 	}
 }
 

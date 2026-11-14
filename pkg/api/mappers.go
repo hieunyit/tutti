@@ -55,7 +55,15 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		SwitchInfo:    toPbSwitchStatus(value.Switch),
 		EventSource:   eventSourceFromStatus(value.ReplicationStatus),
 		WebhookUrl:    webhookURLFromStatus(value.ReplicationStatus),
+		Name:          nameFromStatus(value.ReplicationStatus),
 	}
+}
+
+func nameFromStatus(s *entity.ReplicationStatus) string {
+	if s == nil {
+		return ""
+	}
+	return s.Name
 }
 
 func webhookURLFromStatus(s *entity.ReplicationStatus) string {

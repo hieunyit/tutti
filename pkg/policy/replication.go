@@ -54,6 +54,7 @@ func toCPStatus(st entity.ReplicationStatus) controlplane.ReplicationStatus {
 		ArchivedAt:  st.ArchivedAt,
 		AgentURL:    st.AgentURL,
 		EventSource: st.EventSource,
+		Name:        st.Name,
 	}
 }
 
@@ -64,6 +65,7 @@ func fromCPStatus(st controlplane.ReplicationStatus, failoverPending bool) entit
 		ArchivedAt:      st.ArchivedAt,
 		AgentURL:        st.AgentURL,
 		EventSource:     st.EventSource,
+		Name:            st.Name,
 		FailoverPending: failoverPending,
 	}
 }
@@ -72,6 +74,9 @@ type ReplicationSvc interface {
 	// common methods for user and bucket replication policies
 	PauseReplication(ctx context.Context, id entity.UniversalReplicationID) error
 	ResumeReplication(ctx context.Context, id entity.UniversalReplicationID) error
+	// RenameReplication sets or clears (empty) the display name of an existing replication. The name must be
+	// normalized by the caller (entity.NormalizeReplicationName). It never touches queues, routing or generations.
+	RenameReplication(ctx context.Context, id entity.UniversalReplicationID, name string) error
 	GetReplicationPolicyInfoExtended(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatusExtended, error)
 	GetReplicationGeneration(ctx context.Context, id entity.UniversalReplicationID) (int64, error)
 
@@ -100,6 +105,28 @@ func (r *policySvc) PauseReplication(ctx context.Context, id entity.UniversalRep
 		return err
 	}
 	return r.pauseReplicationQueues(ctx, id)
+}
+
+func (r *policySvc) RenameReplication(ctx context.Context, id entity.UniversalReplicationID, name string) error {
+	if err := id.Validate(); err != nil {
+		return fmt.Errorf("rename replication: unable to validate replication id: %w", err)
+	}
+	if r.cp != nil {
+		return controlplane.WrapWriteError(r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			return repos.Replications.SetName(ctx, toCPReplicationID(id), name)
+		}))
+	}
+	var err error
+	if userID, ok := id.AsUserID(); ok {
+		err = r.userReplicationStatusStore.SetName(ctx, userID, name)
+	} else {
+		bucketID, _ := id.AsBucketID()
+		err = r.bucketReplicationStatusStore.SetName(ctx, bucketID, name)
+	}
+	if err != nil {
+		return fmt.Errorf("rename replication: %w", err)
+	}
+	return nil
 }
 
 func (r *policySvc) pauseReplicationQueues(ctx context.Context, id entity.UniversalReplicationID) error {
