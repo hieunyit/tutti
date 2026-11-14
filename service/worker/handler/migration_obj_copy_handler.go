@@ -35,7 +35,18 @@ import (
 	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
-func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err error) {
+func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) error {
+	err := s.handleMigrationObjCopy(ctx, t)
+	if err == nil && t.Type() == tasks.TypeMigrateObjCopy {
+		var p tasks.MigrateObjCopyPayload
+		if json.Unmarshal(t.Payload(), &p) == nil {
+			s.addInitDoneBytes(ctx, p.ID, p.Generation, p.Obj.Size)
+		}
+	}
+	return err
+}
+
+func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err error) {
 	var p tasks.MigrateObjCopyPayload
 	if err = json.Unmarshal(t.Payload(), &p); err != nil {
 		return fmt.Errorf("MigrateObjCopyPayload Unmarshal failed: %w: %w", err, asynq.SkipRetry)

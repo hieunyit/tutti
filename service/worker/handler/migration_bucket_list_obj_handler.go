@@ -219,6 +219,7 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 	var (
 		batch         []any
 		batchKeys     []string
+		batchSizes    []int64
 		batchVersions bool
 	)
 	// flush enqueues the pending batch. stop reports that this page must end.
@@ -226,7 +227,7 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		if len(batch) == 0 {
 			return false, nil
 		}
-		defer func() { batch, batchKeys, batchVersions = batch[:0], batchKeys[:0], false }()
+		defer func() { batch, batchKeys, batchSizes, batchVersions = batch[:0], batchKeys[:0], batchSizes[:0], false }()
 		if batchVersions {
 			// The list-versions task lands on the list queue but fans out into copy tasks: admit it against the copy queue.
 			unprocessed, uErr := s.queueSvc.UnprocessedCount(ctx, true, copyQueue)
@@ -243,6 +244,7 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		if n > 0 {
 			lastObjName = batchKeys[n-1]
 			count += n
+			s.addInitTotalBytes(ctx, p.ID, p.Generation, batchSizes[:n])
 		}
 		if enqueueErr != nil {
 			var rl *dom.ErrRateLimitExceeded
@@ -280,6 +282,7 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 			}
 			task.SetReplicationID(replicationID, p.Generation)
 			batch = append(batch, task)
+			batchSizes = append(batchSizes, 0) // versioned migration does not track bytes
 			batchVersions = true
 		} else {
 			task := tasks.MigrateObjCopyPayload{
@@ -294,6 +297,7 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 			}
 			task.SetReplicationID(replicationID, p.Generation)
 			batch = append(batch, task)
+			batchSizes = append(batchSizes, object.Size)
 		}
 		batchKeys = append(batchKeys, object.Key)
 

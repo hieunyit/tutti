@@ -133,6 +133,33 @@ type ReplicationStatusExtended struct {
 	InitMigration QueueStats
 	// Aggregated stats for event migration queues.
 	EventMigration QueueStats
+	// Initial migration progress by bytes (non-versioned objects only).
+	InitBytes InitBytesStats
+}
+
+// InitBytesStats is initial replication progress measured in bytes.
+type InitBytesStats struct {
+	// Total is the sum of sizes of objects enumerated by the listing so far. A lower bound until ListingComplete.
+	Total int64
+	// Done is the sum of sizes of objects copied successfully.
+	Done int64
+	// BytesPerSecond is completion-based throughput over a rolling window, 0 if idle/unknown.
+	BytesPerSecond int64
+	// ListingComplete is true when the listing of the source bucket finished, so Total is final.
+	ListingComplete bool
+}
+
+// ETA estimates the time left for the initial copy. ok is false when it cannot be estimated
+// (listing still running, no throughput yet, or nothing known).
+func (b InitBytesStats) ETA() (eta time.Duration, ok bool) {
+	if !b.ListingComplete || b.BytesPerSecond <= 0 || b.Total <= 0 {
+		return 0, false
+	}
+	remaining := b.Total - b.Done
+	if remaining <= 0 {
+		return 0, true
+	}
+	return time.Duration(remaining/b.BytesPerSecond) * time.Second, true
 }
 
 func (r *ReplicationStatusExtended) InitDone() bool {

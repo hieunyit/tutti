@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -260,6 +261,7 @@ func (r *policySvc) fillExtendedReplicationStatus(ctx context.Context, id entity
 		return entity.ReplicationStatusExtended{}, fmt.Errorf("unable to get init migration queue stats: %w", err)
 	}
 	result.IsPaused = result.IsPaused || paused
+	result.InitBytes = r.initBytesStats(ctx, id, result.InitMigrationListing)
 
 	// get event migration queues stats
 	paused, result.EventMigration, err = r.buildQueueStats(ctx, tasks.EventMigrationQueue(id))
@@ -269,6 +271,26 @@ func (r *policySvc) fillExtendedReplicationStatus(ctx context.Context, id entity
 	result.IsPaused = result.IsPaused || paused
 
 	return result, nil
+}
+
+// initBytesStats reads initial replication byte counters. They are best effort: on error the bytes stay zero
+// and the object counters keep working.
+func (r *policySvc) initBytesStats(ctx context.Context, id entity.UniversalReplicationID, listing entity.QueueStats) entity.InitBytesStats {
+	res := entity.InitBytesStats{ListingComplete: listing.Unprocessed == 0 && listing.Archived == 0}
+	if r.client == nil {
+		return res
+	}
+	gen, err := r.GetReplicationGeneration(ctx, id)
+	if err != nil {
+		return res
+	}
+	b, err := store.NewInitBytesStore(r.client).Get(ctx, id.AsString(), gen, time.Now())
+	if err != nil {
+		zerolog.Ctx(ctx).Debug().Err(err).Msg("unable to read initial replication bytes")
+		return res
+	}
+	res.Total, res.Done, res.BytesPerSecond = b.Total, b.Done, b.BytesPerSecond
+	return res
 }
 
 func (r *policySvc) buildQueueStats(ctx context.Context, queue string) (bool, entity.QueueStats, error) {
