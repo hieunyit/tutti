@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -73,6 +74,22 @@ func main() {
 	conf, err := worker.GetConfig(configs...)
 	if err != nil {
 		stdlog.Fatal().Err(err).Msg("critical error. Unable to read app config")
+	}
+
+	if args := flag.Args(); len(args) > 0 {
+		if args[0] != "admin" {
+			stdlog.Fatal().Msgf("unknown command %q (supported: admin reset-password)", args[0])
+		}
+		opts, err := worker.ParseAdminArgs(args[1:], os.Stderr)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if err := worker.RunAdminResetPassword(ctx, conf, opts, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	err = worker.Start(ctx, dom.AppInfo{

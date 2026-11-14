@@ -660,7 +660,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			return err
 		}
 		if authSvc.Enabled() {
-			if err := authSvc.EnsureAdmin(ctx); err != nil {
+			if err := authSvc.EnsureAdmin(ctx); errors.Is(err, dom.ErrInvalidArg) {
+				return err
+			} else if err != nil {
 				logger.Warn().Err(err).Msg("unable to ensure admin console user in database")
 			}
 		}

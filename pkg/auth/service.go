@@ -327,25 +327,28 @@ func (s *Service) EnsureAdmin(ctx context.Context) error {
 		}
 		return nil
 	}
-	bootstrapPw := strings.TrimSpace(os.Getenv("TUTTI_BOOTSTRAP_ADMIN_PASSWORD"))
+	bootstrapPw, source := strings.TrimSpace(os.Getenv(envBootstrapPassword)), envBootstrapPassword
 	if bootstrapPw == "" {
-		bootstrapPw = strings.TrimSpace(s.conf.BootstrapAdminPassword)
+		bootstrapPw, source = strings.TrimSpace(s.conf.BootstrapAdminPassword), "bootstrapAdminPassword"
 	}
-	mustChange := true
-	if val := os.Getenv("TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE"); val == "false" || val == "0" {
-		mustChange = false
-	}
+	mustChange := forceChangeEnabled()
+	generatedPw := false
 	if bootstrapPw == "" {
-		bootstrapPw = randomBootstrapPassword()
+		var gerr error
+		if bootstrapPw, gerr = GeneratePassword(); gerr != nil {
+			return gerr
+		}
+		generatedPw = true
 		mustChange = true
-		log.Warn().Str("username", "admin").Str("password", bootstrapPw).Msg("no bootstrap admin password configured (TUTTI_BOOTSTRAP_ADMIN_PASSWORD / bootstrapAdminPassword): generated a one-time admin password, shown once; it must be changed at first login")
+	} else if verr := ValidatePassword("admin", bootstrapPw); verr != nil {
+		return fmt.Errorf("%w: invalid initial admin password from %s (minimum %d characters): %v", dom.ErrInvalidArg, source, MinPasswordLength, verr)
 	}
 	cost := s.cost()
 	hash, err := bcrypt.GenerateFromPassword([]byte(bootstrapPw), cost)
 	if err != nil {
 		return err
 	}
-	return s.managed.Create(ctx, ManagedUser{
+	if err := s.managed.Create(ctx, ManagedUser{
 		Username:           "admin",
 		Role:               RoleAdmin,
 		PasswordHash:       string(hash),
@@ -353,7 +356,15 @@ func (s *Service) EnsureAdmin(ctx context.Context) error {
 		UpdatedAt:          now,
 		PasswordChangedAt:  now,
 		MustChangePassword: mustChange,
-	})
+	}); err != nil {
+		return err
+	}
+	if generatedPw {
+		// The secret goes to stderr once, never to the structured (aggregated) log.
+		PrintPasswordBanner("INITIAL ADMIN PASSWORD", "admin", bootstrapPw)
+		log.Warn().Str("username", "admin").Msg("initial admin password generated; see the banner on stderr")
+	}
+	return nil
 }
 
 // throttled enforces the login budgets:
@@ -567,12 +578,4 @@ func (s *Service) restamp(ctx context.Context, token string, sess *Session) erro
 		return err
 	}
 	return s.rdb.SetArgs(ctx, sessionPrefix+hashToken(token), data, redis.SetArgs{Mode: "XX", KeepTTL: true}).Err()
-}
-
-func randomBootstrapPassword() string {
-	b := make([]byte, 18)
-	if _, err := rand.Read(b); err != nil {
-		panic(fmt.Sprintf("auth: random bootstrap password: %v", err))
-	}
-	return base64.RawURLEncoding.EncodeToString(b)
 }
