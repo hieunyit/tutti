@@ -20,7 +20,7 @@
    * ACTIVITY_INFLIGHT_ROW_CAP rows (a note says how many are hidden).
    */
   import { NDataTable, type DataTableColumns } from 'naive-ui';
-  import { computed } from 'vue';
+  import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nReplicationActivity from './i18nReplicationActivity';
   import { EmptyBlock } from '@/components/kit';
@@ -66,6 +66,29 @@
         const size = InitProgressHelper.toNumber(row.size);
 
         return size > 0 ? InitProgressHelper.formatSize(size) : '-';
+      },
+    },
+    {
+      title: t('colProgress'),
+      key: 'progress',
+      width: 200,
+      render: (row) => {
+        const p = InitProgressHelper.copyProgress(row.size, row.bytesDone);
+
+        if (!p) return '-';
+
+        return h('div', { class: 'activity-inflight__progress' }, [
+          h(
+            'span',
+            `${InitProgressHelper.formatSize(p.done)} / ${InitProgressHelper.formatSize(p.size)} (${p.percent}%)`,
+          ),
+          h('div', { class: 'activity-inflight__bar' }, [
+            h('div', {
+              class: 'activity-inflight__bar-fill',
+              style: { width: `${p.percent}%` },
+            }),
+          ]),
+        ]);
       },
     },
     {
@@ -120,6 +143,24 @@
 <style lang="scss" scoped>
   .activity-inflight {
     min-width: 0;
+
+    :deep(.activity-inflight__progress) {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    :deep(.activity-inflight__bar) {
+      height: 3px;
+      border-radius: 2px;
+      background: var(--tt-border);
+      overflow: hidden;
+    }
+
+    :deep(.activity-inflight__bar-fill) {
+      height: 100%;
+      background: var(--tt-accent);
+    }
 
     &__note {
       margin: var(--tt-space-2) 0 0;

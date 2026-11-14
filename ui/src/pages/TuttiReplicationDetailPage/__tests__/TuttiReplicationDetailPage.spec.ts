@@ -68,6 +68,7 @@ const activity = {
     {
       key: 'big/file.bin',
       size: '52428800',
+      bytesDone: '26214400',
       startedAt: '2026-11-15T10:00:00Z',
       flow: 'init',
       attempt: 1,
@@ -163,6 +164,7 @@ describe('TuttiReplicationDetailPage', () => {
     expect(page.text()).toContain('prod to dr');
     expect(page.text()).toContain('big/file.bin');
     expect(page.text()).toContain('50.0 MB');
+    expect(page.text()).toContain('25.0 MB / 50.0 MB (50%)');
 
     const lines = page.findAll('.activity-console__line');
 

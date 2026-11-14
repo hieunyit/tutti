@@ -19,17 +19,17 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     initBytesLabel: 'Initial Replication',
-    initCopied: 'Copied {size}',
+    initCopied: 'Copied {size} (incl. in progress)',
     initObjectsCount: '{done} / {total} objects',
   },
   [I18nLocale.DE]: {
     initBytesLabel: 'Erste Replikation',
-    initCopied: '{size} kopiert',
+    initCopied: '{size} kopiert (inkl. laufender)',
     initObjectsCount: '{done} / {total} Objekte',
   },
   vi: {
     initBytesLabel: 'Sao chép ban đầu',
-    initCopied: 'Đã sao chép {size}',
+    initCopied: 'Đã sao chép {size} (gồm đang chạy)',
     initObjectsCount: '{done} / {total} object',
   },
 };

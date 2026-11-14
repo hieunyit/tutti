@@ -53,6 +53,17 @@ describe('InitProgressHelper', () => {
     expect(p.listingComplete).toBe(false);
   });
 
+  it('computes the progress of one running copy', () => {
+    expect(H.copyProgress('1000', '330')).toEqual({
+      done: 330,
+      size: 1000,
+      percent: 33,
+    });
+    expect(H.copyProgress(1000, 5000)?.done).toBe(1000);
+    expect(H.copyProgress(1000, undefined)?.percent).toBe(0);
+    expect(H.copyProgress(undefined, '10')).toBeNull();
+  });
+
   it('caps percent at 100', () => {
     expect(
       H.fromReplication(repl({ initBytesTotal: '10', initBytesDone: '30' }))

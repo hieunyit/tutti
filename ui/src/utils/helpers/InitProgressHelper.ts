@@ -61,6 +61,20 @@ export class InitProgressHelper {
     return restHours ? `${days} d ${restHours} h` : `${days} d`;
   }
 
+  /** Progress of one running copy: bytes done (never above size) and the whole percent; null without a size. */
+  static copyProgress(
+    size: Num | undefined,
+    bytesDone: Num | undefined,
+  ): { done: number; size: number; percent: number } | null {
+    const total = InitProgressHelper.toNumber(size ?? 0);
+
+    if (total <= 0) return null;
+
+    const done = Math.min(total, InitProgressHelper.toNumber(bytesDone ?? 0));
+
+    return { done, size: total, percent: Math.floor((done / total) * 100) };
+  }
+
   static fromReplication(r: TuttiReplication): InitProgress {
     const totalBytes = InitProgressHelper.toNumber(r.initBytesTotal);
     const doneBytes = InitProgressHelper.toNumber(r.initBytesDone);

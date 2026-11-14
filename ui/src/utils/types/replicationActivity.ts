@@ -37,6 +37,8 @@ export interface ReplicationInFlight {
   startedAt: string;
   flow: string;
   attempt?: number;
+  /** bytes of this object transferred so far (initial replication), <= size */
+  bytesDone?: Int64;
 }
 
 export interface ReplicationActivityEvent {
