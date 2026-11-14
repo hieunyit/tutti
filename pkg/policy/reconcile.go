@@ -2,10 +2,12 @@ package policy
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 )
 
@@ -24,9 +26,10 @@ func ReconcileReplications(ctx context.Context, p Service, users func() []string
 
 	// 1. User replications
 	userRepls, err := p.ListUserReplicationsInfo(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, dom.ErrNotFound) {
 		return res, err
 	}
+	// ErrNotFound means there are no user replications: nothing to reconcile, not a failure.
 	for pol, st := range userRepls {
 		res.Checked++
 		uid := entity.UniversalFromUserReplication(pol)
@@ -49,6 +52,9 @@ func ReconcileReplications(ctx context.Context, p Service, users func() []string
 		}
 		seen[u] = true
 		bucketRepls, err := p.ListBucketReplicationsInfo(ctx, u)
+		if errors.Is(err, dom.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			res.Errors++
 			continue

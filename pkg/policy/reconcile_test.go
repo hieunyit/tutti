@@ -2,10 +2,12 @@ package policy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 )
 
@@ -60,4 +62,24 @@ func TestReconcileReplications_ResumesPendingFailovers(t *testing.T) {
 	r.Equal(0, res.Errors)
 	r.Contains(fake.resumed, entity.UniversalFromUserReplication(pol1).String())
 	r.Contains(fake.resumed, entity.UniversalFromBucketReplication(pol2).String())
+}
+
+type notFoundUserSvc struct{ fakeReconcilePolicySvc }
+
+func (f *notFoundUserSvc) ListUserReplicationsInfo(context.Context) (map[entity.UserReplicationPolicy]entity.ReplicationStatusExtended, error) {
+	return nil, fmt.Errorf("%w: no user replication policies found", dom.ErrNotFound)
+}
+
+func TestReconcileReplications_NoUserPoliciesIsNotAnError(t *testing.T) {
+	r := require.New(t)
+	pol := entity.BucketReplicationPolicy{User: "bob", FromStorage: "s1", ToStorage: "s2", FromBucket: "b1", ToBucket: "b2"}
+	fake := &notFoundUserSvc{fakeReconcilePolicySvc{
+		bucketRepls: map[entity.BucketReplicationPolicy]entity.ReplicationStatusExtended{
+			pol: {ReplicationStatus: &entity.ReplicationStatus{FailoverPending: true}},
+		},
+	}}
+	res, err := ReconcileReplications(context.Background(), fake, func() []string { return []string{"bob"} })
+	r.NoError(err)
+	// bucket replications are still reconciled when there are no user replications
+	r.Equal(1, res.Resumed)
 }
