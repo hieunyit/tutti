@@ -328,11 +328,11 @@ export interface TuttiSystemWorkerSettings {
   backlogLowWatermark?: number;
   bandwidthLimitBytes?: string;
   bufferBudgetBytes?: string;
-  /** 0 = default 20; valid 0 or 5..95; needs a worker restart */
+  /** 0 = auto; valid 0 or 5..95; needs a worker restart */
   bulkConcurrencyPercent?: number;
-  /** 0 = default 1; valid 0 or 1..16; applies live */
+  /** 0 = auto (1); valid 0 or 1..16; applies live */
   multipartThreads?: number;
-  /** 0 = default 16; valid 0 or 5..512; applies live */
+  /** 0 = auto (16); valid 0 or 5..512; applies live */
   multipartPartSizeMib?: number;
 }
 
@@ -345,6 +345,24 @@ export interface TuttiSystemWebhookSettings {
   baseUrl?: string;
 }
 
+export interface TuttiHardwareInfo {
+  cpu?: number;
+  cpuFractional?: number;
+  memoryBytes?: TuttiInt64;
+  /** host | cgroup-v1 | cgroup-v2 */
+  source?: string;
+  memoryLimited?: boolean;
+}
+
+/** "auto" (derived from detected hardware) or "explicit" per tunable. */
+export interface TuttiWorkerTuningSources {
+  concurrency?: string;
+  bulkConcurrencyPercent?: string;
+  bufferBudgetBytes?: string;
+  multipartThreads?: string;
+  multipartPartSizeMib?: string;
+}
+
 export interface TuttiSystemSettings {
   version?: TuttiInt64;
   updatedAt?: string;
@@ -352,6 +370,11 @@ export interface TuttiSystemSettings {
   worker?: TuttiSystemWorkerSettings;
   lock?: TuttiSystemLockSettings;
   webhook?: TuttiSystemWebhookSettings;
+  /** read-only, filled by the server */
+  hardware?: TuttiHardwareInfo;
+  recommended?: TuttiSystemWorkerSettings;
+  effective?: TuttiSystemWorkerSettings;
+  tuningSources?: TuttiWorkerTuningSources;
 }
 
 export interface TuttiUpdateSystemSettingsRequest {

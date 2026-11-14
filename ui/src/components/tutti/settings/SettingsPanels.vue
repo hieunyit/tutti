@@ -37,6 +37,7 @@
     WORKER_TUNING_KEYS,
     type WorkerTuningKey,
   } from '@/utils/helpers/SystemSettingsHelper';
+  import type { TuttiWorkerTuningSources } from '@/utils/types/tutti';
 
   const props = defineProps<{ tab: SettingsTab; disabled: boolean }>();
 
@@ -66,6 +67,18 @@
     multipartThreads: '1',
     multipartPartSizeMib: '16',
   };
+
+  /** "Auto" badge: the saved value is unset, so the worker uses the hardware-derived one. */
+  function autoLabel(key: keyof TuttiWorkerTuningSources): string | undefined {
+    return store.settings?.tuningSources?.[key] === 'auto'
+      ? t('autoBadge')
+      : undefined;
+  }
+
+  /** Placeholder of an unset tuning field: the value the worker derived for itself. */
+  function tuningPlaceholder(key: WorkerTuningKey): string {
+    return String(store.settings?.effective?.[key] ?? tuningDefaults[key]);
+  }
 
   /** 0 is stored, but shown as an empty field with the default as placeholder. */
   function tuningValue(key: WorkerTuningKey): number | null {
@@ -154,6 +167,8 @@
           )
         "
         :error="err(key)"
+        :auto="key === 'bufferBudgetBytes' ? autoLabel(key) : undefined"
+        :auto-title="t('autoBadgeTitle')"
       >
         <NInput
           v-model:value="draft.worker![key]"
@@ -180,11 +195,13 @@
         :hint="t('concurrencyHint')"
         :error="err('concurrency')"
         :restart="restart('concurrency')"
+        :auto="autoLabel('concurrency')"
+        :auto-title="t('autoBadgeTitle')"
       >
         <NInputNumber
           v-model:value="draft.worker!.concurrency"
           :disabled="disabled"
-          :min="1"
+          :min="0"
           :max="1000"
           :precision="0"
           :status="status('concurrency')"
@@ -224,6 +241,8 @@
           key === 'bulkConcurrencyPercent' ? t('needsRestart') : undefined
         "
         :live="key === 'bulkConcurrencyPercent' ? undefined : t('appliesLive')"
+        :auto="autoLabel(key)"
+        :auto-title="t('autoBadgeTitle')"
       >
         <NInputNumber
           :value="tuningValue(key)"
@@ -231,7 +250,7 @@
           :min="0"
           :max="WORKER_TUNING_FIELDS[key].max"
           :precision="0"
-          :placeholder="tuningDefaults[key]"
+          :placeholder="tuningPlaceholder(key)"
           :status="status(key)"
           :input-props="inputProps(key)"
           @update:value="(v) => setTuning(key, v)"

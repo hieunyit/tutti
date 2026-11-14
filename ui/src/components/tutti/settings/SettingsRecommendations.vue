@@ -16,8 +16,9 @@
 
 <script setup lang="ts">
   /**
-   * Collapsible "Recommended values" helper: suggestions for the hardware the
-   * operator enters. Values are only copied into the draft by "Fill in".
+   * Collapsible "Recommended values" helper. Shows the hardware the worker
+   * detected (cgroup / Kubernetes limits included) and the values derived
+   * from it. Values are only copied into the draft by "Fill in".
    */
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -34,42 +35,98 @@
 
   const { t } = useI18n({ messages });
   const store = useTuttiSystemSettingsStore();
-  const cores = ref<number | null>(4);
-  const ramGb = ref<number | null>(32);
-  const rec = computed(() =>
-    recommendSettings(cores.value ?? 4, ramGb.value ?? 32),
-  );
+  // Optional preview for other hardware; empty = use the detected hardware.
+  const cores = ref<number | null>(null);
+  const ramGb = ref<number | null>(null);
+
+  const hardware = computed(() => store.settings?.hardware);
+  const detected = computed(() => {
+    const hw = hardware.value;
+
+    if (!hw?.cpu || !hw.memoryBytes) return null;
+
+    const cpu =
+      hw.cpuFractional && hw.cpuFractional !== hw.cpu
+        ? `${hw.cpu} (${t('recDetectedFractional', { cpu: hw.cpuFractional })})`
+        : String(hw.cpu);
+
+    return t('recDetected', {
+      cpu,
+      mem: TrafficStatsHelper.formatBytes(Number(hw.memoryBytes)),
+      source: hw.source ?? 'host',
+    });
+  });
+
+  const rec = computed<RecommendedSettings | null>(() => {
+    if (cores.value || ramGb.value) {
+      return recommendSettings(
+        cores.value ?? hardware.value?.cpu ?? 4,
+        ramGb.value ?? Number(hardware.value?.memoryBytes ?? 0) / 1024 ** 3,
+      );
+    }
+
+    const r = store.settings?.recommended;
+
+    if (!r) return null;
+
+    return {
+      concurrency: r.concurrency ?? 0,
+      bufferBudgetBytes: r.bufferBudgetBytes ?? '0',
+      multipartThreads: r.multipartThreads ?? 1,
+      bulkConcurrencyPercent: r.bulkConcurrencyPercent ?? 0,
+    };
+  });
 
   const rows = computed<
     { key: keyof RecommendedSettings; text: string; value: string }[]
-  >(() => [
-    {
-      key: 'concurrency',
-      text: t('recConcurrency'),
-      value: String(rec.value.concurrency),
-    },
-    {
-      key: 'bufferBudgetBytes',
-      text: t('recBuffer'),
-      value: `${rec.value.bufferBudgetBytes} (${TrafficStatsHelper.formatBytes(Number(rec.value.bufferBudgetBytes))})`,
-    },
-    {
-      key: 'multipartThreads',
-      text: t('recThreads'),
-      value: String(rec.value.multipartThreads),
-    },
-    {
-      key: 'bulkConcurrencyPercent',
-      text: t('recBulk'),
-      value: `${rec.value.bulkConcurrencyPercent}%`,
-    },
-  ]);
+  >(() => {
+    const r = rec.value;
+
+    if (!r) return [];
+
+    return [
+      {
+        key: 'concurrency',
+        text: t('recConcurrency'),
+        value: String(r.concurrency),
+      },
+      {
+        key: 'bufferBudgetBytes',
+        text: t('recBuffer'),
+        value: `${r.bufferBudgetBytes} (${TrafficStatsHelper.formatBytes(Number(r.bufferBudgetBytes))})`,
+      },
+      {
+        key: 'multipartThreads',
+        text: t('recThreads'),
+        value: String(r.multipartThreads),
+      },
+      {
+        key: 'bulkConcurrencyPercent',
+        text: t('recBulk'),
+        value: `${r.bulkConcurrencyPercent}%`,
+      },
+    ];
+  });
 
   function fill(key: keyof RecommendedSettings) {
     const worker = store.draft.worker!;
 
-    if (key === 'bufferBudgetBytes') worker.bufferBudgetBytes = rec.value[key];
+    if (!rec.value) return;
+
+    if (key === 'bufferBudgetBytes')
+      worker.bufferBudgetBytes = rec.value.bufferBudgetBytes;
     else worker[key] = rec.value[key];
+  }
+
+  /** 0 = auto: the worker derives these from its hardware. */
+  function useAuto() {
+    const worker = store.draft.worker!;
+
+    worker.concurrency = 0;
+    worker.bufferBudgetBytes = '0';
+    worker.bulkConcurrencyPercent = 0;
+    worker.multipartThreads = 0;
+    worker.multipartPartSizeMib = 0;
   }
 </script>
 
@@ -81,28 +138,37 @@
   >
     <summary class="settings-rec__summary">{{ t('recTitle') }}</summary>
     <p class="settings-rec__intro">{{ t('recIntro') }}</p>
-    <div class="settings-rec__inputs">
-      <label class="settings-rec__input">
-        <span>{{ t('recCores') }}</span>
-        <NInputNumber
-          v-model:value="cores"
-          :min="1"
-          :max="512"
-          :precision="0"
-          :input-props="{ id: 'settings-rec-cores' }"
-        />
-      </label>
-      <label class="settings-rec__input">
-        <span>{{ t('recRam') }}</span>
-        <NInputNumber
-          v-model:value="ramGb"
-          :min="1"
-          :max="4096"
-          :precision="0"
-          :input-props="{ id: 'settings-rec-ram' }"
-        />
-      </label>
-    </div>
+    <p
+      class="settings-rec__detected"
+      data-test="detected-hardware"
+    >
+      {{ detected ?? t('recUnavailable') }}
+    </p>
+    <details class="settings-rec__override">
+      <summary>{{ t('recOverride') }}</summary>
+      <div class="settings-rec__inputs">
+        <label class="settings-rec__input">
+          <span>{{ t('recCores') }}</span>
+          <NInputNumber
+            v-model:value="cores"
+            :min="1"
+            :max="512"
+            :precision="0"
+            :input-props="{ id: 'settings-rec-cores' }"
+          />
+        </label>
+        <label class="settings-rec__input">
+          <span>{{ t('recRam') }}</span>
+          <NInputNumber
+            v-model:value="ramGb"
+            :min="1"
+            :max="4096"
+            :precision="0"
+            :input-props="{ id: 'settings-rec-ram' }"
+          />
+        </label>
+      </div>
+    </details>
     <ul class="settings-rec__list">
       <li
         v-for="row in rows"
@@ -121,6 +187,13 @@
         >
       </li>
     </ul>
+    <NButton
+      size="small"
+      :disabled="disabled"
+      data-test="use-auto"
+      @click="useAuto"
+      >{{ t('recUseAuto') }}</NButton
+    >
   </details>
 </template>
 
@@ -135,6 +208,15 @@
     }
 
     &__intro {
+      color: var(--tt-text-3);
+      font-size: var(--tt-text-xs);
+    }
+
+    &__detected {
+      font-weight: var(--tt-weight-medium);
+    }
+
+    &__override {
       color: var(--tt-text-3);
       font-size: var(--tt-text-xs);
     }

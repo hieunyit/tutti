@@ -62,7 +62,7 @@ export default <I18nMessages>{
     keepEditing: 'Keep editing',
     durationHint: 'Duration format: 500ms, 30s or 1m30s.',
     invalidDuration: 'Enter a positive duration, e.g. 500ms, 30s or 1m30s.',
-    invalidConcurrency: 'Enter a whole number between 1 and 1,000.',
+    invalidConcurrency: 'Enter 0 (auto) or a whole number between 1 and 1,000.',
     invalidWatermark: 'Enter a whole number between 1 and 2,147,483,647.',
     invalidWatermarkOrder:
       'The low watermark must be smaller than the high watermark.',
@@ -103,7 +103,8 @@ export default <I18nMessages>{
     workerDesc:
       'Set task concurrency and processing intervals. Changes in this section require a worker restart.',
     concurrency: 'Task concurrency',
-    concurrencyHint: 'Maximum parallel replication tasks per worker process.',
+    concurrencyHint:
+      'Maximum parallel replication tasks per worker process. 0 = auto (derived from the CPU and memory available to the worker).',
     shutdownTimeout: 'Shutdown timeout',
     queueUpdateInterval: 'Queue update interval',
     taskCheckInterval: 'Task check interval',
@@ -120,7 +121,8 @@ export default <I18nMessages>{
     bandwidthLimitBytes: 'Copy bandwidth (bytes/s)',
     bandwidthLimitHint: 'Per worker. 0 = unlimited; 2097152 = 2 MiB/s.',
     bufferBudgetBytes: 'Multipart buffer budget (bytes)',
-    bufferBudgetHint: 'Per worker. 0 = unlimited; 268435456 = 256 MiB.',
+    bufferBudgetHint:
+      'Per worker. 0 = auto (25% of available memory, 256 MiB to 8 GiB); otherwise at least 16 MiB.',
     tuneTitle: 'Replication throughput',
     tuneDesc:
       'Tune how many copies run in parallel and how multipart uploads are split. Leave a field blank (or 0) to keep the current value or default shown in it; the API cannot reset a value to its default.',
@@ -128,28 +130,35 @@ export default <I18nMessages>{
     appliesLive: 'Applies immediately',
     bulkConcurrencyPercent: 'Bulk concurrency share (%)',
     bulkConcurrencyPercentHint:
-      'Share of task concurrency reserved for bulk migration. Default 20; allowed 5 to 95.',
+      'Share of task concurrency reserved for bulk migration. 0 = auto (20 to 40 by CPU); allowed 5 to 95.',
     multipartThreads: 'Multipart threads',
     multipartThreadsHint:
-      'Parallel part uploads per object. Default 1; allowed 1 to 16.',
+      'Parallel part uploads per object. 0 = auto (1); allowed 1 to 16.',
     multipartPartSizeMib: 'Multipart part size (MiB)',
     multipartPartSizeMibHint:
-      'Size of each uploaded part. Default 16; allowed 5 to 512.',
-    invalidBulkPercent: 'Enter 0 (default) or a whole number from 5 to 95.',
-    invalidMultipartThreads:
-      'Enter 0 (default) or a whole number from 1 to 16.',
-    invalidPartSize: 'Enter 0 (default) or a whole number from 5 to 512.',
+      'Size of each uploaded part. 0 = auto (16); allowed 5 to 512.',
+    invalidBulkPercent: 'Enter 0 (auto) or a whole number from 5 to 95.',
+    invalidMultipartThreads: 'Enter 0 (auto) or a whole number from 1 to 16.',
+    invalidPartSize: 'Enter 0 (auto) or a whole number from 5 to 512.',
     recTitle: 'Recommended values',
     recIntro:
-      'Starting points for your hardware. Nothing is applied until you press Fill in and save.',
+      'Values marked Auto are derived from the hardware the worker detected and need no action. Fill in copies a value into the form as an explicit setting; Use auto resets everything to auto. Nothing changes until you save.',
+    recDetected: 'Detected by the worker: {cpu} CPU, {mem} memory ({source}).',
+    recDetectedFractional: 'CPU quota {cpu}',
+    recUnavailable: 'The worker did not report its hardware.',
+    recOverride: 'Preview for different hardware',
     recCores: 'CPU cores per worker',
     recRam: 'RAM per worker (GB)',
     recFill: 'Fill in',
-    recConcurrency: 'Task concurrency: about 16 per core, at most 256.',
-    recBuffer: 'Buffer budget: 25% of RAM, at most 8 GiB.',
+    recUseAuto: 'Use auto',
+    autoBadge: 'Auto',
+    autoBadgeTitle:
+      'Derived from the detected hardware; set a value to override.',
+    recConcurrency: 'Task concurrency: about 10 per CPU, at most 128.',
+    recBuffer: 'Buffer budget: 25% of memory, 256 MiB to 8 GiB.',
     recThreads:
       'Multipart threads: 1 (default). Increase only after measuring on your network; parallel parts were slower in local tests.',
-    recBulk: 'Bulk share: 80% when live proxy traffic is light.',
+    recBulk: 'Bulk share: 20% up to 3 CPUs, 30% from 4, 40% from 8.',
     throughputLink: 'Open throughput panel',
     lockTitle: 'Distributed locking',
     lockDesc: 'Configure the overlap margin for distributed worker locks.',
@@ -213,7 +222,8 @@ export default <I18nMessages>{
     keepEditing: 'Weiter bearbeiten',
     durationHint: 'Dauerformat: 500ms, 30s oder 1m30s.',
     invalidDuration: 'Positive Dauer eingeben, z. B. 500ms, 30s oder 1m30s.',
-    invalidConcurrency: 'Ganze Zahl zwischen 1 und 1.000 eingeben.',
+    invalidConcurrency:
+      '0 (automatisch) oder eine ganze Zahl zwischen 1 und 1.000 eingeben.',
     invalidWatermark: 'Ganze Zahl zwischen 1 und 2.147.483.647 eingeben.',
     invalidWatermarkOrder: 'Die untere Grenze muss kleiner als die obere sein.',
     invalidBytes:
@@ -254,7 +264,7 @@ export default <I18nMessages>{
       'Parallelität und Verarbeitungsintervalle festlegen. Änderungen erfordern einen Worker-Neustart.',
     concurrency: 'Task-Parallelität',
     concurrencyHint:
-      'Maximale Anzahl paralleler Replikationsaufgaben je Worker-Prozess.',
+      'Maximale Anzahl paralleler Replikationsaufgaben je Worker-Prozess. 0 = automatisch (aus verfügbarer CPU und verfügbarem Speicher des Workers abgeleitet).',
     shutdownTimeout: 'Timeout beim Herunterfahren',
     queueUpdateInterval: 'Warteschlangen-Aktualisierungsintervall',
     taskCheckInterval: 'Task-Prüfintervall',
@@ -273,7 +283,7 @@ export default <I18nMessages>{
       'Bandbreite drosseln (z.B. 2097152 für 2 MiB/s; 0 für unbegrenzt, live angewendet)',
     bufferBudgetBytes: 'Pufferbudget im Flug (Bytes)',
     bufferBudgetHint:
-      'Maximaler RAM für parallele SDK-Multipart-Puffer (z.B. 268435456 für 256 MiB, live angewendet)',
+      'Je Worker. 0 = automatisch (25 % des verfügbaren Speichers, 256 MiB bis 8 GiB); sonst mindestens 16 MiB. Live angewendet.',
     tuneTitle: 'Replikationsdurchsatz',
     tuneDesc:
       'Steuert, wie viele Kopien parallel laufen und wie Multipart-Uploads aufgeteilt werden. Ein leeres Feld (oder 0) behält den aktuellen Wert bzw. den angezeigten Standard; die API kann keinen Wert auf den Standard zurücksetzen.',
@@ -281,30 +291,38 @@ export default <I18nMessages>{
     appliesLive: 'Wirkt sofort',
     bulkConcurrencyPercent: 'Anteil Bulk-Parallelität (%)',
     bulkConcurrencyPercentHint:
-      'Anteil der Task-Parallelität, der für Bulk-Migration reserviert ist. Standard 20; erlaubt 5 bis 95.',
+      'Anteil der Task-Parallelität, der für Bulk-Migration reserviert ist. 0 = automatisch (20 bis 40 je nach CPU); erlaubt 5 bis 95.',
     multipartThreads: 'Multipart-Threads',
     multipartThreadsHint:
-      'Parallele Teil-Uploads je Objekt. Standard 1; erlaubt 1 bis 16.',
+      'Parallele Teil-Uploads je Objekt. 0 = automatisch (1); erlaubt 1 bis 16.',
     multipartPartSizeMib: 'Multipart-Teilgröße (MiB)',
     multipartPartSizeMibHint:
-      'Größe jedes hochgeladenen Teils. Standard 16; erlaubt 5 bis 512.',
+      'Größe jedes hochgeladenen Teils. 0 = automatisch (16); erlaubt 5 bis 512.',
     invalidBulkPercent:
-      '0 (Standard) oder eine ganze Zahl von 5 bis 95 eingeben.',
+      '0 (automatisch) oder eine ganze Zahl von 5 bis 95 eingeben.',
     invalidMultipartThreads:
-      '0 (Standard) oder eine ganze Zahl von 1 bis 16 eingeben.',
+      '0 (automatisch) oder eine ganze Zahl von 1 bis 16 eingeben.',
     invalidPartSize:
-      '0 (Standard) oder eine ganze Zahl von 5 bis 512 eingeben.',
+      '0 (automatisch) oder eine ganze Zahl von 5 bis 512 eingeben.',
     recTitle: 'Empfohlene Werte',
     recIntro:
-      'Startwerte für Ihre Hardware. Nichts wird übernommen, bis Sie auf Übernehmen klicken und speichern.',
+      'Mit Auto markierte Werte werden aus der vom Worker erkannten Hardware abgeleitet und erfordern nichts. Übernehmen setzt einen Wert explizit im Formular; Automatik nutzen setzt alles auf automatisch zurück. Nichts ändert sich vor dem Speichern.',
+    recDetected: 'Vom Worker erkannt: {cpu} CPU, {mem} Speicher ({source}).',
+    recDetectedFractional: 'CPU-Kontingent {cpu}',
+    recUnavailable: 'Der Worker hat seine Hardware nicht gemeldet.',
+    recOverride: 'Vorschau für andere Hardware',
     recCores: 'CPU-Kerne je Worker',
     recRam: 'RAM je Worker (GB)',
     recFill: 'Übernehmen',
-    recConcurrency: 'Task-Parallelität: etwa 16 je Kern, höchstens 256.',
-    recBuffer: 'Pufferbudget: 25 % des RAM, höchstens 8 GiB.',
+    recUseAuto: 'Automatik nutzen',
+    autoBadge: 'Auto',
+    autoBadgeTitle:
+      'Aus der erkannten Hardware abgeleitet; Wert setzen zum Überschreiben.',
+    recConcurrency: 'Task-Parallelität: etwa 10 je CPU, höchstens 128.',
+    recBuffer: 'Pufferbudget: 25 % des Speichers, 256 MiB bis 8 GiB.',
     recThreads:
       'Multipart-Threads: 1 (Standard). Nur nach Messung im eigenen Netzwerk erhöhen; parallele Teile waren in lokalen Tests langsamer.',
-    recBulk: 'Bulk-Anteil: 80 %, wenn der Live-Proxy-Verkehr gering ist.',
+    recBulk: 'Bulk-Anteil: 20 % bis 3 CPUs, 30 % ab 4, 40 % ab 8.',
     throughputLink: 'Durchsatz-Panel öffnen',
     lockTitle: 'Verteilte Sperren',
     lockDesc: 'Pufferzeit für verteilte Redis-Sperren konfigurieren',
@@ -370,7 +388,7 @@ export default <I18nMessages>{
     keepEditing: 'Tiếp tục chỉnh sửa',
     durationHint: 'Định dạng thời lượng: 500ms, 30s hoặc 1m30s.',
     invalidDuration: 'Nhập thời lượng dương, ví dụ 500ms, 30s hoặc 1m30s.',
-    invalidConcurrency: 'Nhập số nguyên từ 1 đến 1.000.',
+    invalidConcurrency: 'Nhập 0 (tự động) hoặc số nguyên từ 1 đến 1.000.',
     invalidWatermark: 'Nhập số nguyên từ 1 đến 2.147.483.647.',
     invalidWatermarkOrder: 'Ngưỡng thấp phải nhỏ hơn ngưỡng cao.',
     invalidBytes:
@@ -409,7 +427,7 @@ export default <I18nMessages>{
       'Điều chỉnh số tác vụ song song và các chu kỳ xử lý. Các thay đổi trong mục này cần khởi động lại worker.',
     concurrency: 'Số tác vụ song song',
     concurrencyHint:
-      'Số tác vụ đồng bộ song song tối đa trên mỗi tiến trình worker.',
+      'Số tác vụ đồng bộ song song tối đa trên mỗi tiến trình worker. 0 = tự động (suy ra từ CPU và bộ nhớ worker có thể dùng).',
     shutdownTimeout: 'Thời gian chờ tắt',
     queueUpdateInterval: 'Chu kỳ cập nhật hàng đợi',
     taskCheckInterval: 'Chu kỳ kiểm tra tác vụ',
@@ -426,7 +444,8 @@ export default <I18nMessages>{
     bandwidthLimitBytes: 'Băng thông copy (bytes/s)',
     bandwidthLimitHint: 'Theo worker. 0 = không giới hạn; 2097152 = 2 MiB/s.',
     bufferBudgetBytes: 'Ngân sách bộ đệm multipart (bytes)',
-    bufferBudgetHint: 'Theo worker. 0 = không giới hạn; 268435456 = 256 MiB.',
+    bufferBudgetHint:
+      'Theo worker. 0 = tự động (25% bộ nhớ khả dụng, từ 256 MiB đến 8 GiB); nếu không thì tối thiểu 16 MiB.',
     tuneTitle: 'Thông lượng đồng bộ',
     tuneDesc:
       'Điều chỉnh số bản sao chạy song song và cách chia multipart upload. Để trống (hoặc 0) để giữ giá trị hiện tại hoặc mặc định hiển thị trong ô; API không thể đặt lại về mặc định.',
@@ -434,27 +453,35 @@ export default <I18nMessages>{
     appliesLive: 'Áp dụng ngay',
     bulkConcurrencyPercent: 'Tỷ lệ song song cho bulk (%)',
     bulkConcurrencyPercentHint:
-      'Phần số tác vụ song song dành cho di chuyển hàng loạt. Mặc định 20; cho phép 5 đến 95.',
+      'Phần số tác vụ song song dành cho di chuyển hàng loạt. 0 = tự động (20 đến 40 theo CPU); cho phép 5 đến 95.',
     multipartThreads: 'Số luồng multipart',
     multipartThreadsHint:
-      'Số phần được tải lên song song cho mỗi đối tượng. Mặc định 1; cho phép 1 đến 16.',
+      'Số phần được tải lên song song cho mỗi đối tượng. 0 = tự động (1); cho phép 1 đến 16.',
     multipartPartSizeMib: 'Kích thước phần multipart (MiB)',
     multipartPartSizeMibHint:
-      'Kích thước mỗi phần tải lên. Mặc định 16; cho phép 5 đến 512.',
-    invalidBulkPercent: 'Nhập 0 (mặc định) hoặc số nguyên từ 5 đến 95.',
-    invalidMultipartThreads: 'Nhập 0 (mặc định) hoặc số nguyên từ 1 đến 16.',
-    invalidPartSize: 'Nhập 0 (mặc định) hoặc số nguyên từ 5 đến 512.',
+      'Kích thước mỗi phần tải lên. 0 = tự động (16); cho phép 5 đến 512.',
+    invalidBulkPercent: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 95.',
+    invalidMultipartThreads: 'Nhập 0 (tự động) hoặc số nguyên từ 1 đến 16.',
+    invalidPartSize: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 512.',
     recTitle: 'Giá trị khuyến nghị',
     recIntro:
-      'Điểm khởi đầu theo phần cứng của bạn. Không có gì được áp dụng cho đến khi bạn bấm Điền và lưu.',
+      'Giá trị gắn nhãn Tự động được suy ra từ phần cứng worker phát hiện được, không cần thao tác. Điền sẽ chép giá trị vào biểu mẫu như một cài đặt tường minh; Dùng tự động đặt lại tất cả về tự động. Không có gì thay đổi cho đến khi bạn lưu.',
+    recDetected: 'Worker phát hiện: {cpu} CPU, {mem} bộ nhớ ({source}).',
+    recDetectedFractional: 'Hạn mức CPU {cpu}',
+    recUnavailable: 'Worker chưa báo cáo phần cứng.',
+    recOverride: 'Xem trước cho phần cứng khác',
     recCores: 'Số lõi CPU mỗi worker',
     recRam: 'RAM mỗi worker (GB)',
     recFill: 'Điền',
-    recConcurrency: 'Số tác vụ song song: khoảng 16 mỗi lõi, tối đa 256.',
-    recBuffer: 'Ngân sách bộ đệm: 25% RAM, tối đa 8 GiB.',
+    recUseAuto: 'Dùng tự động',
+    autoBadge: 'Tự động',
+    autoBadgeTitle:
+      'Suy ra từ phần cứng phát hiện được; đặt giá trị để ghi đè.',
+    recConcurrency: 'Số tác vụ song song: khoảng 10 mỗi CPU, tối đa 128.',
+    recBuffer: 'Ngân sách bộ đệm: 25% bộ nhớ, từ 256 MiB đến 8 GiB.',
     recThreads:
       'Số luồng multipart: 1 (mặc định). Chỉ tăng sau khi đo trên mạng của bạn; các phần song song chậm hơn trong thử nghiệm cục bộ.',
-    recBulk: 'Tỷ lệ bulk: 80% khi lưu lượng proxy trực tiếp thấp.',
+    recBulk: 'Tỷ lệ bulk: 20% đến 3 CPU, 30% từ 4, 40% từ 8.',
     throughputLink: 'Mở bảng thông lượng',
     lockTitle: 'Khóa phân tán',
     lockDesc: 'Điều chỉnh khoảng thời gian gối đầu cho khóa giữa các worker.',

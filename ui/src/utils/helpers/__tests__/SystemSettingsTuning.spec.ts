@@ -71,33 +71,32 @@ describe('worker tuning validation', () => {
 });
 
 describe('recommendSettings', () => {
-  it('uses the defaults of 4 cores / 32 GB', () => {
-    expect(recommendSettings(4, 32)).toEqual({
-      concurrency: 64,
-      bufferBudgetBytes: String(8 * 1024 ** 3),
+  const GIB = 1024 ** 3;
+
+  it.each([
+    [1, 1, 10, 20, 256 * 1024 ** 2],
+    [2, 4, 20, 20, GIB],
+    [4, 32, 40, 30, 8 * GIB],
+    [16, 64, 128, 40, 8 * GIB],
+  ])('%i cpu / %i GB', (cpu, ram, conc, bulk, buf) => {
+    expect(recommendSettings(cpu, ram)).toEqual({
+      concurrency: conc,
+      bufferBudgetBytes: String(buf),
       multipartThreads: 1,
-      bulkConcurrencyPercent: 80,
+      bulkConcurrencyPercent: bulk,
     });
   });
 
-  it('caps concurrency at 256 and the buffer at 8 GiB', () => {
-    const r = recommendSettings(64, 512);
-
-    expect(r.concurrency).toBe(256);
-    expect(r.bufferBudgetBytes).toBe(String(8 * 1024 ** 3));
-  });
-
-  it('takes 25% of RAM below the cap', () => {
-    expect(recommendSettings(2, 8).bufferBudgetBytes).toBe(
-      String(2 * 1024 ** 3),
-    );
-    expect(recommendSettings(2, 8).concurrency).toBe(32);
-  });
-
-  it('guards against nonsense input', () => {
+  it('floors at the historical defaults on nonsense input', () => {
     const r = recommendSettings(0, -5);
 
-    expect(r.concurrency).toBe(16);
-    expect(r.bufferBudgetBytes).toBe('0');
+    expect(r.concurrency).toBe(10);
+    expect(r.bufferBudgetBytes).toBe(String(256 * 1024 ** 2));
+  });
+
+  it('accepts concurrency 0 (auto) in validation', () => {
+    expect(validateSystemSettings(draft({ concurrency: 0 })).concurrency).toBe(
+      undefined,
+    );
   });
 });

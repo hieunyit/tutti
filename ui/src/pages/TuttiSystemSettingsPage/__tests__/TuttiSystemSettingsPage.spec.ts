@@ -70,6 +70,27 @@ const settings: TuttiSystemSettings = {
   },
   lock: { overlap: '2s' },
   webhook: { enabled: false, baseUrl: '' },
+  hardware: {
+    cpu: 2,
+    cpuFractional: 1.5,
+    memoryBytes: '2147483648',
+    source: 'cgroup-v2',
+    memoryLimited: true,
+  },
+  recommended: {
+    concurrency: 20,
+    bufferBudgetBytes: '536870912',
+    multipartThreads: 1,
+    bulkConcurrencyPercent: 20,
+  },
+  effective: { multipartThreads: 1, bulkConcurrencyPercent: 20 },
+  tuningSources: {
+    concurrency: 'explicit',
+    bufferBudgetBytes: 'explicit',
+    bulkConcurrencyPercent: 'auto',
+    multipartThreads: 'auto',
+    multipartPartSizeMib: 'auto',
+  },
 };
 
 async function mountPage(tab?: string) {
@@ -139,6 +160,12 @@ describe('TuttiSystemSettingsPage', () => {
       true,
     );
     expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+
+    // detected hardware (container limits) and the Auto badge on derived knobs
+    expect(wrapper.get('[data-test="detected-hardware"]').text()).toContain(
+      'cgroup-v2',
+    );
+    expect(wrapper.findAll('[data-test="auto-label"]')).toHaveLength(3);
 
     await wrapper.get('[data-test="fill-multipartThreads"]').trigger('click');
     await flushPromises();

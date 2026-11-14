@@ -83,21 +83,34 @@ export interface RecommendedSettings {
 }
 
 const GIB = 1024 ** 3;
+const MIB = 1024 ** 2;
 
-/** Starting-point suggestions for the given hardware (never auto-applied). */
+/**
+ * Mirror of the server's hostres.Recommend, used only for the optional hardware
+ * override; by default the server's own recommendation for the detected
+ * hardware is shown.
+ */
 export function recommendSettings(
   cores: number,
   ramGb: number,
 ): RecommendedSettings {
-  const c = Number.isFinite(cores) ? Math.max(1, Math.floor(cores)) : 1;
+  const c = Number.isFinite(cores) ? Math.max(1, Math.ceil(cores)) : 1;
   const ram = Number.isFinite(ramGb) ? Math.max(0, ramGb) : 0;
+  const buffer = Math.max(
+    256 * MIB,
+    Math.min(Math.floor(ram * GIB * 0.25), 8 * GIB),
+  );
+  const concurrency = Math.max(
+    10,
+    Math.min(128, c * 10, Math.floor(buffer / (32 * MIB))),
+  );
 
   return {
-    concurrency: Math.min(256, 16 * c),
-    bufferBudgetBytes: String(Math.floor(Math.min(ram * GIB * 0.25, 8 * GIB))),
+    concurrency,
+    bufferBudgetBytes: String(buffer),
     // Default 1: parallel parts were slower in local tests; raise only after measuring.
     multipartThreads: 1,
-    bulkConcurrencyPercent: 80,
+    bulkConcurrencyPercent: c >= 8 ? 40 : c >= 4 ? 30 : 20,
   };
 }
 
@@ -109,7 +122,7 @@ export function validateSystemSettings(
 
   if (
     !Number.isInteger(worker.concurrency) ||
-    worker.concurrency! < 1 ||
+    worker.concurrency! < 0 ||
     worker.concurrency! > 1000
   ) {
     errors.concurrency = 'invalidConcurrency';

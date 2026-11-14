@@ -24,6 +24,9 @@
     restart?: string;
     /** badge for fields that apply without a restart */
     live?: string;
+    /** badge for knobs currently using the hardware-derived value */
+    auto?: string;
+    autoTitle?: string;
   }>();
 </script>
 
@@ -40,6 +43,13 @@
         class="settings-field__restart"
         data-test="restart-label"
         >{{ restart }}</span
+      >
+      <span
+        v-if="auto"
+        class="settings-field__auto"
+        data-test="auto-label"
+        :title="autoTitle"
+        >{{ auto }}</span
       >
       <span
         v-if="live"
@@ -84,6 +94,15 @@
       border: 1px solid var(--tt-warning);
       border-radius: var(--tt-radius-pill);
       color: var(--tt-warning);
+      font-size: var(--tt-text-xs);
+      line-height: 18px;
+    }
+
+    &__auto {
+      padding: 0 var(--tt-space-2);
+      border: 1px solid var(--tt-border-subtle);
+      border-radius: var(--tt-radius-pill);
+      color: var(--tt-text-3);
       font-size: var(--tt-text-xs);
       line-height: 18px;
     }
