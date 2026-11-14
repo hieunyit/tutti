@@ -25,6 +25,7 @@ import type {
   TuttiCompareBucketRequest,
   TuttiCompareBucketResponse,
   TuttiProxyCredentials,
+  TuttiReplication,
   TuttiReplicationId,
   TuttiReplicationListResponse,
   DiffReportDeleteRequest,
@@ -42,6 +43,10 @@ import type {
   DiffReportEntriesRequest,
   DiffReportEntriesResponse,
 } from '@/utils/types/tuttiCore';
+import type {
+  ReplicationActivityRequest,
+  ReplicationActivityResponse,
+} from '@/utils/types/replicationActivity';
 
 export abstract class TuttiCoreService {
   static async getProxyCredentials(): Promise<TuttiProxyCredentials> {
@@ -79,6 +84,33 @@ export abstract class TuttiCoreService {
     const { data } = await apiClient.post<TuttiReplicationListResponse>(
       ApiHelper.getTuttiAPIUrl('/replication'),
       undefined,
+      { signal },
+    );
+
+    return data;
+  }
+
+  static async getReplication(
+    id: TuttiReplicationId,
+    signal?: AbortSignal,
+  ): Promise<TuttiReplication> {
+    const { data } = await apiClient.post<TuttiReplication>(
+      ApiHelper.getTuttiAPIUrl('/replication/get'),
+      id,
+      { signal },
+    );
+
+    return data;
+  }
+
+  /** running copies and a cursor based event log of one replication */
+  static async getReplicationActivity(
+    payload: ReplicationActivityRequest,
+    signal?: AbortSignal,
+  ): Promise<ReplicationActivityResponse> {
+    const { data } = await apiClient.post<ReplicationActivityResponse>(
+      ApiHelper.getTuttiAPIUrl('/replication/activity'),
+      payload,
       { signal },
     );
 

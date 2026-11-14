@@ -29,6 +29,7 @@
   import WriteGate from '@/components/auth/WriteGate.vue';
   import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
   import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
+  import { ReplicationDetailHelper } from '@/utils/helpers/ReplicationDetailHelper';
   import ReplicationNameCell from '@/components/tutti/replications/ReplicationNameCell/ReplicationNameCell.vue';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
   import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
@@ -138,6 +139,10 @@
         h(ReplicationNameCell, {
           replication: row,
           rename: (name: string) => store.renameReplication(row, name),
+          detailTo: {
+            name: RouteName.TUTTI_REPLICATION_DETAIL,
+            query: ReplicationDetailHelper.toQuery(row.id),
+          },
         }),
     },
     {

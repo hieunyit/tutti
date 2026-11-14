@@ -25,6 +25,8 @@ const TuttiStoragesPage = () =>
   import('@/pages/TuttiStoragesPage/TuttiStoragesPage.vue');
 const TuttiReplicationPage = () =>
   import('@/pages/TuttiReplicationPage/TuttiReplicationPage.vue');
+const TuttiReplicationDetailPage = () =>
+  import('@/pages/TuttiReplicationDetailPage/TuttiReplicationDetailPage.vue');
 const TuttiAddReplicationPage = () =>
   import('@/pages/TuttiAddReplicationPage/TuttiAddReplicationPage.vue');
 const TuttiStorageDetailPage = () =>
@@ -120,6 +122,15 @@ export const routes: RouteRecordRaw[] = [
         },
         name: RouteName.TUTTI_REPLICATION,
         component: TuttiReplicationPage,
+      },
+      {
+        path: 'replication/detail',
+        meta: {
+          navGroup: 'dataProtection',
+          navSection: RouteName.TUTTI_REPLICATION,
+        },
+        name: RouteName.TUTTI_REPLICATION_DETAIL,
+        component: TuttiReplicationDetailPage,
       },
       {
         path: 'replication/add',

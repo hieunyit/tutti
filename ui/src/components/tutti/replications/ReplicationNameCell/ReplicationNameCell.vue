@@ -24,6 +24,7 @@
   import { computed, nextTick, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NInput } from 'naive-ui';
+  import type { RouteLocationRaw } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
   import {
@@ -36,6 +37,8 @@
     replication: TuttiReplication;
     /** persists the new (normalized) name; rejects when the server refuses it */
     rename: (name: string) => Promise<void>;
+    /** when set the name is a link to the replication detail page */
+    detailTo?: RouteLocationRaw;
   }>();
 
   const { t } = useI18n({ messages: i18nReplicationName });
@@ -143,7 +146,15 @@
     </div>
     <template v-else>
       <div class="replication-name-cell__row">
+        <RouterLink
+          v-if="detailTo"
+          class="replication-name-cell__primary replication-name-cell__link"
+          :to="detailTo"
+          :title="primary"
+          >{{ primary }}</RouterLink
+        >
         <span
+          v-else
           class="replication-name-cell__primary"
           :title="primary"
           >{{ primary }}</span
@@ -200,6 +211,21 @@
 
     &__primary {
       font-weight: 600;
+    }
+
+    &__link {
+      color: var(--tt-accent);
+      text-decoration: none;
+
+      &:hover {
+        color: var(--tt-accent-hover);
+        text-decoration: underline;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--tt-accent);
+        outline-offset: 2px;
+      }
     }
 
     &__secondary,

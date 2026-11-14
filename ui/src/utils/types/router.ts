@@ -21,6 +21,8 @@ export enum RouteName {
   /** /home: redirects to TUTTI_DASHBOARD */
   TUTTI_HOME = 'TUTTI_HOME',
   TUTTI_REPLICATION = 'TUTTI_REPLICATION',
+  /** /replication/detail?from=..&to=..: activity log of one replication */
+  TUTTI_REPLICATION_DETAIL = 'TUTTI_REPLICATION_DETAIL',
   TUTTI_ADD_REPLICATION = 'TUTTI_ADD_REPLICATION',
   TUTTI_STORAGES = 'TUTTI_STORAGES',
   TUTTI_STORAGE_DETAILS = 'TUTTI_STORAGE_DETAILS',
