@@ -59,6 +59,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/util"
+	"github.com/hieunyit/tutti/pkg/workerstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 	"github.com/hieunyit/tutti/service/worker/copy"
 	"github.com/hieunyit/tutti/service/worker/handler"
@@ -145,14 +146,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	}
 
 	// Load dynamic system and worker settings from database / Redis projection
+	// YAML/env tuning values are the fallback for knobs left at 0 in the system settings.
+	systemsettings.SetConfigFallbacks(conf.BulkConcurrencyPercent, conf.MultipartThreads, conf.MultipartPartSizeMiB)
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
-		// multipart tuning from config YAML/env is the fallback for values not stored in the settings
-		if loadedSettings.Worker.MultipartThreads == 0 {
-			loadedSettings.Worker.MultipartThreads = conf.MultipartThreads
-		}
-		if loadedSettings.Worker.MultipartPartSizeMiB == 0 {
-			loadedSettings.Worker.MultipartPartSizeMiB = conf.MultipartPartSizeMiB
-		}
 		systemsettings.ApplySettings(*loadedSettings)
 		if loadedSettings.Worker.Concurrency > 0 {
 			conf.Concurrency = loadedSettings.Worker.Concurrency
@@ -329,10 +325,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		return !errors.As(err, &rlErr)
 	}
 
-	bulkPercent := conf.BulkConcurrencyPercent
-	if sp := systemsettings.Current().Worker.BulkConcurrencyPercent; sp > 0 {
-		bulkPercent = sp
+	bulkPercent := systemsettings.EffectiveBulkPercent()
+	if totalConcurrency > 1 {
+		bulkN, liveN := systemsettings.SplitConcurrency(totalConcurrency, bulkPercent)
+		workerstats.Default.SetWorker(app.AppID, totalConcurrency, bulkN, liveN)
+	} else {
+		workerstats.Default.SetWorker(app.AppID, 1, 0, 1)
 	}
+	go workerstats.Default.Run(ctx, confRedis, app.AppID, logger)
 	var singleSrv *asynq.Server
 	var liveSrv *asynq.Server
 	var bulkSrv *asynq.Server

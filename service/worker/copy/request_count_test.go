@@ -20,6 +20,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/metrics"
 	"github.com/hieunyit/tutti/pkg/systemsettings"
+	"github.com/hieunyit/tutti/pkg/workerstats"
 )
 
 type counted struct {
@@ -213,13 +214,32 @@ func (w *writerAt) Write(p []byte) (int, error) {
 // TestCopyObjectParallelMultipart uploads an object above the part size with several threads and checks the
 // bytes, the use of ranged source GETs and that the buffer reservation is released.
 func TestCopyObjectParallelMultipart(t *testing.T) {
+	ranges := runMultipartCopy(t, 4, 5)
+	require.GreaterOrEqual(t, int(ranges), 3, "parts must be read with ranged GETs")
+}
+
+// TestCopyObjectMultipartTuningAppliesLive changes the multipart threads in the system settings between two
+// copies in the same process: the second copy must follow without any restart.
+func TestCopyObjectMultipartTuningAppliesLive(t *testing.T) {
+	before := workerstats.Default.Snapshot()
+	require.GreaterOrEqual(t, int(runMultipartCopy(t, 4, 5)), 3)
+	require.Zero(t, int(runMultipartCopy(t, 1, 5)), "1 thread must read the source sequentially")
+	after := workerstats.Default.Snapshot()
+	require.Equal(t, before.CopiedObjectsTotal+2, after.CopiedObjectsTotal)
+	require.Equal(t, before.CopiedBytesTotal+2*int64(12<<20+17), after.CopiedBytesTotal)
+	require.Zero(t, after.InFlight)
+}
+
+// runMultipartCopy copies a ~12 MiB object with the given tuning applied through the system settings and
+// returns the number of ranged source GETs.
+func runMultipartCopy(t *testing.T, threads, partMiB int) int32 {
 	old := &features.Config{Versioning: features.Versioning(t.Context()), Tagging: features.Tagging(t.Context()), ACL: features.ACL(t.Context())}
 	t.Cleanup(func() { features.Set(old) })
 	features.Set(&features.Config{})
 	prev := systemsettings.Current()
 	t.Cleanup(func() { systemsettings.ApplySettings(prev) })
 	systemsettings.ApplySettings(controlplane.SystemSettings{Worker: controlplane.SystemWorkerSettings{
-		BufferBudgetBytes: 64 << 20, MultipartThreads: 4, MultipartPartSizeMiB: 5,
+		BufferBudgetBytes: 64 << 20, MultipartThreads: threads, MultipartPartSizeMiB: partMiB,
 	}})
 
 	body := make([]byte, 12<<20+17)
@@ -272,11 +292,11 @@ func TestCopyObjectParallelMultipart(t *testing.T) {
 	require.Equal(t, len(body), len(got))
 	require.True(t, bytes.Equal(body, got), "uploaded bytes differ from source")
 	require.Equal(t, int32(1), complete.Load())
-	require.GreaterOrEqual(t, int(ranges.Load()), 3, "parts must be read with ranged GETs")
 	// budget fully released: the whole budget can be taken again
 	rel, err := systemsettings.AcquireBufferBudget(t.Context(), 64<<20)
 	require.NoError(t, err)
 	rel()
+	return ranges.Load()
 }
 
 func TestEstimateParallelCopyBuffer(t *testing.T) {

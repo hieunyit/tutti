@@ -42,6 +42,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3client"
 	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/util"
+	"github.com/hieunyit/tutti/pkg/workerstats"
 )
 
 // TODO:
@@ -287,7 +288,29 @@ func EstimateParallelCopyBuffer(size int64, partSize uint64, threads int) int64 
 	return est
 }
 
+// CopyObject copies one object and records the throughput counters (in-flight, result, bytes, duration).
 func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to File) error {
+	start := time.Now()
+	workerstats.Default.Start()
+	metrics.CopyStarted()
+	defer metrics.CopyFinished()
+	var copiedBytes int64 = -1 // stays -1 when nothing was transferred (skipped as already present)
+	err := r.copyObject(ctx, user, from, to, &copiedBytes)
+	d := time.Since(start)
+	switch {
+	case err != nil:
+		workerstats.Default.FinishFailure()
+		metrics.ObserveCopy(false, 0, d)
+	case copiedBytes >= 0:
+		workerstats.Default.FinishSuccess(copiedBytes, d)
+		metrics.ObserveCopy(true, copiedBytes, d)
+	default:
+		workerstats.Default.Skip()
+	}
+	return err
+}
+
+func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to File, copiedBytes *int64) error {
 	fromClient, err := r.clientRegistry.AsS3(ctx, from.Storage, user)
 	if err != nil {
 		return fmt.Errorf("unable to get from client: %w", err)
@@ -489,13 +512,12 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 
 	// Multipart tuning: objects above the part size are uploaded with several parts in flight.
 	// Defaults (1 thread) keep the sequential single-stream upload.
-	workerSettings := systemsettings.Current().Worker
-	threads, partSize := systemsettings.MultipartTuning(workerSettings.MultipartThreads, workerSettings.MultipartPartSizeMiB)
+	threads, partSize, partExplicit := systemsettings.EffectiveMultipart()
 	parallel := threads > 1 && stat.Size > int64(partSize)
 	if parallel {
 		putObjectOpts.NumThreads = uint(threads)
 		putObjectOpts.PartSize = partSize
-	} else if workerSettings.MultipartPartSizeMiB >= systemsettings.MinMultipartPartSizeMiB && stat.Size > int64(partSize) {
+	} else if partExplicit && stat.Size > int64(partSize) {
 		putObjectOpts.PartSize = partSize
 	}
 
@@ -549,6 +571,7 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 	if info.VersionID != "" {
 		to.Version = info.VersionID
 	}
+	*copiedBytes = stat.Size
 
 	if features.ACL(ctx) {
 		if err := r.CopyACLs(ctx, user, from, to); err != nil {
