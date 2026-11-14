@@ -6171,8 +6171,14 @@ type SystemWorkerSettings struct {
 	BacklogLowWatermark      int32                  `protobuf:"varint,10,opt,name=backlog_low_watermark,json=backlogLowWatermark,proto3" json:"backlog_low_watermark,omitempty"`
 	BandwidthLimitBytes      int64                  `protobuf:"varint,11,opt,name=bandwidth_limit_bytes,json=bandwidthLimitBytes,proto3" json:"bandwidth_limit_bytes,omitempty"`
 	BufferBudgetBytes        int64                  `protobuf:"varint,12,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3" json:"buffer_budget_bytes,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
+	BulkConcurrencyPercent int32 `protobuf:"varint,13,opt,name=bulk_concurrency_percent,json=bulkConcurrencyPercent,proto3" json:"bulk_concurrency_percent,omitempty"`
+	// Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
+	MultipartThreads int32 `protobuf:"varint,14,opt,name=multipart_threads,json=multipartThreads,proto3" json:"multipart_threads,omitempty"`
+	// Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
+	MultipartPartSizeMib int32 `protobuf:"varint,15,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3" json:"multipart_part_size_mib,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *SystemWorkerSettings) Reset() {
@@ -6285,6 +6291,27 @@ func (x *SystemWorkerSettings) GetBandwidthLimitBytes() int64 {
 func (x *SystemWorkerSettings) GetBufferBudgetBytes() int64 {
 	if x != nil {
 		return x.BufferBudgetBytes
+	}
+	return 0
+}
+
+func (x *SystemWorkerSettings) GetBulkConcurrencyPercent() int32 {
+	if x != nil {
+		return x.BulkConcurrencyPercent
+	}
+	return 0
+}
+
+func (x *SystemWorkerSettings) GetMultipartThreads() int32 {
+	if x != nil {
+		return x.MultipartThreads
+	}
+	return 0
+}
+
+func (x *SystemWorkerSettings) GetMultipartPartSizeMib() int32 {
+	if x != nil {
+		return x.MultipartPartSizeMib
 	}
 	return 0
 }
@@ -6541,6 +6568,378 @@ func (x *UpdateSystemSettingsRequest) GetLock() *SystemLockSettings {
 func (x *UpdateSystemSettingsRequest) GetWebhook() *SystemWebhookSettings {
 	if x != nil {
 		return x.Webhook
+	}
+	return nil
+}
+
+type WorkerStatsSnapshot struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	WorkerId               string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	StartedAt              string                 `protobuf:"bytes,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	UpdatedAt              string                 `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Concurrency            int32                  `protobuf:"varint,4,opt,name=concurrency,proto3" json:"concurrency,omitempty"`
+	BulkConcurrency        int32                  `protobuf:"varint,5,opt,name=bulk_concurrency,json=bulkConcurrency,proto3" json:"bulk_concurrency,omitempty"`
+	LiveConcurrency        int32                  `protobuf:"varint,6,opt,name=live_concurrency,json=liveConcurrency,proto3" json:"live_concurrency,omitempty"`
+	InFlight               int64                  `protobuf:"varint,7,opt,name=in_flight,json=inFlight,proto3" json:"in_flight,omitempty"`
+	CopiedObjectsTotal     int64                  `protobuf:"varint,8,opt,name=copied_objects_total,json=copiedObjectsTotal,proto3" json:"copied_objects_total,omitempty"`
+	CopiedBytesTotal       int64                  `protobuf:"varint,9,opt,name=copied_bytes_total,json=copiedBytesTotal,proto3" json:"copied_bytes_total,omitempty"`
+	FailedTotal            int64                  `protobuf:"varint,10,opt,name=failed_total,json=failedTotal,proto3" json:"failed_total,omitempty"`
+	ObjectsPerSec_1M       float64                `protobuf:"fixed64,11,opt,name=objects_per_sec_1m,json=objectsPerSec1m,proto3" json:"objects_per_sec_1m,omitempty"`
+	BytesPerSec_1M         float64                `protobuf:"fixed64,12,opt,name=bytes_per_sec_1m,json=bytesPerSec1m,proto3" json:"bytes_per_sec_1m,omitempty"`
+	ObjectsPerSec_5M       float64                `protobuf:"fixed64,13,opt,name=objects_per_sec_5m,json=objectsPerSec5m,proto3" json:"objects_per_sec_5m,omitempty"`
+	BytesPerSec_5M         float64                `protobuf:"fixed64,14,opt,name=bytes_per_sec_5m,json=bytesPerSec5m,proto3" json:"bytes_per_sec_5m,omitempty"`
+	AvgCopySeconds_1M      float64                `protobuf:"fixed64,15,opt,name=avg_copy_seconds_1m,json=avgCopySeconds1m,proto3" json:"avg_copy_seconds_1m,omitempty"`
+	BufferTotalBytes       int64                  `protobuf:"varint,16,opt,name=buffer_total_bytes,json=bufferTotalBytes,proto3" json:"buffer_total_bytes,omitempty"`
+	BufferUsedBytes        int64                  `protobuf:"varint,17,opt,name=buffer_used_bytes,json=bufferUsedBytes,proto3" json:"buffer_used_bytes,omitempty"`
+	BufferWaiters          int64                  `protobuf:"varint,18,opt,name=buffer_waiters,json=bufferWaiters,proto3" json:"buffer_waiters,omitempty"`
+	BufferWaitSecondsTotal float64                `protobuf:"fixed64,19,opt,name=buffer_wait_seconds_total,json=bufferWaitSecondsTotal,proto3" json:"buffer_wait_seconds_total,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *WorkerStatsSnapshot) Reset() {
+	*x = WorkerStatsSnapshot{}
+	mi := &file_chorus_tutti_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkerStatsSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerStatsSnapshot) ProtoMessage() {}
+
+func (x *WorkerStatsSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerStatsSnapshot.ProtoReflect.Descriptor instead.
+func (*WorkerStatsSnapshot) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *WorkerStatsSnapshot) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *WorkerStatsSnapshot) GetStartedAt() string {
+	if x != nil {
+		return x.StartedAt
+	}
+	return ""
+}
+
+func (x *WorkerStatsSnapshot) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+func (x *WorkerStatsSnapshot) GetConcurrency() int32 {
+	if x != nil {
+		return x.Concurrency
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBulkConcurrency() int32 {
+	if x != nil {
+		return x.BulkConcurrency
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetLiveConcurrency() int32 {
+	if x != nil {
+		return x.LiveConcurrency
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetInFlight() int64 {
+	if x != nil {
+		return x.InFlight
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetCopiedObjectsTotal() int64 {
+	if x != nil {
+		return x.CopiedObjectsTotal
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetCopiedBytesTotal() int64 {
+	if x != nil {
+		return x.CopiedBytesTotal
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetFailedTotal() int64 {
+	if x != nil {
+		return x.FailedTotal
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetObjectsPerSec_1M() float64 {
+	if x != nil {
+		return x.ObjectsPerSec_1M
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBytesPerSec_1M() float64 {
+	if x != nil {
+		return x.BytesPerSec_1M
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetObjectsPerSec_5M() float64 {
+	if x != nil {
+		return x.ObjectsPerSec_5M
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBytesPerSec_5M() float64 {
+	if x != nil {
+		return x.BytesPerSec_5M
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetAvgCopySeconds_1M() float64 {
+	if x != nil {
+		return x.AvgCopySeconds_1M
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBufferTotalBytes() int64 {
+	if x != nil {
+		return x.BufferTotalBytes
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBufferUsedBytes() int64 {
+	if x != nil {
+		return x.BufferUsedBytes
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBufferWaiters() int64 {
+	if x != nil {
+		return x.BufferWaiters
+	}
+	return 0
+}
+
+func (x *WorkerStatsSnapshot) GetBufferWaitSecondsTotal() float64 {
+	if x != nil {
+		return x.BufferWaitSecondsTotal
+	}
+	return 0
+}
+
+type WorkerStatsTotals struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	InFlight           int64                  `protobuf:"varint,1,opt,name=in_flight,json=inFlight,proto3" json:"in_flight,omitempty"`
+	Concurrency        int64                  `protobuf:"varint,2,opt,name=concurrency,proto3" json:"concurrency,omitempty"`
+	ObjectsPerSec_1M   float64                `protobuf:"fixed64,3,opt,name=objects_per_sec_1m,json=objectsPerSec1m,proto3" json:"objects_per_sec_1m,omitempty"`
+	BytesPerSec_1M     float64                `protobuf:"fixed64,4,opt,name=bytes_per_sec_1m,json=bytesPerSec1m,proto3" json:"bytes_per_sec_1m,omitempty"`
+	ObjectsPerSec_5M   float64                `protobuf:"fixed64,5,opt,name=objects_per_sec_5m,json=objectsPerSec5m,proto3" json:"objects_per_sec_5m,omitempty"`
+	BytesPerSec_5M     float64                `protobuf:"fixed64,6,opt,name=bytes_per_sec_5m,json=bytesPerSec5m,proto3" json:"bytes_per_sec_5m,omitempty"`
+	BufferTotalBytes   int64                  `protobuf:"varint,7,opt,name=buffer_total_bytes,json=bufferTotalBytes,proto3" json:"buffer_total_bytes,omitempty"`
+	BufferUsedBytes    int64                  `protobuf:"varint,8,opt,name=buffer_used_bytes,json=bufferUsedBytes,proto3" json:"buffer_used_bytes,omitempty"`
+	BufferWaiters      int64                  `protobuf:"varint,9,opt,name=buffer_waiters,json=bufferWaiters,proto3" json:"buffer_waiters,omitempty"`
+	CopiedObjectsTotal int64                  `protobuf:"varint,10,opt,name=copied_objects_total,json=copiedObjectsTotal,proto3" json:"copied_objects_total,omitempty"`
+	CopiedBytesTotal   int64                  `protobuf:"varint,11,opt,name=copied_bytes_total,json=copiedBytesTotal,proto3" json:"copied_bytes_total,omitempty"`
+	FailedTotal        int64                  `protobuf:"varint,12,opt,name=failed_total,json=failedTotal,proto3" json:"failed_total,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WorkerStatsTotals) Reset() {
+	*x = WorkerStatsTotals{}
+	mi := &file_chorus_tutti_proto_msgTypes[91]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkerStatsTotals) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerStatsTotals) ProtoMessage() {}
+
+func (x *WorkerStatsTotals) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[91]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerStatsTotals.ProtoReflect.Descriptor instead.
+func (*WorkerStatsTotals) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{91}
+}
+
+func (x *WorkerStatsTotals) GetInFlight() int64 {
+	if x != nil {
+		return x.InFlight
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetConcurrency() int64 {
+	if x != nil {
+		return x.Concurrency
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetObjectsPerSec_1M() float64 {
+	if x != nil {
+		return x.ObjectsPerSec_1M
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetBytesPerSec_1M() float64 {
+	if x != nil {
+		return x.BytesPerSec_1M
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetObjectsPerSec_5M() float64 {
+	if x != nil {
+		return x.ObjectsPerSec_5M
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetBytesPerSec_5M() float64 {
+	if x != nil {
+		return x.BytesPerSec_5M
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetBufferTotalBytes() int64 {
+	if x != nil {
+		return x.BufferTotalBytes
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetBufferUsedBytes() int64 {
+	if x != nil {
+		return x.BufferUsedBytes
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetBufferWaiters() int64 {
+	if x != nil {
+		return x.BufferWaiters
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetCopiedObjectsTotal() int64 {
+	if x != nil {
+		return x.CopiedObjectsTotal
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetCopiedBytesTotal() int64 {
+	if x != nil {
+		return x.CopiedBytesTotal
+	}
+	return 0
+}
+
+func (x *WorkerStatsTotals) GetFailedTotal() int64 {
+	if x != nil {
+		return x.FailedTotal
+	}
+	return 0
+}
+
+type WorkerStatsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workers       []*WorkerStatsSnapshot `protobuf:"bytes,1,rep,name=workers,proto3" json:"workers,omitempty"`
+	Totals        *WorkerStatsTotals     `protobuf:"bytes,2,opt,name=totals,proto3" json:"totals,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkerStatsResponse) Reset() {
+	*x = WorkerStatsResponse{}
+	mi := &file_chorus_tutti_proto_msgTypes[92]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkerStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerStatsResponse) ProtoMessage() {}
+
+func (x *WorkerStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chorus_tutti_proto_msgTypes[92]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerStatsResponse.ProtoReflect.Descriptor instead.
+func (*WorkerStatsResponse) Descriptor() ([]byte, []int) {
+	return file_chorus_tutti_proto_rawDescGZIP(), []int{92}
+}
+
+func (x *WorkerStatsResponse) GetWorkers() []*WorkerStatsSnapshot {
+	if x != nil {
+		return x.Workers
+	}
+	return nil
+}
+
+func (x *WorkerStatsResponse) GetTotals() *WorkerStatsTotals {
+	if x != nil {
+		return x.Totals
 	}
 	return nil
 }
@@ -7088,7 +7487,7 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x13preserve_acl_grants\x18\x05 \x01(\bR\x11preserveAclGrants\x12\x1e\n" +
 	"\n" +
 	"versioning\x18\x06 \x01(\bR\n" +
-	"versioning\"\xa9\x06\n" +
+	"versioning\"\xc7\a\n" +
 	"\x14SystemWorkerSettings\x12 \n" +
 	"\vconcurrency\x18\x01 \x01(\x05R\vconcurrency\x12D\n" +
 	"\x10shutdown_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x0fshutdownTimeout\x12M\n" +
@@ -7102,7 +7501,10 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x15backlog_low_watermark\x18\n" +
 	" \x01(\x05R\x13backlogLowWatermark\x122\n" +
 	"\x15bandwidth_limit_bytes\x18\v \x01(\x03R\x13bandwidthLimitBytes\x12.\n" +
-	"\x13buffer_budget_bytes\x18\f \x01(\x03R\x11bufferBudgetBytes\"I\n" +
+	"\x13buffer_budget_bytes\x18\f \x01(\x03R\x11bufferBudgetBytes\x128\n" +
+	"\x18bulk_concurrency_percent\x18\r \x01(\x05R\x16bulkConcurrencyPercent\x12+\n" +
+	"\x11multipart_threads\x18\x0e \x01(\x05R\x10multipartThreads\x125\n" +
+	"\x17multipart_part_size_mib\x18\x0f \x01(\x05R\x14multipartPartSizeMib\"I\n" +
 	"\x12SystemLockSettings\x123\n" +
 	"\aoverlap\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\aoverlap\"L\n" +
 	"\x15SystemWebhookSettings\x12\x18\n" +
@@ -7122,7 +7524,47 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x06worker\x18\x03 \x01(\v2\x1c.chorus.SystemWorkerSettingsR\x06worker\x12.\n" +
 	"\x04lock\x18\x04 \x01(\v2\x1a.chorus.SystemLockSettingsR\x04lock\x127\n" +
 	"\awebhook\x18\x05 \x01(\v2\x1d.chorus.SystemWebhookSettingsR\awebhookB\x13\n" +
-	"\x11_expected_version2\xb5\x18\n" +
+	"\x11_expected_version\"\x9f\x06\n" +
+	"\x13WorkerStatsSnapshot\x12\x1b\n" +
+	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12\x1d\n" +
+	"\n" +
+	"started_at\x18\x02 \x01(\tR\tstartedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x03 \x01(\tR\tupdatedAt\x12 \n" +
+	"\vconcurrency\x18\x04 \x01(\x05R\vconcurrency\x12)\n" +
+	"\x10bulk_concurrency\x18\x05 \x01(\x05R\x0fbulkConcurrency\x12)\n" +
+	"\x10live_concurrency\x18\x06 \x01(\x05R\x0fliveConcurrency\x12\x1b\n" +
+	"\tin_flight\x18\a \x01(\x03R\binFlight\x120\n" +
+	"\x14copied_objects_total\x18\b \x01(\x03R\x12copiedObjectsTotal\x12,\n" +
+	"\x12copied_bytes_total\x18\t \x01(\x03R\x10copiedBytesTotal\x12!\n" +
+	"\ffailed_total\x18\n" +
+	" \x01(\x03R\vfailedTotal\x12+\n" +
+	"\x12objects_per_sec_1m\x18\v \x01(\x01R\x0fobjectsPerSec1m\x12'\n" +
+	"\x10bytes_per_sec_1m\x18\f \x01(\x01R\rbytesPerSec1m\x12+\n" +
+	"\x12objects_per_sec_5m\x18\r \x01(\x01R\x0fobjectsPerSec5m\x12'\n" +
+	"\x10bytes_per_sec_5m\x18\x0e \x01(\x01R\rbytesPerSec5m\x12-\n" +
+	"\x13avg_copy_seconds_1m\x18\x0f \x01(\x01R\x10avgCopySeconds1m\x12,\n" +
+	"\x12buffer_total_bytes\x18\x10 \x01(\x03R\x10bufferTotalBytes\x12*\n" +
+	"\x11buffer_used_bytes\x18\x11 \x01(\x03R\x0fbufferUsedBytes\x12%\n" +
+	"\x0ebuffer_waiters\x18\x12 \x01(\x03R\rbufferWaiters\x129\n" +
+	"\x19buffer_wait_seconds_total\x18\x13 \x01(\x01R\x16bufferWaitSecondsTotal\"\x82\x04\n" +
+	"\x11WorkerStatsTotals\x12\x1b\n" +
+	"\tin_flight\x18\x01 \x01(\x03R\binFlight\x12 \n" +
+	"\vconcurrency\x18\x02 \x01(\x03R\vconcurrency\x12+\n" +
+	"\x12objects_per_sec_1m\x18\x03 \x01(\x01R\x0fobjectsPerSec1m\x12'\n" +
+	"\x10bytes_per_sec_1m\x18\x04 \x01(\x01R\rbytesPerSec1m\x12+\n" +
+	"\x12objects_per_sec_5m\x18\x05 \x01(\x01R\x0fobjectsPerSec5m\x12'\n" +
+	"\x10bytes_per_sec_5m\x18\x06 \x01(\x01R\rbytesPerSec5m\x12,\n" +
+	"\x12buffer_total_bytes\x18\a \x01(\x03R\x10bufferTotalBytes\x12*\n" +
+	"\x11buffer_used_bytes\x18\b \x01(\x03R\x0fbufferUsedBytes\x12%\n" +
+	"\x0ebuffer_waiters\x18\t \x01(\x03R\rbufferWaiters\x120\n" +
+	"\x14copied_objects_total\x18\n" +
+	" \x01(\x03R\x12copiedObjectsTotal\x12,\n" +
+	"\x12copied_bytes_total\x18\v \x01(\x03R\x10copiedBytesTotal\x12!\n" +
+	"\ffailed_total\x18\f \x01(\x03R\vfailedTotal\"\x7f\n" +
+	"\x13WorkerStatsResponse\x125\n" +
+	"\aworkers\x18\x01 \x03(\v2\x1b.chorus.WorkerStatsSnapshotR\aworkers\x121\n" +
+	"\x06totals\x18\x02 \x01(\v2\x19.chorus.WorkerStatsTotalsR\x06totals2\xfc\x18\n" +
 	"\n" +
 	"Resilience\x12U\n" +
 	"\x13ListRuntimeStorages\x12\".chorus.ListRuntimeStoragesRequest\x1a\x1a.chorus.RuntimeStorageList\x12S\n" +
@@ -7134,7 +7576,8 @@ const file_chorus_tutti_proto_rawDesc = "" +
 	"\x15TestStorageConnection\x12$.chorus.TestStorageConnectionRequest\x1a\x19.chorus.StorageTestResult\x12g\n" +
 	"\x1eRotateStorageConnectionAccount\x12-.chorus.RotateStorageConnectionAccountRequest\x1a\x16.chorus.RuntimeStorage\x12A\n" +
 	"\x0eGetProxyStatus\x12\x16.google.protobuf.Empty\x1a\x17.chorus.ProxyStatusList\x12D\n" +
-	"\x0fGetStatsHistory\x12\x1b.chorus.StatsHistoryRequest\x1a\x14.chorus.StatsHistory\x12J\n" +
+	"\x0fGetStatsHistory\x12\x1b.chorus.StatsHistoryRequest\x1a\x14.chorus.StatsHistory\x12E\n" +
+	"\x0eGetWorkerStats\x12\x16.google.protobuf.Empty\x1a\x1b.chorus.WorkerStatsResponse\x12J\n" +
 	"\x14ListFailoverPolicies\x12\x16.google.protobuf.Empty\x1a\x1a.chorus.FailoverPolicyList\x12C\n" +
 	"\x11SetFailoverPolicy\x12\x16.chorus.FailoverPolicy\x1a\x16.google.protobuf.Empty\x12L\n" +
 	"\x14DeleteFailoverPolicy\x12\x1c.chorus.FailoverPolicySource\x1a\x16.google.protobuf.Empty\x12G\n" +
@@ -7177,7 +7620,7 @@ func file_chorus_tutti_proto_rawDescGZIP() []byte {
 	return file_chorus_tutti_proto_rawDescData
 }
 
-var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 96)
+var file_chorus_tutti_proto_msgTypes = make([]protoimpl.MessageInfo, 99)
 var file_chorus_tutti_proto_goTypes = []any{
 	(*CreateProxyAccountRequest)(nil),             // 0: chorus.CreateProxyAccountRequest
 	(*ProxyAccountSecret)(nil),                    // 1: chorus.ProxyAccountSecret
@@ -7269,66 +7712,69 @@ var file_chorus_tutti_proto_goTypes = []any{
 	(*SystemWebhookSettings)(nil),                 // 87: chorus.SystemWebhookSettings
 	(*SystemSettings)(nil),                        // 88: chorus.SystemSettings
 	(*UpdateSystemSettingsRequest)(nil),           // 89: chorus.UpdateSystemSettingsRequest
-	nil,                                           // 90: chorus.TrafficRates.RequestsByClassEntry
-	nil,                                           // 91: chorus.TrafficRates.RequestsByStorageEntry
-	nil,                                           // 92: chorus.TrafficStats.RequestsByClassEntry
-	nil,                                           // 93: chorus.TrafficStats.RequestsByStorageEntry
-	nil,                                           // 94: chorus.ProxyFleetConfig.GroupsEntry
-	nil,                                           // 95: chorus.SetProxyFleetConfigRequest.GroupsEntry
-	(*timestamppb.Timestamp)(nil),                 // 96: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),                   // 97: google.protobuf.Duration
-	(*emptypb.Empty)(nil),                         // 98: google.protobuf.Empty
+	(*WorkerStatsSnapshot)(nil),                   // 90: chorus.WorkerStatsSnapshot
+	(*WorkerStatsTotals)(nil),                     // 91: chorus.WorkerStatsTotals
+	(*WorkerStatsResponse)(nil),                   // 92: chorus.WorkerStatsResponse
+	nil,                                           // 93: chorus.TrafficRates.RequestsByClassEntry
+	nil,                                           // 94: chorus.TrafficRates.RequestsByStorageEntry
+	nil,                                           // 95: chorus.TrafficStats.RequestsByClassEntry
+	nil,                                           // 96: chorus.TrafficStats.RequestsByStorageEntry
+	nil,                                           // 97: chorus.ProxyFleetConfig.GroupsEntry
+	nil,                                           // 98: chorus.SetProxyFleetConfigRequest.GroupsEntry
+	(*timestamppb.Timestamp)(nil),                 // 99: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),                   // 100: google.protobuf.Duration
+	(*emptypb.Empty)(nil),                         // 101: google.protobuf.Empty
 }
 var file_chorus_tutti_proto_depIdxs = []int32{
-	96,  // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
-	97,  // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
-	96,  // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
-	96,  // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
-	96,  // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	99,  // 0: chorus.ProxyAccountSecret.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
+	100, // 1: chorus.RotateProxyAccountSecretRequest.grace_period:type_name -> google.protobuf.Duration
+	99,  // 2: chorus.ProxyAccessKey.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 3: chorus.ProxyAccessKey.rotated_at:type_name -> google.protobuf.Timestamp
+	99,  // 4: chorus.ProxyAccessKey.previous_secret_expires_at:type_name -> google.protobuf.Timestamp
 	6,   // 5: chorus.AccessPolicyList.policies:type_name -> chorus.AccessPolicy
 	6,   // 6: chorus.ProxyAccount.policy:type_name -> chorus.AccessPolicy
 	5,   // 7: chorus.ProxyAccount.dynamic_keys:type_name -> chorus.ProxyAccessKey
 	9,   // 8: chorus.ProxyAccountList.accounts:type_name -> chorus.ProxyAccount
 	11,  // 9: chorus.ProxyAccountList.dynamic_accounts:type_name -> chorus.DynamicAccountsStatus
-	96,  // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
-	97,  // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
-	97,  // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
+	99,  // 10: chorus.StorageHealth.last_change:type_name -> google.protobuf.Timestamp
+	100, // 11: chorus.SyncSettings.timeout:type_name -> google.protobuf.Duration
+	100, // 12: chorus.ReplicationSettings.event_retry_budget:type_name -> google.protobuf.Duration
 	13,  // 13: chorus.ReplicationSettings.sync:type_name -> chorus.SyncSettings
-	97,  // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
-	97,  // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
-	97,  // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
+	100, // 14: chorus.HealthSettings.open_duration:type_name -> google.protobuf.Duration
+	100, // 15: chorus.FailoverSettings.check_interval:type_name -> google.protobuf.Duration
+	100, // 16: chorus.FailoverSettings.after:type_name -> google.protobuf.Duration
 	14,  // 17: chorus.ProxySettings.replication:type_name -> chorus.ReplicationSettings
 	15,  // 18: chorus.ProxySettings.health:type_name -> chorus.HealthSettings
 	16,  // 19: chorus.ProxySettings.failover:type_name -> chorus.FailoverSettings
-	97,  // 20: chorus.ProxySettings.read_header_timeout:type_name -> google.protobuf.Duration
-	97,  // 21: chorus.ProxySettings.writer_lease:type_name -> google.protobuf.Duration
-	97,  // 22: chorus.ProxySettings.drain_delay:type_name -> google.protobuf.Duration
-	97,  // 23: chorus.ProxySettings.ready_max_staleness:type_name -> google.protobuf.Duration
-	96,  // 24: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
-	96,  // 25: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
+	100, // 20: chorus.ProxySettings.read_header_timeout:type_name -> google.protobuf.Duration
+	100, // 21: chorus.ProxySettings.writer_lease:type_name -> google.protobuf.Duration
+	100, // 22: chorus.ProxySettings.drain_delay:type_name -> google.protobuf.Duration
+	100, // 23: chorus.ProxySettings.ready_max_staleness:type_name -> google.protobuf.Duration
+	99,  // 24: chorus.ProxyStatus.started_at:type_name -> google.protobuf.Timestamp
+	99,  // 25: chorus.ProxyStatus.updated_at:type_name -> google.protobuf.Timestamp
 	12,  // 26: chorus.ProxyStatus.storages:type_name -> chorus.StorageHealth
 	17,  // 27: chorus.ProxyStatus.settings:type_name -> chorus.ProxySettings
 	24,  // 28: chorus.ProxyStatus.stats:type_name -> chorus.TrafficStats
 	19,  // 29: chorus.ProxyStatus.rates:type_name -> chorus.TrafficRates
-	90,  // 30: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
-	91,  // 31: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
-	96,  // 32: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
+	93,  // 30: chorus.TrafficRates.requests_by_class:type_name -> chorus.TrafficRates.RequestsByClassEntry
+	94,  // 31: chorus.TrafficRates.requests_by_storage:type_name -> chorus.TrafficRates.RequestsByStorageEntry
+	99,  // 32: chorus.StatsHistoryPoint.time:type_name -> google.protobuf.Timestamp
 	19,  // 33: chorus.StatsHistoryPoint.rates:type_name -> chorus.TrafficRates
-	96,  // 34: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
+	99,  // 34: chorus.ProxyLatestRates.time:type_name -> google.protobuf.Timestamp
 	19,  // 35: chorus.ProxyLatestRates.rates:type_name -> chorus.TrafficRates
-	97,  // 36: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
+	100, // 36: chorus.StatsHistory.bucket:type_name -> google.protobuf.Duration
 	21,  // 37: chorus.StatsHistory.points:type_name -> chorus.StatsHistoryPoint
 	22,  // 38: chorus.StatsHistory.proxies:type_name -> chorus.ProxyLatestRates
-	96,  // 39: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
-	96,  // 40: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
-	92,  // 41: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
-	93,  // 42: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
+	99,  // 39: chorus.TrafficStats.collected_at:type_name -> google.protobuf.Timestamp
+	99,  // 40: chorus.TrafficStats.started_at:type_name -> google.protobuf.Timestamp
+	95,  // 41: chorus.TrafficStats.requests_by_class:type_name -> chorus.TrafficStats.RequestsByClassEntry
+	96,  // 42: chorus.TrafficStats.requests_by_storage:type_name -> chorus.TrafficStats.RequestsByStorageEntry
 	25,  // 43: chorus.TrafficStats.latency:type_name -> chorus.LatencyHistogram
 	18,  // 44: chorus.ProxyStatusList.proxies:type_name -> chorus.ProxyStatus
 	19,  // 45: chorus.ProxyStatusList.total_rates:type_name -> chorus.TrafficRates
-	97,  // 46: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
+	100, // 46: chorus.FailoverPolicy.after:type_name -> google.protobuf.Duration
 	27,  // 47: chorus.FailoverPolicyList.policies:type_name -> chorus.FailoverPolicy
-	96,  // 48: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
+	99,  // 48: chorus.FailoverEvent.time:type_name -> google.protobuf.Timestamp
 	30,  // 49: chorus.FailoverEventList.events:type_name -> chorus.FailoverEvent
 	33,  // 50: chorus.S3User.storages:type_name -> chorus.S3UserStorage
 	34,  // 51: chorus.S3User.access_keys:type_name -> chorus.S3UserAccessKeys
@@ -7341,21 +7787,21 @@ var file_chorus_tutti_proto_depIdxs = []int32{
 	40,  // 58: chorus.CreateS3UserResponse.verification:type_name -> chorus.S3UserVerifyResult
 	38,  // 59: chorus.UpdateS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
 	38,  // 60: chorus.TestS3UserCredentialsRequest.credential:type_name -> chorus.S3UserCredential
-	96,  // 61: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
-	96,  // 62: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
-	96,  // 63: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
-	96,  // 64: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
+	99,  // 61: chorus.ConsoleUser.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 62: chorus.ConsoleUser.updated_at:type_name -> google.protobuf.Timestamp
+	99,  // 63: chorus.ConsoleUser.last_login_at:type_name -> google.protobuf.Timestamp
+	99,  // 64: chorus.ConsoleUser.password_changed_at:type_name -> google.protobuf.Timestamp
 	48,  // 65: chorus.ConsoleUserList.users:type_name -> chorus.ConsoleUser
 	48,  // 66: chorus.CreateConsoleUserResponse.user:type_name -> chorus.ConsoleUser
-	97,  // 67: chorus.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
-	97,  // 68: chorus.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
+	100, // 67: chorus.RuntimeStorage.http_timeout:type_name -> google.protobuf.Duration
+	100, // 68: chorus.RuntimeStorage.health_check_interval:type_name -> google.protobuf.Duration
 	57,  // 69: chorus.RuntimeStorage.rate_limit:type_name -> chorus.RuntimeStorageRateLimit
 	58,  // 70: chorus.RuntimeStorage.users:type_name -> chorus.RuntimeStorageUser
-	96,  // 71: chorus.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
-	96,  // 72: chorus.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
+	99,  // 71: chorus.RuntimeStorage.created_at:type_name -> google.protobuf.Timestamp
+	99,  // 72: chorus.RuntimeStorage.updated_at:type_name -> google.protobuf.Timestamp
 	67,  // 73: chorus.RuntimeStorage.connection_account:type_name -> chorus.ConnectionAccountInfo
 	71,  // 74: chorus.RuntimeStorage.last_test:type_name -> chorus.StorageTestResult
-	96,  // 75: chorus.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
+	99,  // 75: chorus.RuntimeStorage.last_forced_save_at:type_name -> google.protobuf.Timestamp
 	56,  // 76: chorus.RuntimeStorageList.storages:type_name -> chorus.RuntimeStorage
 	56,  // 77: chorus.CreateRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
 	59,  // 78: chorus.CreateRuntimeStorageRequest.credentials:type_name -> chorus.RuntimeStorageCredential
@@ -7367,47 +7813,47 @@ var file_chorus_tutti_proto_depIdxs = []int32{
 	69,  // 84: chorus.UpdateRuntimeStorageRequest.test_options:type_name -> chorus.StorageTestOptions
 	56,  // 85: chorus.TestRuntimeStorageRequest.storage:type_name -> chorus.RuntimeStorage
 	59,  // 86: chorus.TestRuntimeStorageRequest.credential:type_name -> chorus.RuntimeStorageCredential
-	96,  // 87: chorus.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
-	96,  // 88: chorus.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
+	99,  // 87: chorus.ConnectionAccountInfo.rotated_at:type_name -> google.protobuf.Timestamp
+	99,  // 88: chorus.ConnectionAccountInfo.safe_to_revoke_previous_after:type_name -> google.protobuf.Timestamp
 	68,  // 89: chorus.StorageTestOptions.features:type_name -> chorus.StorageTestFeatures
-	96,  // 90: chorus.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
+	99,  // 90: chorus.StorageTestResult.tested_at:type_name -> google.protobuf.Timestamp
 	70,  // 91: chorus.StorageTestResult.steps:type_name -> chorus.StorageTestStep
 	56,  // 92: chorus.TestStorageConnectionRequest.storage:type_name -> chorus.RuntimeStorage
 	66,  // 93: chorus.TestStorageConnectionRequest.connection_account:type_name -> chorus.ConnectionAccount
 	69,  // 94: chorus.TestStorageConnectionRequest.options:type_name -> chorus.StorageTestOptions
 	66,  // 95: chorus.RotateStorageConnectionAccountRequest.new_account:type_name -> chorus.ConnectionAccount
 	69,  // 96: chorus.RotateStorageConnectionAccountRequest.options:type_name -> chorus.StorageTestOptions
-	97,  // 97: chorus.ProxySyncSettingsOverride.timeout:type_name -> google.protobuf.Duration
-	97,  // 98: chorus.ProxyReplicationSettingsOverride.event_retry_budget:type_name -> google.protobuf.Duration
+	100, // 97: chorus.ProxySyncSettingsOverride.timeout:type_name -> google.protobuf.Duration
+	100, // 98: chorus.ProxyReplicationSettingsOverride.event_retry_budget:type_name -> google.protobuf.Duration
 	74,  // 99: chorus.ProxyReplicationSettingsOverride.sync:type_name -> chorus.ProxySyncSettingsOverride
-	97,  // 100: chorus.ProxyHealthSettingsOverride.open_duration:type_name -> google.protobuf.Duration
-	97,  // 101: chorus.ProxyFailoverSettingsOverride.check_interval:type_name -> google.protobuf.Duration
-	97,  // 102: chorus.ProxyFailoverSettingsOverride.after:type_name -> google.protobuf.Duration
+	100, // 100: chorus.ProxyHealthSettingsOverride.open_duration:type_name -> google.protobuf.Duration
+	100, // 101: chorus.ProxyFailoverSettingsOverride.check_interval:type_name -> google.protobuf.Duration
+	100, // 102: chorus.ProxyFailoverSettingsOverride.after:type_name -> google.protobuf.Duration
 	75,  // 103: chorus.ProxySettingsOverride.replication:type_name -> chorus.ProxyReplicationSettingsOverride
 	76,  // 104: chorus.ProxySettingsOverride.health:type_name -> chorus.ProxyHealthSettingsOverride
 	77,  // 105: chorus.ProxySettingsOverride.failover:type_name -> chorus.ProxyFailoverSettingsOverride
-	97,  // 106: chorus.ProxySettingsOverride.read_header_timeout:type_name -> google.protobuf.Duration
-	97,  // 107: chorus.ProxySettingsOverride.writer_lease:type_name -> google.protobuf.Duration
-	97,  // 108: chorus.ProxySettingsOverride.drain_delay:type_name -> google.protobuf.Duration
-	97,  // 109: chorus.ProxySettingsOverride.ready_max_staleness:type_name -> google.protobuf.Duration
-	96,  // 110: chorus.ProxyFleetConfig.updated_at:type_name -> google.protobuf.Timestamp
+	100, // 106: chorus.ProxySettingsOverride.read_header_timeout:type_name -> google.protobuf.Duration
+	100, // 107: chorus.ProxySettingsOverride.writer_lease:type_name -> google.protobuf.Duration
+	100, // 108: chorus.ProxySettingsOverride.drain_delay:type_name -> google.protobuf.Duration
+	100, // 109: chorus.ProxySettingsOverride.ready_max_staleness:type_name -> google.protobuf.Duration
+	99,  // 110: chorus.ProxyFleetConfig.updated_at:type_name -> google.protobuf.Timestamp
 	78,  // 111: chorus.ProxyFleetConfig.defaults:type_name -> chorus.ProxySettingsOverride
-	94,  // 112: chorus.ProxyFleetConfig.groups:type_name -> chorus.ProxyFleetConfig.GroupsEntry
+	97,  // 112: chorus.ProxyFleetConfig.groups:type_name -> chorus.ProxyFleetConfig.GroupsEntry
 	78,  // 113: chorus.SetProxyFleetConfigRequest.defaults:type_name -> chorus.ProxySettingsOverride
-	95,  // 114: chorus.SetProxyFleetConfigRequest.groups:type_name -> chorus.SetProxyFleetConfigRequest.GroupsEntry
-	96,  // 115: chorus.ListAuditLogRequest.since:type_name -> google.protobuf.Timestamp
-	96,  // 116: chorus.ListAuditLogRequest.until:type_name -> google.protobuf.Timestamp
-	96,  // 117: chorus.AuditLogEntry.occurred_at:type_name -> google.protobuf.Timestamp
+	98,  // 114: chorus.SetProxyFleetConfigRequest.groups:type_name -> chorus.SetProxyFleetConfigRequest.GroupsEntry
+	99,  // 115: chorus.ListAuditLogRequest.since:type_name -> google.protobuf.Timestamp
+	99,  // 116: chorus.ListAuditLogRequest.until:type_name -> google.protobuf.Timestamp
+	99,  // 117: chorus.AuditLogEntry.occurred_at:type_name -> google.protobuf.Timestamp
 	82,  // 118: chorus.AuditLogList.entries:type_name -> chorus.AuditLogEntry
-	97,  // 119: chorus.SystemWorkerSettings.shutdown_timeout:type_name -> google.protobuf.Duration
-	97,  // 120: chorus.SystemWorkerSettings.queue_update_interval:type_name -> google.protobuf.Duration
-	97,  // 121: chorus.SystemWorkerSettings.task_check_interval:type_name -> google.protobuf.Duration
-	97,  // 122: chorus.SystemWorkerSettings.delayed_task_check_interval:type_name -> google.protobuf.Duration
-	97,  // 123: chorus.SystemWorkerSettings.swift_retry_interval:type_name -> google.protobuf.Duration
-	97,  // 124: chorus.SystemWorkerSettings.pause_retry_interval:type_name -> google.protobuf.Duration
-	97,  // 125: chorus.SystemWorkerSettings.switch_retry_interval:type_name -> google.protobuf.Duration
-	97,  // 126: chorus.SystemLockSettings.overlap:type_name -> google.protobuf.Duration
-	96,  // 127: chorus.SystemSettings.updated_at:type_name -> google.protobuf.Timestamp
+	100, // 119: chorus.SystemWorkerSettings.shutdown_timeout:type_name -> google.protobuf.Duration
+	100, // 120: chorus.SystemWorkerSettings.queue_update_interval:type_name -> google.protobuf.Duration
+	100, // 121: chorus.SystemWorkerSettings.task_check_interval:type_name -> google.protobuf.Duration
+	100, // 122: chorus.SystemWorkerSettings.delayed_task_check_interval:type_name -> google.protobuf.Duration
+	100, // 123: chorus.SystemWorkerSettings.swift_retry_interval:type_name -> google.protobuf.Duration
+	100, // 124: chorus.SystemWorkerSettings.pause_retry_interval:type_name -> google.protobuf.Duration
+	100, // 125: chorus.SystemWorkerSettings.switch_retry_interval:type_name -> google.protobuf.Duration
+	100, // 126: chorus.SystemLockSettings.overlap:type_name -> google.protobuf.Duration
+	99,  // 127: chorus.SystemSettings.updated_at:type_name -> google.protobuf.Timestamp
 	84,  // 128: chorus.SystemSettings.features:type_name -> chorus.SystemFeaturesSettings
 	85,  // 129: chorus.SystemSettings.worker:type_name -> chorus.SystemWorkerSettings
 	86,  // 130: chorus.SystemSettings.lock:type_name -> chorus.SystemLockSettings
@@ -7416,91 +7862,95 @@ var file_chorus_tutti_proto_depIdxs = []int32{
 	85,  // 133: chorus.UpdateSystemSettingsRequest.worker:type_name -> chorus.SystemWorkerSettings
 	86,  // 134: chorus.UpdateSystemSettingsRequest.lock:type_name -> chorus.SystemLockSettings
 	87,  // 135: chorus.UpdateSystemSettingsRequest.webhook:type_name -> chorus.SystemWebhookSettings
-	78,  // 136: chorus.ProxyFleetConfig.GroupsEntry.value:type_name -> chorus.ProxySettingsOverride
-	78,  // 137: chorus.SetProxyFleetConfigRequest.GroupsEntry.value:type_name -> chorus.ProxySettingsOverride
-	60,  // 138: chorus.Resilience.ListRuntimeStorages:input_type -> chorus.ListRuntimeStoragesRequest
-	62,  // 139: chorus.Resilience.CreateRuntimeStorage:input_type -> chorus.CreateRuntimeStorageRequest
-	63,  // 140: chorus.Resilience.UpdateRuntimeStorage:input_type -> chorus.UpdateRuntimeStorageRequest
-	64,  // 141: chorus.Resilience.DeleteRuntimeStorage:input_type -> chorus.RuntimeStorageName
-	65,  // 142: chorus.Resilience.TestRuntimeStorage:input_type -> chorus.TestRuntimeStorageRequest
-	64,  // 143: chorus.Resilience.GetRuntimeStorage:input_type -> chorus.RuntimeStorageName
-	72,  // 144: chorus.Resilience.TestStorageConnection:input_type -> chorus.TestStorageConnectionRequest
-	73,  // 145: chorus.Resilience.RotateStorageConnectionAccount:input_type -> chorus.RotateStorageConnectionAccountRequest
-	98,  // 146: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
-	20,  // 147: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
-	98,  // 148: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
-	27,  // 149: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
-	29,  // 150: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
-	98,  // 151: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
-	32,  // 152: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
-	98,  // 153: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
-	6,   // 154: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
-	8,   // 155: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
-	98,  // 156: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
-	0,   // 157: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
-	2,   // 158: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
-	3,   // 159: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
-	4,   // 160: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
-	98,  // 161: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
-	39,  // 162: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
-	42,  // 163: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
-	43,  // 164: chorus.Resilience.DeleteS3UserCredentials:input_type -> chorus.DeleteS3UserCredentialsRequest
-	44,  // 165: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
-	46,  // 166: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
-	98,  // 167: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
-	51,  // 168: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
-	53,  // 169: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
-	54,  // 170: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
-	50,  // 171: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
-	98,  // 172: chorus.Resilience.GetProxyFleetConfig:input_type -> google.protobuf.Empty
-	80,  // 173: chorus.Resilience.SetProxyFleetConfig:input_type -> chorus.SetProxyFleetConfigRequest
-	81,  // 174: chorus.Resilience.ListAuditLog:input_type -> chorus.ListAuditLogRequest
-	98,  // 175: chorus.Resilience.GetSystemSettings:input_type -> google.protobuf.Empty
-	89,  // 176: chorus.Resilience.UpdateSystemSettings:input_type -> chorus.UpdateSystemSettingsRequest
-	61,  // 177: chorus.Resilience.ListRuntimeStorages:output_type -> chorus.RuntimeStorageList
-	56,  // 178: chorus.Resilience.CreateRuntimeStorage:output_type -> chorus.RuntimeStorage
-	56,  // 179: chorus.Resilience.UpdateRuntimeStorage:output_type -> chorus.RuntimeStorage
-	98,  // 180: chorus.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
-	47,  // 181: chorus.Resilience.TestRuntimeStorage:output_type -> chorus.TestS3UserCredentialsResponse
-	56,  // 182: chorus.Resilience.GetRuntimeStorage:output_type -> chorus.RuntimeStorage
-	71,  // 183: chorus.Resilience.TestStorageConnection:output_type -> chorus.StorageTestResult
-	56,  // 184: chorus.Resilience.RotateStorageConnectionAccount:output_type -> chorus.RuntimeStorage
-	26,  // 185: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
-	23,  // 186: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
-	28,  // 187: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
-	98,  // 188: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
-	98,  // 189: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
-	31,  // 190: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
-	98,  // 191: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
-	7,   // 192: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
-	98,  // 193: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
-	98,  // 194: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
-	10,  // 195: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
-	1,   // 196: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
-	1,   // 197: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
-	98,  // 198: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
-	98,  // 199: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
-	37,  // 200: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
-	41,  // 201: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
-	98,  // 202: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
-	98,  // 203: chorus.Resilience.DeleteS3UserCredentials:output_type -> google.protobuf.Empty
-	45,  // 204: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
-	47,  // 205: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
-	49,  // 206: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
-	52,  // 207: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
-	98,  // 208: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
-	55,  // 209: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
-	98,  // 210: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
-	79,  // 211: chorus.Resilience.GetProxyFleetConfig:output_type -> chorus.ProxyFleetConfig
-	79,  // 212: chorus.Resilience.SetProxyFleetConfig:output_type -> chorus.ProxyFleetConfig
-	83,  // 213: chorus.Resilience.ListAuditLog:output_type -> chorus.AuditLogList
-	88,  // 214: chorus.Resilience.GetSystemSettings:output_type -> chorus.SystemSettings
-	88,  // 215: chorus.Resilience.UpdateSystemSettings:output_type -> chorus.SystemSettings
-	177, // [177:216] is the sub-list for method output_type
-	138, // [138:177] is the sub-list for method input_type
-	138, // [138:138] is the sub-list for extension type_name
-	138, // [138:138] is the sub-list for extension extendee
-	0,   // [0:138] is the sub-list for field type_name
+	90,  // 136: chorus.WorkerStatsResponse.workers:type_name -> chorus.WorkerStatsSnapshot
+	91,  // 137: chorus.WorkerStatsResponse.totals:type_name -> chorus.WorkerStatsTotals
+	78,  // 138: chorus.ProxyFleetConfig.GroupsEntry.value:type_name -> chorus.ProxySettingsOverride
+	78,  // 139: chorus.SetProxyFleetConfigRequest.GroupsEntry.value:type_name -> chorus.ProxySettingsOverride
+	60,  // 140: chorus.Resilience.ListRuntimeStorages:input_type -> chorus.ListRuntimeStoragesRequest
+	62,  // 141: chorus.Resilience.CreateRuntimeStorage:input_type -> chorus.CreateRuntimeStorageRequest
+	63,  // 142: chorus.Resilience.UpdateRuntimeStorage:input_type -> chorus.UpdateRuntimeStorageRequest
+	64,  // 143: chorus.Resilience.DeleteRuntimeStorage:input_type -> chorus.RuntimeStorageName
+	65,  // 144: chorus.Resilience.TestRuntimeStorage:input_type -> chorus.TestRuntimeStorageRequest
+	64,  // 145: chorus.Resilience.GetRuntimeStorage:input_type -> chorus.RuntimeStorageName
+	72,  // 146: chorus.Resilience.TestStorageConnection:input_type -> chorus.TestStorageConnectionRequest
+	73,  // 147: chorus.Resilience.RotateStorageConnectionAccount:input_type -> chorus.RotateStorageConnectionAccountRequest
+	101, // 148: chorus.Resilience.GetProxyStatus:input_type -> google.protobuf.Empty
+	20,  // 149: chorus.Resilience.GetStatsHistory:input_type -> chorus.StatsHistoryRequest
+	101, // 150: chorus.Resilience.GetWorkerStats:input_type -> google.protobuf.Empty
+	101, // 151: chorus.Resilience.ListFailoverPolicies:input_type -> google.protobuf.Empty
+	27,  // 152: chorus.Resilience.SetFailoverPolicy:input_type -> chorus.FailoverPolicy
+	29,  // 153: chorus.Resilience.DeleteFailoverPolicy:input_type -> chorus.FailoverPolicySource
+	101, // 154: chorus.Resilience.ListFailoverEvents:input_type -> google.protobuf.Empty
+	32,  // 155: chorus.Resilience.DeleteFailoverEvent:input_type -> chorus.FailoverEventID
+	101, // 156: chorus.Resilience.ListAccessPolicies:input_type -> google.protobuf.Empty
+	6,   // 157: chorus.Resilience.SetAccessPolicy:input_type -> chorus.AccessPolicy
+	8,   // 158: chorus.Resilience.DeleteAccessPolicy:input_type -> chorus.AccessPolicyUser
+	101, // 159: chorus.Resilience.ListProxyAccounts:input_type -> google.protobuf.Empty
+	0,   // 160: chorus.Resilience.CreateProxyAccount:input_type -> chorus.CreateProxyAccountRequest
+	2,   // 161: chorus.Resilience.RotateProxyAccountSecret:input_type -> chorus.RotateProxyAccountSecretRequest
+	3,   // 162: chorus.Resilience.SetProxyAccountStatus:input_type -> chorus.SetProxyAccountStatusRequest
+	4,   // 163: chorus.Resilience.DeleteProxyAccount:input_type -> chorus.ProxyAccountKey
+	101, // 164: chorus.Resilience.ListS3Users:input_type -> google.protobuf.Empty
+	39,  // 165: chorus.Resilience.CreateS3User:input_type -> chorus.CreateS3UserRequest
+	42,  // 166: chorus.Resilience.UpdateS3UserCredentials:input_type -> chorus.UpdateS3UserCredentialsRequest
+	43,  // 167: chorus.Resilience.DeleteS3UserCredentials:input_type -> chorus.DeleteS3UserCredentialsRequest
+	44,  // 168: chorus.Resilience.DeleteS3User:input_type -> chorus.DeleteS3UserRequest
+	46,  // 169: chorus.Resilience.TestS3UserCredentials:input_type -> chorus.TestS3UserCredentialsRequest
+	101, // 170: chorus.Resilience.ListConsoleUsers:input_type -> google.protobuf.Empty
+	51,  // 171: chorus.Resilience.CreateConsoleUser:input_type -> chorus.CreateConsoleUserRequest
+	53,  // 172: chorus.Resilience.UpdateConsoleUser:input_type -> chorus.UpdateConsoleUserRequest
+	54,  // 173: chorus.Resilience.ResetConsoleUserPassword:input_type -> chorus.ResetConsoleUserPasswordRequest
+	50,  // 174: chorus.Resilience.DeleteConsoleUser:input_type -> chorus.ConsoleUserName
+	101, // 175: chorus.Resilience.GetProxyFleetConfig:input_type -> google.protobuf.Empty
+	80,  // 176: chorus.Resilience.SetProxyFleetConfig:input_type -> chorus.SetProxyFleetConfigRequest
+	81,  // 177: chorus.Resilience.ListAuditLog:input_type -> chorus.ListAuditLogRequest
+	101, // 178: chorus.Resilience.GetSystemSettings:input_type -> google.protobuf.Empty
+	89,  // 179: chorus.Resilience.UpdateSystemSettings:input_type -> chorus.UpdateSystemSettingsRequest
+	61,  // 180: chorus.Resilience.ListRuntimeStorages:output_type -> chorus.RuntimeStorageList
+	56,  // 181: chorus.Resilience.CreateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	56,  // 182: chorus.Resilience.UpdateRuntimeStorage:output_type -> chorus.RuntimeStorage
+	101, // 183: chorus.Resilience.DeleteRuntimeStorage:output_type -> google.protobuf.Empty
+	47,  // 184: chorus.Resilience.TestRuntimeStorage:output_type -> chorus.TestS3UserCredentialsResponse
+	56,  // 185: chorus.Resilience.GetRuntimeStorage:output_type -> chorus.RuntimeStorage
+	71,  // 186: chorus.Resilience.TestStorageConnection:output_type -> chorus.StorageTestResult
+	56,  // 187: chorus.Resilience.RotateStorageConnectionAccount:output_type -> chorus.RuntimeStorage
+	26,  // 188: chorus.Resilience.GetProxyStatus:output_type -> chorus.ProxyStatusList
+	23,  // 189: chorus.Resilience.GetStatsHistory:output_type -> chorus.StatsHistory
+	92,  // 190: chorus.Resilience.GetWorkerStats:output_type -> chorus.WorkerStatsResponse
+	28,  // 191: chorus.Resilience.ListFailoverPolicies:output_type -> chorus.FailoverPolicyList
+	101, // 192: chorus.Resilience.SetFailoverPolicy:output_type -> google.protobuf.Empty
+	101, // 193: chorus.Resilience.DeleteFailoverPolicy:output_type -> google.protobuf.Empty
+	31,  // 194: chorus.Resilience.ListFailoverEvents:output_type -> chorus.FailoverEventList
+	101, // 195: chorus.Resilience.DeleteFailoverEvent:output_type -> google.protobuf.Empty
+	7,   // 196: chorus.Resilience.ListAccessPolicies:output_type -> chorus.AccessPolicyList
+	101, // 197: chorus.Resilience.SetAccessPolicy:output_type -> google.protobuf.Empty
+	101, // 198: chorus.Resilience.DeleteAccessPolicy:output_type -> google.protobuf.Empty
+	10,  // 199: chorus.Resilience.ListProxyAccounts:output_type -> chorus.ProxyAccountList
+	1,   // 200: chorus.Resilience.CreateProxyAccount:output_type -> chorus.ProxyAccountSecret
+	1,   // 201: chorus.Resilience.RotateProxyAccountSecret:output_type -> chorus.ProxyAccountSecret
+	101, // 202: chorus.Resilience.SetProxyAccountStatus:output_type -> google.protobuf.Empty
+	101, // 203: chorus.Resilience.DeleteProxyAccount:output_type -> google.protobuf.Empty
+	37,  // 204: chorus.Resilience.ListS3Users:output_type -> chorus.S3UserList
+	41,  // 205: chorus.Resilience.CreateS3User:output_type -> chorus.CreateS3UserResponse
+	101, // 206: chorus.Resilience.UpdateS3UserCredentials:output_type -> google.protobuf.Empty
+	101, // 207: chorus.Resilience.DeleteS3UserCredentials:output_type -> google.protobuf.Empty
+	45,  // 208: chorus.Resilience.DeleteS3User:output_type -> chorus.DeleteS3UserResponse
+	47,  // 209: chorus.Resilience.TestS3UserCredentials:output_type -> chorus.TestS3UserCredentialsResponse
+	49,  // 210: chorus.Resilience.ListConsoleUsers:output_type -> chorus.ConsoleUserList
+	52,  // 211: chorus.Resilience.CreateConsoleUser:output_type -> chorus.CreateConsoleUserResponse
+	101, // 212: chorus.Resilience.UpdateConsoleUser:output_type -> google.protobuf.Empty
+	55,  // 213: chorus.Resilience.ResetConsoleUserPassword:output_type -> chorus.ResetConsoleUserPasswordResponse
+	101, // 214: chorus.Resilience.DeleteConsoleUser:output_type -> google.protobuf.Empty
+	79,  // 215: chorus.Resilience.GetProxyFleetConfig:output_type -> chorus.ProxyFleetConfig
+	79,  // 216: chorus.Resilience.SetProxyFleetConfig:output_type -> chorus.ProxyFleetConfig
+	83,  // 217: chorus.Resilience.ListAuditLog:output_type -> chorus.AuditLogList
+	88,  // 218: chorus.Resilience.GetSystemSettings:output_type -> chorus.SystemSettings
+	88,  // 219: chorus.Resilience.UpdateSystemSettings:output_type -> chorus.SystemSettings
+	180, // [180:220] is the sub-list for method output_type
+	140, // [140:180] is the sub-list for method input_type
+	140, // [140:140] is the sub-list for extension type_name
+	140, // [140:140] is the sub-list for extension extendee
+	0,   // [0:140] is the sub-list for field type_name
 }
 
 func init() { file_chorus_tutti_proto_init() }
@@ -7526,7 +7976,7 @@ func file_chorus_tutti_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_tutti_proto_rawDesc), len(file_chorus_tutti_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   96,
+			NumMessages:   99,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

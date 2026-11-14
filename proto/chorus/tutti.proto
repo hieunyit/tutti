@@ -35,6 +35,10 @@ service Resilience {
   // Proxies record a sample every 10s into Redis (kept 6h), so history survives UI reloads.
   rpc GetStatsHistory(StatsHistoryRequest) returns (StatsHistory);
 
+  // GetWorkerStats returns the replication throughput snapshots published by the live worker processes
+  // (every 5s, TTL 20s) plus their aggregated totals.
+  rpc GetWorkerStats(google.protobuf.Empty) returns (WorkerStatsResponse);
+
   // ListFailoverPolicies returns all failover policies sorted by source storage.
   rpc ListFailoverPolicies(google.protobuf.Empty) returns (FailoverPolicyList);
 
@@ -924,6 +928,12 @@ message SystemWorkerSettings {
   int32 backlog_low_watermark = 10;
   int64 bandwidth_limit_bytes = 11;
   int64 buffer_budget_bytes = 12;
+  // Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only.
+  int32 bulk_concurrency_percent = 13;
+  // Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy.
+  int32 multipart_threads = 14;
+  // Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy.
+  int32 multipart_part_size_mib = 15;
 }
 
 message SystemLockSettings {
@@ -952,3 +962,45 @@ message UpdateSystemSettingsRequest {
   SystemWebhookSettings webhook = 5;
 }
 
+
+message WorkerStatsSnapshot {
+  string worker_id = 1;
+  string started_at = 2;
+  string updated_at = 3;
+  int32 concurrency = 4;
+  int32 bulk_concurrency = 5;
+  int32 live_concurrency = 6;
+  int64 in_flight = 7;
+  int64 copied_objects_total = 8;
+  int64 copied_bytes_total = 9;
+  int64 failed_total = 10;
+  double objects_per_sec_1m = 11;
+  double bytes_per_sec_1m = 12;
+  double objects_per_sec_5m = 13;
+  double bytes_per_sec_5m = 14;
+  double avg_copy_seconds_1m = 15;
+  int64 buffer_total_bytes = 16;
+  int64 buffer_used_bytes = 17;
+  int64 buffer_waiters = 18;
+  double buffer_wait_seconds_total = 19;
+}
+
+message WorkerStatsTotals {
+  int64 in_flight = 1;
+  int64 concurrency = 2;
+  double objects_per_sec_1m = 3;
+  double bytes_per_sec_1m = 4;
+  double objects_per_sec_5m = 5;
+  double bytes_per_sec_5m = 6;
+  int64 buffer_total_bytes = 7;
+  int64 buffer_used_bytes = 8;
+  int64 buffer_waiters = 9;
+  int64 copied_objects_total = 10;
+  int64 copied_bytes_total = 11;
+  int64 failed_total = 12;
+}
+
+message WorkerStatsResponse {
+  repeated WorkerStatsSnapshot workers = 1;
+  WorkerStatsTotals totals = 2;
+}

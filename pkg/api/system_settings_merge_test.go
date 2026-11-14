@@ -72,6 +72,13 @@ func TestSystemSettingsFromPb_Invalid(t *testing.T) {
 		"negative retry interval":   {Worker: &pb.SystemWorkerSettings{SwiftRetryInterval: neg}},
 		"negative lock overlap":     {Lock: &pb.SystemLockSettings{Overlap: neg}},
 		"low >= high":               {Worker: &pb.SystemWorkerSettings{BacklogHighWatermark: 50, BacklogLowWatermark: 50}},
+		"bulk percent too low":      {Worker: &pb.SystemWorkerSettings{BulkConcurrencyPercent: 4}},
+		"bulk percent too high":     {Worker: &pb.SystemWorkerSettings{BulkConcurrencyPercent: 96}},
+		"bulk percent negative":     {Worker: &pb.SystemWorkerSettings{BulkConcurrencyPercent: -5}},
+		"multipart threads high":    {Worker: &pb.SystemWorkerSettings{MultipartThreads: 17}},
+		"multipart threads neg":     {Worker: &pb.SystemWorkerSettings{MultipartThreads: -1}},
+		"part size too small":       {Worker: &pb.SystemWorkerSettings{MultipartPartSizeMib: 4}},
+		"part size too large":       {Worker: &pb.SystemWorkerSettings{MultipartPartSizeMib: 513}},
 		"low above stored high":     {Worker: &pb.SystemWorkerSettings{BacklogLowWatermark: 900}},
 	}
 	for name, req := range cases {
@@ -121,4 +128,18 @@ func TestResilience_UpdateSystemSettings_MergeAndValidation(t *testing.T) {
 	got, err := c.GetSystemSettings(ctx, &emptypb.Empty{})
 	require.NoError(t, err)
 	require.EqualValues(t, 42, got.Worker.Concurrency)
+}
+
+func TestSystemSettingsFromPb_TuningKnobs(t *testing.T) {
+	base := storedSettings()
+	out, err := systemSettingsFromPb(&pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{
+		BulkConcurrencyPercent: 5, MultipartThreads: 16, MultipartPartSizeMib: 512}}, base)
+	require.NoError(t, err)
+	require.Equal(t, []int{5, 16, 512}, []int{out.Worker.BulkConcurrencyPercent, out.Worker.MultipartThreads, out.Worker.MultipartPartSizeMiB})
+
+	// omitted (0) keeps the stored values
+	base = out
+	out, err = systemSettingsFromPb(&pb.UpdateSystemSettingsRequest{Worker: &pb.SystemWorkerSettings{Concurrency: 7}}, base)
+	require.NoError(t, err)
+	require.Equal(t, []int{5, 16, 512}, []int{out.Worker.BulkConcurrencyPercent, out.Worker.MultipartThreads, out.Worker.MultipartPartSizeMiB})
 }

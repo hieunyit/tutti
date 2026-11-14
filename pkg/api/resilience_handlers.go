@@ -21,6 +21,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/proxystatus"
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
+	"github.com/hieunyit/tutti/pkg/workerstats"
 	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
 )
 
@@ -358,4 +359,38 @@ func trafficStatsToPb(s *trafficstats.Snapshot) *pb.TrafficStats {
 			Buckets:       s.Latency.Buckets,
 		},
 	}
+}
+
+// GetWorkerStats aggregates the snapshots published by the live worker processes.
+func (h *resilienceHandlers) GetWorkerStats(ctx context.Context, _ *emptypb.Empty) (*pb.WorkerStatsResponse, error) {
+	snaps, err := workerstats.Read(ctx, h.redis, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return workerStatsToPb(snaps), nil
+}
+
+func workerStatsToPb(snaps []workerstats.Snapshot) *pb.WorkerStatsResponse {
+	res := &pb.WorkerStatsResponse{Workers: make([]*pb.WorkerStatsSnapshot, 0, len(snaps))}
+	for _, s := range snaps {
+		res.Workers = append(res.Workers, &pb.WorkerStatsSnapshot{
+			WorkerId: s.WorkerID, StartedAt: s.StartedAt, UpdatedAt: s.UpdatedAt,
+			Concurrency: int32(s.Concurrency), BulkConcurrency: int32(s.BulkConcurrency), LiveConcurrency: int32(s.LiveConcurrency),
+			InFlight: s.InFlight, CopiedObjectsTotal: s.CopiedObjectsTotal, CopiedBytesTotal: s.CopiedBytesTotal, FailedTotal: s.FailedTotal,
+			ObjectsPerSec_1M: s.ObjectsPerSec1m, BytesPerSec_1M: s.BytesPerSec1m,
+			ObjectsPerSec_5M: s.ObjectsPerSec5m, BytesPerSec_5M: s.BytesPerSec5m,
+			AvgCopySeconds_1M: s.AvgCopySeconds1m,
+			BufferTotalBytes:  s.BufferTotalBytes, BufferUsedBytes: s.BufferUsedBytes, BufferWaiters: s.BufferWaiters,
+			BufferWaitSecondsTotal: s.BufferWaitSecondsTotal,
+		})
+	}
+	t := workerstats.Aggregate(snaps)
+	res.Totals = &pb.WorkerStatsTotals{
+		InFlight: t.InFlight, Concurrency: t.Concurrency,
+		ObjectsPerSec_1M: t.ObjectsPerSec1m, BytesPerSec_1M: t.BytesPerSec1m,
+		ObjectsPerSec_5M: t.ObjectsPerSec5m, BytesPerSec_5M: t.BytesPerSec5m,
+		BufferTotalBytes: t.BufferTotalBytes, BufferUsedBytes: t.BufferUsedBytes, BufferWaiters: t.BufferWaiters,
+		CopiedObjectsTotal: t.CopiedObjectsTotal, CopiedBytesTotal: t.CopiedBytesTotal, FailedTotal: t.FailedTotal,
+	}
+	return res
 }

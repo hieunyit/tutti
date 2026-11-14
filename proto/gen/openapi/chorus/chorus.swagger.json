@@ -2622,6 +2622,29 @@
         ]
       }
     },
+    "/tutti/worker-stats": {
+      "get": {
+        "summary": "GetWorkerStats returns the replication throughput snapshots published by the live worker processes\n(every 5s, TTL 20s) plus their aggregated totals.",
+        "operationId": "Resilience_GetWorkerStats",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/chorusWorkerStatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Resilience"
+        ]
+      }
+    },
     "/version": {
       "get": {
         "summary": "Get app version",
@@ -5706,6 +5729,21 @@
         "bufferBudgetBytes": {
           "type": "string",
           "format": "int64"
+        },
+        "bulkConcurrencyPercent": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Share of concurrency given to bulk migration: 0 = default (20) or 5..95. Read at worker start only."
+        },
+        "multipartThreads": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Parallel parts per multipart upload: 0 = default (1) or 1..16. Applied live to the next copy."
+        },
+        "multipartPartSizeMib": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Multipart part size in MiB: 0 = default (16) or 5..512. Applied live to the next copy."
         }
       }
     },
@@ -6131,6 +6169,152 @@
         "isBlocked": {
           "type": "boolean",
           "title": "true if routing is blocked for given user"
+        }
+      }
+    },
+    "chorusWorkerStatsResponse": {
+      "type": "object",
+      "properties": {
+        "workers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/chorusWorkerStatsSnapshot"
+          }
+        },
+        "totals": {
+          "$ref": "#/definitions/chorusWorkerStatsTotals"
+        }
+      }
+    },
+    "chorusWorkerStatsSnapshot": {
+      "type": "object",
+      "properties": {
+        "workerId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "concurrency": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "bulkConcurrency": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "liveConcurrency": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "inFlight": {
+          "type": "string",
+          "format": "int64"
+        },
+        "copiedObjectsTotal": {
+          "type": "string",
+          "format": "int64"
+        },
+        "copiedBytesTotal": {
+          "type": "string",
+          "format": "int64"
+        },
+        "failedTotal": {
+          "type": "string",
+          "format": "int64"
+        },
+        "objectsPerSec1m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bytesPerSec1m": {
+          "type": "number",
+          "format": "double"
+        },
+        "objectsPerSec5m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bytesPerSec5m": {
+          "type": "number",
+          "format": "double"
+        },
+        "avgCopySeconds1m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bufferTotalBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferUsedBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferWaiters": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferWaitSecondsTotal": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "chorusWorkerStatsTotals": {
+      "type": "object",
+      "properties": {
+        "inFlight": {
+          "type": "string",
+          "format": "int64"
+        },
+        "concurrency": {
+          "type": "string",
+          "format": "int64"
+        },
+        "objectsPerSec1m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bytesPerSec1m": {
+          "type": "number",
+          "format": "double"
+        },
+        "objectsPerSec5m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bytesPerSec5m": {
+          "type": "number",
+          "format": "double"
+        },
+        "bufferTotalBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferUsedBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bufferWaiters": {
+          "type": "string",
+          "format": "int64"
+        },
+        "copiedObjectsTotal": {
+          "type": "string",
+          "format": "int64"
+        },
+        "copiedBytesTotal": {
+          "type": "string",
+          "format": "int64"
+        },
+        "failedTotal": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

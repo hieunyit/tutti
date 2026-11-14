@@ -203,6 +203,9 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			BacklogLowWatermark:      int32(s.Worker.BacklogLowWatermark),
 			BandwidthLimitBytes:      s.Worker.BandwidthLimitBytes,
 			BufferBudgetBytes:        s.Worker.BufferBudgetBytes,
+			BulkConcurrencyPercent:   int32(s.Worker.BulkConcurrencyPercent),
+			MultipartThreads:         int32(s.Worker.MultipartThreads),
+			MultipartPartSizeMib:     int32(s.Worker.MultipartPartSizeMiB),
 		},
 		Lock: &pb.SystemLockSettings{
 			Overlap: durationpb.New(s.Lock.Overlap),
@@ -256,6 +259,25 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 		w := req.Worker
 		if w.Concurrency < 0 || w.BacklogHighWatermark < 0 || w.BacklogLowWatermark < 0 || w.BandwidthLimitBytes < 0 || w.BufferBudgetBytes < 0 {
 			return out, fmt.Errorf("%w: worker numeric settings must not be negative", dom.ErrInvalidArg)
+		}
+		if w.BulkConcurrencyPercent != 0 && (w.BulkConcurrencyPercent < 5 || w.BulkConcurrencyPercent > 95) {
+			return out, fmt.Errorf("%w: worker.bulkConcurrencyPercent must be 0 (default) or in 5..95: %d", dom.ErrInvalidArg, w.BulkConcurrencyPercent)
+		}
+		if w.MultipartThreads < 0 || w.MultipartThreads > 16 {
+			return out, fmt.Errorf("%w: worker.multipartThreads must be 0 (default) or in 1..16: %d", dom.ErrInvalidArg, w.MultipartThreads)
+		}
+		if w.MultipartPartSizeMib != 0 && (w.MultipartPartSizeMib < 5 || w.MultipartPartSizeMib > 512) {
+			return out, fmt.Errorf("%w: worker.multipartPartSizeMib must be 0 (default) or in 5..512: %d", dom.ErrInvalidArg, w.MultipartPartSizeMib)
+		}
+		// 0 means "omitted": the stored value is kept like for the other numeric worker fields.
+		if w.BulkConcurrencyPercent != 0 {
+			out.Worker.BulkConcurrencyPercent = int(w.BulkConcurrencyPercent)
+		}
+		if w.MultipartThreads != 0 {
+			out.Worker.MultipartThreads = int(w.MultipartThreads)
+		}
+		if w.MultipartPartSizeMib != 0 {
+			out.Worker.MultipartPartSizeMiB = int(w.MultipartPartSizeMib)
 		}
 		if req.Worker.Concurrency > 0 {
 			out.Worker.Concurrency = int(req.Worker.Concurrency)

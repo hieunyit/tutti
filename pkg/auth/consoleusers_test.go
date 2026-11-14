@@ -437,6 +437,7 @@ func TestHTTP_ChangePasswordAndMe(t *testing.T) {
 
 func TestViewerAllowList_Users(t *testing.T) {
 	require.True(t, Allowed(RoleViewer, "/chorus.Resilience/ListS3Users"))
+	require.True(t, Allowed(RoleViewer, "/chorus.Resilience/GetWorkerStats"))
 	for _, m := range []string{"CreateS3User", "UpdateS3UserCredentials", "DeleteS3User", "DeleteS3UserCredentials", "TestS3UserCredentials",
 		"ListConsoleUsers", "CreateConsoleUser", "UpdateConsoleUser", "ResetConsoleUserPassword", "DeleteConsoleUser"} {
 		require.False(t, Allowed(RoleViewer, "/chorus.Resilience/"+m), m)
