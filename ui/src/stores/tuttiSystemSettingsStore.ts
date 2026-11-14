@@ -64,7 +64,7 @@ function getDefaultDraft(): TuttiUpdateSystemSettingsRequest {
       bufferBudgetBytes: '268435456',
       bulkConcurrencyPercent: 0,
       multipartThreads: 0,
-      multipartPartSizeMiB: 0,
+      multipartPartSizeMib: 0,
     },
     lock: {
       overlap: '2s',
@@ -106,7 +106,7 @@ function cloneSettingsToDraft(
       bufferBudgetBytes: s.worker?.bufferBudgetBytes ?? '268435456',
       bulkConcurrencyPercent: s.worker?.bulkConcurrencyPercent ?? 0,
       multipartThreads: s.worker?.multipartThreads ?? 0,
-      multipartPartSizeMiB: s.worker?.multipartPartSizeMiB ?? 0,
+      multipartPartSizeMib: s.worker?.multipartPartSizeMib ?? 0,
     },
     lock: {
       overlap: s.lock?.overlap ?? '2s',

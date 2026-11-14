@@ -42,11 +42,11 @@ describe('worker tuning validation', () => {
     ['multipartThreads', 16, true],
     ['multipartThreads', 17, false],
     ['multipartThreads', -1, false],
-    ['multipartPartSizeMiB', 0, true],
-    ['multipartPartSizeMiB', 5, true],
-    ['multipartPartSizeMiB', 512, true],
-    ['multipartPartSizeMiB', 4, false],
-    ['multipartPartSizeMiB', 513, false],
+    ['multipartPartSizeMib', 0, true],
+    ['multipartPartSizeMib', 5, true],
+    ['multipartPartSizeMib', 512, true],
+    ['multipartPartSizeMib', 4, false],
+    ['multipartPartSizeMib', 513, false],
   ])('%s=%s valid=%s', (key, value, valid) => {
     const errors = validateSystemSettings(draft({ [key]: value }));
 

@@ -123,7 +123,7 @@ export default <I18nMessages>{
     bufferBudgetHint: 'Per worker. 0 = unlimited; 268435456 = 256 MiB.',
     tuneTitle: 'Replication throughput',
     tuneDesc:
-      'Tune how many copies run in parallel and how multipart uploads are split. Leave a field blank (or 0) to use the default shown in it.',
+      'Tune how many copies run in parallel and how multipart uploads are split. Leave a field blank (or 0) to keep the current value or default shown in it; the API cannot reset a value to its default.',
     needsRestart: 'Needs worker restart',
     appliesLive: 'Applies immediately',
     bulkConcurrencyPercent: 'Bulk concurrency share (%)',
@@ -132,8 +132,8 @@ export default <I18nMessages>{
     multipartThreads: 'Multipart threads',
     multipartThreadsHint:
       'Parallel part uploads per object. Default 1; allowed 1 to 16.',
-    multipartPartSizeMiB: 'Multipart part size (MiB)',
-    multipartPartSizeMiBHint:
+    multipartPartSizeMib: 'Multipart part size (MiB)',
+    multipartPartSizeMibHint:
       'Size of each uploaded part. Default 16; allowed 5 to 512.',
     invalidBulkPercent: 'Enter 0 (default) or a whole number from 5 to 95.',
     invalidMultipartThreads:
@@ -275,7 +275,7 @@ export default <I18nMessages>{
       'Maximaler RAM für parallele SDK-Multipart-Puffer (z.B. 268435456 für 256 MiB, live angewendet)',
     tuneTitle: 'Replikationsdurchsatz',
     tuneDesc:
-      'Steuert, wie viele Kopien parallel laufen und wie Multipart-Uploads aufgeteilt werden. Ein leeres Feld (oder 0) verwendet den im Feld angezeigten Standard.',
+      'Steuert, wie viele Kopien parallel laufen und wie Multipart-Uploads aufgeteilt werden. Ein leeres Feld (oder 0) behält den aktuellen Wert bzw. den angezeigten Standard; die API kann keinen Wert auf den Standard zurücksetzen.',
     needsRestart: 'Worker-Neustart erforderlich',
     appliesLive: 'Wirkt sofort',
     bulkConcurrencyPercent: 'Anteil Bulk-Parallelität (%)',
@@ -284,8 +284,8 @@ export default <I18nMessages>{
     multipartThreads: 'Multipart-Threads',
     multipartThreadsHint:
       'Parallele Teil-Uploads je Objekt. Standard 1; erlaubt 1 bis 16.',
-    multipartPartSizeMiB: 'Multipart-Teilgröße (MiB)',
-    multipartPartSizeMiBHint:
+    multipartPartSizeMib: 'Multipart-Teilgröße (MiB)',
+    multipartPartSizeMibHint:
       'Größe jedes hochgeladenen Teils. Standard 16; erlaubt 5 bis 512.',
     invalidBulkPercent:
       '0 (Standard) oder eine ganze Zahl von 5 bis 95 eingeben.',
@@ -427,7 +427,7 @@ export default <I18nMessages>{
     bufferBudgetHint: 'Theo worker. 0 = không giới hạn; 268435456 = 256 MiB.',
     tuneTitle: 'Thông lượng đồng bộ',
     tuneDesc:
-      'Điều chỉnh số bản sao chạy song song và cách chia multipart upload. Để trống (hoặc 0) để dùng giá trị mặc định hiển thị trong ô.',
+      'Điều chỉnh số bản sao chạy song song và cách chia multipart upload. Để trống (hoặc 0) để giữ giá trị hiện tại hoặc mặc định hiển thị trong ô; API không thể đặt lại về mặc định.',
     needsRestart: 'Cần restart worker',
     appliesLive: 'Áp dụng ngay',
     bulkConcurrencyPercent: 'Tỷ lệ song song cho bulk (%)',
@@ -436,8 +436,8 @@ export default <I18nMessages>{
     multipartThreads: 'Số luồng multipart',
     multipartThreadsHint:
       'Số phần được tải lên song song cho mỗi đối tượng. Mặc định 1; cho phép 1 đến 16.',
-    multipartPartSizeMiB: 'Kích thước phần multipart (MiB)',
-    multipartPartSizeMiBHint:
+    multipartPartSizeMib: 'Kích thước phần multipart (MiB)',
+    multipartPartSizeMibHint:
       'Kích thước mỗi phần tải lên. Mặc định 16; cho phép 5 đến 512.',
     invalidBulkPercent: 'Nhập 0 (mặc định) hoặc số nguyên từ 5 đến 95.',
     invalidMultipartThreads: 'Nhập 0 (mặc định) hoặc số nguyên từ 1 đến 16.',

@@ -24,6 +24,7 @@
   import MonitoringBreakdown from '@/components/tutti/monitoring/MonitoringBreakdown.vue';
   import MonitoringKpiTiles from '@/components/tutti/monitoring/MonitoringKpiTiles.vue';
   import MonitoringReplication from '@/components/tutti/monitoring/MonitoringReplication.vue';
+  import ThroughputPanel from '@/components/tutti/throughput/ThroughputPanel.vue';
   import TrafficLineChart from '@/components/tutti/monitoring/TrafficLineChart.vue';
   import { EmptyBlock, ErrorBlock, LoadingBlock } from '@/components/kit';
   import { useTuttiMonitoringStore } from '@/stores/tuttiMonitoringStore';
@@ -171,6 +172,8 @@
       </template>
 
       <MonitoringReplication />
+
+      <ThroughputPanel />
     </div>
   </div>
 </template>

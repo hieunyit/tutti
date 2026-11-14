@@ -92,6 +92,11 @@ describe('formatting', () => {
     });
 
     expect(r.totals.failedTotal).toBe(12);
+    expect(
+      normalizeWorkerStats({
+        workers: [{ workerId: 'a', inFlight: '3', bytesPerSec1m: '2048.5' }],
+      }).workers[0],
+    ).toMatchObject({ inFlight: 3, bytesPerSec1m: 2048.5 });
     expect(r.totals.bufferTotalBytes).toBe(1024);
   });
 });

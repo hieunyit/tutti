@@ -333,7 +333,7 @@ export interface TuttiSystemWorkerSettings {
   /** 0 = default 1; valid 0 or 1..16; applies live */
   multipartThreads?: number;
   /** 0 = default 16; valid 0 or 5..512; applies live */
-  multipartPartSizeMiB?: number;
+  multipartPartSizeMib?: number;
 }
 
 export interface TuttiSystemLockSettings {
@@ -362,39 +362,38 @@ export interface TuttiUpdateSystemSettingsRequest {
   webhook?: TuttiSystemWebhookSettings;
 }
 
-
 export interface TuttiWorkerStat {
   workerId: string;
   startedAt?: string;
   updatedAt?: string;
-  concurrency?: number;
-  bulkConcurrency?: number;
-  liveConcurrency?: number;
-  inFlight?: number;
+  concurrency?: TuttiInt64;
+  bulkConcurrency?: TuttiInt64;
+  liveConcurrency?: TuttiInt64;
+  inFlight?: TuttiInt64;
   copiedObjectsTotal?: TuttiInt64;
   copiedBytesTotal?: TuttiInt64;
   failedTotal?: TuttiInt64;
-  objectsPerSec1m?: number;
-  bytesPerSec1m?: number;
-  objectsPerSec5m?: number;
-  bytesPerSec5m?: number;
-  avgCopySeconds1m?: number;
+  objectsPerSec1m?: TuttiInt64;
+  bytesPerSec1m?: TuttiInt64;
+  objectsPerSec5m?: TuttiInt64;
+  bytesPerSec5m?: TuttiInt64;
+  avgCopySeconds1m?: TuttiInt64;
   bufferTotalBytes?: TuttiInt64;
   bufferUsedBytes?: TuttiInt64;
-  bufferWaiters?: number;
-  bufferWaitSecondsTotal?: number;
+  bufferWaiters?: TuttiInt64;
+  bufferWaitSecondsTotal?: TuttiInt64;
 }
 
 export interface TuttiWorkerStatsTotals {
-  inFlight?: number;
-  concurrency?: number;
-  objectsPerSec1m?: number;
-  bytesPerSec1m?: number;
-  objectsPerSec5m?: number;
-  bytesPerSec5m?: number;
+  inFlight?: TuttiInt64;
+  concurrency?: TuttiInt64;
+  objectsPerSec1m?: TuttiInt64;
+  bytesPerSec1m?: TuttiInt64;
+  objectsPerSec5m?: TuttiInt64;
+  bytesPerSec5m?: TuttiInt64;
   bufferTotalBytes?: TuttiInt64;
   bufferUsedBytes?: TuttiInt64;
-  bufferWaiters?: number;
+  bufferWaiters?: TuttiInt64;
   copiedObjectsTotal?: TuttiInt64;
   copiedBytesTotal?: TuttiInt64;
   failedTotal?: TuttiInt64;

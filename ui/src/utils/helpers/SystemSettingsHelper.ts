@@ -55,7 +55,7 @@ export function toProtoDuration(value: string): string | null {
 export const WORKER_TUNING_FIELDS = {
   bulkConcurrencyPercent: { min: 5, max: 95, error: 'invalidBulkPercent' },
   multipartThreads: { min: 1, max: 16, error: 'invalidMultipartThreads' },
-  multipartPartSizeMiB: { min: 5, max: 512, error: 'invalidPartSize' },
+  multipartPartSizeMib: { min: 5, max: 512, error: 'invalidPartSize' },
 } as const;
 
 export type WorkerTuningKey = keyof typeof WORKER_TUNING_FIELDS;

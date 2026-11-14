@@ -64,7 +64,7 @@
   const tuningDefaults: Record<WorkerTuningKey, string> = {
     bulkConcurrencyPercent: '20',
     multipartThreads: '1',
-    multipartPartSizeMiB: '16',
+    multipartPartSizeMib: '16',
   };
 
   /** 0 is stored, but shown as an empty field with the default as placeholder. */
@@ -237,6 +237,12 @@
           @update:value="(v) => setTuning(key, v)"
         />
       </SettingsField>
+      <RouterLink
+        class="settings-panel__link"
+        to="/dashboard?tab=metrics"
+        data-test="throughput-link"
+        >{{ t('throughputLink') }}</RouterLink
+      >
       <SettingsRecommendations :disabled="disabled" />
     </FormSection>
   </div>
