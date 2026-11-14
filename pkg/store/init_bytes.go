@@ -113,6 +113,7 @@ if cur then
   old = tonumber(cur)
   redis.call('HDEL', KEYS[3], ARGV[1])
   redis.call('HINCRBY', KEYS[3], ARGV[8], -old)
+  if redis.call('HLEN', KEYS[3]) <= 1 then redis.call('DEL', KEYS[3]) end
 end
 redis.call('HINCRBY', KEYS[1], 'done', size)
 redis.call('EXPIRE', KEYS[1], ARGV[4])
@@ -126,6 +127,7 @@ local cur = redis.call('HGET', KEYS[1], ARGV[1])
 if cur then
   redis.call('HDEL', KEYS[1], ARGV[1])
   redis.call('HINCRBY', KEYS[1], ARGV[2], -tonumber(cur))
+  if redis.call('HLEN', KEYS[1]) <= 1 then redis.call('DEL', KEYS[1]) end
 end
 return 1
 `)

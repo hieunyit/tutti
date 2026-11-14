@@ -102,9 +102,7 @@ func TestInitBytesProgress(t *testing.T) {
 	r.EqualValues(1050, got.Done)
 	r.EqualValues(1050, got.Total)
 	_, _, prog := initBytesKeys(id, 1)
-	r.Equal("0", mr.HGet(prog, initBytesProgSum))
-	keys, _ := mr.HKeys(prog)
-	r.Len(keys, 1, "only the sum field is left")
+	r.False(mr.Exists(prog), "the progress hash is removed with its last object")
 
 	// an object finished without progress (small single PUT) counts fully for the speed
 	r.NoError(s.AddDone(ctx, id, 2, 600, ProgressField("x", ""), t0))
@@ -130,6 +128,8 @@ func TestInitBytesClearProgress(t *testing.T) {
 	r.NoError(s.ClearProgress(ctx, "u:a:b", 1, f)) // idempotent
 	r.EqualValues(0, mustGet(t, s, "u:a:b", 1, t0).Done)
 	_, _, prog := initBytesKeys("u:a:b", 1)
+	r.False(mr.Exists(prog))
+	r.NoError(s.SetProgress(ctx, "u:a:b", 1, f, 10, 100, t0))
 	r.True(mr.TTL(prog) > 0)
 }
 
