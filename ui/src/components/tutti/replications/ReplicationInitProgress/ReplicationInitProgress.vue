@@ -31,18 +31,11 @@
 
   const bytesText = computed<string>(() => {
     const p = progress.value;
-    const total = `${p.listingComplete ? '' : `${t('initAtLeast')} `}${H.formatSize(p.totalBytes)}`;
-    const pct = p.percent === null ? '' : ` (${p.percent}%)`;
-    const speed =
-      p.bytesPerSecond > 0
-        ? `${H.formatSize(p.bytesPerSecond)}/s`
-        : t('initSpeedUnknown');
-    const duration = H.formatDuration(p.etaSeconds);
-    const eta = duration
-      ? t('initEtaLeft', { eta: duration })
-      : t('initEtaUnknown');
+    const copied = t('initCopied', { size: H.formatSize(p.doneBytes) });
 
-    return `${H.formatSize(p.doneBytes)} / ${total}${pct} · ${speed} · ${eta}`;
+    return p.bytesPerSecond > 0
+      ? `${copied} · ${H.formatSize(p.bytesPerSecond)}/s`
+      : copied;
   });
 
   const objectsText = computed<string>(() =>
@@ -55,21 +48,7 @@
 
 <template>
   <div class="replication-init-progress">
-    <template v-if="progress.tracked">
-      <div
-        class="replication-init-progress__bar"
-        role="progressbar"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-valuenow="progress.percent ?? 0"
-      >
-        <div
-          class="replication-init-progress__fill"
-          :style="{ width: `${progress.percent ?? 0}%` }"
-        />
-      </div>
-      <span>{{ bytesText }}</span>
-    </template>
+    <span v-if="progress.tracked">{{ bytesText }}</span>
     <span>{{ objectsText }}</span>
   </div>
 </template>
@@ -83,18 +62,5 @@
     font-size: 12px;
     color: var(--tt-text-3);
     overflow-wrap: anywhere;
-
-    &__bar {
-      height: 4px;
-      max-width: 240px;
-      border-radius: 2px;
-      background: var(--tt-border);
-      overflow: hidden;
-    }
-
-    &__fill {
-      height: 100%;
-      background: var(--tt-accent);
-    }
   }
 </style>

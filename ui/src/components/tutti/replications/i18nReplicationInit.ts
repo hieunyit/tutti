@@ -19,26 +19,17 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 export default <I18nMessages>{
   [I18nLocale.EN]: {
     initBytesLabel: 'Initial Replication',
-    initAtLeast: 'at least',
-    initEtaLeft: '~{eta} left',
-    initEtaUnknown: 'time left unknown',
-    initSpeedUnknown: 'speed unknown',
+    initCopied: 'Copied {size}',
     initObjectsCount: '{done} / {total} objects',
   },
   [I18nLocale.DE]: {
     initBytesLabel: 'Erste Replikation',
-    initAtLeast: 'mindestens',
-    initEtaLeft: 'noch ~{eta}',
-    initEtaUnknown: 'Restzeit unbekannt',
-    initSpeedUnknown: 'Geschwindigkeit unbekannt',
+    initCopied: '{size} kopiert',
     initObjectsCount: '{done} / {total} Objekte',
   },
   vi: {
     initBytesLabel: 'Sao chép ban đầu',
-    initAtLeast: 'tối thiểu',
-    initEtaLeft: 'còn ~{eta}',
-    initEtaUnknown: 'chưa rõ thời gian còn lại',
-    initSpeedUnknown: 'chưa rõ tốc độ',
+    initCopied: 'Đã sao chép {size}',
     initObjectsCount: '{done} / {total} object',
   },
 };
