@@ -5,13 +5,13 @@
 # GET/PUT /tutti/system-settings. Concurrency, intervals, shutdownTimeout and lock overlap are read
 # at process startup only and require a worker restart to take effect; feature flags and webhook
 # settings may apply without a restart.
-concurrency: 10 # max number of task that can be processed in parallel
+concurrency: 0 # max parallel tasks. 0 = auto: derived from the CPU/memory available to the process (cgroup/Kubernetes limits aware). Any positive value (or CFG_CONCURRENCY) is explicit
 shutdownTimeout: 5s
 # Tuning knobs below are fallbacks: a non-zero System setting (worker.bulkConcurrencyPercent, multipartThreads,
 # multipartPartSizeMib) wins over these values. Multipart settings apply to the next copy without restart.
-bulkConcurrencyPercent: 20 # 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
-multipartThreads: 1 # 1..16, optional; keep 1 unless measured: parallel parts were slower in local tests, gain unverified
-multipartPartSizeMiB: 16 # 5..512
+bulkConcurrencyPercent: 0 # 0 = auto (20..40 by CPU) or 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
+multipartThreads: 0 # 0 = auto (1), or 1..16; keep 1 unless measured: parallel parts were slower in local tests, gain unverified
+multipartPartSizeMiB: 0 # 0 = auto (16) or 5..512
 worker:
   queueUpdateInterval: 3s
   swiftRetryInterval: 1m # used for swift task retries caused by swift inconsistent state

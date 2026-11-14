@@ -78,11 +78,11 @@ func exportBufferLocked() { metrics.SetCopyBuffer(bufferUsed, bufferTotal) }
 func init() {
 	def := controlplane.SystemSettings{
 		Worker: controlplane.SystemWorkerSettings{
-			Concurrency:          10,
+			Concurrency:          0, // 0 = auto (hardware-derived; 10 before detection)
 			BacklogHighWatermark: 10000,
 			BacklogLowWatermark:  5000,
-			BandwidthLimitBytes:  0,                 // 0 = unlimited
-			BufferBudgetBytes:    256 * 1024 * 1024, // 256 MiB
+			BandwidthLimitBytes:  0, // 0 = unlimited
+			BufferBudgetBytes:    0, // 0 = auto (hardware-derived; 256 MiB before detection)
 		},
 	}
 	ApplySettings(def)
@@ -139,7 +139,11 @@ func ApplyWorkerLimiting(s controlplane.SystemSettings) {
 	bandwidthMu.Unlock()
 
 	bufferPoolMu.Lock()
+	// 0 = no explicit budget: use the hardware-derived one (never unlimited).
 	bufferTotal = s.Worker.BufferBudgetBytes
+	if bufferTotal <= 0 {
+		bufferTotal = autoBufferBudget()
+	}
 	notifyBufferWaitersLocked()
 	bufferPoolMu.Unlock()
 }

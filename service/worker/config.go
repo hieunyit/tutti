@@ -45,7 +45,8 @@ type Config struct {
 
 	Concurrency     int           `yaml:"concurrency"`
 	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
-	// BulkConcurrencyPercent: share (5..95, default 20) of concurrency for bulk migration; rest serves live events.
+	// Concurrency 0 = auto (derived from detected hardware).
+	// BulkConcurrencyPercent: share (5..95, 0 = auto) of concurrency for bulk migration; rest serves live events.
 	BulkConcurrencyPercent int `yaml:"bulkConcurrencyPercent"`
 	// MultipartThreads: parallel parts for objects above the multipart threshold (1..16, default 1).
 	MultipartThreads int `yaml:"multipartThreads"`
@@ -74,8 +75,8 @@ func (c *Config) Validate() error {
 	if err := c.Worker.Validate(); err != nil {
 		return fmt.Errorf("worker config: invalid Worker config: %w", err)
 	}
-	if c.Concurrency <= 0 {
-		return fmt.Errorf("worker config: concurency config must be positive: %d", c.Concurrency)
+	if c.Concurrency < 0 {
+		return fmt.Errorf("worker config: concurrency must be 0 (auto) or positive: %d", c.Concurrency)
 	}
 	if c.BulkConcurrencyPercent != 0 && (c.BulkConcurrencyPercent < 5 || c.BulkConcurrencyPercent > 95) {
 		return fmt.Errorf("worker config: bulkConcurrencyPercent must be in 5..95: %d", c.BulkConcurrencyPercent)

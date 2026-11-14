@@ -46,7 +46,8 @@ func MultipartTuning(threads, partSizeMiB int) (int, uint64) {
 	return threads, uint64(partSizeMiB) << 20
 }
 
-// Precedence of the tuning knobs: system setting (non-zero) > YAML/env > built-in default.
+// Precedence of the tuning knobs: system setting (non-zero) > YAML/env (non-zero) > hardware-derived value
+// (see auto.go) > built-in default. The derived multipart values equal the built-in defaults (threads 1, 16 MiB).
 
 var yamlBulkPercent, yamlMultipartThreads, yamlMultipartPartMiB atomic.Int64
 
@@ -86,7 +87,13 @@ func ResolveMultipart(settingThreads, settingPartMiB, yamlThreads, yamlPartMiB i
 
 // EffectiveBulkPercent resolves bulkConcurrencyPercent from the active settings and YAML fallback.
 func EffectiveBulkPercent() int {
-	return ResolveBulkPercent(Current().Worker.BulkConcurrencyPercent, int(yamlBulkPercent.Load()))
+	if v := ResolveBulkPercentExplicit(Current().Worker.BulkConcurrencyPercent, int(yamlBulkPercent.Load())); v > 0 {
+		return v
+	}
+	if _, rec, ok := Hardware(); ok {
+		return rec.BulkConcurrencyPercent
+	}
+	return DefaultBulkConcurrencyPercent
 }
 
 // EffectiveMultipart resolves the multipart knobs from the active settings (read at copy time, so changes

@@ -40,6 +40,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/hostres"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/metrics"
@@ -76,6 +77,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		Str("version", app.Version).
 		Str("commit", app.Commit).
 		Msg("app starting...")
+
+	// Detect the CPU/memory really available to this process (cgroup/Kubernetes limits aware); knobs without an
+	// explicit value are derived from it.
+	hw := hostres.Detect()
+	systemsettings.SetHardware(hw)
+	if lim := hostres.ApplyMemoryLimit(hw); lim > 0 {
+		logger.Info().Int64("gomemlimit_bytes", lim).Msg("GOMEMLIMIT set to 90% of the cgroup memory limit")
+	}
 
 	shutdown, tp, err := trace.NewTracerProvider(conf.Trace, app)
 	if err != nil {
@@ -147,6 +156,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 	// Load dynamic system and worker settings from database / Redis projection
 	// YAML/env tuning values are the fallback for knobs left at 0 in the system settings.
+	systemsettings.SetConcurrencyFallback(conf.Concurrency)
 	systemsettings.SetConfigFallbacks(conf.BulkConcurrencyPercent, conf.MultipartThreads, conf.MultipartPartSizeMiB)
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
 		systemsettings.ApplySettings(*loadedSettings)
@@ -197,7 +207,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				BacklogHighWatermark:     api.DefaultSystemSettings().Worker.BacklogHighWatermark,
 				BacklogLowWatermark:      api.DefaultSystemSettings().Worker.BacklogLowWatermark,
 				BandwidthLimitBytes:      api.DefaultSystemSettings().Worker.BandwidthLimitBytes,
-				BufferBudgetBytes:        api.DefaultSystemSettings().Worker.BufferBudgetBytes,
+				BufferBudgetBytes:        0, // auto: derived from detected hardware
 				ShutdownTimeout:          conf.ShutdownTimeout,
 				BulkConcurrencyPercent:   conf.BulkConcurrencyPercent,
 				MultipartThreads:         conf.MultipartThreads,
@@ -224,6 +234,16 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		systemsettings.ApplySettings(initialSettings)
 	}
+	eff := systemsettings.ResolveEffective(systemsettings.Current().Worker)
+	conf.Concurrency = int(eff.Concurrency.Value)
+	logger.Info().
+		Int("cpu", hw.CPU).Float64("cpu_fractional", hw.CPUFractional).Int64("memory_bytes", hw.MemoryBytes).Str("hardware_source", hw.Source).
+		Str("concurrency", effStr(eff.Concurrency)).
+		Str("bulk_concurrency_percent", effStr(eff.BulkConcurrencyPercent)).
+		Str("buffer_budget_bytes", effStr(eff.BufferBudgetBytes)).
+		Str("multipart_threads", effStr(eff.MultipartThreads)).
+		Str("multipart_part_size_mib", effStr(eff.MultipartPartSizeMiB)).
+		Msg("worker tuning: detected hardware and effective values (auto = derived from hardware)")
 	systemsettings.Watch(ctx, confRedis, cpStore, logger)
 
 	credsOpts := []objstore.CredsSvcOption{objstore.WithManagedStorages(confRedis)}
@@ -833,4 +853,8 @@ func fallbackRetryDelay(customInterval *time.Duration) asynq.RetryDelayFunc {
 	return func(_ int, _ error, _ *asynq.Task) time.Duration {
 		return *customInterval
 	}
+}
+
+func effStr(v systemsettings.EffectiveValue) string {
+	return fmt.Sprintf("%d (%s)", v.Value, v.Source)
 }
