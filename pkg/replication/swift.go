@@ -53,7 +53,7 @@ func (s *swiftSVC) Replicate(ctx context.Context, routedTo string, task tasks.Re
 	}
 
 	// Handle all swift tasks here
-	// There is no task-specific logic for SWIFT because chorus does not track obj/bucket versions metadata in Redis (unlike S3).
+	// There is no task-specific logic for SWIFT because tutti does not track obj/bucket versions metadata in Redis (unlike S3).
 	// Versions are needed only for zero-downtime migration which is currently not supported for SWIFT.
 	// Swift is using multiple buckets to implement obj versioning and multipart upload
 	// and allows cross-account and cross-bucket references in API for symlinks and COPY.

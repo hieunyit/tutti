@@ -59,7 +59,7 @@ func Test_e2e_storage_region(t *testing.T) {
 		wConf, err := app.DeepCopyStruct(workerConf)
 		r.NoError(err)
 		wConf.Storage = app.WorkerS3Config(minioKey, regionStorages)
-		e := app.SetupChorus(t, wConf, nil)
+		e := app.SetupTutti(t, wConf, nil)
 
 		bucket := bucketName("region-replication")
 		obj, content := "obj.txt", "replicated to a storage with region"
@@ -94,7 +94,7 @@ func Test_e2e_storage_region(t *testing.T) {
 		wConf, err := app.DeepCopyStruct(workerConf)
 		r.NoError(err)
 		wConf.Storage = app.WorkerS3Config(regionKey, regionStorages)
-		e := app.SetupChorus(t, wConf, pConf)
+		e := app.SetupTutti(t, wConf, pConf)
 
 		proxyClient, err := mclient.New(e.ProxyAddr, &mclient.Options{
 			Creds: mcredentials.NewStaticV4(regionCreds.AccessKeyID, regionCreds.SecretAccessKey, ""),

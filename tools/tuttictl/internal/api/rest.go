@@ -42,7 +42,7 @@ type route struct {
 }
 
 // restRoutes maps gRPC full method names to the REST endpoints exposed by the
-// chorus management API grpc-gateway. Must be kept in sync with proto/http.yaml.
+// tutti management API grpc-gateway. Must be kept in sync with proto/http.yaml.
 // Omitted on purpose:
 //   - Webhook service endpoints: use path parameters and are not called by tuttictl.
 //   - Policy.StreamReplication: streaming, has no REST mapping in http.yaml and
@@ -56,7 +56,7 @@ var restRoutes = map[string]route{
 	pb.Diff_DeleteReport_FullMethodName:     {http.MethodPut, "/diff/delete"},
 	pb.Diff_Fix_FullMethodName:              {http.MethodPost, "/diff/fix"},
 	pb.Diff_Restart_FullMethodName:          {http.MethodPut, "/diff/restart"},
-	// Chorus service:
+	// Tutti service:
 	pb.Tutti_GetAppVersion_FullMethodName:       {http.MethodGet, "/version"},
 	pb.Tutti_GetStorages_FullMethodName:         {http.MethodGet, "/storage"},
 	pb.Tutti_GetProxyCredentials_FullMethodName: {http.MethodGet, "/proxy"},
@@ -96,7 +96,7 @@ var bearerToken string
 // SetToken sets the session token sent as "Authorization: Bearer" on every request.
 func SetToken(t string) { bearerToken = t }
 
-// Conn calls the chorus management API over HTTP/JSON via the grpc-gateway
+// Conn calls the tutti management API over HTTP/JSON via the grpc-gateway
 // REST endpoints. It implements grpc.ClientConnInterface so that the
 // generated gRPC client stubs (pb.NewTuttiClient, pb.NewPolicyClient, ...)
 // can be used as-is.

@@ -47,7 +47,7 @@ api:
     #    passwordHash: "$2y$10$..."
     #    role: admin
   webhook:
-    enabled: false # enable chorus webhook for event sources like S3 bucket notification or swift access logs
+    enabled: false # enable tutti webhook for event sources like S3 bucket notification or swift access logs
     grpcPort: 0 # host grpc webhook on a separate port. By default will be hosted with management API
     httpPort: 0 # host http webhook on a separate port. By default will be hosted with management API
     baseUrl: "" # externally reachable base URL for webhook endpoints, used for S3 notification push endpoint
@@ -57,10 +57,10 @@ storage:
     enabled: false # set true to enable to manage storage credentials via API
     disableEncryption: false
     masterPassword: "" # master password to encrypt/decrypt storage credentials.
-    pollInterval: 3s # poll interval to check for updated credentials by chorus replicas
+    pollInterval: 3s # poll interval to check for updated credentials by tutti replicas
   storages:
   #   # example credentials for S3 compatible storage
-  #   my_s3_storage: # uniq storage alias to refer in chorus API. Can be any lowercase string
+  #   my_s3_storage: # uniq storage alias to refer in tutti API. Can be any lowercase string
   #     type: S3 # [REQUIRED] storage type: S3 or SWIFT
   #     rateLimit:
   #       enabled: false
@@ -79,7 +79,7 @@ storage:
   #     healthCheckInterval: 5s
   #     httpTimeout: 10m0s
   #     # example credentials for OpenStack Swift storage
-  #   my_swift_storage: # uniq storage alias to refer in chorus API. Can be any lowercase string
+  #   my_swift_storage: # uniq storage alias to refer in tutti API. Can be any lowercase string
   #     type: SWIFT # [REQUIRED] storage type: S3 or SWIFT
   #     rateLimit:
   #       enabled: false

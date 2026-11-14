@@ -48,7 +48,7 @@ import (
 // TODO:
 // swift client metrics
 const (
-	CChorusSourceVersionIDMetaHeader = "x-amz-meta-chorus-source-version-id"
+	CTuttiSourceVersionIDMetaHeader = "x-amz-meta-tutti-source-version-id"
 
 	CRGWVersionMigrationQueryParam = "rgwx-version-id"
 )
@@ -203,7 +203,7 @@ func (r *S3CopySvc) GetLastMigratedVersionInfo(ctx context.Context, user string,
 		}, nil
 	}
 
-	sourceVersionID := objectStat.Metadata.Get(CChorusSourceVersionIDMetaHeader)
+	sourceVersionID := objectStat.Metadata.Get(CTuttiSourceVersionIDMetaHeader)
 
 	if sourceVersionID == "" {
 		return entity.ObjectVersionInfo{}, dom.ErrInvalidArg
@@ -461,7 +461,7 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	}
 
 	if to.Version != "" {
-		putObjectOpts.UserMetadata[CChorusSourceVersionIDMetaHeader] = to.Version
+		putObjectOpts.UserMetadata[CTuttiSourceVersionIDMetaHeader] = to.Version
 
 		switch provider {
 		case s3.ProviderCeph:

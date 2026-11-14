@@ -171,7 +171,7 @@ func (s *s3Svc) getDestinations(ctx context.Context, routedTo string) (replicate
 		// 5. All writes except multipart now correctly routed to B
 		// 5. We dont create replication tasks for new writes
 		// 7. We handle UploadPart correctly and route to A
-		//    For UploadPart chorus never creates replication tasks because user can call AbortMultipartUpload
+		//    For UploadPart tutti never creates replication tasks because user can call AbortMultipartUpload
 		// 8. User calls CompleteMultipartUpload
 		//    -- we are here on this line of code --
 		// PROBLEM:

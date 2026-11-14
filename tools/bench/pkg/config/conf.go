@@ -35,7 +35,7 @@ const (
 	TiB
 )
 const (
-	_dbName         = "chorus-bench.db" //var/lib/chorus/bench.db
+	_dbName         = "tutti-bench.db" //var/lib/tutti/bench.db
 	_bucketName     = "bench-bucket9"
 	_api            = "10.82.220.13:32270"
 	_objSize        = 99 * KiB

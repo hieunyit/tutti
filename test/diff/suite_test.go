@@ -19,7 +19,7 @@ import (
 	"github.com/gophercloud/gophercloud/v2/pagination"
 	"github.com/hieunyit/tutti/pkg/api"
 	"github.com/hieunyit/tutti/pkg/config"
-	chorusctx "github.com/hieunyit/tutti/pkg/ctx"
+	tuttictx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/log"
@@ -82,11 +82,11 @@ type TestDependencies struct {
 
 type FakeMetricsSvc struct{}
 
-func (r *FakeMetricsSvc) Count(_ chorusctx.Flow, _ string, _ string) {}
+func (r *FakeMetricsSvc) Count(_ tuttictx.Flow, _ string, _ string) {}
 
-func (r *FakeMetricsSvc) Upload(_ chorusctx.Flow, _ string, _ string, _ int) {}
+func (r *FakeMetricsSvc) Upload(_ tuttictx.Flow, _ string, _ string, _ int) {}
 
-func (r *FakeMetricsSvc) Download(_ chorusctx.Flow, _ string, _ string, _ int) {}
+func (r *FakeMetricsSvc) Download(_ tuttictx.Flow, _ string, _ string, _ int) {}
 
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -573,7 +573,7 @@ var _ = Describe("Diff scenarious", Ordered, func() {
 		var ctx context.Context
 		var cancelFunc context.CancelFunc
 		var diffClient pb.DiffClient
-		var chorusClient pb.TuttiClient
+		var tuttiClient pb.TuttiClient
 		var storeClient objstore.Common
 		var contentFiller gen.ContentFiller
 
@@ -643,10 +643,10 @@ var _ = Describe("Diff scenarious", Ordered, func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 			diffClient = pb.NewDiffClient(grpcConn)
-			chorusClient = pb.NewTuttiClient(grpcConn)
+			tuttiClient = pb.NewTuttiClient(grpcConn)
 
 			Eventually(func(g Gomega) {
-				_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
+				_, err := tuttiClient.GetAppVersion(ctx, &emptypb.Empty{})
 				g.Expect(err).NotTo(HaveOccurred())
 			}, 1*time.Minute, time.Second).Should(Succeed())
 		})

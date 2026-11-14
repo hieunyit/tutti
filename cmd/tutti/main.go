@@ -73,10 +73,10 @@ Flags:
 
 func main() {
 	var h, help, printVer, v bool
-	flag.BoolVar(&h, "h", false, "Print help. Example: chorus -h")
-	flag.BoolVar(&v, "v", false, "Verbose output. Example: chorus -v")
-	flag.BoolVar(&help, "help", false, "Print help. Example: chorus -help")
-	flag.BoolVar(&printVer, "version", false, "Print version. Example: chorus -version")
+	flag.BoolVar(&h, "h", false, "Print help. Example: tutti -h")
+	flag.BoolVar(&v, "v", false, "Verbose output. Example: tutti -v")
+	flag.BoolVar(&help, "help", false, "Print help. Example: tutti -help")
+	flag.BoolVar(&printVer, "version", false, "Print version. Example: tutti -version")
 	flag.Parse()
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "config" {

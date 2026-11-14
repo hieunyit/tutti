@@ -38,7 +38,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("tutti-migrate-pg", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	redisURL := fs.String("redis-url", os.Getenv("TUTTI_REDIS_URL"), "config Redis (redis[s]://[user:pass@]host:port/db): the redis.configDB of the services [env TUTTI_REDIS_URL]")
-	metaURL := fs.String("redis-meta-url", os.Getenv("TUTTI_REDIS_META_URL"), "Redis that holds chorus:dynamic_creds (the metaDB role); defaults to --redis-url [env TUTTI_REDIS_META_URL]")
+	metaURL := fs.String("redis-meta-url", os.Getenv("TUTTI_REDIS_META_URL"), "Redis that holds tutti:dynamic_creds (the metaDB role); defaults to --redis-url [env TUTTI_REDIS_META_URL]")
 	dsn := fs.String("pg-dsn", os.Getenv("TUTTI_PG_DSN"), "PostgreSQL DSN [env TUTTI_PG_DSN]")
 	dry := fs.Bool("dry-run", false, "migrate: compute and print the report without writing to PostgreSQL")
 	force := fs.Bool("force", false, "republish: overwrite Redis entries that differ from PostgreSQL (refused otherwise: they may be newer, e.g. after restoring PostgreSQL from an old backup)")

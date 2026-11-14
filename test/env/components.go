@@ -109,7 +109,7 @@ const (
 	CGarageZone              = "dc1"
 	CGarageKeyPermPath       = "/v1/key"
 	CGarageCapacityBytes     = 1_000_000_000
-	CGarageKeyName           = "chorus"
+	CGarageKeyName           = "tutti"
 	CGarageAccessToken       = "GK0123456789abcdef01234567"
 	CGarageSecretToken       = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	CGarageAdminToken        = "garage-admin-token"
@@ -119,7 +119,7 @@ const (
 	CSeaweedFSS3Port       = 8333
 	CSeaweedFSMasterPort   = 9333
 	CSeaweedFSFilerPort    = 8888
-	CSeaweedFSIdentityName = "chorus"
+	CSeaweedFSIdentityName = "tutti"
 	CSeaweedFSAccessToken  = "seaweedfsaccesskey"
 	CSeaweedFSSecretToken  = "seaweedfssecretkey"
 	CSeaweedFSS3ConfigPath = "/etc/seaweedfs/s3.json"

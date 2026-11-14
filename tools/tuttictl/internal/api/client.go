@@ -28,13 +28,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Connect creates a client for the chorus management REST API.
+// Connect creates a client for the tutti management REST API.
 // Address must be a full URL including http:// or https:// scheme,
 // e.g. http://localhost:9671.
 func Connect(_ context.Context, address string, insecureSkipTLSVerify bool) (*Conn, error) {
 	u, err := url.Parse(address)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		return nil, fmt.Errorf("address %q must be a full URL of chorus management REST api with http:// or https:// scheme, e.g. %q (note: REST api port 9671, not gRPC port 9670)", address, "http://localhost:9671")
+		return nil, fmt.Errorf("address %q must be a full URL of tutti management REST api with http:// or https:// scheme, e.g. %q (note: REST api port 9671, not gRPC port 9670)", address, "http://localhost:9671")
 	}
 	if u.Host == "" {
 		return nil, fmt.Errorf("address %q must contain a host, e.g. %q", address, "http://localhost:9671")

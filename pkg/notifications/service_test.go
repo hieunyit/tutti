@@ -168,7 +168,7 @@ func TestUserIDFromNotificationID_EmptyUser(t *testing.T) {
 	if notificationID("", "bucket") == notificationID("x", "bucket") {
 		t.Error("empty user id must differ from a real user id")
 	}
-	if topicName("") == topicName("x") || topicName("") == "chorus-" || topicName("") == "chorus--x" {
+	if topicName("") == topicName("x") || topicName("") == "tutti-" || topicName("") == "tutti--x" {
 		t.Errorf("unexpected storage-level topic name %q", topicName(""))
 	}
 }

@@ -1,4 +1,4 @@
-# Chorus Proxy
+# Tutti Proxy
 
 Serves S3 proxy on port `:9669`. Routes S3 requests to storages from [config](./config.yaml) based on routing policy and creates replication tasks for [worker](../worker) based on replication policy.
 

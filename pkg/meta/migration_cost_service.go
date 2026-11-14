@@ -115,5 +115,5 @@ func (s *migrationCostSvc) MigrationCostsIncJobDone(ctx context.Context, from, t
 }
 
 func toMigrationCostsKey(from, to string) string {
-	return fmt.Sprintf("chorus:migration-costs:%s:%s", from, to)
+	return fmt.Sprintf("tutti:migration-costs:%s:%s", from, to)
 }

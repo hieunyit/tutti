@@ -16,7 +16,7 @@
 
 // Package accesspolicy implements per-account authorization for proxy S3 accounts.
 //
-// A policy is keyed by the Chorus proxy user name (the key of the credentials map, not the access key id):
+// A policy is keyed by the Tutti proxy user name (the key of the credentials map, not the access key id):
 // storage credentials map access keys to users, and custom credentials (auth.custom) are keyed by user as well.
 package accesspolicy
 

@@ -27,7 +27,7 @@ import (
 )
 
 /*
-Replication policies tell chorus where to replicate data.
+Replication policies tell tutti where to replicate data.
 
 Main rules:
 --------------------------------------------------------------------------
@@ -59,7 +59,7 @@ Since we optimize for fast lookups, we enforce other more complex rules on polic
 - source storage must match routing storage
 - if bucket is used as destination, then it cant be used as source in any other replication
 - if destination bucket name is different from source, routing block is created for destination bucket.
-  Because chorus worker must have exclusive write access to destination bucket during replication.
+  Because tutti worker must have exclusive write access to destination bucket during replication.
 
 
 Replication policies are stored in Redis in the following structures:

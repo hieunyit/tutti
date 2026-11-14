@@ -292,10 +292,10 @@ var _ = Describe("Minio versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewTuttiClient(grpcConn)
+		tuttiClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
-			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
+			_, err := tuttiClient.GetAppVersion(ctx, &emptypb.Empty{})
 			if err != nil {
 				return false
 			}
@@ -366,8 +366,8 @@ var _ = Describe("Minio versioned migration", func() {
 				Expect(srcObject.ETag).To(Equal(destObject.ETag))
 				Expect(srcObject.Size).To(Equal(destObject.Size))
 				Expect(srcObject.VersionID).To(Equal(destObject.VersionID))
-				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)]).To(HaveLen(1))
-				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)][0]))
+				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)]).To(HaveLen(1))
+				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)][0]))
 			}
 		}
 	})
@@ -606,10 +606,10 @@ var _ = Describe("Ceph keystone versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewTuttiClient(grpcConn)
+		tuttiClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
-			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
+			_, err := tuttiClient.GetAppVersion(ctx, &emptypb.Empty{})
 			if err != nil {
 				return false
 			}
@@ -678,8 +678,8 @@ var _ = Describe("Ceph keystone versioned migration", func() {
 
 				Expect(srcObject.ETag).To(Equal(destObject.ETag))
 				Expect(srcObject.Size).To(Equal(destObject.Size))
-				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)]).To(HaveLen(1))
-				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)][0]))
+				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)]).To(HaveLen(1))
+				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)][0]))
 			}
 		}
 	})
@@ -875,10 +875,10 @@ var _ = Describe("Ceph system user versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewTuttiClient(grpcConn)
+		tuttiClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
-			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
+			_, err := tuttiClient.GetAppVersion(ctx, &emptypb.Empty{})
 			if err != nil {
 				return false
 			}
@@ -949,8 +949,8 @@ var _ = Describe("Ceph system user versioned migration", func() {
 				Expect(srcObject.ETag).To(Equal(destObject.ETag))
 				Expect(srcObject.Size).To(Equal(destObject.Size))
 				Expect(srcObject.VersionID).To(Equal(destObject.VersionID))
-				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)]).To(HaveLen(1))
-				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CChorusSourceVersionIDMetaHeader)][0]))
+				Expect(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)]).To(HaveLen(1))
+				Expect(srcObject.VersionID).To(Equal(destObjectInfo.Metadata[http.CanonicalHeaderKey(copy.CTuttiSourceVersionIDMetaHeader)][0]))
 			}
 		}
 	})

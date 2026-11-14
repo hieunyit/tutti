@@ -81,7 +81,7 @@ func Start(conf *config.Config) error {
 		return fmt.Errorf("%w: unable to restore state", err)
 	}
 
-	// subscribe to replication status in Chorus api
+	// subscribe to replication status in Tutti api
 	watchDone, err := WatchReplicationMeta(ctx, conf, apiClient)
 	if err != nil {
 		return fmt.Errorf("%w: unable to watch api", err)

@@ -158,7 +158,7 @@ func (r *failingRedis) setFailing(v bool) {
 
 // testEnv is a running proxy + worker over the MinIO storages.
 type testEnv struct {
-	app.Chorus
+	app.Tutti
 	// fwd are the forwarders of the storages that the proxy reaches through a forwarder.
 	fwd map[string]*forwarder
 }
@@ -222,7 +222,7 @@ func startEnv(t *testing.T, o envOpts) *testEnv {
 	} else {
 		redisAddr = miniredis.RunT(t).Addr()
 	}
-	te.Chorus = app.SetupChorusRedis(t, wc, pc, redisAddr)
+	te.Tutti = app.SetupTuttiRedis(t, wc, pc, redisAddr)
 	return te
 }
 

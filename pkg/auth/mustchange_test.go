@@ -21,9 +21,9 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
-type fakeChorus struct{ pb.UnimplementedTuttiServer }
+type fakeTutti struct{ pb.UnimplementedTuttiServer }
 
-func (fakeChorus) GetStorages(context.Context, *emptypb.Empty) (*pb.GetStoragesResponse, error) {
+func (fakeTutti) GetStorages(context.Context, *emptypb.Empty) (*pb.GetStoragesResponse, error) {
 	return &pb.GetStoragesResponse{}, nil
 }
 
@@ -34,7 +34,7 @@ func mustChangeEnv(t *testing.T) (*Service, func(method, path, token, body strin
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	srv := grpc.NewServer(grpc.UnaryInterceptor(svc.UnaryInterceptor()), grpc.StreamInterceptor(svc.StreamInterceptor()))
-	pb.RegisterTuttiServer(srv, fakeChorus{})
+	pb.RegisterTuttiServer(srv, fakeTutti{})
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 

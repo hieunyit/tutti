@@ -1,6 +1,6 @@
 # Chorctl
 
-CLI for Chorus management API.
+CLI for Tutti management API.
 
 ![tuttictl.png](../../docs/media/tuttictl.png)
 
@@ -25,11 +25,11 @@ brew install clyso/tap/tuttictl
 
 ## Usage
 
-`tuttictl` sends requests to the REST API hosted by [Chorus worker](../../service/worker).
+`tuttictl` sends requests to the REST API hosted by [Tutti worker](../../service/worker).
 Deploy worker and provide REST API URL (including `http://` or `https://` scheme) to `tuttictl`
-with `--address` flag or `CHORUS_ADDRESS` envar (default: `http://localhost:9671`):
+with `--address` flag or `TUTTI_ADDRESS` envar (default: `http://localhost:9671`):
 ```shell
-export CHORUS_ADDRESS=http://127.0.0.1:9671
+export TUTTI_ADDRESS=http://127.0.0.1:9671
 ```
 
 For `https://` addresses, TLS certificate verification can be disabled with `--insecure` (`-k`) flag.

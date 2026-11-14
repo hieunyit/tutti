@@ -435,7 +435,7 @@ func TestProjectionRebuildsTheRedisTheRealStoresWrote(t *testing.T) {
 	require.Positive(t, v)
 	sv, _ := rebuiltRdb.Get(ctx, "tutti:storages:version").Int()
 	require.Positive(t, sv)
-	hv, _ := rebuiltRdb.HGet(ctx, "chorus:dynamic_creds", "version").Int()
+	hv, _ := rebuiltRdb.HGet(ctx, "tutti:dynamic_creds", "version").Int()
 	require.Positive(t, hv)
 
 	// the real Redis stores read the rebuilt data back: a policy lookup and a status work unchanged

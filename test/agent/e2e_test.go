@@ -24,7 +24,7 @@ const (
 func notifID(user, bucket string) string {
 	user = strings.ReplaceAll(user, "-", "--")
 	bucket = strings.ReplaceAll(bucket, "-", "--")
-	return fmt.Sprintf("chorus-%s-%s", user, bucket)
+	return fmt.Sprintf("tutti-%s-%s", user, bucket)
 }
 
 func objectCreatedRecord(key string, size int64) *pb.S3EventRecord {
@@ -71,7 +71,7 @@ func Test_e2e_s3_notification_webhook(t *testing.T) {
 	workerConf.Api.HttpPort = workerHttpPort
 	workerConf.Api.Webhook.BaseURL = fmt.Sprintf("http://host.testcontainers.internal:%d", workerHttpPort)
 
-	e := app.SetupChorus(t, workerConf, nil)
+	e := app.SetupTutti(t, workerConf, nil)
 
 	t.Run("bucket_replication", func(t *testing.T) {
 		r := require.New(t)

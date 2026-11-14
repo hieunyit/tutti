@@ -281,8 +281,8 @@ func TestEnvOverrideFieldNotInYAML(t *testing.T) {
 	r.Contains(err.Error(), "no matching config field")
 }
 
-// TestHelmChartRedisEnvOverrides tests Redis env var patterns used by the Chorus Helm chart.
-// These are from deploy/chorus/templates/*.yaml and apply to pkg/config.Common.
+// TestHelmChartRedisEnvOverrides tests Redis env var patterns used by the Tutti Helm chart.
+// These are from deploy/tutti/templates/*.yaml and apply to pkg/config.Common.
 func TestHelmChartRedisEnvOverrides(t *testing.T) {
 	tests := []struct {
 		name     string

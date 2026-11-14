@@ -33,7 +33,7 @@ func TestGetConfigDefaults(t *testing.T) {
 	r.NoError(err)
 }
 
-// TestHelmEnvOverrides tests env vars from deploy/chorus/templates/proxy/deployment-proxy.yaml
+// TestHelmEnvOverrides tests env vars from deploy/tutti/templates/proxy/deployment-proxy.yaml
 func TestHelmEnvOverrides(t *testing.T) {
 	const storagesOverride = `storage:
   main: s3

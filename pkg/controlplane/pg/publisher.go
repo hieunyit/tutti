@@ -27,7 +27,7 @@ const bumpScript = `local v = redis.call('incr', KEYS[1]); redis.call('publish',
 
 // Publisher applies committed outbox entries to Redis: it writes the projected keys and bumps the version keys and
 // publishes the notifications that proxies and workers already watch (tutti:cfg:version / tutti:cfg:changed,
-// tutti:storages:version, tutti:s3users:version, the version field of chorus:dynamic_creds).
+// tutti:storages:version, tutti:s3users:version, the version field of tutti:dynamic_creds).
 //
 // Guarantees:
 //   - after commit: entries are written in the same transaction as the change, the publisher only sees committed rows;
@@ -39,7 +39,7 @@ const bumpScript = `local v = redis.call('incr', KEYS[1]); redis.call('publish',
 type Publisher struct {
 	Store *Store
 	Redis redis.UniversalClient
-	// MetaRedis is the optional separate Redis client for the meta role (which holds chorus:dynamic_creds).
+	// MetaRedis is the optional separate Redis client for the meta role (which holds tutti:dynamic_creds).
 	// When nil, Redis is used for all keys.
 	MetaRedis redis.UniversalClient
 	Log       zerolog.Logger

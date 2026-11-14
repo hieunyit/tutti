@@ -45,7 +45,7 @@ var WorkerRetryConf = handler.Config{
 	CustomErrRetryInterval:   &asynqRetry,
 }
 
-type Chorus struct {
+type Tutti struct {
 	PolicyClient  pb.PolicyClient
 	TuttiClient  pb.TuttiClient
 	WebhookClient pb.WebhookClient
@@ -60,13 +60,13 @@ type Chorus struct {
 	RetryLong  time.Duration
 }
 
-func SetupChorus(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config) Chorus {
+func SetupTutti(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config) Tutti {
 	t.Helper()
-	return SetupChorusRedis(t, workerConf, proxyConf, testutil.SetupRedisAddr(t))
+	return SetupTuttiRedis(t, workerConf, proxyConf, testutil.SetupRedisAddr(t))
 }
 
-// SetupChorusRedis is SetupChorus on a caller-provided Redis, so a test can control it (e.g. inject errors into miniredis).
-func SetupChorusRedis(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config, redisAddr string) Chorus {
+// SetupTuttiRedis is SetupTutti on a caller-provided Redis, so a test can control it (e.g. inject errors into miniredis).
+func SetupTuttiRedis(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Config, redisAddr string) Tutti {
 	t.Helper()
 	var err error
 	workerConf, err = DeepCopyStruct(workerConf)
@@ -74,7 +74,7 @@ func SetupChorusRedis(t testing.TB, workerConf *worker.Config, proxyConf *proxy.
 		t.Fatal(err)
 	}
 	workerConf.Worker = &WorkerRetryConf
-	e := Chorus{
+	e := Tutti{
 		WaitShort:  waitShort,
 		RetryShort: retryShort,
 		WaitLong:   waitLong,

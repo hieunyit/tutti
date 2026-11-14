@@ -65,7 +65,7 @@ func doRequest(t *testing.T, method string, u *url.URL, body string) (int, http.
 }
 
 func Test_e2e_proxy_presigned_sigv4(t *testing.T) {
-	e := app.SetupChorus(t, workerConf, proxyConf)
+	e := app.SetupTutti(t, workerConf, proxyConf)
 
 	proxyClient, err := mclient.New(e.ProxyAddr, &mclient.Options{
 		Creds:  mcredentials.NewStaticV4(storageCreds.AccessKeyID, storageCreds.SecretAccessKey, ""),
@@ -283,7 +283,7 @@ func Test_e2e_proxy_presigned_sigv4(t *testing.T) {
 // invalidates by re-signing the request, so it verifies the chain itself and forwards the plain payload).
 func Test_e2e_proxy_streaming_upload(t *testing.T) {
 	r := require.New(t)
-	e := app.SetupChorus(t, workerConf, proxyConf)
+	e := app.SetupTutti(t, workerConf, proxyConf)
 	ctx := t.Context()
 
 	proxyClient, err := mclient.New(e.ProxyAddr, &mclient.Options{
@@ -309,7 +309,7 @@ func Test_e2e_proxy_sigv2(t *testing.T) {
 	conf, err := app.DeepCopyStruct(proxyConf)
 	r.NoError(err)
 	conf.Auth.AllowV2Signature = true
-	e := app.SetupChorus(t, workerConf, conf)
+	e := app.SetupTutti(t, workerConf, conf)
 
 	ctx := t.Context()
 	bucket := bucketName("sigv2-test")
@@ -377,7 +377,7 @@ func readObject(t *testing.T, client *mclient.Client, bucket, obj string) []byte
 }
 
 // requireSameObject compares size and content of an object on two storages.
-// ETags are not compared: chorus may split a replicated object into different
+// ETags are not compared: tutti may split a replicated object into different
 // parts than the client did, which changes the multipart ETag suffix.
 func requireSameObject(t *testing.T, a, b *mclient.Client, bucket, obj string) {
 	t.Helper()
@@ -397,7 +397,7 @@ func requireSameObject(t *testing.T, a, b *mclient.Client, bucket, obj string) {
 
 func Test_e2e_proxy_presigned_multipart(t *testing.T) {
 	r := require.New(t)
-	e := app.SetupChorus(t, workerConf, proxyConf)
+	e := app.SetupTutti(t, workerConf, proxyConf)
 
 	core, err := mclient.NewCore(e.ProxyAddr, &mclient.Options{
 		Creds:  mcredentials.NewStaticV4(storageCreds.AccessKeyID, storageCreds.SecretAccessKey, ""),
@@ -423,7 +423,7 @@ func Test_e2e_proxy_presigned_multipart(t *testing.T) {
 // presigned URL are captured by the proxy and replicated to a follower storage.
 func Test_e2e_proxy_presigned_replication(t *testing.T) {
 	r := require.New(t)
-	e := app.SetupChorus(t, workerConf, proxyConf)
+	e := app.SetupTutti(t, workerConf, proxyConf)
 	ctx := t.Context()
 
 	proxyClient, err := mclient.NewCore(e.ProxyAddr, &mclient.Options{

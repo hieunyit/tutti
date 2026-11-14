@@ -37,7 +37,7 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
-// apiServices lists the gRPC services exposed by the chorus management REST
+// apiServices lists the gRPC services exposed by the tutti management REST
 // API and mapped in restRoutes. The Webhook service is excluded on purpose:
 // its routes use path parameters and are not called by tuttictl.
 var apiServices = []string{"tutti.Tutti", "tutti.Policy", "tutti.Diff"}
@@ -45,7 +45,7 @@ var apiServices = []string{"tutti.Tutti", "tutti.Policy", "tutti.Diff"}
 // newTestGateway starts an in-process HTTP server backed by the generated
 // grpc-gateway registration code — the same code the worker serves REST with.
 // It returns a Conn pointed at that server.
-func newTestGateway(t *testing.T, chorusSrv pb.TuttiServer) *Conn {
+func newTestGateway(t *testing.T, tuttiSrv pb.TuttiServer) *Conn {
 	t.Helper()
 	r := require.New(t)
 	// Same marshaler options as the worker gateway, see pkg/api/grpc_http_gateway.go.
@@ -56,7 +56,7 @@ func newTestGateway(t *testing.T, chorusSrv pb.TuttiServer) *Conn {
 		}),
 	)
 	ctx := t.Context()
-	r.NoError(pb.RegisterTuttiHandlerServer(ctx, mux, chorusSrv))
+	r.NoError(pb.RegisterTuttiHandlerServer(ctx, mux, tuttiSrv))
 	r.NoError(pb.RegisterPolicyHandlerServer(ctx, mux, pb.UnimplementedPolicyServer{}))
 	r.NoError(pb.RegisterDiffHandlerServer(ctx, mux, pb.UnimplementedDiffServer{}))
 	r.NoError(pb.RegisterResilienceHandlerServer(ctx, mux, pb.UnimplementedResilienceServer{}))
@@ -153,11 +153,11 @@ func TestRestRoutes_GetRequestsAreEmpty(t *testing.T) {
 	}
 }
 
-type stubChorusServer struct {
+type stubTuttiServer struct {
 	pb.UnimplementedTuttiServer
 }
 
-func (stubChorusServer) GetAppVersion(context.Context, *emptypb.Empty) (*pb.GetAppVersionResponse, error) {
+func (stubTuttiServer) GetAppVersion(context.Context, *emptypb.Empty) (*pb.GetAppVersionResponse, error) {
 	return &pb.GetAppVersionResponse{Version: "v1.2.3", Commit: "abc", Date: "2026-01-01"}, nil
 }
 
@@ -165,7 +165,7 @@ func (stubChorusServer) GetAppVersion(context.Context, *emptypb.Empty) (*pb.GetA
 // generated gateway: request encoding, routing, and response decoding.
 func TestConn_InvokeRoundTrip(t *testing.T) {
 	r := require.New(t)
-	conn := newTestGateway(t, stubChorusServer{})
+	conn := newTestGateway(t, stubTuttiServer{})
 	var reply pb.GetAppVersionResponse
 	r.NoError(conn.Invoke(t.Context(), pb.Tutti_GetAppVersion_FullMethodName, &emptypb.Empty{}, &reply))
 	r.Equal("v1.2.3", reply.Version)

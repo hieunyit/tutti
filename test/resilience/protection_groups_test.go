@@ -67,7 +67,7 @@ func startGroupEnv(t *testing.T, plain []string, partitionable []string) *groupE
 	wc, err := app.DeepCopyStruct(workerConf)
 	r.NoError(err)
 	wc.Storage = app.WorkerS3Config(mainKey, storages)
-	ge.Chorus = app.SetupChorusRedis(t, wc, nil, mr.Addr())
+	ge.Tutti = app.SetupTuttiRedis(t, wc, nil, mr.Addr())
 
 	mainFwd := newForwarder(t, strings.TrimPrefix(storages[mainKey].Address, "http://"))
 	ge.fwd[mainKey] = mainFwd

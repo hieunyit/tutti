@@ -50,7 +50,7 @@ CREATE TABLE s3_identities (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Sealed dynamic credentials (Redis HASH chorus:dynamic_creds, fields "<type>:<storage>:<user>").
+-- Sealed dynamic credentials (Redis HASH tutti:dynamic_creds, fields "<type>:<storage>:<user>").
 CREATE TABLE dynamic_credentials (
     storage_type text        NOT NULL,
     storage      text        NOT NULL,

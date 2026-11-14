@@ -30,27 +30,27 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
-func ChorusHandlers(
+func TuttiHandlers(
 	credsSvc objstore.CredsService,
 	proxyClient rpc.Proxy,
 	appInfo *dom.AppInfo,
 ) pb.TuttiServer {
-	return &chorusHandlers{
+	return &tuttiHandlers{
 		credsSvc:    credsSvc,
 		proxyClient: proxyClient,
 		appInfo:     appInfo,
 	}
 }
 
-var _ pb.TuttiServer = &chorusHandlers{}
+var _ pb.TuttiServer = &tuttiHandlers{}
 
-type chorusHandlers struct {
+type tuttiHandlers struct {
 	proxyClient rpc.Proxy
 	appInfo     *dom.AppInfo
 	credsSvc    objstore.CredsService
 }
 
-func (h *chorusHandlers) GetAppVersion(_ context.Context, _ *emptypb.Empty) (*pb.GetAppVersionResponse, error) {
+func (h *tuttiHandlers) GetAppVersion(_ context.Context, _ *emptypb.Empty) (*pb.GetAppVersionResponse, error) {
 	return &pb.GetAppVersionResponse{
 		Version: h.appInfo.Version,
 		Commit:  h.appInfo.Commit,
@@ -58,16 +58,16 @@ func (h *chorusHandlers) GetAppVersion(_ context.Context, _ *emptypb.Empty) (*pb
 	}, nil
 }
 
-func (h *chorusHandlers) GetStorages(_ context.Context, _ *emptypb.Empty) (*pb.GetStoragesResponse, error) {
+func (h *tuttiHandlers) GetStorages(_ context.Context, _ *emptypb.Empty) (*pb.GetStoragesResponse, error) {
 	res := toPbStorages(h.credsSvc)
 	return &pb.GetStoragesResponse{Storages: res}, nil
 }
 
-func (h *chorusHandlers) GetProxyCredentials(ctx context.Context, _ *emptypb.Empty) (*pb.GetProxyCredentialsResponse, error) {
+func (h *tuttiHandlers) GetProxyCredentials(ctx context.Context, _ *emptypb.Empty) (*pb.GetProxyCredentialsResponse, error) {
 	return h.proxyClient.GetCredentials(ctx)
 }
 
-func (h *chorusHandlers) SetUserCredentials(ctx context.Context, req *pb.SetUserCredentialsRequest) (*emptypb.Empty, error) {
+func (h *tuttiHandlers) SetUserCredentials(ctx context.Context, req *pb.SetUserCredentialsRequest) (*emptypb.Empty, error) {
 	if req.Storage == "" {
 		return nil, fmt.Errorf("%w: storage is required", dom.ErrInvalidArg)
 	}

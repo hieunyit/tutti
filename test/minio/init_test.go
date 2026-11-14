@@ -139,7 +139,7 @@ func setup(m *testing.M) int {
 		panic(fmt.Sprintf("unable to get worker config: %v", err))
 	}
 	workerConf.Log.Level = "warn"
-	// random port instead of the default one from config, see app.SetupChorus
+	// random port instead of the default one from config, see app.SetupTutti
 	workerConf.Api.HttpPort = 0
 	workerConf.Storage = app.WorkerS3Config(minioKey, storages)
 

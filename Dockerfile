@@ -22,13 +22,13 @@ ARG TARGETARCH
 # worker|proxy
 ARG SERVICE=worker
 
-RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 GO111MODULE=on GOOS=$GOOS GOARCH=${TARGETARCH} go build -ldflags="-X 'main.date=$BUILD_DATE' -X 'main.version=$GIT_TAG' -X 'main.commit=$GIT_COMMIT'" -o chorus ./cmd/${SERVICE}
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 GO111MODULE=on GOOS=$GOOS GOARCH=${TARGETARCH} go build -ldflags="-X 'main.date=$BUILD_DATE' -X 'main.version=$GIT_TAG' -X 'main.commit=$GIT_COMMIT'" -o tutti ./cmd/${SERVICE}
 
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 USER nonroot:nonroot
 WORKDIR /bin
 
-COPY --chown=nonroot:nonroot --from=builder /build/chorus chorus
+COPY --chown=nonroot:nonroot --from=builder /build/tutti tutti
 
-CMD ["chorus"]
+CMD ["tutti"]

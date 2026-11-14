@@ -623,7 +623,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		if conf.Api.Secure {
 			return fmt.Errorf("api.secure is unsupported by the embedded API listeners")
 		}
-		chorusHandler := api.ChorusHandlers(credsSvc, rpc.NewProxyClient(appRedis), &app)
+		tuttiHandler := api.TuttiHandlers(credsSvc, rpc.NewProxyClient(appRedis), &app)
 		diffOpts := []api.DiffOption{}
 		policyOpts := []api.PolicyOption{
 			api.WithPolicyStorageLocker(storageLocker),
@@ -709,7 +709,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 		registerServices := func(srv *grpc.Server) {
 			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker, api.WithFailoverMigration(migrator, unprotectedOpts)))
-			pb.RegisterTuttiServer(srv, chorusHandler)
+			pb.RegisterTuttiServer(srv, tuttiHandler)
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
 			pb.RegisterResilienceServer(srv, resilienceHandler)

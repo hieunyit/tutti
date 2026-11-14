@@ -33,7 +33,7 @@ const (
 	Parallel = "parallel"
 )
 
-var _dbBucket = []byte("chorus")
+var _dbBucket = []byte("tutti")
 
 type DB struct {
 	b *bolt.DB

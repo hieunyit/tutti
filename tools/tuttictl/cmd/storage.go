@@ -33,7 +33,7 @@ import (
 // storageCmd represents the storage command
 var storageCmd = &cobra.Command{
 	Use:   "storage",
-	Short: "Prints information about underlying chorus s3 storages",
+	Short: "Prints information about underlying tutti s3 storages",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())

@@ -45,7 +45,7 @@ func TestReviewWebhookMustNotACKWhenReplicationQueueUnavailable(t *testing.T) {
 			h := WebhookHandlers(reviewWebhookCreds{}, reviewWebhookPolicy{}, repl, repl)
 			var err error
 			if kind == "s3" {
-				_, err = h.S3Notifications(t.Context(), &pb.S3NotificationRequest{Storage: "main", Records: []*pb.S3EventRecord{{EventName: "s3:ObjectCreated:Put", S3: &pb.S3EventPayload{ConfigurationId: "chorus-user-bucket", Bucket: &pb.S3BucketInfo{Name: "bucket"}, Object: &pb.S3ObjectInfo{Key: "object"}}}}})
+				_, err = h.S3Notifications(t.Context(), &pb.S3NotificationRequest{Storage: "main", Records: []*pb.S3EventRecord{{EventName: "s3:ObjectCreated:Put", S3: &pb.S3EventPayload{ConfigurationId: "tutti-user-bucket", Bucket: &pb.S3BucketInfo{Name: "bucket"}, Object: &pb.S3ObjectInfo{Key: "object"}}}}})
 			} else {
 				_, err = h.SwiftEvents(t.Context(), &pb.SwiftEventsRequest{Storage: "swift", Events: []*pb.SwiftEvent{{Account: "user", Container: "bucket", Object: "object", Operation: pb.SwiftOperation_OBJECT_CREATED}}})
 			}

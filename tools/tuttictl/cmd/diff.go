@@ -35,7 +35,7 @@ var diffCmd = &cobra.Command{
 	Use:     "diff",
 	Aliases: []string{"consistency"},
 	Short:   "list diff checks",
-	Long: `Get a list of diff checks run by chorus instance.
+	Long: `Get a list of diff checks run by tutti instance.
 	
 Example:
 tuttictl diff`,

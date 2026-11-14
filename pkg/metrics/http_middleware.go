@@ -43,7 +43,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 var proxyTotalRequests = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "proxy_requests_total",
-		Help: "Number of requests to chorus s3 proxy.",
+		Help: "Number of requests to tutti s3 proxy.",
 	},
 	[]string{"method"},
 )
@@ -51,14 +51,14 @@ var proxyTotalRequests = promauto.NewCounterVec(
 var proxyResponseStatus = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "proxy_response_status",
-		Help: "Status of chorus s3 proxy response.",
+		Help: "Status of tutti s3 proxy response.",
 	},
 	[]string{"status"},
 )
 
 var proxyHttpDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 	Name:    "proxy_response_time_seconds",
-	Help:    "Duration of chorus s3 proxy requests.",
+	Help:    "Duration of tutti s3 proxy requests.",
 	Buckets: prometheus.DefBuckets,
 }, []string{"method"})
 
@@ -82,7 +82,7 @@ func ProxyMiddleware() func(next http.Handler) http.Handler {
 var agentTotalRequests = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "agent_requests_total",
-		Help: "Number of requests to chorus agent.",
+		Help: "Number of requests to tutti agent.",
 	},
 	[]string{"status"},
 )

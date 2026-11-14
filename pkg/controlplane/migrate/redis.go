@@ -18,7 +18,7 @@ import (
 )
 
 // Sources are the Redis instances to read: Config is the config role (storages, users, policies, routing, replication,
-// failover, groups), Meta the role that holds the dynamic credentials hash (chorus:dynamic_creds). Meta defaults to
+// failover, groups), Meta the role that holds the dynamic credentials hash (tutti:dynamic_creds). Meta defaults to
 // Config.
 type Sources struct {
 	Config redis.UniversalClient

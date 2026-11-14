@@ -1,4 +1,4 @@
-address: "http://localhost:9669" # Chorus proxy s3 api address
+address: "http://localhost:9669" # Tutti proxy s3 api address
 port: 9669
 group: default # logical proxy group for centralized fleet config overrides (tutti:proxy-config)
 replication:
@@ -82,10 +82,10 @@ storage:
     enabled: false # set true to enable to manage storage credentials via API
     disableEncryption: false
     masterPassword: "" # master password to encrypt/decrypt storage credentials.
-    pollInterval: 3s # poll interval to check for updated credentials by chorus replicas
+    pollInterval: 3s # poll interval to check for updated credentials by tutti replicas
   storages:
 #    one: # yaml key with some handy storage name
-#      address: <s3.chorus.com>
+#      address: <s3.tutti.com>
 #      credentials:
 #        user1:
 #          accessKeyID: <user1 v4 accessKey credential>
@@ -102,7 +102,7 @@ storage:
 #        enable: true
 #        rpm: 60
 #    two: # yaml key with some handy storage name
-#      address: <news3.chorus.com>
+#      address: <news3.tutti.com>
 #      credentials:
 #        user1:
 #          accessKeyID: <user1 v4 accessKey credential>

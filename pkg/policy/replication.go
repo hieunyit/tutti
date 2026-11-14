@@ -108,7 +108,7 @@ func (r *policySvc) pauseReplicationQueues(ctx context.Context, id entity.Univer
 		if err != nil {
 			if errors.Is(err, dom.ErrNotFound) {
 				// since queues created on demand, it is possible that some queues are not created yet
-				// for example, event replication queue will be created on the first write request to chorus proxy
+				// for example, event replication queue will be created on the first write request to tutti proxy
 				continue
 			}
 			return fmt.Errorf("pause replication: unable to pause queue %s: %w", queue, err)
@@ -129,7 +129,7 @@ func (r *policySvc) ResumeReplication(ctx context.Context, id entity.UniversalRe
 		if err != nil {
 			if errors.Is(err, dom.ErrNotFound) {
 				// since queues created on demand, it is possible that some queues are not created yet
-				// for example, event replication queue will be created on the first write request to chorus proxy
+				// for example, event replication queue will be created on the first write request to tutti proxy
 				continue
 			}
 			return fmt.Errorf("resume replication: unable to resume queue %s: %w", queue, err)

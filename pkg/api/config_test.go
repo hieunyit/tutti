@@ -93,9 +93,9 @@ func TestWebhookConfig_S3NotificationURL(t *testing.T) {
 		},
 		{
 			name:    "valid with custom storage",
-			conf:    WebhookConfig{Enabled: true, BaseURL: "https://chorus.example.com"},
+			conf:    WebhookConfig{Enabled: true, BaseURL: "https://tutti.example.com"},
 			storage: "my-s3",
-			want:    "https://chorus.example.com/webhook/my-s3/s3-notifications",
+			want:    "https://tutti.example.com/webhook/my-s3/s3-notifications",
 		},
 		{
 			name:    "trailing slash trimmed",

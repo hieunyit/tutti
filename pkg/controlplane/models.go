@@ -52,7 +52,7 @@ type S3Identity struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// DynamicCredential is a sealed per-user storage credential (Redis HASH chorus:dynamic_creds, field
+// DynamicCredential is a sealed per-user storage credential (Redis HASH tutti:dynamic_creds, field
 // "<S3|SWIFT>:<storage>:<user>"). Sealed is stored exactly as in Redis (AES-GCM base64, or plain JSON if encryption
 // is disabled in the config).
 type DynamicCredential struct {

@@ -11,7 +11,7 @@ const (
 	KeyS3Users             = "tutti:s3users" // pkg/objstore identitiesKey
 	KeyS3UsersVersion      = "tutti:s3users:version"
 	KeyStorageTests        = "tutti:storage-tests"
-	KeyDynamicCreds        = "chorus:dynamic_creds" // pkg/objstore redisHashKey
+	KeyDynamicCreds        = "tutti:dynamic_creds" // pkg/objstore redisHashKey
 	KeyProxyAccounts       = "tutti:proxy-accounts"
 	KeyAccessPolicies      = "tutti:access-policies"
 	KeyConsoleUsers        = "tutti:console-users"

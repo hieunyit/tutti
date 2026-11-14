@@ -16,7 +16,7 @@ const (
 	envBootstrapForceChange = "TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE"
 
 	// ResetPasswordCommand is the recovery command as run inside the worker container image.
-	ResetPasswordCommand = "docker compose exec worker /bin/chorus admin reset-password"
+	ResetPasswordCommand = "docker compose exec worker /bin/tutti admin reset-password"
 )
 
 // bannerOut is where password banners are written. It is stderr, never the structured logger.

@@ -29,7 +29,7 @@ import (
 
 File describes routing representation in Redis.
 
-1. Default - main storage from chorus config.
+1. Default - main storage from tutti config.
 
 2. User level routing - global Redis Hash. See: UserRoutingStore
 Key: p:route_user

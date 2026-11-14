@@ -44,7 +44,7 @@ import (
 )
 
 const (
-	redisHashKey       = "chorus:dynamic_creds"
+	redisHashKey       = "tutti:dynamic_creds"
 	redisHFieldVersion = "version"
 	redisHFieldSalt    = "salt"
 
@@ -206,7 +206,7 @@ If dynamic credentials are disabled, credentials are read from config only.
 Otherwise, credentials are stored in Redis and cached locally with periodic sync.
 
 Redis HASH structure:
-- Key: "chorus:dynamic_creds"
+- Key: "tutti:dynamic_creds"
 - Fields:
   - "version": int64 - version of the credentials, incremented on each update
   - "salt": string - "<Argon2 parallelism>:<base64 encoded salt>" for encryption key derivation.
@@ -246,7 +246,7 @@ type credsSvc struct {
 	config      *Config
 	swiftCreds  map[string]swift.Credentials
 	s3Creds     map[string]s3.CredentialsV4
-	// index of S3 credentials by access key for chorus Proxy Auth Middleware
+	// index of S3 credentials by access key for tutti Proxy Auth Middleware
 	s3AccessKeyIdx map[string]s3CredsByAccessKey
 	key            []byte
 	// version is the redis version of the cached credentials. Guarded by the embedded RWMutex.

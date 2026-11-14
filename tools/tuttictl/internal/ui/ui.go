@@ -63,7 +63,7 @@ var (
 func New(ctx context.Context, policyClient pb.PolicyClient, client pb.TuttiClient) tea.Model {
 	model := &UI{
 		client:       policyClient,
-		chorusClient: client,
+		tuttiClient: client,
 		ctx:          ctx,
 		selected:     "",
 		table:        nil,
@@ -77,7 +77,7 @@ var _ tea.Model = &UI{}
 
 type UI struct {
 	client       pb.PolicyClient
-	chorusClient pb.TuttiClient
+	tuttiClient pb.TuttiClient
 	ctx          context.Context
 
 	err error
@@ -98,7 +98,7 @@ func (u *UI) Init() tea.Cmd {
 }
 
 func (u *UI) loadStorages() tea.Msg {
-	res, err := u.chorusClient.GetStorages(u.ctx, &emptypb.Empty{})
+	res, err := u.tuttiClient.GetStorages(u.ctx, &emptypb.Empty{})
 	if err != nil {
 		return errMsg(err)
 	}
@@ -351,7 +351,7 @@ func columnsLen(lens []int, columns []table.Column) {
 
 func (u *UI) View() string {
 	style := headerStyle.Width(width)
-	header := style.Width(width).Render("Chorus migrations dashboard")
+	header := style.Width(width).Render("Tutti migrations dashboard")
 	w := style.GetWidth()
 
 	m := "<empty>"

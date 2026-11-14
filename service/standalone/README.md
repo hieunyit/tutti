@@ -1,7 +1,7 @@
 # Standalone version
 
 Packs [proxy](../proxy), [worker](../worker), [embedded redis](https://github.com/alicebob/miniredis), and fake S3 endpoints into single binary.
-Standalone version does not have persistence, so it cannot be used for production, but it allows to run chorus locally without dependencies.
+Standalone version does not have persistence, so it cannot be used for production, but it allows to run tutti locally without dependencies.
 
 ## Usage
 
@@ -9,7 +9,7 @@ For installation options see main [README](../../README.md#installation).
 
 Install standalone binary or run from source with `go run`:
 ```shell
-% go run ./cmd/chorus
+% go run ./cmd/tutti
 _________ .__
 \_   ___ \|  |__   ___________ __ __  ______
 /    \  \/|  |  \ /  _ \_  __ \  |  \/  ___/
@@ -32,7 +32,7 @@ Storage list:
  - [FAKE] two: http://127.0.0.1:9681
 ```
 
-Output contains URLs and credentials for chorus services and fake S3 endpoints. With given credentials Chorus S3 Proxy or fake storages can be accessed with any S3 client. Example configuration for [s3cmd](https://github.com/s3tools/s3cmd):
+Output contains URLs and credentials for tutti services and fake S3 endpoints. With given credentials Tutti S3 Proxy or fake storages can be accessed with any S3 client. Example configuration for [s3cmd](https://github.com/s3tools/s3cmd):
 ```bash
 cat << EOF > proxy.s3cmd
 use_https = false
@@ -42,19 +42,19 @@ access_key = testKey1
 secret_key = testSecretKey1
 EOF
 ```
-Create bucket with name `test` in Chorus S3 Proxy:
+Create bucket with name `test` in Tutti S3 Proxy:
 ```bash
 s3cmd mb s3://test -c proxy.s3cmd
 ```
 
 To get full yaml config used by standalone binary run:
 ```shell
-go run ./cmd/chorus print-config > chorus.yaml
+go run ./cmd/tutti print-config > tutti.yaml
 ```
-Open `chorus.yaml` and check the configuration. Edit config to use your own S3 endpoints instead of fake ones or change other settings. Then run standalone binary with edited custom config:
+Open `tutti.yaml` and check the configuration. Edit config to use your own S3 endpoints instead of fake ones or change other settings. Then run standalone binary with edited custom config:
 ```shell
-go run ./cmd/chorus -config chorus.yaml
+go run ./cmd/tutti -config tutti.yaml
 ```
 
-Install and run [chorctl CLI](../../tools/chorctl) to manage chorus services.
+Install and run [chorctl CLI](../../tools/chorctl) to manage tutti services.
 

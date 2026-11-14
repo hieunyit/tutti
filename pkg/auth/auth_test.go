@@ -165,8 +165,8 @@ func TestInterceptorEnabled(t *testing.T) {
 		requireCode(t, err, codes.Unimplemented)
 	})
 	t.Run("unknown method is admin only", func(t *testing.T) {
-		require.True(t, Allowed(RoleAdmin, "/chorus.New/Thing"))
-		require.False(t, Allowed(RoleViewer, "/chorus.New/Thing"))
+		require.True(t, Allowed(RoleAdmin, "/tutti.New/Thing"))
+		require.False(t, Allowed(RoleViewer, "/tutti.New/Thing"))
 	})
 	t.Run("webhook and version public", func(t *testing.T) {
 		_, err := pb.NewWebhookClient(e.conn).SwiftEvents(context.Background(), &pb.SwiftEventsRequest{})

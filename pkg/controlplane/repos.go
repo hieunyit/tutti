@@ -80,7 +80,7 @@ type ConsoleUsers interface {
 	TouchLogin(ctx context.Context, username string, at time.Time) error
 }
 
-// DynamicCredentials: pkg/objstore dynamic credentials (Redis HASH chorus:dynamic_creds).
+// DynamicCredentials: pkg/objstore dynamic credentials (Redis HASH tutti:dynamic_creds).
 type DynamicCredentials interface {
 	// Set stores the sealed credential (HSET + version bump).
 	Set(ctx context.Context, c DynamicCredential) error

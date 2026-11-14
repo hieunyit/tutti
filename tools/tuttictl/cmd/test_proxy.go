@@ -44,10 +44,10 @@ func init() {
 
 var testProxyCmd = &cobra.Command{
 	Use:   "test-proxy",
-	Short: "Emulates storage request to chorus proxy to get applied routing/replication policies",
+	Short: "Emulates storage request to tutti proxy to get applied routing/replication policies",
 	Long: `Examples:
 
-Emulate request to chorus proxy:
+Emulate request to tutti proxy:
   tuttictl test-proxy --user my-user --bucket my-bucket`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())

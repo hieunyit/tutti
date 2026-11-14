@@ -36,14 +36,14 @@ func Test_e2e_webhook(t *testing.T) {
 	proxyConf.Log.Level = "warn"
 	proxyConf.Storage = proxyStorages
 
-	e := app.SetupChorus(t, workerConf, proxyConf)
-	chorusStorages, err := e.TuttiClient.GetStorages(ctx, &emptypb.Empty{})
+	e := app.SetupTutti(t, workerConf, proxyConf)
+	tuttiStorages, err := e.TuttiClient.GetStorages(ctx, &emptypb.Empty{})
 	r.NoError(err)
-	t.Log(chorusStorages.Storages)
+	t.Log(tuttiStorages.Storages)
 
-	registerSwiftEndpoitnt(t, "chorus-swift-agent", "localhost", e.ProxyPort)
+	registerSwiftEndpoitnt(t, "tutti-swift-agent", "localhost", e.ProxyPort)
 	c := *swiftConf.Storages[swiftTestKey].Swift
-	c.StorageEndpointName = "chorus-swift-agent"
+	c.StorageEndpointName = "tutti-swift-agent"
 	proxyClient, err := swift.NewClient(ctx, c.StorageAddress, c.Credentials[testAcc])
 	r.NoError(err)
 
@@ -354,7 +354,7 @@ func Test_e2e_webhook_separate_ports(t *testing.T) {
 	r.NoError(err)
 	workerConf.Log.Level = "warn"
 	workerConf.Storage = swiftConf
-	// set non-zero to trigger separate port allocation in SetupChorus
+	// set non-zero to trigger separate port allocation in SetupTutti
 	workerConf.Api.Webhook.GrpcPort = 1
 	workerConf.Api.Webhook.HttpPort = 1
 
@@ -363,7 +363,7 @@ func Test_e2e_webhook_separate_ports(t *testing.T) {
 	proxyConf.Log.Level = "warn"
 	proxyConf.Storage = proxyStorages
 
-	e := app.SetupChorus(t, workerConf, proxyConf)
+	e := app.SetupTutti(t, workerConf, proxyConf)
 
 	// create object on source, start replication, send webhook, verify on dest
 	cont := "wh-separate-ports"

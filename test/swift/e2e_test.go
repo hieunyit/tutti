@@ -49,37 +49,37 @@ func Test_e2e(t *testing.T) {
 	proxyConf.Log.Level = "warn"
 	proxyConf.Storage = proxyStorages
 
-	// ----------------------------------------------- start chorus -----------------------------------------------
-	e := app.SetupChorus(t, workerConf, proxyConf)
-	chorusStorages, err := e.TuttiClient.GetStorages(ctx, &emptypb.Empty{})
+	// ----------------------------------------------- start tutti -----------------------------------------------
+	e := app.SetupTutti(t, workerConf, proxyConf)
+	tuttiStorages, err := e.TuttiClient.GetStorages(ctx, &emptypb.Empty{})
 	r.NoError(err, "failed to get storages from api")
-	t.Log(chorusStorages.Storages)
+	t.Log(tuttiStorages.Storages)
 
-	// register chorus proxy endpoint in keystone as swift endpoint
-	registerSwiftEndpoitnt(t, "chorus-swift", "localhost", e.ProxyPort)
+	// register tutti proxy endpoint in keystone as swift endpoint
+	registerSwiftEndpoitnt(t, "tutti-swift", "localhost", e.ProxyPort)
 
 	// create proxy client
 	c := *swiftConf.Storages[swiftTestKey].Swift
-	c.StorageEndpointName = "chorus-swift"
+	c.StorageEndpointName = "tutti-swift"
 	proxyClient, err := swift.NewClient(ctx, c.StorageAddress, c.Credentials[testAcc])
 	r.NoError(err, "failed to create swift client")
 
 	// create container with metadata in proxy
-	tstCont := "chorus-container"
+	tstCont := "tutti-container"
 	cRes := containers.Create(ctx, proxyClient, tstCont, containers.CreateOpts{
-		Metadata: map[string]string{"test": "chorus-metadata"},
+		Metadata: map[string]string{"test": "tutti-metadata"},
 	})
 	r.NoError(cRes.Err, "failed to create test container in swift")
 
 	// get container from proxy and check metadata
 	gRes := containers.Get(ctx, proxyClient, tstCont, containers.GetOpts{})
 	r.NoError(gRes.Err, "failed to get container from proxy")
-	r.Equal("chorus-metadata", gRes.Header.Get("X-Container-Meta-Test"), "container metadata should match")
+	r.Equal("tutti-metadata", gRes.Header.Get("X-Container-Meta-Test"), "container metadata should match")
 
 	// get container from swift and check metadata
 	gRes = containers.Get(ctx, swiftClient, tstCont, containers.GetOpts{})
 	r.NoError(gRes.Err, "failed to get container from swift")
-	r.Equal("chorus-metadata", gRes.Header.Get("X-Container-Meta-Test"), "container metadata should match")
+	r.Equal("tutti-metadata", gRes.Header.Get("X-Container-Meta-Test"), "container metadata should match")
 
 	// container should not exists in ceph yet
 	gRes = containers.Get(ctx, cephClient, tstCont, containers.GetOpts{})
@@ -137,9 +137,9 @@ func Test_e2e(t *testing.T) {
 	r.Equal(cephTestKey, repl.Id.ToStorage)
 
 	// create second container in proxy
-	tstCont2 := "chorus-container-2"
+	tstCont2 := "tutti-container-2"
 	cRes = containers.Create(ctx, proxyClient, tstCont2, containers.CreateOpts{
-		Metadata: map[string]string{"test": "chorus-metadata-2"},
+		Metadata: map[string]string{"test": "tutti-metadata-2"},
 	})
 	r.NoError(cRes.Err, "failed to create test container 2 in proxy")
 
@@ -227,7 +227,7 @@ func Test_e2e(t *testing.T) {
 	// get container metadata and check
 	cgRes := containers.Get(ctx, cephClient, tstCont, containers.GetOpts{})
 	r.NoError(cgRes.Err, "failed to get ceph container")
-	r.Equal("chorus-metadata", cgRes.Header.Get("X-Container-Meta-Test"), "ceph container metadata should match")
+	r.Equal("tutti-metadata", cgRes.Header.Get("X-Container-Meta-Test"), "ceph container metadata should match")
 	// get fist object - should be deleted
 	obj1GetRes = objects.Download(ctx, cephClient, tstCont, obj1Name, objects.DownloadOpts{})
 	r.True(gophercloud.ResponseCodeIs(obj1GetRes.Err, http.StatusNotFound), "object 1 should be deleted in ceph")
@@ -251,7 +251,7 @@ func Test_e2e(t *testing.T) {
 	// get container metadata and check
 	cgRes = containers.Get(ctx, cephClient, tstCont2, containers.GetOpts{})
 	r.NoError(cgRes.Err, "failed to get ceph container 2")
-	r.Equal("chorus-metadata-2", cgRes.Header.Get("X-Container-Meta-Test"), "ceph container 2 metadata should match")
+	r.Equal("tutti-metadata-2", cgRes.Header.Get("X-Container-Meta-Test"), "ceph container 2 metadata should match")
 	// get object - should be present
 	obj3GetRes = objects.Download(ctx, cephClient, tstCont2, obj3Name, objects.DownloadOpts{})
 	r.NoError(obj3GetRes.Err, "failed to get object 3 from ceph")
@@ -316,9 +316,9 @@ func Test_e2e(t *testing.T) {
 		return switchStatus.LastStatus >= pb.ReplicationSwitch_IN_PROGRESS
 	}, e.WaitShort, e.RetryShort)
 	// create container in proxy should return error
-	cont3 := "chorus-container-3"
+	cont3 := "tutti-container-3"
 	cRes = containers.Create(ctx, proxyClient, cont3, containers.CreateOpts{
-		Metadata: map[string]string{"test": "chorus-metadata-3"},
+		Metadata: map[string]string{"test": "tutti-metadata-3"},
 	})
 	r.Error(cRes.Err, "create container in proxy should return error after switch")
 

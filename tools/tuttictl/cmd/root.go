@@ -99,7 +99,7 @@ func initConfig() {
 		viper.SetConfigName(".tuttictl")
 	}
 	viper.EnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.SetEnvPrefix("CHORUS")
+	viper.SetEnvPrefix("TUTTI")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

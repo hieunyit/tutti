@@ -71,7 +71,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if c.UIPort <= 0 {
-		return fmt.Errorf("chorus config: uiPort must be positive: %d", c.Concurrency)
+		return fmt.Errorf("tutti config: uiPort must be positive: %d", c.Concurrency)
 	}
 
 	if c.Proxy.Enabled {
@@ -79,32 +79,32 @@ func (c *Config) Validate() error {
 			return err
 		}
 		if c.Proxy.Port <= 0 {
-			return fmt.Errorf("chorus config: Port must be positive: %d", c.Proxy.Port)
+			return fmt.Errorf("tutti config: Port must be positive: %d", c.Proxy.Port)
 		}
 		if err := c.Proxy.Storage.Validate(); err != nil {
-			return fmt.Errorf("chorus config: invalid proxy storage config: %w", err)
+			return fmt.Errorf("tutti config: invalid proxy storage config: %w", err)
 		}
 		// check that proxy and worker storage configs match
 		if c.Storage.Main != c.Proxy.Storage.Main {
-			return fmt.Errorf("chorus config: proxy main storage %q does not match worker main storage %q", c.Proxy.Storage.Main, c.Storage.Main)
+			return fmt.Errorf("tutti config: proxy main storage %q does not match worker main storage %q", c.Proxy.Storage.Main, c.Storage.Main)
 		}
 		if len(c.Storage.Storages) != len(c.Proxy.Storage.Storages) {
-			return fmt.Errorf("chorus config: number of proxy storages %d does not match number of worker storages %d", len(c.Proxy.Storage.Storages), len(c.Storage.Storages))
+			return fmt.Errorf("tutti config: number of proxy storages %d does not match number of worker storages %d", len(c.Proxy.Storage.Storages), len(c.Storage.Storages))
 		}
 		for name, workerStorage := range c.Storage.Storages {
 			proxyStorage, ok := c.Proxy.Storage.Storages[name]
 			if !ok {
-				return fmt.Errorf("chorus config: proxy storage %q not found in worker storages", name)
+				return fmt.Errorf("tutti config: proxy storage %q not found in worker storages", name)
 			}
 			if workerStorage.Type != proxyStorage.Type {
-				return fmt.Errorf("chorus config: proxy storage %q type %q does not match worker storage type %q", name, proxyStorage.Type, workerStorage.Type)
+				return fmt.Errorf("tutti config: proxy storage %q type %q does not match worker storage type %q", name, proxyStorage.Type, workerStorage.Type)
 			}
 		}
 		// check that proxy and worker storage users match
 		workerUserList := c.Storage.GetMain().UserList()
 		proxUserList := c.Proxy.Storage.GetMain().UserList()
 		if !slices.Equal(workerUserList, proxUserList) {
-			return fmt.Errorf("chorus config: proxy main storage users %v do not match worker main storage users %v", proxUserList, workerUserList)
+			return fmt.Errorf("tutti config: proxy main storage users %v do not match worker main storage users %v", proxUserList, workerUserList)
 		}
 	}
 	return nil
@@ -117,10 +117,10 @@ func GetConfig(src ...config.Opt) (*Config, error) {
 	srcLen := len(src)
 	if srcLen == 0 {
 		srcLen = 1
-		src = []config.Opt{config.Reader(testConfig(), "chorus_test_cfg")}
+		src = []config.Opt{config.Reader(testConfig(), "tutti_test_cfg")}
 	}
 	cfgSource := make([]config.Opt, 0, 1+srcLen)
-	cfgSource = append(cfgSource, config.Reader(dc, "chorus_default_cfg"))
+	cfgSource = append(cfgSource, config.Reader(dc, "tutti_default_cfg"))
 	cfgSource = append(cfgSource, src...)
 	err := config.Get(&conf, cfgSource...)
 	_ = dc.Close()

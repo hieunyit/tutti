@@ -27,7 +27,7 @@ import (
 const (
 	minSchemaVersion     = 3
 	currentSchemaVersion = 3
-	schemaVersionKey     = "chorus_schema"
+	schemaVersionKey     = "tutti_schema"
 )
 
 var supportedSchemaVersions = map[int]string{
@@ -36,7 +36,7 @@ var supportedSchemaVersions = map[int]string{
 	2: "v0.6.0",
 }
 
-func CheckSchemaCompatibility(ctx context.Context, chorusVersion string, client redis.UniversalClient) error {
+func CheckSchemaCompatibility(ctx context.Context, tuttiVersion string, client redis.UniversalClient) error {
 	// Check current schema version in Redis
 	version, err := client.Get(ctx, schemaVersionKey).Int()
 	if err != nil && !errors.Is(err, redis.Nil) {
@@ -56,7 +56,7 @@ func CheckSchemaCompatibility(ctx context.Context, chorusVersion string, client 
 
 	if !onlySchemaVersionKey && len(keys) > 0 {
 		supportedVersion := supportedSchemaVersions[version]
-		return fmt.Errorf("%w: Chorus version %s is incompatible with existing Redis schema from previous Chorus installations. Please remove all data in Redis to continue with the current version, or use Chorus %s", dom.ErrInternal, chorusVersion, supportedVersion)
+		return fmt.Errorf("%w: Tutti version %s is incompatible with existing Redis schema from previous Tutti installations. Please remove all data in Redis to continue with the current version, or use Tutti %s", dom.ErrInternal, tuttiVersion, supportedVersion)
 	}
 	// No legacy keys found, consider schema compatible
 	// Set the current schema version to not check again next time
