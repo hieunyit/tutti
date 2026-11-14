@@ -167,6 +167,10 @@ Failback never happens automatically. After the old storage is repaired:
 
 Until step 5 the event stays listed; it has no effect on routing.
 
+## Replication throughput tuning
+
+The defaults are a safe starting point. Tune only with measurements from `GET /tutti/worker-stats` and the `tutti_copy_*` metrics. `multipartThreads` is optional, defaults to 1 and has an unverified gain: parallel parts were slower than one stream in local tests, so measure on your own network before raising it. The knobs are listed in [Replication throughput tuning](./configuration.md#replication-throughput-tuning).
+
 ## First login and password recovery
 
 On the first start (no console users in the database) the worker creates the user `admin`. There are three ways to get its initial password:

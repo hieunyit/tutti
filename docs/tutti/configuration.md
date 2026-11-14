@@ -359,6 +359,10 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 | Parallel multipart parts | `multipartThreads` (0 or 1..16) | `multipartThreads` | 1 | next copy, no restart |
 | Multipart part size | `multipartPartSizeMib` (0 or 5..512) | `multipartPartSizeMiB` | 16 MiB | next copy, no restart |
 
+`multipartThreads` is optional and stays at 1 unless you change it. Parallel parts were 3-4x slower than a single stream in local loopback tests (cause not isolated), so any gain over a WAN is unverified: raise it only after measuring on your own network, and revert if throughput does not improve.
+
+In the System settings API an omitted worker field keeps the stored value, an explicit `0` resets it to the default (`bandwidthLimitBytes`: unlimited) and `bufferBudgetBytes` must be at least 16 MiB.
+
 Precedence: non-zero system setting, then YAML/env, then the built-in default. The buffer budget (`bufferBudgetBytes`) also applies live; a multipart copy reserves `threads x partSize` of it, capped at the object size.
 
 Throughput is visible at `GET /tutti/worker-stats` and as Prometheus metrics `tutti_copy_objects_total{result}`, `tutti_copy_bytes_total`, `tutti_copy_duration_seconds`, `tutti_copy_inflight`, `tutti_copy_buffer_wait_seconds_total`, `tutti_copy_buffer_used_bytes`, `tutti_copy_buffer_total_bytes`. A growing `bufferWaitSecondsTotal` means the buffer budget limits throughput.

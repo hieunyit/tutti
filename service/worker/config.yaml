@@ -10,7 +10,7 @@ shutdownTimeout: 5s
 # Tuning knobs below are fallbacks: a non-zero System setting (worker.bulkConcurrencyPercent, multipartThreads,
 # multipartPartSizeMib) wins over these values. Multipart settings apply to the next copy without restart.
 bulkConcurrencyPercent: 20 # 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
-multipartThreads: 1 # 1..16, parallel parts for objects above the multipart threshold
+multipartThreads: 1 # 1..16, optional; keep 1 unless measured: parallel parts were slower in local tests, gain unverified
 multipartPartSizeMiB: 16 # 5..512
 worker:
   queueUpdateInterval: 3s
