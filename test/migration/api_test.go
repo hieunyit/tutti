@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/test/app"
 )
 
@@ -18,7 +18,7 @@ func Test_api_storages(t *testing.T) {
 	e := app.SetupEmbedded(t, workerConf, proxyConf)
 	tstCtx := t.Context()
 	r := require.New(t)
-	res, err := e.ChorusClient.GetStorages(tstCtx, &emptypb.Empty{})
+	res, err := e.TuttiClient.GetStorages(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	r.Len(res.Storages, 3)
 	r.EqualValues(pb.Storage_S3, res.Storages[0].Provider)
@@ -50,7 +50,7 @@ func Test_api_proxy_creds(t *testing.T) {
 	e := app.SetupEmbedded(t, workerConf, proxyConf)
 	tstCtx := t.Context()
 	r := require.New(t)
-	res, err := e.ChorusClient.GetProxyCredentials(tstCtx, &emptypb.Empty{})
+	res, err := e.TuttiClient.GetProxyCredentials(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	r.Contains(res.Address, "127.0.0.1")
 	r.Len(res.Credentials, 1)

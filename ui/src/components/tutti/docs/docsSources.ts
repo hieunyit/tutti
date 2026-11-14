@@ -25,7 +25,7 @@ const guideModules = import.meta.glob(
 ) as Record<string, () => Promise<string>>;
 
 const specModules = import.meta.glob(
-  '../../../../../proto/gen/openapi/chorus/chorus.swagger.json',
+  '../../../../../proto/gen/openapi/tutti/tutti.swagger.json',
   { import: 'default' },
 ) as Record<string, () => Promise<unknown>>;
 

@@ -48,7 +48,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/trace"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/service/worker/copy"
 	"github.com/hieunyit/tutti/test/app"
@@ -292,7 +292,7 @@ var _ = Describe("Minio versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewChorusClient(grpcConn)
+		chorusClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
 			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
@@ -606,7 +606,7 @@ var _ = Describe("Ceph keystone versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewChorusClient(grpcConn)
+		chorusClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
 			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})
@@ -875,7 +875,7 @@ var _ = Describe("Ceph system user versioned migration", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		apiClient := pb.NewPolicyClient(grpcConn)
-		chorusClient := pb.NewChorusClient(grpcConn)
+		chorusClient := pb.NewTuttiClient(grpcConn)
 
 		Eventually(func() bool {
 			_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})

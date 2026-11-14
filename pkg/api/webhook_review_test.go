@@ -10,7 +10,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
 	"github.com/hieunyit/tutti/pkg/tasks"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/stretchr/testify/require"
 )
 

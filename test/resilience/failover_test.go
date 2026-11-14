@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/proxy"
 )
 

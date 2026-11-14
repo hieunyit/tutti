@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package chorus;
+package tutti;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/tutti;pb";
 
-service Chorus {
+service Tutti {
   // Get app version
   rpc GetAppVersion(google.protobuf.Empty) returns (GetAppVersionResponse);
   // Lists configured storages with users

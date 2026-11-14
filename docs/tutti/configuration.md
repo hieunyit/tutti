@@ -98,7 +98,7 @@ api:
     token: "long-random-secret"   # optional but strongly recommended
 ```
 
-The webhook endpoints (`/chorus.Webhook/*`, HTTP `/webhook/{storage}/s3-notifications` and `/webhook/{storage}/swift`) cannot use console sign-in, so they are public unless `api.webhook.token` is set. When set, every webhook call on both the main API ports and the separate `api.webhook.grpcPort`/`httpPort` must carry the token as `Authorization: Bearer <token>` or `X-Tutti-Webhook-Token: <token>` (gRPC metadata for gRPC calls); it is compared in constant time and a missing or wrong token gets `401` / `Unauthenticated`. Rotate it by changing the config and restarting the workers, then updating the notification targets.
+The webhook endpoints (`/tutti.Webhook/*`, HTTP `/webhook/{storage}/s3-notifications` and `/webhook/{storage}/swift`) cannot use console sign-in, so they are public unless `api.webhook.token` is set. When set, every webhook call on both the main API ports and the separate `api.webhook.grpcPort`/`httpPort` must carry the token as `Authorization: Bearer <token>` or `X-Tutti-Webhook-Token: <token>` (gRPC metadata for gRPC calls); it is compared in constant time and a missing or wrong token gets `401` / `Unauthenticated`. Rotate it by changing the config and restarting the workers, then updating the notification targets.
 
 When webhooks are enabled on the main API port (no `grpcPort`) and no token is set, the worker logs a warning at startup and `GET /auth/me` returns `"warnings": ["webhook_unauthenticated"]` so the UI can show a banner. Use the token, or run the webhooks on separate ports that only the storage systems can reach.
 

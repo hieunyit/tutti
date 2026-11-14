@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func TestReplIDToString_EmptyUser(t *testing.T) {

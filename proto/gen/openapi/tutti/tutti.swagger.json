@@ -1,19 +1,19 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "chorus/chorus.proto",
+    "title": "tutti/core.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "Chorus"
+      "name": "Tutti"
     },
     {
       "name": "Diff"
     },
     {
       "name": "Policy",
-      "description": "Manages chorus routing/replication policies"
+      "description": "Manages tutti routing/replication policies"
     },
     {
       "name": "ProtectionGroups"
@@ -37,7 +37,7 @@
     "/credentials": {
       "post": {
         "summary": "Sets user credentials for a given storage.",
-        "operationId": "Chorus_SetUserCredentials",
+        "operationId": "Tutti_SetUserCredentials",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -59,12 +59,12 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusSetUserCredentialsRequest"
+              "$ref": "#/definitions/tuttiSetUserCredentialsRequest"
             }
           }
         ],
         "tags": [
-          "Chorus"
+          "Tutti"
         ]
       }
     },
@@ -92,7 +92,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusDiffCheckRequest"
+              "$ref": "#/definitions/tuttiDiffCheckRequest"
             }
           }
         ],
@@ -125,7 +125,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusStartDiffFixRequest"
+              "$ref": "#/definitions/tuttiStartDiffFixRequest"
             }
           }
         ],
@@ -141,7 +141,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusListDiffChecksResponse"
+              "$ref": "#/definitions/tuttiListDiffChecksResponse"
             }
           },
           "default": {
@@ -163,7 +163,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusGetDiffCheckReportResponse"
+              "$ref": "#/definitions/tuttiGetDiffCheckReportResponse"
             }
           },
           "default": {
@@ -179,7 +179,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusDiffCheckRequest"
+              "$ref": "#/definitions/tuttiDiffCheckRequest"
             }
           }
         ],
@@ -195,7 +195,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusGetDiffCheckReportEntriesResponse"
+              "$ref": "#/definitions/tuttiGetDiffCheckReportEntriesResponse"
             }
           },
           "default": {
@@ -211,7 +211,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusGetDiffCheckReportEntriesRequest"
+              "$ref": "#/definitions/tuttiGetDiffCheckReportEntriesRequest"
             }
           }
         ],
@@ -244,7 +244,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusDiffCheckRequest"
+              "$ref": "#/definitions/tuttiDiffCheckRequest"
             }
           }
         ],
@@ -277,7 +277,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusStartDiffCheckRequest"
+              "$ref": "#/definitions/tuttiStartDiffCheckRequest"
             }
           }
         ],
@@ -289,12 +289,12 @@
     "/proxy": {
       "get": {
         "summary": "Returns connection details for proxy s3 endpoint",
-        "operationId": "Chorus_GetProxyCredentials",
+        "operationId": "Tutti_GetProxyCredentials",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusGetProxyCredentialsResponse"
+              "$ref": "#/definitions/tuttiGetProxyCredentialsResponse"
             }
           },
           "default": {
@@ -305,7 +305,7 @@
           }
         },
         "tags": [
-          "Chorus"
+          "Tutti"
         ]
       }
     },
@@ -317,7 +317,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusListReplicationsResponse"
+              "$ref": "#/definitions/tuttiListReplicationsResponse"
             }
           },
           "default": {
@@ -334,7 +334,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusListReplicationsRequest"
+              "$ref": "#/definitions/tuttiListReplicationsRequest"
             }
           }
         ],
@@ -369,7 +369,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusAddReplicationRequest"
+              "$ref": "#/definitions/tuttiAddReplicationRequest"
             }
           }
         ],
@@ -404,7 +404,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -421,7 +421,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusReplication"
+              "$ref": "#/definitions/tuttiReplication"
             }
           },
           "default": {
@@ -438,7 +438,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -455,7 +455,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusAvailableBucketsResponse"
+              "$ref": "#/definitions/tuttiAvailableBucketsResponse"
             }
           },
           "default": {
@@ -472,7 +472,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusAvailableBucketsRequest"
+              "$ref": "#/definitions/tuttiAvailableBucketsRequest"
             }
           }
         ],
@@ -507,7 +507,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -542,7 +542,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -554,7 +554,7 @@
     "/replication/switch": {
       "post": {
         "summary": "Schedules downtime window to switch source\u003c-\u003edestination replication\ntargets. See SwitchDowntimeOpts for downtime scheduling options.\nCan be edited if downtime window has not started yet.",
-        "description": "During downtime window all requests to replication target are blocked on\nchorus proxy. When all replication tasks are processed, chorus can perform\noptional data equality check and complete the switch. On completion, proxy\nunblocks requests to target and routes all requests to destination target.\n\nUnlike zero-downtime switch, downtime switch can perform optional data\nequality check and rollback to source target without data loss.\nRequirements:\n  - replication must exist\n  - replication must be proxy-based (agent replication is not supported)\n  - for bucket-level replication, from/to bucket names must be the same\n  - switch is not started. Use DeleteBucketSwitch in this case.",
+        "description": "During downtime window all requests to replication target are blocked on\ntutti proxy. When all replication tasks are processed, tutti can perform\noptional data equality check and complete the switch. On completion, proxy\nunblocks requests to target and routes all requests to destination target.\n\nUnlike zero-downtime switch, downtime switch can perform optional data\nequality check and rollback to source target without data loss.\nRequirements:\n  - replication must exist\n  - replication must be proxy-based (agent replication is not supported)\n  - for bucket-level replication, from/to bucket names must be the same\n  - switch is not started. Use DeleteBucketSwitch in this case.",
         "operationId": "Policy_SwitchWithDowntime",
         "responses": {
           "200": {
@@ -578,7 +578,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusSwitchDowntimeRequest"
+              "$ref": "#/definitions/tuttiSwitchDowntimeRequest"
             }
           }
         ],
@@ -614,7 +614,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -631,7 +631,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusReplicationSwitch"
+              "$ref": "#/definitions/tuttiReplicationSwitch"
             }
           },
           "default": {
@@ -648,7 +648,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusReplicationID"
+              "$ref": "#/definitions/tuttiReplicationID"
             }
           }
         ],
@@ -659,7 +659,7 @@
     },
     "/replication/switch/zero-downtime": {
       "post": {
-        "summary": "Switches source\u003c-\u003edestination replication targets without downtime.\nZero-downtime switch will take effect immediately on chorus proxy:\n- all writes will be now routed to replication destination\n- all reads will be routed to target with latest data\nWhen all replication tasks will be processed, switch will be completed and\nall reads and writes will be routed to destination target only.",
+        "summary": "Switches source\u003c-\u003edestination replication targets without downtime.\nZero-downtime switch will take effect immediately on tutti proxy:\n- all writes will be now routed to replication destination\n- all reads will be routed to target with latest data\nWhen all replication tasks will be processed, switch will be completed and\nall reads and writes will be routed to destination target only.",
         "description": "Unlike switch with downtime, zero-downtime switch is not checking bucket\ncontents on completion and cannot be aborted or reverted without risk of\ndata loss.\nRequirements for zero-downtime switch:\n  - replication must exist\n  - replication must be proxy-based (agent replication is not supported)\n  - for bucket-level replication, from/to bucket names must be the same\n  - no existing switch must exist for given replication. Zero downtime\n  switch cannot be updated. Use DeleteBucketSwitch in this case.",
         "operationId": "Policy_SwitchWithZeroDowntime",
         "responses": {
@@ -683,7 +683,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusSwitchZeroDowntimeRequest"
+              "$ref": "#/definitions/tuttiSwitchZeroDowntimeRequest"
             }
           }
         ],
@@ -694,13 +694,13 @@
     },
     "/routing": {
       "post": {
-        "summary": "Returns configured routing policies for chorus proxy.",
+        "summary": "Returns configured routing policies for tutti proxy.",
         "operationId": "Policy_ListRoutings",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRoutingsResponse"
+              "$ref": "#/definitions/tuttiRoutingsResponse"
             }
           },
           "default": {
@@ -716,7 +716,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRoutingsRequest"
+              "$ref": "#/definitions/tuttiRoutingsRequest"
             }
           }
         ],
@@ -750,7 +750,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusAddRoutingRequest"
+              "$ref": "#/definitions/tuttiAddRoutingRequest"
             }
           }
         ],
@@ -784,7 +784,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRoutingID"
+              "$ref": "#/definitions/tuttiRoutingID"
             }
           }
         ],
@@ -818,7 +818,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRoutingID"
+              "$ref": "#/definitions/tuttiRoutingID"
             }
           }
         ],
@@ -852,7 +852,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRoutingID"
+              "$ref": "#/definitions/tuttiRoutingID"
             }
           }
         ],
@@ -886,7 +886,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusUpdateRoutingRequest"
+              "$ref": "#/definitions/tuttiUpdateRoutingRequest"
             }
           }
         ],
@@ -898,12 +898,12 @@
     "/storage": {
       "get": {
         "summary": "Lists configured storages with users",
-        "operationId": "Chorus_GetStorages",
+        "operationId": "Tutti_GetStorages",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusGetStoragesResponse"
+              "$ref": "#/definitions/tuttiGetStoragesResponse"
             }
           },
           "default": {
@@ -914,7 +914,7 @@
           }
         },
         "tags": [
-          "Chorus"
+          "Tutti"
         ]
       }
     },
@@ -926,7 +926,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusTestProxyResponse"
+              "$ref": "#/definitions/tuttiTestProxyResponse"
             }
           },
           "default": {
@@ -942,7 +942,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusTestProxyRequest"
+              "$ref": "#/definitions/tuttiTestProxyRequest"
             }
           }
         ],
@@ -959,7 +959,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusAccessPolicyList"
+              "$ref": "#/definitions/tuttiAccessPolicyList"
             }
           },
           "default": {
@@ -994,11 +994,11 @@
         "parameters": [
           {
             "name": "body",
-            "description": "AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do.",
+            "description": "AccessPolicy restricts what a proxy user (the Tutti user name, not the access key id) may do.",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusAccessPolicy"
+              "$ref": "#/definitions/tuttiAccessPolicy"
             }
           }
         ],
@@ -1032,7 +1032,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusAccessPolicyUser"
+              "$ref": "#/definitions/tuttiAccessPolicyUser"
             }
           }
         ],
@@ -1049,7 +1049,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusAuditLogList"
+              "$ref": "#/definitions/tuttiAuditLogList"
             }
           },
           "default": {
@@ -1126,7 +1126,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusConsoleUserList"
+              "$ref": "#/definitions/tuttiConsoleUserList"
             }
           },
           "default": {
@@ -1147,7 +1147,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusCreateConsoleUserResponse"
+              "$ref": "#/definitions/tuttiCreateConsoleUserResponse"
             }
           },
           "default": {
@@ -1163,7 +1163,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusCreateConsoleUserRequest"
+              "$ref": "#/definitions/tuttiCreateConsoleUserRequest"
             }
           }
         ],
@@ -1195,7 +1195,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusUpdateConsoleUserRequest"
+              "$ref": "#/definitions/tuttiUpdateConsoleUserRequest"
             }
           }
         ],
@@ -1229,7 +1229,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusConsoleUserName"
+              "$ref": "#/definitions/tuttiConsoleUserName"
             }
           }
         ],
@@ -1246,7 +1246,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusResetConsoleUserPasswordResponse"
+              "$ref": "#/definitions/tuttiResetConsoleUserPasswordResponse"
             }
           },
           "default": {
@@ -1262,7 +1262,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusResetConsoleUserPasswordRequest"
+              "$ref": "#/definitions/tuttiResetConsoleUserPasswordRequest"
             }
           }
         ],
@@ -1279,7 +1279,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusFailoverEventList"
+              "$ref": "#/definitions/tuttiFailoverEventList"
             }
           },
           "default": {
@@ -1320,7 +1320,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusFailoverEventID"
+              "$ref": "#/definitions/tuttiFailoverEventID"
             }
           }
         ],
@@ -1337,7 +1337,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusFailoverMigrationResult"
+              "$ref": "#/definitions/tuttiFailoverMigrationResult"
             }
           },
           "default": {
@@ -1354,7 +1354,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusFailoverMigrationRequest"
+              "$ref": "#/definitions/tuttiFailoverMigrationRequest"
             }
           }
         ],
@@ -1371,7 +1371,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusFailoverMigrationPlan"
+              "$ref": "#/definitions/tuttiFailoverMigrationPlan"
             }
           },
           "default": {
@@ -1427,7 +1427,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusFailoverPolicyList"
+              "$ref": "#/definitions/tuttiFailoverPolicyList"
             }
           },
           "default": {
@@ -1466,7 +1466,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusFailoverPolicy"
+              "$ref": "#/definitions/tuttiFailoverPolicy"
             }
           }
         ],
@@ -1501,7 +1501,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusFailoverPolicySource"
+              "$ref": "#/definitions/tuttiFailoverPolicySource"
             }
           }
         ],
@@ -1517,7 +1517,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroupList"
+              "$ref": "#/definitions/tuttiProtectionGroupList"
             }
           },
           "default": {
@@ -1537,7 +1537,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroup"
+              "$ref": "#/definitions/tuttiProtectionGroup"
             }
           },
           "default": {
@@ -1553,7 +1553,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusCreateProtectionGroupRequest"
+              "$ref": "#/definitions/tuttiCreateProtectionGroupRequest"
             }
           }
         ],
@@ -1567,7 +1567,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroup"
+              "$ref": "#/definitions/tuttiProtectionGroup"
             }
           },
           "default": {
@@ -1583,7 +1583,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroup"
+              "$ref": "#/definitions/tuttiProtectionGroup"
             }
           }
         ],
@@ -1616,7 +1616,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroupID"
+              "$ref": "#/definitions/tuttiProtectionGroupID"
             }
           }
         ],
@@ -1649,7 +1649,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionAutomaticFreeze"
+              "$ref": "#/definitions/tuttiProtectionAutomaticFreeze"
             }
           }
         ],
@@ -1665,7 +1665,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionAutomaticFreeze"
+              "$ref": "#/definitions/tuttiProtectionAutomaticFreeze"
             }
           },
           "default": {
@@ -1704,7 +1704,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionWriterClearRequest"
+              "$ref": "#/definitions/tuttiProtectionWriterClearRequest"
             }
           }
         ],
@@ -1738,7 +1738,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroupID"
+              "$ref": "#/definitions/tuttiProtectionGroupID"
             }
           }
         ],
@@ -1771,7 +1771,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroupSwitchRequest"
+              "$ref": "#/definitions/tuttiProtectionGroupSwitchRequest"
             }
           }
         ],
@@ -1787,7 +1787,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionGroupStatus"
+              "$ref": "#/definitions/tuttiProtectionGroupStatus"
             }
           },
           "default": {
@@ -1817,7 +1817,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProtectionWriters"
+              "$ref": "#/definitions/tuttiProtectionWriters"
             }
           },
           "default": {
@@ -1848,7 +1848,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyStatusList"
+              "$ref": "#/definitions/tuttiProxyStatusList"
             }
           },
           "default": {
@@ -1871,7 +1871,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyAccountList"
+              "$ref": "#/definitions/tuttiProxyAccountList"
             }
           },
           "default": {
@@ -1892,7 +1892,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyAccountSecret"
+              "$ref": "#/definitions/tuttiProxyAccountSecret"
             }
           },
           "default": {
@@ -1908,7 +1908,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusCreateProxyAccountRequest"
+              "$ref": "#/definitions/tuttiCreateProxyAccountRequest"
             }
           }
         ],
@@ -1942,7 +1942,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusProxyAccountKey"
+              "$ref": "#/definitions/tuttiProxyAccountKey"
             }
           }
         ],
@@ -1959,7 +1959,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyAccountSecret"
+              "$ref": "#/definitions/tuttiProxyAccountSecret"
             }
           },
           "default": {
@@ -1975,7 +1975,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRotateProxyAccountSecretRequest"
+              "$ref": "#/definitions/tuttiRotateProxyAccountSecretRequest"
             }
           }
         ],
@@ -2009,7 +2009,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusSetProxyAccountStatusRequest"
+              "$ref": "#/definitions/tuttiSetProxyAccountStatusRequest"
             }
           }
         ],
@@ -2026,7 +2026,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyFleetConfig"
+              "$ref": "#/definitions/tuttiProxyFleetConfig"
             }
           },
           "default": {
@@ -2047,7 +2047,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusProxyFleetConfig"
+              "$ref": "#/definitions/tuttiProxyFleetConfig"
             }
           },
           "default": {
@@ -2063,7 +2063,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusSetProxyFleetConfigRequest"
+              "$ref": "#/definitions/tuttiSetProxyFleetConfigRequest"
             }
           }
         ],
@@ -2080,7 +2080,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusStatsHistory"
+              "$ref": "#/definitions/tuttiStatsHistory"
             }
           },
           "default": {
@@ -2111,7 +2111,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorageList"
+              "$ref": "#/definitions/tuttiRuntimeStorageList"
             }
           },
           "default": {
@@ -2140,7 +2140,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorage"
+              "$ref": "#/definitions/tuttiRuntimeStorage"
             }
           },
           "default": {
@@ -2156,7 +2156,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusCreateRuntimeStorageRequest"
+              "$ref": "#/definitions/tuttiCreateRuntimeStorageRequest"
             }
           }
         ],
@@ -2170,7 +2170,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorage"
+              "$ref": "#/definitions/tuttiRuntimeStorage"
             }
           },
           "default": {
@@ -2186,7 +2186,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusUpdateRuntimeStorageRequest"
+              "$ref": "#/definitions/tuttiUpdateRuntimeStorageRequest"
             }
           }
         ],
@@ -2203,7 +2203,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorage"
+              "$ref": "#/definitions/tuttiRuntimeStorage"
             }
           },
           "default": {
@@ -2219,7 +2219,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRotateStorageConnectionAccountRequest"
+              "$ref": "#/definitions/tuttiRotateStorageConnectionAccountRequest"
             }
           }
         ],
@@ -2252,7 +2252,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorageName"
+              "$ref": "#/definitions/tuttiRuntimeStorageName"
             }
           }
         ],
@@ -2269,7 +2269,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusStorageTestResult"
+              "$ref": "#/definitions/tuttiStorageTestResult"
             }
           },
           "default": {
@@ -2285,7 +2285,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusTestStorageConnectionRequest"
+              "$ref": "#/definitions/tuttiTestStorageConnectionRequest"
             }
           }
         ],
@@ -2301,7 +2301,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusTestS3UserCredentialsResponse"
+              "$ref": "#/definitions/tuttiTestS3UserCredentialsResponse"
             }
           },
           "default": {
@@ -2317,7 +2317,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusTestRuntimeStorageRequest"
+              "$ref": "#/definitions/tuttiTestRuntimeStorageRequest"
             }
           }
         ],
@@ -2334,7 +2334,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusRuntimeStorage"
+              "$ref": "#/definitions/tuttiRuntimeStorage"
             }
           },
           "default": {
@@ -2365,7 +2365,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusSystemSettings"
+              "$ref": "#/definitions/tuttiSystemSettings"
             }
           },
           "default": {
@@ -2386,7 +2386,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusSystemSettings"
+              "$ref": "#/definitions/tuttiSystemSettings"
             }
           },
           "default": {
@@ -2402,7 +2402,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusUpdateSystemSettingsRequest"
+              "$ref": "#/definitions/tuttiUpdateSystemSettingsRequest"
             }
           }
         ],
@@ -2419,7 +2419,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusUnprotectedScopeList"
+              "$ref": "#/definitions/tuttiUnprotectedScopeList"
             }
           },
           "default": {
@@ -2442,7 +2442,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusS3UserList"
+              "$ref": "#/definitions/tuttiS3UserList"
             }
           },
           "default": {
@@ -2463,7 +2463,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusCreateS3UserResponse"
+              "$ref": "#/definitions/tuttiCreateS3UserResponse"
             }
           },
           "default": {
@@ -2479,7 +2479,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusCreateS3UserRequest"
+              "$ref": "#/definitions/tuttiCreateS3UserRequest"
             }
           }
         ],
@@ -2513,7 +2513,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusUpdateS3UserCredentialsRequest"
+              "$ref": "#/definitions/tuttiUpdateS3UserCredentialsRequest"
             }
           }
         ],
@@ -2547,7 +2547,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusDeleteS3UserCredentialsRequest"
+              "$ref": "#/definitions/tuttiDeleteS3UserCredentialsRequest"
             }
           }
         ],
@@ -2564,7 +2564,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusDeleteS3UserResponse"
+              "$ref": "#/definitions/tuttiDeleteS3UserResponse"
             }
           },
           "default": {
@@ -2580,7 +2580,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusDeleteS3UserRequest"
+              "$ref": "#/definitions/tuttiDeleteS3UserRequest"
             }
           }
         ],
@@ -2597,7 +2597,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusTestS3UserCredentialsResponse"
+              "$ref": "#/definitions/tuttiTestS3UserCredentialsResponse"
             }
           },
           "default": {
@@ -2613,7 +2613,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/chorusTestS3UserCredentialsRequest"
+              "$ref": "#/definitions/tuttiTestS3UserCredentialsRequest"
             }
           }
         ],
@@ -2630,7 +2630,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusWorkerStatsResponse"
+              "$ref": "#/definitions/tuttiWorkerStatsResponse"
             }
           },
           "default": {
@@ -2648,12 +2648,12 @@
     "/version": {
       "get": {
         "summary": "Get app version",
-        "operationId": "Chorus_GetAppVersion",
+        "operationId": "Tutti_GetAppVersion",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/chorusGetAppVersionResponse"
+              "$ref": "#/definitions/tuttiGetAppVersionResponse"
             }
           },
           "default": {
@@ -2664,7 +2664,7 @@
           }
         },
         "tags": [
-          "Chorus"
+          "Tutti"
         ]
       }
     },
@@ -2690,7 +2690,7 @@
         "parameters": [
           {
             "name": "storage",
-            "description": "Chorus storage alias (must be a configured S3 storage). Bound to URL path.",
+            "description": "Tutti storage alias (must be a configured S3 storage). Bound to URL path.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2731,7 +2731,7 @@
         "parameters": [
           {
             "name": "storage",
-            "description": "Chorus storage alias (must be a configured SWIFT storage).",
+            "description": "Tutti storage alias (must be a configured SWIFT storage).",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2767,7 +2767,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusS3EventRecord"
+            "$ref": "#/definitions/tuttiS3EventRecord"
           },
           "description": "Standard AWS S3 notification records.\nEvents are processed independently; a failure in one does not affect others."
         }
@@ -2780,13 +2780,41 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusSwiftEvent"
+            "$ref": "#/definitions/tuttiSwiftEvent"
           },
           "description": "Events are processed independently; a failure in one does not affect others."
         }
       }
     },
-    "chorusAccessPolicy": {
+    "googleRpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "tuttiAccessPolicy": {
       "type": "object",
       "properties": {
         "user": {
@@ -2808,21 +2836,21 @@
           "type": "string"
         }
       },
-      "description": "AccessPolicy restricts what a proxy user (the Chorus user name, not the access key id) may do."
+      "description": "AccessPolicy restricts what a proxy user (the Tutti user name, not the access key id) may do."
     },
-    "chorusAccessPolicyList": {
+    "tuttiAccessPolicyList": {
       "type": "object",
       "properties": {
         "policies": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusAccessPolicy"
+            "$ref": "#/definitions/tuttiAccessPolicy"
           }
         }
       }
     },
-    "chorusAccessPolicyUser": {
+    "tuttiAccessPolicyUser": {
       "type": "object",
       "properties": {
         "user": {
@@ -2830,21 +2858,21 @@
         }
       }
     },
-    "chorusAddReplicationRequest": {
+    "tuttiAddReplicationRequest": {
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/definitions/chorusReplicationID",
+          "$ref": "#/definitions/tuttiReplicationID",
           "description": "REQUIRED: Specifies replication source and destination."
         },
         "opts": {
-          "$ref": "#/definitions/chorusReplicationOpts",
+          "$ref": "#/definitions/tuttiReplicationOpts",
           "description": "OPTIONAL: Additional replication options."
         }
       },
       "description": "Configures new user-level or bucket-level replication."
     },
-    "chorusAddRoutingRequest": {
+    "tuttiAddRoutingRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -2861,7 +2889,7 @@
         }
       }
     },
-    "chorusAuditLogEntry": {
+    "tuttiAuditLogEntry": {
       "type": "object",
       "properties": {
         "id": {
@@ -2895,14 +2923,14 @@
         }
       }
     },
-    "chorusAuditLogList": {
+    "tuttiAuditLogList": {
       "type": "object",
       "properties": {
         "entries": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusAuditLogEntry"
+            "$ref": "#/definitions/tuttiAuditLogEntry"
           }
         },
         "enabled": {
@@ -2913,7 +2941,7 @@
         }
       }
     },
-    "chorusAvailableBucketsRequest": {
+    "tuttiAvailableBucketsRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -2931,7 +2959,7 @@
       },
       "description": "Request list of bucket available for replication for given user and from/to\nstorages. Empty user lists buckets with the connection account of\nfrom_storage (storage-level replication)."
     },
-    "chorusAvailableBucketsResponse": {
+    "tuttiAvailableBucketsResponse": {
       "type": "object",
       "properties": {
         "buckets": {
@@ -2951,13 +2979,13 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusCoveredBucket"
+            "$ref": "#/definitions/tuttiCoveredBucket"
           },
           "description": "Buckets that already conflict for the requested from-\u003eto edge with a\nprotection group or another replication."
         }
       }
     },
-    "chorusBucketRouting": {
+    "tuttiBucketRouting": {
       "type": "object",
       "properties": {
         "user": {
@@ -2978,7 +3006,7 @@
         }
       }
     },
-    "chorusConnectionAccount": {
+    "tuttiConnectionAccount": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -2990,7 +3018,7 @@
       },
       "description": "ConnectionAccount is the S3 account Tutti uses on a storage. The secret is only ever sent to the server."
     },
-    "chorusConnectionAccountInfo": {
+    "tuttiConnectionAccountInfo": {
       "type": "object",
       "properties": {
         "configured": {
@@ -3018,7 +3046,7 @@
         }
       }
     },
-    "chorusConsoleUser": {
+    "tuttiConsoleUser": {
       "type": "object",
       "properties": {
         "username": {
@@ -3056,19 +3084,19 @@
         }
       }
     },
-    "chorusConsoleUserList": {
+    "tuttiConsoleUserList": {
       "type": "object",
       "properties": {
         "users": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusConsoleUser"
+            "$ref": "#/definitions/tuttiConsoleUser"
           }
         }
       }
     },
-    "chorusConsoleUserName": {
+    "tuttiConsoleUserName": {
       "type": "object",
       "properties": {
         "username": {
@@ -3076,7 +3104,7 @@
         }
       }
     },
-    "chorusCoveredBucket": {
+    "tuttiCoveredBucket": {
       "type": "object",
       "properties": {
         "bucket": {
@@ -3093,7 +3121,7 @@
       },
       "description": "Bucket that cannot be replicated because another object already covers it."
     },
-    "chorusCreateConsoleUserRequest": {
+    "tuttiCreateConsoleUserRequest": {
       "type": "object",
       "properties": {
         "username": {
@@ -3111,11 +3139,11 @@
         }
       }
     },
-    "chorusCreateConsoleUserResponse": {
+    "tuttiCreateConsoleUserResponse": {
       "type": "object",
       "properties": {
         "user": {
-          "$ref": "#/definitions/chorusConsoleUser"
+          "$ref": "#/definitions/tuttiConsoleUser"
         },
         "generatedPassword": {
           "type": "string",
@@ -3123,18 +3151,18 @@
         }
       }
     },
-    "chorusCreateProtectionGroupRequest": {
+    "tuttiCreateProtectionGroupRequest": {
       "type": "object",
       "properties": {
         "group": {
-          "$ref": "#/definitions/chorusProtectionGroup"
+          "$ref": "#/definitions/tuttiProtectionGroup"
         },
         "adoptExisting": {
           "type": "boolean"
         }
       }
     },
-    "chorusCreateProxyAccountRequest": {
+    "tuttiCreateProxyAccountRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -3146,17 +3174,17 @@
         }
       }
     },
-    "chorusCreateRuntimeStorageRequest": {
+    "tuttiCreateRuntimeStorageRequest": {
       "type": "object",
       "properties": {
         "storage": {
-          "$ref": "#/definitions/chorusRuntimeStorage"
+          "$ref": "#/definitions/tuttiRuntimeStorage"
         },
         "credentials": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusRuntimeStorageCredential"
+            "$ref": "#/definitions/tuttiRuntimeStorageCredential"
           },
           "description": "Per-user overrides (optional when connection_account is given)."
         },
@@ -3165,14 +3193,14 @@
           "description": "Save although the connection test has failing steps (recorded as last_forced_save_by/at)."
         },
         "connectionAccount": {
-          "$ref": "#/definitions/chorusConnectionAccount"
+          "$ref": "#/definitions/tuttiConnectionAccount"
         },
         "testOptions": {
-          "$ref": "#/definitions/chorusStorageTestOptions"
+          "$ref": "#/definitions/tuttiStorageTestOptions"
         }
       }
     },
-    "chorusCreateS3UserRequest": {
+    "tuttiCreateS3UserRequest": {
       "type": "object",
       "properties": {
         "name": {
@@ -3182,7 +3210,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusS3UserCredential"
+            "$ref": "#/definitions/tuttiS3UserCredential"
           },
           "description": "Optional per-user credentials (overrides). May be empty if every S3 storage has a connection account; every storage\nwithout a connection account needs one entry."
         },
@@ -3198,32 +3226,32 @@
           "type": "string"
         },
         "policy": {
-          "$ref": "#/definitions/chorusAccessPolicy",
+          "$ref": "#/definitions/tuttiAccessPolicy",
           "description": "Optional access policy (its user field is ignored)."
         }
       }
     },
-    "chorusCreateS3UserResponse": {
+    "tuttiCreateS3UserResponse": {
       "type": "object",
       "properties": {
         "user": {
-          "$ref": "#/definitions/chorusS3User"
+          "$ref": "#/definitions/tuttiS3User"
         },
         "accessKey": {
-          "$ref": "#/definitions/chorusProxyAccountSecret",
+          "$ref": "#/definitions/tuttiProxyAccountSecret",
           "description": "Set if create_access_key was requested."
         },
         "verification": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusS3UserVerifyResult"
+            "$ref": "#/definitions/tuttiS3UserVerifyResult"
           },
           "description": "Set if verify was requested."
         }
       }
     },
-    "chorusCredential": {
+    "tuttiCredential": {
       "type": "object",
       "properties": {
         "alias": {
@@ -3237,7 +3265,7 @@
         }
       }
     },
-    "chorusDeleteS3UserCredentialsRequest": {
+    "tuttiDeleteS3UserCredentialsRequest": {
       "type": "object",
       "properties": {
         "name": {
@@ -3248,7 +3276,7 @@
         }
       }
     },
-    "chorusDeleteS3UserRequest": {
+    "tuttiDeleteS3UserRequest": {
       "type": "object",
       "properties": {
         "name": {
@@ -3260,7 +3288,7 @@
         }
       }
     },
-    "chorusDeleteS3UserResponse": {
+    "tuttiDeleteS3UserResponse": {
       "type": "object",
       "properties": {
         "deletedStorages": {
@@ -3278,14 +3306,14 @@
         }
       }
     },
-    "chorusDiffCheck": {
+    "tuttiDiffCheck": {
       "type": "object",
       "properties": {
         "locations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusMigrateLocation"
+            "$ref": "#/definitions/tuttiMigrateLocation"
           }
         },
         "queued": {
@@ -3324,7 +3352,7 @@
         }
       }
     },
-    "chorusDiffCheckReportEntry": {
+    "tuttiDiffCheckReportEntry": {
       "type": "object",
       "properties": {
         "object": {
@@ -3345,24 +3373,24 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusDiffCheckStorageEntry"
+            "$ref": "#/definitions/tuttiDiffCheckStorageEntry"
           }
         }
       }
     },
-    "chorusDiffCheckRequest": {
+    "tuttiDiffCheckRequest": {
       "type": "object",
       "properties": {
         "locations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusMigrateLocation"
+            "$ref": "#/definitions/tuttiMigrateLocation"
           }
         }
       }
     },
-    "chorusDiffCheckStorageEntry": {
+    "tuttiDiffCheckStorageEntry": {
       "type": "object",
       "properties": {
         "storage": {
@@ -3376,7 +3404,7 @@
         }
       }
     },
-    "chorusDynamicAccountsStatus": {
+    "tuttiDynamicAccountsStatus": {
       "type": "object",
       "properties": {
         "available": {
@@ -3390,7 +3418,7 @@
       },
       "description": "DynamicAccountsStatus tells whether runtime-managed proxy accounts can be created."
     },
-    "chorusEventSource": {
+    "tuttiEventSource": {
       "type": "string",
       "enum": [
         "EVENT_SOURCE_PROXY",
@@ -3398,9 +3426,9 @@
         "EVENT_SOURCE_WEBHOOK"
       ],
       "default": "EVENT_SOURCE_PROXY",
-      "description": "Determines how ongoing data change events are captured for replication.\n\n - EVENT_SOURCE_PROXY: Default. Events captured by chorus proxy intercepting S3/Swift API calls.\n - EVENT_SOURCE_S3_NOTIFICATION: S3 bucket notifications. Worker creates SNS topic + bucket notification\npointing to its own webhook endpoint. Bucket-level replication only.\n - EVENT_SOURCE_WEBHOOK: External event source (e.g. Swift access log exporter).\nRequires webhook to be enabled in worker config. No automatic setup."
+      "description": "Determines how ongoing data change events are captured for replication.\n\n - EVENT_SOURCE_PROXY: Default. Events captured by tutti proxy intercepting S3/Swift API calls.\n - EVENT_SOURCE_S3_NOTIFICATION: S3 bucket notifications. Worker creates SNS topic + bucket notification\npointing to its own webhook endpoint. Bucket-level replication only.\n - EVENT_SOURCE_WEBHOOK: External event source (e.g. Swift access log exporter).\nRequires webhook to be enabled in worker config. No automatic setup."
     },
-    "chorusFailoverEvent": {
+    "tuttiFailoverEvent": {
       "type": "object",
       "properties": {
         "user": {
@@ -3432,7 +3460,7 @@
       },
       "description": "FailoverEvent describes one performed failover."
     },
-    "chorusFailoverEventID": {
+    "tuttiFailoverEventID": {
       "type": "object",
       "properties": {
         "user": {
@@ -3446,21 +3474,21 @@
       },
       "description": "FailoverEventID identifies a failover event."
     },
-    "chorusFailoverEventList": {
+    "tuttiFailoverEventList": {
       "type": "object",
       "properties": {
         "events": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusFailoverEvent"
+            "$ref": "#/definitions/tuttiFailoverEvent"
           },
           "description": "Events sorted by scope."
         }
       },
       "description": "FailoverEventList lists performed failovers."
     },
-    "chorusFailoverMigrationPlan": {
+    "tuttiFailoverMigrationPlan": {
       "type": "object",
       "properties": {
         "source": {
@@ -3479,7 +3507,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusFailoverMigrationScope"
+            "$ref": "#/definitions/tuttiFailoverMigrationScope"
           }
         },
         "notCovered": {
@@ -3494,7 +3522,7 @@
         }
       }
     },
-    "chorusFailoverMigrationRequest": {
+    "tuttiFailoverMigrationRequest": {
       "type": "object",
       "properties": {
         "source": {
@@ -3518,11 +3546,11 @@
       },
       "description": "Migration of a legacy failover policy (per source storage) to protection groups."
     },
-    "chorusFailoverMigrationResult": {
+    "tuttiFailoverMigrationResult": {
       "type": "object",
       "properties": {
         "plan": {
-          "$ref": "#/definitions/chorusFailoverMigrationPlan"
+          "$ref": "#/definitions/tuttiFailoverMigrationPlan"
         },
         "created": {
           "type": "array",
@@ -3540,7 +3568,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusFailoverMigrationScope"
+            "$ref": "#/definitions/tuttiFailoverMigrationScope"
           }
         },
         "policyDisabled": {
@@ -3548,7 +3576,7 @@
         }
       }
     },
-    "chorusFailoverMigrationScope": {
+    "tuttiFailoverMigrationScope": {
       "type": "object",
       "properties": {
         "user": {
@@ -3566,7 +3594,7 @@
           "type": "string"
         },
         "group": {
-          "$ref": "#/definitions/chorusProtectionGroup"
+          "$ref": "#/definitions/tuttiProtectionGroup"
         },
         "skippedTargets": {
           "type": "array",
@@ -3576,7 +3604,7 @@
         }
       }
     },
-    "chorusFailoverPolicy": {
+    "tuttiFailoverPolicy": {
       "type": "object",
       "properties": {
         "source": {
@@ -3606,21 +3634,21 @@
       },
       "description": "FailoverPolicy defines which storages may be promoted when the source storage is down."
     },
-    "chorusFailoverPolicyList": {
+    "tuttiFailoverPolicyList": {
       "type": "object",
       "properties": {
         "policies": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusFailoverPolicy"
+            "$ref": "#/definitions/tuttiFailoverPolicy"
           },
           "description": "Policies sorted by source."
         }
       },
       "description": "FailoverPolicyList lists failover policies."
     },
-    "chorusFailoverPolicySource": {
+    "tuttiFailoverPolicySource": {
       "type": "object",
       "properties": {
         "source": {
@@ -3630,7 +3658,7 @@
       },
       "description": "FailoverPolicySource identifies a failover policy."
     },
-    "chorusFailoverSettings": {
+    "tuttiFailoverSettings": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -3653,7 +3681,7 @@
       },
       "description": "FailoverSettings are the effective failover controller defaults of a proxy."
     },
-    "chorusGetAppVersionResponse": {
+    "tuttiGetAppVersionResponse": {
       "type": "object",
       "properties": {
         "version": {
@@ -3667,14 +3695,14 @@
         }
       }
     },
-    "chorusGetDiffCheckReportEntriesRequest": {
+    "tuttiGetDiffCheckReportEntriesRequest": {
       "type": "object",
       "properties": {
         "locations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusMigrateLocation"
+            "$ref": "#/definitions/tuttiMigrateLocation"
           }
         },
         "cursor": {
@@ -3687,14 +3715,14 @@
         }
       }
     },
-    "chorusGetDiffCheckReportEntriesResponse": {
+    "tuttiGetDiffCheckReportEntriesResponse": {
       "type": "object",
       "properties": {
         "entries": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusDiffCheckReportEntry"
+            "$ref": "#/definitions/tuttiDiffCheckReportEntry"
           }
         },
         "cursor": {
@@ -3703,15 +3731,15 @@
         }
       }
     },
-    "chorusGetDiffCheckReportResponse": {
+    "tuttiGetDiffCheckReportResponse": {
       "type": "object",
       "properties": {
         "check": {
-          "$ref": "#/definitions/chorusDiffCheck"
+          "$ref": "#/definitions/tuttiDiffCheck"
         }
       }
     },
-    "chorusGetProxyCredentialsResponse": {
+    "tuttiGetProxyCredentialsResponse": {
       "type": "object",
       "properties": {
         "address": {
@@ -3721,24 +3749,24 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusCredential"
+            "$ref": "#/definitions/tuttiCredential"
           }
         }
       }
     },
-    "chorusGetStoragesResponse": {
+    "tuttiGetStoragesResponse": {
       "type": "object",
       "properties": {
         "storages": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusStorage"
+            "$ref": "#/definitions/tuttiStorage"
           }
         }
       }
     },
-    "chorusHealthSettings": {
+    "tuttiHealthSettings": {
       "type": "object",
       "properties": {
         "failureThreshold": {
@@ -3753,7 +3781,7 @@
       },
       "description": "HealthSettings are the effective circuit breaker settings of a proxy."
     },
-    "chorusLatencyHistogram": {
+    "tuttiLatencyHistogram": {
       "type": "object",
       "properties": {
         "count": {
@@ -3785,19 +3813,19 @@
       },
       "description": "LatencyHistogram is a fixed-bucket histogram of full request durations."
     },
-    "chorusListDiffChecksResponse": {
+    "tuttiListDiffChecksResponse": {
       "type": "object",
       "properties": {
         "checks": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusDiffCheck"
+            "$ref": "#/definitions/tuttiDiffCheck"
           }
         }
       }
     },
-    "chorusListReplicationsRequest": {
+    "tuttiListReplicationsRequest": {
       "type": "object",
       "properties": {
         "hideUserReplications": {
@@ -3813,13 +3841,13 @@
           "description": "if true, replications will be listed without switch info."
         },
         "filter": {
-          "$ref": "#/definitions/chorusListReplicationsRequestFilter",
+          "$ref": "#/definitions/tuttiListReplicationsRequestFilter",
           "description": "OPTIONAL: filter to apply to replications list."
         }
       },
       "description": "Filters replications list."
     },
-    "chorusListReplicationsRequestFilter": {
+    "tuttiListReplicationsRequestFilter": {
       "type": "object",
       "properties": {
         "user": {
@@ -3859,24 +3887,24 @@
           "description": "If set, filters replications that have or not have associated switch."
         },
         "eventSource": {
-          "$ref": "#/definitions/chorusEventSource",
+          "$ref": "#/definitions/tuttiEventSource",
           "description": "Filters replications by event source."
         }
       }
     },
-    "chorusListReplicationsResponse": {
+    "tuttiListReplicationsResponse": {
       "type": "object",
       "properties": {
         "replications": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusReplication"
+            "$ref": "#/definitions/tuttiReplication"
           }
         }
       }
     },
-    "chorusMigrateLocation": {
+    "tuttiMigrateLocation": {
       "type": "object",
       "properties": {
         "storage": {
@@ -3887,7 +3915,7 @@
         }
       }
     },
-    "chorusProtectionAutomaticFreeze": {
+    "tuttiProtectionAutomaticFreeze": {
       "type": "object",
       "properties": {
         "frozen": {
@@ -3895,7 +3923,7 @@
         }
       }
     },
-    "chorusProtectionGroup": {
+    "tuttiProtectionGroup": {
       "type": "object",
       "properties": {
         "id": {
@@ -3964,7 +3992,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProtectionGroupEvent"
+            "$ref": "#/definitions/tuttiProtectionGroupEvent"
           }
         },
         "lastError": {
@@ -3978,7 +4006,7 @@
         }
       }
     },
-    "chorusProtectionGroupEvent": {
+    "tuttiProtectionGroupEvent": {
       "type": "object",
       "properties": {
         "from": {
@@ -4004,7 +4032,7 @@
         }
       }
     },
-    "chorusProtectionGroupID": {
+    "tuttiProtectionGroupID": {
       "type": "object",
       "properties": {
         "id": {
@@ -4012,27 +4040,27 @@
         }
       }
     },
-    "chorusProtectionGroupList": {
+    "tuttiProtectionGroupList": {
       "type": "object",
       "properties": {
         "groups": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProtectionGroup"
+            "$ref": "#/definitions/tuttiProtectionGroup"
           }
         },
         "statuses": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProtectionGroupStatus"
+            "$ref": "#/definitions/tuttiProtectionGroupStatus"
           },
           "description": "Same objects as Get returns, in the same order as groups, computed in one batched pass."
         }
       }
     },
-    "chorusProtectionGroupMemberStatus": {
+    "tuttiProtectionGroupMemberStatus": {
       "type": "object",
       "properties": {
         "storage": {
@@ -4053,17 +4081,17 @@
         }
       }
     },
-    "chorusProtectionGroupStatus": {
+    "tuttiProtectionGroupStatus": {
       "type": "object",
       "properties": {
         "group": {
-          "$ref": "#/definitions/chorusProtectionGroup"
+          "$ref": "#/definitions/tuttiProtectionGroup"
         },
         "members": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProtectionGroupMemberStatus"
+            "$ref": "#/definitions/tuttiProtectionGroupMemberStatus"
           }
         },
         "healthyCopies": {
@@ -4076,7 +4104,7 @@
         }
       }
     },
-    "chorusProtectionGroupSwitchRequest": {
+    "tuttiProtectionGroupSwitchRequest": {
       "type": "object",
       "properties": {
         "id": {
@@ -4087,7 +4115,7 @@
         }
       }
     },
-    "chorusProtectionWriterClearRequest": {
+    "tuttiProtectionWriterClearRequest": {
       "type": "object",
       "properties": {
         "id": {
@@ -4104,7 +4132,7 @@
         }
       }
     },
-    "chorusProtectionWriters": {
+    "tuttiProtectionWriters": {
       "type": "object",
       "properties": {
         "writers": {
@@ -4121,7 +4149,7 @@
         }
       }
     },
-    "chorusProxyAccessKey": {
+    "tuttiProxyAccessKey": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -4154,7 +4182,7 @@
       },
       "description": "ProxyAccessKey describes one runtime-managed access key (never its secret)."
     },
-    "chorusProxyAccount": {
+    "tuttiProxyAccount": {
       "type": "object",
       "properties": {
         "user": {
@@ -4175,7 +4203,7 @@
           "description": "Where credentials come from: \"custom\" or \"storage:\u003cname\u003e\"."
         },
         "policy": {
-          "$ref": "#/definitions/chorusAccessPolicy",
+          "$ref": "#/definitions/tuttiAccessPolicy",
           "description": "Effective policy: the stored one, or read-write on all buckets if none is stored."
         },
         "hasPolicy": {
@@ -4186,14 +4214,14 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProxyAccessKey"
+            "$ref": "#/definitions/tuttiProxyAccessKey"
           },
           "description": "Runtime-managed access keys of the user with lifecycle metadata. Their ids are also in access_key_ids\nand \"dynamic\" is in sources."
         }
       },
       "description": "ProxyAccount is a proxy user with its access key ids and effective policy."
     },
-    "chorusProxyAccountKey": {
+    "tuttiProxyAccountKey": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -4201,23 +4229,23 @@
         }
       }
     },
-    "chorusProxyAccountList": {
+    "tuttiProxyAccountList": {
       "type": "object",
       "properties": {
         "accounts": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProxyAccount"
+            "$ref": "#/definitions/tuttiProxyAccount"
           }
         },
         "dynamicAccounts": {
-          "$ref": "#/definitions/chorusDynamicAccountsStatus",
+          "$ref": "#/definitions/tuttiDynamicAccountsStatus",
           "description": "Whether CreateProxyAccount can work at all."
         }
       }
     },
-    "chorusProxyAccountSecret": {
+    "tuttiProxyAccountSecret": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -4234,7 +4262,7 @@
       },
       "description": "ProxyAccountSecret is returned once, when a secret is generated."
     },
-    "chorusProxyFailoverSettingsOverride": {
+    "tuttiProxyFailoverSettingsOverride": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -4252,7 +4280,7 @@
         }
       }
     },
-    "chorusProxyFleetConfig": {
+    "tuttiProxyFleetConfig": {
       "type": "object",
       "properties": {
         "version": {
@@ -4264,17 +4292,17 @@
           "format": "date-time"
         },
         "defaults": {
-          "$ref": "#/definitions/chorusProxySettingsOverride"
+          "$ref": "#/definitions/tuttiProxySettingsOverride"
         },
         "groups": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/chorusProxySettingsOverride"
+            "$ref": "#/definitions/tuttiProxySettingsOverride"
           }
         }
       }
     },
-    "chorusProxyHealthSettingsOverride": {
+    "tuttiProxyHealthSettingsOverride": {
       "type": "object",
       "properties": {
         "failureThreshold": {
@@ -4286,7 +4314,7 @@
         }
       }
     },
-    "chorusProxyLatestRates": {
+    "tuttiProxyLatestRates": {
       "type": "object",
       "properties": {
         "appId": {
@@ -4297,12 +4325,12 @@
           "format": "date-time"
         },
         "rates": {
-          "$ref": "#/definitions/chorusTrafficRates"
+          "$ref": "#/definitions/tuttiTrafficRates"
         }
       },
       "description": "ProxyLatestRates is the most recent history sample of one proxy."
     },
-    "chorusProxyReplicationSettingsOverride": {
+    "tuttiProxyReplicationSettingsOverride": {
       "type": "object",
       "properties": {
         "onEventError": {
@@ -4312,23 +4340,23 @@
           "type": "string"
         },
         "sync": {
-          "$ref": "#/definitions/chorusProxySyncSettingsOverride"
+          "$ref": "#/definitions/tuttiProxySyncSettingsOverride"
         }
       }
     },
-    "chorusProxySettings": {
+    "tuttiProxySettings": {
       "type": "object",
       "properties": {
         "replication": {
-          "$ref": "#/definitions/chorusReplicationSettings",
+          "$ref": "#/definitions/tuttiReplicationSettings",
           "description": "Replication settings."
         },
         "health": {
-          "$ref": "#/definitions/chorusHealthSettings",
+          "$ref": "#/definitions/tuttiHealthSettings",
           "description": "Circuit breaker settings."
         },
         "failover": {
-          "$ref": "#/definitions/chorusFailoverSettings",
+          "$ref": "#/definitions/tuttiFailoverSettings",
           "description": "Failover controller defaults."
         },
         "requireSignedContentType": {
@@ -4354,17 +4382,17 @@
       },
       "description": "ProxySettings are the effective settings of a proxy."
     },
-    "chorusProxySettingsOverride": {
+    "tuttiProxySettingsOverride": {
       "type": "object",
       "properties": {
         "replication": {
-          "$ref": "#/definitions/chorusProxyReplicationSettingsOverride"
+          "$ref": "#/definitions/tuttiProxyReplicationSettingsOverride"
         },
         "health": {
-          "$ref": "#/definitions/chorusProxyHealthSettingsOverride"
+          "$ref": "#/definitions/tuttiProxyHealthSettingsOverride"
         },
         "failover": {
-          "$ref": "#/definitions/chorusProxyFailoverSettingsOverride"
+          "$ref": "#/definitions/tuttiProxyFailoverSettingsOverride"
         },
         "requireSignedContentType": {
           "type": "boolean"
@@ -4383,7 +4411,7 @@
         }
       }
     },
-    "chorusProxyStatus": {
+    "tuttiProxyStatus": {
       "type": "object",
       "properties": {
         "appId": {
@@ -4408,20 +4436,20 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusStorageHealth"
+            "$ref": "#/definitions/tuttiStorageHealth"
           },
           "description": "Health of every storage, as seen by this proxy."
         },
         "settings": {
-          "$ref": "#/definitions/chorusProxySettings",
+          "$ref": "#/definitions/tuttiProxySettings",
           "description": "Effective settings."
         },
         "stats": {
-          "$ref": "#/definitions/chorusTrafficStats",
+          "$ref": "#/definitions/tuttiTrafficStats",
           "description": "Built-in traffic statistics (no Prometheus needed). Absent for proxies that do not publish them.\nCounters are cumulative since stats.started_at: compute rates from two snapshots with the same\nstarted_at (a changed started_at means the proxy restarted and counters were reset)."
         },
         "rates": {
-          "$ref": "#/definitions/chorusTrafficRates",
+          "$ref": "#/definitions/tuttiTrafficRates",
           "description": "Current rates computed by the proxy over a sliding window of ~10s (no need to diff two snapshots).\nAbsent for proxies that do not publish them. Settings.failover tells whether the failover controller runs."
         },
         "group": {
@@ -4451,19 +4479,19 @@
       },
       "description": "ProxyStatus is the status of one live proxy instance."
     },
-    "chorusProxyStatusList": {
+    "tuttiProxyStatusList": {
       "type": "object",
       "properties": {
         "proxies": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProxyStatus"
+            "$ref": "#/definitions/tuttiProxyStatus"
           },
           "description": "Live proxy instances sorted by app id."
         },
         "totalRates": {
-          "$ref": "#/definitions/chorusTrafficRates",
+          "$ref": "#/definitions/tuttiTrafficRates",
           "description": "Current rates summed across the listed proxies (latency: request-weighted average, p95: maximum)."
         },
         "configVersion": {
@@ -4474,7 +4502,7 @@
       },
       "description": "ProxyStatusList lists live proxies."
     },
-    "chorusProxySyncSettingsOverride": {
+    "tuttiProxySyncSettingsOverride": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -4492,15 +4520,15 @@
         }
       }
     },
-    "chorusReplication": {
+    "tuttiReplication": {
       "type": "object",
       "properties": {
         "id": {
-          "$ref": "#/definitions/chorusReplicationID",
+          "$ref": "#/definitions/tuttiReplicationID",
           "description": "Specifies replication source and destination."
         },
         "opts": {
-          "$ref": "#/definitions/chorusReplicationOpts",
+          "$ref": "#/definitions/tuttiReplicationOpts",
           "description": "Additional replication options."
         },
         "createdAt": {
@@ -4552,11 +4580,11 @@
           "format": "date-time"
         },
         "switchInfo": {
-          "$ref": "#/definitions/chorusReplicationSwitch",
+          "$ref": "#/definitions/tuttiReplicationSwitch",
           "description": "If replication has associated switch, contains its status info."
         },
         "eventSource": {
-          "$ref": "#/definitions/chorusEventSource",
+          "$ref": "#/definitions/tuttiEventSource",
           "description": "How ongoing data change events are captured for this replication."
         },
         "webhookUrl": {
@@ -4566,20 +4594,20 @@
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
     },
-    "chorusReplicationID": {
+    "tuttiReplicationID": {
       "type": "object",
       "properties": {
         "user": {
           "type": "string",
-          "description": "Replication user from chorus storage credential config; must be configured\nfor both from/to storages. Empty means storage-level replication: both\nstorages must have a connection account."
+          "description": "Replication user from tutti storage credential config; must be configured\nfor both from/to storages. Empty means storage-level replication: both\nstorages must have a connection account."
         },
         "fromStorage": {
           "type": "string",
-          "description": "REQUIRED: source storage name from chorus storage config."
+          "description": "REQUIRED: source storage name from tutti storage config."
         },
         "toStorage": {
           "type": "string",
-          "description": "REQUIRED: destination storage name from chorus storage config.\nCan be equal to from_storage if both from/to buckets are set and different."
+          "description": "REQUIRED: destination storage name from tutti storage config.\nCan be equal to from_storage if both from/to buckets are set and different."
         },
         "fromBucket": {
           "type": "string",
@@ -4592,17 +4620,17 @@
       },
       "description": "Represents user-level and bucket-level replication source and destination\ntargets.\n- User-level replicates all existing and future buckets of the user.\n- Bucket-level  replicates a single bucket."
     },
-    "chorusReplicationOpts": {
+    "tuttiReplicationOpts": {
       "type": "object",
       "properties": {
         "eventSource": {
-          "$ref": "#/definitions/chorusEventSource",
+          "$ref": "#/definitions/tuttiEventSource",
           "description": "Determines how ongoing data change events are captured."
         }
       },
       "description": "Additional replication options for bucket and user-level replications."
     },
-    "chorusReplicationSettings": {
+    "tuttiReplicationSettings": {
       "type": "object",
       "properties": {
         "onEventError": {
@@ -4614,17 +4642,17 @@
           "description": "Total time to retry recording the replication event."
         },
         "sync": {
-          "$ref": "#/definitions/chorusSyncSettings",
+          "$ref": "#/definitions/tuttiSyncSettings",
           "description": "Synchronous replication settings."
         }
       },
       "description": "ReplicationSettings are the effective replication settings of a proxy."
     },
-    "chorusReplicationSwitch": {
+    "tuttiReplicationSwitch": {
       "type": "object",
       "properties": {
         "lastStatus": {
-          "$ref": "#/definitions/chorusReplicationSwitchStatus",
+          "$ref": "#/definitions/tuttiReplicationSwitchStatus",
           "title": "Current switch status"
         },
         "zeroDowntime": {
@@ -4636,7 +4664,7 @@
           "title": "multipart uploads TTL for zero downtime switch"
         },
         "downtimeOpts": {
-          "$ref": "#/definitions/chorusSwitchDowntimeOpts"
+          "$ref": "#/definitions/tuttiSwitchDowntimeOpts"
         },
         "lastStartedAt": {
           "type": "string",
@@ -4656,11 +4684,11 @@
           "title": "History of switch status changes"
         },
         "replicationId": {
-          "$ref": "#/definitions/chorusReplicationID"
+          "$ref": "#/definitions/tuttiReplicationID"
         }
       }
     },
-    "chorusReplicationSwitchStatus": {
+    "tuttiReplicationSwitchStatus": {
       "type": "string",
       "enum": [
         "NOT_STARTED",
@@ -4673,7 +4701,7 @@
       "default": "NOT_STARTED",
       "description": " - NOT_STARTED: Switch is not started yet\n - IN_PROGRESS: Switch is in progress. Draining replication events queue.\nFor switch with downtime, requests to target are blocked at this point.\n - CHECK_IN_PROGRESS: Switch is in progress. Queue is drained. Checking if source and\ndestination targets are the same. Requests are still blocked. Used only\nfor switch with downtime with enabled bucket check.\n - ERROR: Switch failed to complete in downtime window and was aborted.\nRequests to target are unblocked. Used only for switch with downtime.\nIf cron downtime_window is used, switch will be retried on next cron\nexecution.\n - SKIPPED: Switch was not able to start in given downtime window because conditions\nwere not met. Used only for switch with downtime. If cron downtime_window\nis used, switch will be retried on next cron execution.\n - DONE: Switch was successfully completed.\nAll data was replicated to replication destination target and all read\nand all requests are now routed to it."
     },
-    "chorusResetConsoleUserPasswordRequest": {
+    "tuttiResetConsoleUserPasswordRequest": {
       "type": "object",
       "properties": {
         "username": {
@@ -4687,7 +4715,7 @@
         }
       }
     },
-    "chorusResetConsoleUserPasswordResponse": {
+    "tuttiResetConsoleUserPasswordResponse": {
       "type": "object",
       "properties": {
         "generatedPassword": {
@@ -4695,7 +4723,7 @@
         }
       }
     },
-    "chorusRotateProxyAccountSecretRequest": {
+    "tuttiRotateProxyAccountSecretRequest": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -4707,17 +4735,17 @@
         }
       }
     },
-    "chorusRotateStorageConnectionAccountRequest": {
+    "tuttiRotateStorageConnectionAccountRequest": {
       "type": "object",
       "properties": {
         "name": {
           "type": "string"
         },
         "newAccount": {
-          "$ref": "#/definitions/chorusConnectionAccount"
+          "$ref": "#/definitions/tuttiConnectionAccount"
         },
         "options": {
-          "$ref": "#/definitions/chorusStorageTestOptions"
+          "$ref": "#/definitions/tuttiStorageTestOptions"
         },
         "force": {
           "type": "boolean",
@@ -4725,7 +4753,7 @@
         }
       }
     },
-    "chorusRoutingID": {
+    "tuttiRoutingID": {
       "type": "object",
       "properties": {
         "user": {
@@ -4738,7 +4766,7 @@
         }
       }
     },
-    "chorusRoutingsRequest": {
+    "tuttiRoutingsRequest": {
       "type": "object",
       "properties": {
         "hideUserRoutings": {
@@ -4750,12 +4778,12 @@
           "title": "set true to hide bucket-level routings from response"
         },
         "filter": {
-          "$ref": "#/definitions/chorusRoutingsRequestFilter",
+          "$ref": "#/definitions/tuttiRoutingsRequestFilter",
           "title": "optional filter to apply to routings list"
         }
       }
     },
-    "chorusRoutingsRequestFilter": {
+    "tuttiRoutingsRequestFilter": {
       "type": "object",
       "properties": {
         "user": {
@@ -4776,7 +4804,7 @@
         }
       }
     },
-    "chorusRoutingsResponse": {
+    "tuttiRoutingsResponse": {
       "type": "object",
       "properties": {
         "main": {
@@ -4787,7 +4815,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusUserRouting"
+            "$ref": "#/definitions/tuttiUserRouting"
           },
           "description": "list of user-level routing overrides."
         },
@@ -4795,13 +4823,13 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusBucketRouting"
+            "$ref": "#/definitions/tuttiBucketRouting"
           },
           "description": "list of bucket-level routing overrides."
         }
       }
     },
-    "chorusRuntimeStorage": {
+    "tuttiRuntimeStorage": {
       "type": "object",
       "properties": {
         "name": {
@@ -4826,7 +4854,7 @@
           "type": "string"
         },
         "rateLimit": {
-          "$ref": "#/definitions/chorusRuntimeStorageRateLimit"
+          "$ref": "#/definitions/tuttiRuntimeStorageRateLimit"
         },
         "source": {
           "type": "string"
@@ -4838,7 +4866,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusRuntimeStorageUser"
+            "$ref": "#/definitions/tuttiRuntimeStorageUser"
           }
         },
         "references": {
@@ -4856,11 +4884,11 @@
           "format": "date-time"
         },
         "connectionAccount": {
-          "$ref": "#/definitions/chorusConnectionAccountInfo",
+          "$ref": "#/definitions/tuttiConnectionAccountInfo",
           "description": "Connection account of the storage (never the secret). configured=false: legacy per-user credentials only."
         },
         "lastTest": {
-          "$ref": "#/definitions/chorusStorageTestResult",
+          "$ref": "#/definitions/tuttiStorageTestResult",
           "description": "Result of the last connection test (on save, on demand or the periodic re-check of steps 1-5)."
         },
         "lastForcedSaveBy": {
@@ -4883,7 +4911,7 @@
       },
       "description": "RuntimeStorage contains connection settings and metadata, never credentials secrets."
     },
-    "chorusRuntimeStorageCredential": {
+    "tuttiRuntimeStorageCredential": {
       "type": "object",
       "properties": {
         "user": {
@@ -4897,14 +4925,14 @@
         }
       }
     },
-    "chorusRuntimeStorageList": {
+    "tuttiRuntimeStorageList": {
       "type": "object",
       "properties": {
         "storages": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusRuntimeStorage"
+            "$ref": "#/definitions/tuttiRuntimeStorage"
           }
         },
         "mainStorage": {
@@ -4915,7 +4943,7 @@
         }
       }
     },
-    "chorusRuntimeStorageName": {
+    "tuttiRuntimeStorageName": {
       "type": "object",
       "properties": {
         "name": {
@@ -4923,7 +4951,7 @@
         }
       }
     },
-    "chorusRuntimeStorageRateLimit": {
+    "tuttiRuntimeStorageRateLimit": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -4938,7 +4966,7 @@
         }
       }
     },
-    "chorusRuntimeStorageUser": {
+    "tuttiRuntimeStorageUser": {
       "type": "object",
       "properties": {
         "user": {
@@ -4952,7 +4980,7 @@
         }
       }
     },
-    "chorusS3BucketInfo": {
+    "tuttiS3BucketInfo": {
       "type": "object",
       "properties": {
         "name": {
@@ -4960,7 +4988,7 @@
         }
       }
     },
-    "chorusS3Credential": {
+    "tuttiS3Credential": {
       "type": "object",
       "properties": {
         "accessKey": {
@@ -4971,22 +4999,22 @@
         }
       }
     },
-    "chorusS3EventPayload": {
+    "tuttiS3EventPayload": {
       "type": "object",
       "properties": {
         "configurationId": {
           "type": "string",
-          "description": "Encoded chorus notification ID (contains user + bucket)."
+          "description": "Encoded tutti notification ID (contains user + bucket)."
         },
         "bucket": {
-          "$ref": "#/definitions/chorusS3BucketInfo"
+          "$ref": "#/definitions/tuttiS3BucketInfo"
         },
         "object": {
-          "$ref": "#/definitions/chorusS3ObjectInfo"
+          "$ref": "#/definitions/tuttiS3ObjectInfo"
         }
       }
     },
-    "chorusS3EventRecord": {
+    "tuttiS3EventRecord": {
       "type": "object",
       "properties": {
         "eventName": {
@@ -4994,11 +5022,11 @@
           "title": "e.g. \"s3:ObjectCreated:Put\", \"s3:ObjectRemoved:Delete\""
         },
         "s3": {
-          "$ref": "#/definitions/chorusS3EventPayload"
+          "$ref": "#/definitions/tuttiS3EventPayload"
         }
       }
     },
-    "chorusS3ObjectInfo": {
+    "tuttiS3ObjectInfo": {
       "type": "object",
       "properties": {
         "key": {
@@ -5013,7 +5041,7 @@
         }
       }
     },
-    "chorusS3User": {
+    "tuttiS3User": {
       "type": "object",
       "properties": {
         "name": {
@@ -5023,7 +5051,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusS3UserStorage"
+            "$ref": "#/definitions/tuttiS3UserStorage"
           },
           "description": "One entry for every configured storage."
         },
@@ -5032,14 +5060,14 @@
           "description": "True if every S3 storage can be resolved for the user: an override or a connection account on each storage."
         },
         "accessKeys": {
-          "$ref": "#/definitions/chorusS3UserAccessKeys"
+          "$ref": "#/definitions/tuttiS3UserAccessKeys"
         },
         "policy": {
-          "$ref": "#/definitions/chorusS3UserPolicy"
+          "$ref": "#/definitions/tuttiS3UserPolicy"
         }
       }
     },
-    "chorusS3UserAccessKeys": {
+    "tuttiS3UserAccessKeys": {
       "type": "object",
       "properties": {
         "static": {
@@ -5057,7 +5085,7 @@
         }
       }
     },
-    "chorusS3UserCredential": {
+    "tuttiS3UserCredential": {
       "type": "object",
       "properties": {
         "storage": {
@@ -5071,14 +5099,14 @@
         }
       }
     },
-    "chorusS3UserList": {
+    "tuttiS3UserList": {
       "type": "object",
       "properties": {
         "users": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusS3User"
+            "$ref": "#/definitions/tuttiS3User"
           }
         },
         "mainStorage": {
@@ -5096,7 +5124,7 @@
         }
       }
     },
-    "chorusS3UserPolicy": {
+    "tuttiS3UserPolicy": {
       "type": "object",
       "properties": {
         "hasPolicy": {
@@ -5114,7 +5142,7 @@
         }
       }
     },
-    "chorusS3UserStorage": {
+    "tuttiS3UserStorage": {
       "type": "object",
       "properties": {
         "storage": {
@@ -5139,7 +5167,7 @@
       },
       "description": "S3UserStorage is the credential state of an S3 user on one storage."
     },
-    "chorusS3UserVerifyResult": {
+    "tuttiS3UserVerifyResult": {
       "type": "object",
       "properties": {
         "storage": {
@@ -5157,7 +5185,7 @@
         }
       }
     },
-    "chorusSetProxyAccountStatusRequest": {
+    "tuttiSetProxyAccountStatusRequest": {
       "type": "object",
       "properties": {
         "accessKeyId": {
@@ -5169,16 +5197,16 @@
         }
       }
     },
-    "chorusSetProxyFleetConfigRequest": {
+    "tuttiSetProxyFleetConfigRequest": {
       "type": "object",
       "properties": {
         "defaults": {
-          "$ref": "#/definitions/chorusProxySettingsOverride"
+          "$ref": "#/definitions/tuttiProxySettingsOverride"
         },
         "groups": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/chorusProxySettingsOverride"
+            "$ref": "#/definitions/tuttiProxySettingsOverride"
           }
         },
         "expectedVersion": {
@@ -5188,7 +5216,7 @@
         }
       }
     },
-    "chorusSetUserCredentialsRequest": {
+    "tuttiSetUserCredentialsRequest": {
       "type": "object",
       "properties": {
         "storage": {
@@ -5198,21 +5226,21 @@
           "type": "string"
         },
         "s3Cred": {
-          "$ref": "#/definitions/chorusS3Credential"
+          "$ref": "#/definitions/tuttiS3Credential"
         },
         "swiftCred": {
-          "$ref": "#/definitions/chorusSwiftCredential"
+          "$ref": "#/definitions/tuttiSwiftCredential"
         }
       }
     },
-    "chorusStartDiffCheckRequest": {
+    "tuttiStartDiffCheckRequest": {
       "type": "object",
       "properties": {
         "locations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusMigrateLocation"
+            "$ref": "#/definitions/tuttiMigrateLocation"
           }
         },
         "user": {
@@ -5229,14 +5257,14 @@
         }
       }
     },
-    "chorusStartDiffFixRequest": {
+    "tuttiStartDiffFixRequest": {
       "type": "object",
       "properties": {
         "locations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusMigrateLocation"
+            "$ref": "#/definitions/tuttiMigrateLocation"
           }
         },
         "sourceIndex": {
@@ -5245,7 +5273,7 @@
         }
       }
     },
-    "chorusStatsHistory": {
+    "tuttiStatsHistory": {
       "type": "object",
       "properties": {
         "range": {
@@ -5259,7 +5287,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusStatsHistoryPoint"
+            "$ref": "#/definitions/tuttiStatsHistoryPoint"
           },
           "description": "Ascending by time; buckets without any sample are omitted."
         },
@@ -5267,13 +5295,13 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusProxyLatestRates"
+            "$ref": "#/definitions/tuttiProxyLatestRates"
           },
           "description": "Latest sample of every proxy that recorded one within the range."
         }
       }
     },
-    "chorusStatsHistoryPoint": {
+    "tuttiStatsHistoryPoint": {
       "type": "object",
       "properties": {
         "time": {
@@ -5281,12 +5309,12 @@
           "format": "date-time"
         },
         "rates": {
-          "$ref": "#/definitions/chorusTrafficRates"
+          "$ref": "#/definitions/tuttiTrafficRates"
         }
       },
       "description": "StatsHistoryPoint is one time bucket with the rates summed across all proxies."
     },
-    "chorusStorage": {
+    "tuttiStorage": {
       "type": "object",
       "properties": {
         "name": {
@@ -5307,13 +5335,13 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusCredential"
+            "$ref": "#/definitions/tuttiCredential"
           },
           "title": "credentials: access key (public, aka username)"
         }
       }
     },
-    "chorusStorageHealth": {
+    "tuttiStorageHealth": {
       "type": "object",
       "properties": {
         "name": {
@@ -5341,7 +5369,7 @@
       },
       "description": "StorageHealth is the circuit breaker state of one storage as seen by one proxy."
     },
-    "chorusStorageTestFeatures": {
+    "tuttiStorageTestFeatures": {
       "type": "object",
       "properties": {
         "versioning": {
@@ -5361,7 +5389,7 @@
         }
       }
     },
-    "chorusStorageTestOptions": {
+    "tuttiStorageTestOptions": {
       "type": "object",
       "properties": {
         "probeBucketPrefix": {
@@ -5373,7 +5401,7 @@
           "description": "Existing bucket to use instead of creating one (when bucket creation is not allowed). The bucket is not deleted."
         },
         "features": {
-          "$ref": "#/definitions/chorusStorageTestFeatures",
+          "$ref": "#/definitions/tuttiStorageTestFeatures",
           "description": "Features to check in steps 13/14. Unset: versioning if the provider supports it, no others."
         },
         "throughput": {
@@ -5382,7 +5410,7 @@
         }
       }
     },
-    "chorusStorageTestResult": {
+    "tuttiStorageTestResult": {
       "type": "object",
       "properties": {
         "testedAt": {
@@ -5400,7 +5428,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusStorageTestStep"
+            "$ref": "#/definitions/tuttiStorageTestStep"
           }
         },
         "probeBucket": {
@@ -5426,7 +5454,7 @@
         }
       }
     },
-    "chorusStorageTestStep": {
+    "tuttiStorageTestStep": {
       "type": "object",
       "properties": {
         "id": {
@@ -5462,7 +5490,7 @@
         }
       }
     },
-    "chorusSwiftCredential": {
+    "tuttiSwiftCredential": {
       "type": "object",
       "properties": {
         "username": {
@@ -5479,7 +5507,7 @@
         }
       }
     },
-    "chorusSwiftEvent": {
+    "tuttiSwiftEvent": {
       "type": "object",
       "properties": {
         "account": {
@@ -5495,7 +5523,7 @@
           "description": "Required for object operations."
         },
         "operation": {
-          "$ref": "#/definitions/chorusSwiftOperation"
+          "$ref": "#/definitions/tuttiSwiftOperation"
         },
         "etag": {
           "type": "string",
@@ -5519,7 +5547,7 @@
         }
       }
     },
-    "chorusSwiftOperation": {
+    "tuttiSwiftOperation": {
       "type": "string",
       "enum": [
         "SWIFT_OPERATION_UNSPECIFIED",
@@ -5533,16 +5561,16 @@
       "default": "SWIFT_OPERATION_UNSPECIFIED",
       "description": "SwiftOperation determines which replication task is created.\nTask handlers are idempotent — e.g. CONTAINER_UPDATE and CONTAINER_DELETE\nboth trigger a sync that compares source and destination state."
     },
-    "chorusSwitchDowntimeOpts": {
+    "tuttiSwitchDowntimeOpts": {
       "type": "object",
       "properties": {
         "startOnInitDone": {
           "type": "boolean",
-          "title": "If true, chorus will perform switch automatically when initial migration\nwill be done. Initial migration copies all objects that existed in source\nbucket before replication started. default is false"
+          "title": "If true, tutti will perform switch automatically when initial migration\nwill be done. Initial migration copies all objects that existed in source\nbucket before replication started. default is false"
         },
         "cron": {
           "type": "string",
-          "description": "If set, chorus will try or retry to start downtime window according to CRON\nschedule.\nIt is not makes sense to set cron frequency less than one hour or less than\nmax_duration if used. Either cron or start_at can be set, but not both."
+          "description": "If set, tutti will try or retry to start downtime window according to CRON\nschedule.\nIt is not makes sense to set cron frequency less than one hour or less than\nmax_duration if used. Either cron or start_at can be set, but not both."
         },
         "startAt": {
           "type": "string",
@@ -5551,7 +5579,7 @@
         },
         "maxDuration": {
           "type": "string",
-          "description": "If set, chorus will abort downtime window if it will not be able to\ncomplete in given time. In this case, switch will be marked as failed and\nwill be retried on next cron execution if set."
+          "description": "If set, tutti will abort downtime window if it will not be able to\ncomplete in given time. In this case, switch will be marked as failed and\nwill be retried on next cron execution if set."
         },
         "maxEventLag": {
           "type": "integer",
@@ -5560,34 +5588,34 @@
         },
         "skipBucketCheck": {
           "type": "boolean",
-          "description": "if true, chorus will not perform equality check of target contents before\ncompleting switch with downtime. Might be useful for buckets with large\nnumber of objects. In this case check will consume a lot of time and memory\nin Redis. Default is false."
+          "description": "if true, tutti will not perform equality check of target contents before\ncompleting switch with downtime. Might be useful for buckets with large\nnumber of objects. In this case check will consume a lot of time and memory\nin Redis. Default is false."
         },
         "continueReplication": {
           "type": "boolean",
           "description": "Set true to replicate data updates from new main to old main bucket after\nsuccessful switch. Default is false."
         }
       },
-      "description": "Defines downtime window for replication switch with downtime.\nAll dates and times depends on local times of machine running chorus worker.\nTime precision is ~1 minute."
+      "description": "Defines downtime window for replication switch with downtime.\nAll dates and times depends on local times of machine running tutti worker.\nTime precision is ~1 minute."
     },
-    "chorusSwitchDowntimeRequest": {
+    "tuttiSwitchDowntimeRequest": {
       "type": "object",
       "properties": {
         "replicationId": {
-          "$ref": "#/definitions/chorusReplicationID",
+          "$ref": "#/definitions/tuttiReplicationID",
           "description": "Id of user- or bucket- level replication policy to switch source and\ndestination targets on proxy. Replication policy should already exist.\nAgent-based replication is not supported.\nBucket-level replication with different from/to bucket names is not\nsupported."
         },
         "downtimeOpts": {
-          "$ref": "#/definitions/chorusSwitchDowntimeOpts",
+          "$ref": "#/definitions/tuttiSwitchDowntimeOpts",
           "description": "Configures downtime window for switch. During downtime all requests to\ntarget will be blocked on proxy. If options are not set, downtime will be\nstarted right away and will last until all replication tasks are processed."
         }
       },
       "description": "Request to configure switch between replication source and destination\nwith downtime window."
     },
-    "chorusSwitchZeroDowntimeRequest": {
+    "tuttiSwitchZeroDowntimeRequest": {
       "type": "object",
       "properties": {
         "replicationId": {
-          "$ref": "#/definitions/chorusReplicationID",
+          "$ref": "#/definitions/tuttiReplicationID",
           "description": "Id of user- or bucket- level replication policy to switch source and\ndestination targets on proxy. Replication policy should already exist.\nAgent-based replication is not supported.\nBucket-level replication with different from/to bucket names is not\nsupported."
         },
         "multipartTtl": {
@@ -5596,7 +5624,7 @@
         }
       }
     },
-    "chorusSyncSettings": {
+    "tuttiSyncSettings": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -5619,7 +5647,7 @@
       },
       "description": "SyncSettings are the effective synchronous replication settings of a proxy."
     },
-    "chorusSystemFeaturesSettings": {
+    "tuttiSystemFeaturesSettings": {
       "type": "object",
       "properties": {
         "tagging": {
@@ -5642,7 +5670,7 @@
         }
       }
     },
-    "chorusSystemLockSettings": {
+    "tuttiSystemLockSettings": {
       "type": "object",
       "properties": {
         "overlap": {
@@ -5650,7 +5678,7 @@
         }
       }
     },
-    "chorusSystemSettings": {
+    "tuttiSystemSettings": {
       "type": "object",
       "properties": {
         "version": {
@@ -5662,20 +5690,20 @@
           "format": "date-time"
         },
         "features": {
-          "$ref": "#/definitions/chorusSystemFeaturesSettings"
+          "$ref": "#/definitions/tuttiSystemFeaturesSettings"
         },
         "worker": {
-          "$ref": "#/definitions/chorusSystemWorkerSettings"
+          "$ref": "#/definitions/tuttiSystemWorkerSettings"
         },
         "lock": {
-          "$ref": "#/definitions/chorusSystemLockSettings"
+          "$ref": "#/definitions/tuttiSystemLockSettings"
         },
         "webhook": {
-          "$ref": "#/definitions/chorusSystemWebhookSettings"
+          "$ref": "#/definitions/tuttiSystemWebhookSettings"
         }
       }
     },
-    "chorusSystemWebhookSettings": {
+    "tuttiSystemWebhookSettings": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -5686,7 +5714,7 @@
         }
       }
     },
-    "chorusSystemWorkerSettings": {
+    "tuttiSystemWorkerSettings": {
       "type": "object",
       "properties": {
         "concurrency": {
@@ -5747,7 +5775,7 @@
         }
       }
     },
-    "chorusTestProxyRequest": {
+    "tuttiTestProxyRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -5760,7 +5788,7 @@
         }
       }
     },
-    "chorusTestProxyResponse": {
+    "tuttiTestProxyResponse": {
       "type": "object",
       "properties": {
         "routeToStorage": {
@@ -5775,24 +5803,24 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusReplicationID"
+            "$ref": "#/definitions/tuttiReplicationID"
           },
           "description": "list of applicable replications for given user and bucket."
         }
       }
     },
-    "chorusTestRuntimeStorageRequest": {
+    "tuttiTestRuntimeStorageRequest": {
       "type": "object",
       "properties": {
         "storage": {
-          "$ref": "#/definitions/chorusRuntimeStorage"
+          "$ref": "#/definitions/tuttiRuntimeStorage"
         },
         "credential": {
-          "$ref": "#/definitions/chorusRuntimeStorageCredential"
+          "$ref": "#/definitions/tuttiRuntimeStorageCredential"
         }
       }
     },
-    "chorusTestS3UserCredentialsRequest": {
+    "tuttiTestS3UserCredentialsRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -5802,12 +5830,12 @@
           "type": "string"
         },
         "credential": {
-          "$ref": "#/definitions/chorusS3UserCredential",
+          "$ref": "#/definitions/tuttiS3UserCredential",
           "description": "Credentials to test. If not set, the stored credentials of the user are used."
         }
       }
     },
-    "chorusTestS3UserCredentialsResponse": {
+    "tuttiTestS3UserCredentialsResponse": {
       "type": "object",
       "properties": {
         "ok": {
@@ -5822,7 +5850,7 @@
         }
       }
     },
-    "chorusTestStorageConnectionRequest": {
+    "tuttiTestStorageConnectionRequest": {
       "type": "object",
       "properties": {
         "name": {
@@ -5830,18 +5858,18 @@
           "description": "Existing storage name. Alternatively give storage settings (and a connection_account) for an unsaved storage."
         },
         "storage": {
-          "$ref": "#/definitions/chorusRuntimeStorage"
+          "$ref": "#/definitions/tuttiRuntimeStorage"
         },
         "connectionAccount": {
-          "$ref": "#/definitions/chorusConnectionAccount",
+          "$ref": "#/definitions/tuttiConnectionAccount",
           "description": "For an existing storage: test this account instead of the stored one (does not change the stored account)."
         },
         "options": {
-          "$ref": "#/definitions/chorusStorageTestOptions"
+          "$ref": "#/definitions/tuttiStorageTestOptions"
         }
       }
     },
-    "chorusTrafficRates": {
+    "tuttiTrafficRates": {
       "type": "object",
       "properties": {
         "windowSeconds": {
@@ -5906,7 +5934,7 @@
       },
       "description": "TrafficRates are per-second traffic rates over a short window. Latencies are in milliseconds."
     },
-    "chorusTrafficStats": {
+    "tuttiTrafficStats": {
       "type": "object",
       "properties": {
         "collectedAt": {
@@ -6006,7 +6034,7 @@
           "description": "Bytes written to clients (response bodies)."
         },
         "latency": {
-          "$ref": "#/definitions/chorusLatencyHistogram",
+          "$ref": "#/definitions/tuttiLatencyHistogram",
           "description": "Request duration histogram."
         },
         "responsesOther": {
@@ -6022,7 +6050,7 @@
       },
       "description": "TrafficStats are cumulative in-memory traffic counters of one proxy instance.\nFor per-replication backlog (events, events_done, event_lag) use Policy/ListReplications."
     },
-    "chorusUnprotectedScope": {
+    "tuttiUnprotectedScope": {
       "type": "object",
       "properties": {
         "storage": {
@@ -6042,19 +6070,19 @@
         }
       }
     },
-    "chorusUnprotectedScopeList": {
+    "tuttiUnprotectedScopeList": {
       "type": "object",
       "properties": {
         "scopes": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusUnprotectedScope"
+            "$ref": "#/definitions/tuttiUnprotectedScope"
           }
         }
       }
     },
-    "chorusUpdateConsoleUserRequest": {
+    "tuttiUpdateConsoleUserRequest": {
       "type": "object",
       "properties": {
         "username": {
@@ -6070,7 +6098,7 @@
         }
       }
     },
-    "chorusUpdateRoutingRequest": {
+    "tuttiUpdateRoutingRequest": {
       "type": "object",
       "properties": {
         "user": {
@@ -6087,17 +6115,17 @@
         }
       }
     },
-    "chorusUpdateRuntimeStorageRequest": {
+    "tuttiUpdateRuntimeStorageRequest": {
       "type": "object",
       "properties": {
         "storage": {
-          "$ref": "#/definitions/chorusRuntimeStorage"
+          "$ref": "#/definitions/tuttiRuntimeStorage"
         },
         "credentials": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusRuntimeStorageCredential"
+            "$ref": "#/definitions/tuttiRuntimeStorageCredential"
           }
         },
         "confirm": {
@@ -6107,7 +6135,7 @@
           "type": "boolean"
         },
         "connectionAccount": {
-          "$ref": "#/definitions/chorusConnectionAccount",
+          "$ref": "#/definitions/tuttiConnectionAccount",
           "description": "Unset keeps the current connection account. Use RotateStorageConnectionAccount to replace a working account."
         },
         "clearConnectionAccount": {
@@ -6115,18 +6143,18 @@
           "description": "Remove the connection account (back to legacy per-user credentials)."
         },
         "testOptions": {
-          "$ref": "#/definitions/chorusStorageTestOptions"
+          "$ref": "#/definitions/tuttiStorageTestOptions"
         }
       }
     },
-    "chorusUpdateS3UserCredentialsRequest": {
+    "tuttiUpdateS3UserCredentialsRequest": {
       "type": "object",
       "properties": {
         "user": {
           "type": "string"
         },
         "credential": {
-          "$ref": "#/definitions/chorusS3UserCredential"
+          "$ref": "#/definitions/tuttiS3UserCredential"
         },
         "verify": {
           "type": "boolean",
@@ -6134,7 +6162,7 @@
         }
       }
     },
-    "chorusUpdateSystemSettingsRequest": {
+    "tuttiUpdateSystemSettingsRequest": {
       "type": "object",
       "properties": {
         "expectedVersion": {
@@ -6142,20 +6170,20 @@
           "format": "int64"
         },
         "features": {
-          "$ref": "#/definitions/chorusSystemFeaturesSettings"
+          "$ref": "#/definitions/tuttiSystemFeaturesSettings"
         },
         "worker": {
-          "$ref": "#/definitions/chorusSystemWorkerSettings"
+          "$ref": "#/definitions/tuttiSystemWorkerSettings"
         },
         "lock": {
-          "$ref": "#/definitions/chorusSystemLockSettings"
+          "$ref": "#/definitions/tuttiSystemLockSettings"
         },
         "webhook": {
-          "$ref": "#/definitions/chorusSystemWebhookSettings"
+          "$ref": "#/definitions/tuttiSystemWebhookSettings"
         }
       }
     },
-    "chorusUserRouting": {
+    "tuttiUserRouting": {
       "type": "object",
       "properties": {
         "user": {
@@ -6172,22 +6200,22 @@
         }
       }
     },
-    "chorusWorkerStatsResponse": {
+    "tuttiWorkerStatsResponse": {
       "type": "object",
       "properties": {
         "workers": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/chorusWorkerStatsSnapshot"
+            "$ref": "#/definitions/tuttiWorkerStatsSnapshot"
           }
         },
         "totals": {
-          "$ref": "#/definitions/chorusWorkerStatsTotals"
+          "$ref": "#/definitions/tuttiWorkerStatsTotals"
         }
       }
     },
-    "chorusWorkerStatsSnapshot": {
+    "tuttiWorkerStatsSnapshot": {
       "type": "object",
       "properties": {
         "workerId": {
@@ -6265,7 +6293,7 @@
         }
       }
     },
-    "chorusWorkerStatsTotals": {
+    "tuttiWorkerStatsTotals": {
       "type": "object",
       "properties": {
         "inFlight": {
@@ -6317,34 +6345,6 @@
           "format": "int64"
         }
       }
-    },
-    "googleRpcStatus": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "message": {
-          "type": "string"
-        },
-        "details": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/protobufAny"
-          }
-        }
-      }
-    },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "@type": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": {}
     }
   }
 }

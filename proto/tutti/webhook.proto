@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package chorus;
+package tutti;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/tutti;pb";
 
 // Webhook service receives storage events and enqueues replication tasks.
 // Returns non-200 only on transient errors (context cancelled, Redis
@@ -24,7 +24,7 @@ service Webhook {
 }
 
 message SwiftEventsRequest {
-  // Chorus storage alias (must be a configured SWIFT storage).
+  // Tutti storage alias (must be a configured SWIFT storage).
   string storage = 1;
   // Events are processed independently; a failure in one does not affect others.
   repeated SwiftEvent events = 2;
@@ -65,7 +65,7 @@ enum SwiftOperation {
 }
 
 message S3NotificationRequest {
-  // Chorus storage alias (must be a configured S3 storage). Bound to URL path.
+  // Tutti storage alias (must be a configured S3 storage). Bound to URL path.
   string storage = 1;
   // Standard AWS S3 notification records.
   // Events are processed independently; a failure in one does not affect others.
@@ -79,7 +79,7 @@ message S3EventRecord {
 }
 
 message S3EventPayload {
-  // Encoded chorus notification ID (contains user + bucket).
+  // Encoded tutti notification ID (contains user + bucket).
   string configuration_id = 1;
   S3BucketInfo bucket = 2;
   S3ObjectInfo object = 3;

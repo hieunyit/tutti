@@ -18,7 +18,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/policy"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 type noUserCreds struct{ userCreds }

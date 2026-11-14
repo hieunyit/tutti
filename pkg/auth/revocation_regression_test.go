@@ -53,7 +53,7 @@ func TestRegression_RevokedAdminMustNotReviveDuringPGOutage(t *testing.T) {
 	offline = true
 	sess, err := svc.Authenticate(t.Context(), token)
 	if err == nil {
-		t.Fatalf("revoked administrator revived: username=%s role=%s permitsGetProxyCredentials=%v", sess.Username, sess.Role, Allowed(sess.Role, "/chorus.Chorus/GetProxyCredentials"))
+		t.Fatalf("revoked administrator revived: username=%s role=%s permitsGetProxyCredentials=%v", sess.Username, sess.Role, Allowed(sess.Role, "/tutti.Tutti/GetProxyCredentials"))
 	}
 }
 

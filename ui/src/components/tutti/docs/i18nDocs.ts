@@ -60,7 +60,7 @@ export default <I18nMessages>{
     apiFailed: 'The API reference could not be loaded.',
     apiNotBundledTitle: 'The API spec is not part of this build',
     apiNotBundledText:
-      'This UI was built without the OpenAPI spec (proto/gen/openapi/chorus/chorus.swagger.json).',
+      'This UI was built without the OpenAPI spec (proto/gen/openapi/tutti/tutti.swagger.json).',
     roleAdmin: 'admin only',
     roleViewer: 'viewer',
     rolePublic: 'public',
@@ -109,7 +109,7 @@ export default <I18nMessages>{
     apiFailed: 'Die API-Referenz konnte nicht geladen werden.',
     apiNotBundledTitle: 'Die API-Spezifikation ist nicht Teil dieses Builds',
     apiNotBundledText:
-      'Diese Oberfläche wurde ohne die OpenAPI-Spezifikation gebaut (proto/gen/openapi/chorus/chorus.swagger.json).',
+      'Diese Oberfläche wurde ohne die OpenAPI-Spezifikation gebaut (proto/gen/openapi/tutti/tutti.swagger.json).',
     roleAdmin: 'nur Admin',
     roleViewer: 'Viewer',
     rolePublic: 'öffentlich',
@@ -158,7 +158,7 @@ export default <I18nMessages>{
     apiFailed: 'Không thể tải tài liệu API.',
     apiNotBundledTitle: 'OpenAPI spec không có trong bản build này',
     apiNotBundledText:
-      'Giao diện này được dựng mà không đính kèm file OpenAPI spec (proto/gen/openapi/chorus/chorus.swagger.json).',
+      'Giao diện này được dựng mà không đính kèm file OpenAPI spec (proto/gen/openapi/tutti/tutti.swagger.json).',
     roleAdmin: 'Chỉ Admin',
     roleViewer: 'Người xem (Viewer)',
     rolePublic: 'Công khai (Public)',

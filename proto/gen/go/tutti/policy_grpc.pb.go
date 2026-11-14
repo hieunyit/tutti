@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/policy.proto
+// source: tutti/policy.proto
 
 package pb
 
@@ -20,32 +20,32 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Policy_AvailableBuckets_FullMethodName       = "/chorus.Policy/AvailableBuckets"
-	Policy_AddReplication_FullMethodName         = "/chorus.Policy/AddReplication"
-	Policy_GetReplication_FullMethodName         = "/chorus.Policy/GetReplication"
-	Policy_ListReplications_FullMethodName       = "/chorus.Policy/ListReplications"
-	Policy_StreamReplication_FullMethodName      = "/chorus.Policy/StreamReplication"
-	Policy_PauseReplication_FullMethodName       = "/chorus.Policy/PauseReplication"
-	Policy_ResumeReplication_FullMethodName      = "/chorus.Policy/ResumeReplication"
-	Policy_DeleteReplication_FullMethodName      = "/chorus.Policy/DeleteReplication"
-	Policy_SwitchWithZeroDowntime_FullMethodName = "/chorus.Policy/SwitchWithZeroDowntime"
-	Policy_SwitchWithDowntime_FullMethodName     = "/chorus.Policy/SwitchWithDowntime"
-	Policy_DeleteSwitch_FullMethodName           = "/chorus.Policy/DeleteSwitch"
-	Policy_GetSwitchStatus_FullMethodName        = "/chorus.Policy/GetSwitchStatus"
-	Policy_ListRoutings_FullMethodName           = "/chorus.Policy/ListRoutings"
-	Policy_AddRouting_FullMethodName             = "/chorus.Policy/AddRouting"
-	Policy_UpdateRouting_FullMethodName          = "/chorus.Policy/UpdateRouting"
-	Policy_DeleteRouting_FullMethodName          = "/chorus.Policy/DeleteRouting"
-	Policy_BlockRouting_FullMethodName           = "/chorus.Policy/BlockRouting"
-	Policy_UnblockRouting_FullMethodName         = "/chorus.Policy/UnblockRouting"
-	Policy_TestProxy_FullMethodName              = "/chorus.Policy/TestProxy"
+	Policy_AvailableBuckets_FullMethodName       = "/tutti.Policy/AvailableBuckets"
+	Policy_AddReplication_FullMethodName         = "/tutti.Policy/AddReplication"
+	Policy_GetReplication_FullMethodName         = "/tutti.Policy/GetReplication"
+	Policy_ListReplications_FullMethodName       = "/tutti.Policy/ListReplications"
+	Policy_StreamReplication_FullMethodName      = "/tutti.Policy/StreamReplication"
+	Policy_PauseReplication_FullMethodName       = "/tutti.Policy/PauseReplication"
+	Policy_ResumeReplication_FullMethodName      = "/tutti.Policy/ResumeReplication"
+	Policy_DeleteReplication_FullMethodName      = "/tutti.Policy/DeleteReplication"
+	Policy_SwitchWithZeroDowntime_FullMethodName = "/tutti.Policy/SwitchWithZeroDowntime"
+	Policy_SwitchWithDowntime_FullMethodName     = "/tutti.Policy/SwitchWithDowntime"
+	Policy_DeleteSwitch_FullMethodName           = "/tutti.Policy/DeleteSwitch"
+	Policy_GetSwitchStatus_FullMethodName        = "/tutti.Policy/GetSwitchStatus"
+	Policy_ListRoutings_FullMethodName           = "/tutti.Policy/ListRoutings"
+	Policy_AddRouting_FullMethodName             = "/tutti.Policy/AddRouting"
+	Policy_UpdateRouting_FullMethodName          = "/tutti.Policy/UpdateRouting"
+	Policy_DeleteRouting_FullMethodName          = "/tutti.Policy/DeleteRouting"
+	Policy_BlockRouting_FullMethodName           = "/tutti.Policy/BlockRouting"
+	Policy_UnblockRouting_FullMethodName         = "/tutti.Policy/UnblockRouting"
+	Policy_TestProxy_FullMethodName              = "/tutti.Policy/TestProxy"
 )
 
 // PolicyClient is the client API for Policy service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Manages chorus routing/replication policies
+// Manages tutti routing/replication policies
 type PolicyClient interface {
 	// Returns list of buckets available for replication.
 	AvailableBuckets(ctx context.Context, in *AvailableBucketsRequest, opts ...grpc.CallOption) (*AvailableBucketsResponse, error)
@@ -64,7 +64,7 @@ type PolicyClient interface {
 	// Deletes given replication
 	DeleteReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
-	// Zero-downtime switch will take effect immediately on chorus proxy:
+	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
 	// - all reads will be routed to target with latest data
 	// When all replication tasks will be processed, switch will be completed and
@@ -85,7 +85,7 @@ type PolicyClient interface {
 	// Can be edited if downtime window has not started yet.
 	//
 	// During downtime window all requests to replication target are blocked on
-	// chorus proxy. When all replication tasks are processed, chorus can perform
+	// tutti proxy. When all replication tasks are processed, tutti can perform
 	// optional data equality check and complete the switch. On completion, proxy
 	// unblocks requests to target and routes all requests to destination target.
 	//
@@ -114,7 +114,7 @@ type PolicyClient interface {
 	DeleteSwitch(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Returns Switch status
 	GetSwitchStatus(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*ReplicationSwitch, error)
-	// Returns configured routing policies for chorus proxy.
+	// Returns configured routing policies for tutti proxy.
 	ListRoutings(ctx context.Context, in *RoutingsRequest, opts ...grpc.CallOption) (*RoutingsResponse, error)
 	// Overrides routing destination for given user or user's bucket.
 	AddRouting(ctx context.Context, in *AddRoutingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -344,7 +344,7 @@ func (c *policyClient) TestProxy(ctx context.Context, in *TestProxyRequest, opts
 // All implementations should embed UnimplementedPolicyServer
 // for forward compatibility.
 //
-// Manages chorus routing/replication policies
+// Manages tutti routing/replication policies
 type PolicyServer interface {
 	// Returns list of buckets available for replication.
 	AvailableBuckets(context.Context, *AvailableBucketsRequest) (*AvailableBucketsResponse, error)
@@ -363,7 +363,7 @@ type PolicyServer interface {
 	// Deletes given replication
 	DeleteReplication(context.Context, *ReplicationID) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
-	// Zero-downtime switch will take effect immediately on chorus proxy:
+	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
 	// - all reads will be routed to target with latest data
 	// When all replication tasks will be processed, switch will be completed and
@@ -384,7 +384,7 @@ type PolicyServer interface {
 	// Can be edited if downtime window has not started yet.
 	//
 	// During downtime window all requests to replication target are blocked on
-	// chorus proxy. When all replication tasks are processed, chorus can perform
+	// tutti proxy. When all replication tasks are processed, tutti can perform
 	// optional data equality check and complete the switch. On completion, proxy
 	// unblocks requests to target and routes all requests to destination target.
 	//
@@ -413,7 +413,7 @@ type PolicyServer interface {
 	DeleteSwitch(context.Context, *ReplicationID) (*emptypb.Empty, error)
 	// Returns Switch status
 	GetSwitchStatus(context.Context, *ReplicationID) (*ReplicationSwitch, error)
-	// Returns configured routing policies for chorus proxy.
+	// Returns configured routing policies for tutti proxy.
 	ListRoutings(context.Context, *RoutingsRequest) (*RoutingsResponse, error)
 	// Overrides routing destination for given user or user's bucket.
 	AddRouting(context.Context, *AddRoutingRequest) (*emptypb.Empty, error)
@@ -855,7 +855,7 @@ func _Policy_TestProxy_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Policy_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.Policy",
+	ServiceName: "tutti.Policy",
 	HandlerType: (*PolicyServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -938,5 +938,5 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "chorus/policy.proto",
+	Metadata: "tutti/policy.proto",
 }

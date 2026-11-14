@@ -22,7 +22,7 @@ export type ApiRole = 'public' | 'viewer' | 'admin';
  * other operation is admin-only, like on the server (fail closed).
  */
 const VIEWER_OPERATIONS = new Set([
-  'Chorus_GetStorages',
+  'Tutti_GetStorages',
   'Diff_List',
   'Diff_GetReport',
   'Diff_GetReportEntries',
@@ -43,7 +43,7 @@ const VIEWER_OPERATIONS = new Set([
 /** Reachable without a session (publicMethods / publicMethodPrefixes). */
 function isPublicOperation(operationId: string): boolean {
   return (
-    operationId === 'Chorus_GetAppVersion' || operationId.startsWith('Webhook_')
+    operationId === 'Tutti_GetAppVersion' || operationId.startsWith('Webhook_')
   );
 }
 

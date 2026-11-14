@@ -60,7 +60,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/util"
 	"github.com/hieunyit/tutti/pkg/workerstats"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/worker/copy"
 	"github.com/hieunyit/tutti/service/worker/handler"
 	swift_worker "github.com/hieunyit/tutti/service/worker/handler/swift"
@@ -709,7 +709,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 		registerServices := func(srv *grpc.Server) {
 			pb.RegisterProtectionGroupsServer(srv, api.ProtectionGroupHandlers(groupService, storageLocker, userLocker, api.WithFailoverMigration(migrator, unprotectedOpts)))
-			pb.RegisterChorusServer(srv, chorusHandler)
+			pb.RegisterTuttiServer(srv, chorusHandler)
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
 			pb.RegisterResilienceServer(srv, resilienceHandler)
@@ -731,7 +731,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			if err := authSvc.RegisterHTTP(mux); err != nil {
 				return err
 			}
-			if err := pb.RegisterChorusHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
+			if err := pb.RegisterTuttiHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
 			}
 			if err := pb.RegisterDiffHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {

@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
 )
 

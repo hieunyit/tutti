@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package chorus;
+package tutti;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/tutti;pb";
 
-// Manages chorus routing/replication policies
+// Manages tutti routing/replication policies
 service Policy {
 
   // Returns list of buckets available for replication.
@@ -36,7 +36,7 @@ service Policy {
   rpc DeleteReplication(ReplicationID) returns (google.protobuf.Empty);
 
   // Switches source<->destination replication targets without downtime.
-  // Zero-downtime switch will take effect immediately on chorus proxy:
+  // Zero-downtime switch will take effect immediately on tutti proxy:
   // - all writes will be now routed to replication destination
   // - all reads will be routed to target with latest data
   // When all replication tasks will be processed, switch will be completed and
@@ -59,7 +59,7 @@ service Policy {
   // Can be edited if downtime window has not started yet.
   //
   // During downtime window all requests to replication target are blocked on
-  // chorus proxy. When all replication tasks are processed, chorus can perform
+  // tutti proxy. When all replication tasks are processed, tutti can perform
   // optional data equality check and complete the switch. On completion, proxy
   // unblocks requests to target and routes all requests to destination target.
   //
@@ -90,7 +90,7 @@ service Policy {
   // Returns Switch status
   rpc GetSwitchStatus(ReplicationID) returns (ReplicationSwitch);
 
-  // Returns configured routing policies for chorus proxy.
+  // Returns configured routing policies for tutti proxy.
   rpc ListRoutings(RoutingsRequest) returns (RoutingsResponse);
 
   // Overrides routing destination for given user or user's bucket.
@@ -120,13 +120,13 @@ service Policy {
 // - User-level replicates all existing and future buckets of the user.
 // - Bucket-level  replicates a single bucket.
 message ReplicationID {
-  // Replication user from chorus storage credential config; must be configured
+  // Replication user from tutti storage credential config; must be configured
   // for both from/to storages. Empty means storage-level replication: both
   // storages must have a connection account.
   string user = 1;
-  // REQUIRED: source storage name from chorus storage config.
+  // REQUIRED: source storage name from tutti storage config.
   string from_storage = 2;
-  // REQUIRED: destination storage name from chorus storage config.
+  // REQUIRED: destination storage name from tutti storage config.
   // Can be equal to from_storage if both from/to buckets are set and different.
   string to_storage = 3;
   // OPTIONAL: source bucket name.
@@ -150,7 +150,7 @@ message AddReplicationRequest {
 
 // Determines how ongoing data change events are captured for replication.
 enum EventSource {
-  // Default. Events captured by chorus proxy intercepting S3/Swift API calls.
+  // Default. Events captured by tutti proxy intercepting S3/Swift API calls.
   EVENT_SOURCE_PROXY = 0;
   // S3 bucket notifications. Worker creates SNS topic + bucket notification
   // pointing to its own webhook endpoint. Bucket-level replication only.
@@ -168,16 +168,16 @@ message ReplicationOpts {
 
   // TODO: implement for https://github.com/clyso/chorus/issues/141
   // message OriginToMeta {
-  //   // OPTIONAL: If set, chorus will copy source object creation date
+  //   // OPTIONAL: If set, tutti will copy source object creation date
   //   // into provided user metadata field on destination object.
   //   // For example, for S3, "my-origin-creation-date" will add
   //   // "x-amz-meta-my-origin-creation-date" user metadata header with
   //   // original object's creation date value in destination object.
   //   string creation_date = 1;
-  //   // OPTIONAL: If set, chorus will copy source object modification date
+  //   // OPTIONAL: If set, tutti will copy source object modification date
   //   // into provided user metadata field on destination object.
   //   string modification_date = 2;
-  //   // OPTIONAL: If set, chorus will copy source object version ID
+  //   // OPTIONAL: If set, tutti will copy source object version ID
   //   // into provided user metadata field on destination object.
   //   string version_id = 3;
   // }
@@ -362,15 +362,15 @@ message SwitchDowntimeRequest {
 }
 
 // Defines downtime window for replication switch with downtime.
-// All dates and times depends on local times of machine running chorus worker.
+// All dates and times depends on local times of machine running tutti worker.
 // Time precision is ~1 minute.
 message SwitchDowntimeOpts {
-  // If true, chorus will perform switch automatically when initial migration
+  // If true, tutti will perform switch automatically when initial migration
   // will be done. Initial migration copies all objects that existed in source
   // bucket before replication started. default is false
   bool start_on_init_done = 1;
 
-  // If set, chorus will try or retry to start downtime window according to CRON
+  // If set, tutti will try or retry to start downtime window according to CRON
   // schedule.
   // It is not makes sense to set cron frequency less than one hour or less than
   // max_duration if used. Either cron or start_at can be set, but not both.
@@ -381,7 +381,7 @@ message SwitchDowntimeOpts {
   // as failed and not executed. Either cron or start_at can be set, not both.
   optional google.protobuf.Timestamp start_at = 3;
 
-  // If set, chorus will abort downtime window if it will not be able to
+  // If set, tutti will abort downtime window if it will not be able to
   // complete in given time. In this case, switch will be marked as failed and
   // will be retried on next cron execution if set.
   optional google.protobuf.Duration max_duration = 4;
@@ -391,7 +391,7 @@ message SwitchDowntimeOpts {
   // retried on next cron execution if set.
   optional uint32 max_event_lag = 5;
 
-  // if true, chorus will not perform equality check of target contents before
+  // if true, tutti will not perform equality check of target contents before
   // completing switch with downtime. Might be useful for buckets with large
   // number of objects. In this case check will consume a lot of time and memory
   // in Redis. Default is false.

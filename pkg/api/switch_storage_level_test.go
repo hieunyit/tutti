@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hieunyit/tutti/pkg/dom"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/stretchr/testify/require"
 )
 

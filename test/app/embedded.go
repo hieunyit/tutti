@@ -35,7 +35,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/hibiken/asynq"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/johannesboyne/gofakes3"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -95,7 +95,7 @@ type EmbeddedEnv struct {
 	TaskClient *asynq.Client
 
 	PolicyClient pb.PolicyClient
-	ChorusClient pb.ChorusClient
+	TuttiClient pb.TuttiClient
 	DiffClient   pb.DiffClient
 
 	UrlHttpApi string
@@ -290,7 +290,7 @@ func SetupEmbedded(t testing.TB, workerConf *worker.Config, proxyConf *proxy.Con
 		panic(err)
 	}
 	e.PolicyClient = pb.NewPolicyClient(grpcConn)
-	e.ChorusClient = pb.NewChorusClient(grpcConn)
+	e.TuttiClient = pb.NewTuttiClient(grpcConn)
 	e.DiffClient = pb.NewDiffClient(grpcConn)
 	return e
 }

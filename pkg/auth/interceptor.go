@@ -13,7 +13,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 type ctxKey struct{}
@@ -31,18 +31,18 @@ func FromContext(ctx context.Context) (*Session, bool) {
 
 // publicMethodPrefixes are reachable without a session.
 //
-//   - /chorus.Webhook/: called by storage systems (S3 bucket notifications,
+//   - /tutti.Webhook/: called by storage systems (S3 bucket notifications,
 //     swift access-log shippers) that cannot perform a login. These endpoints
 //     are protected by network placement and the webhook port split
 //     (api.webhook.grpcPort/httpPort) instead.
 var publicMethodPrefixes = []string{
-	"/chorus.Webhook/",
+	"/tutti.Webhook/",
 }
 
 // publicMethods are individual RPCs reachable without a session.
 var publicMethods = map[string]struct{}{
 	// version info, equivalent of a public /version endpoint.
-	"/chorus.Chorus/GetAppVersion": {},
+	"/tutti.Tutti/GetAppVersion": {},
 }
 
 // viewerMethods is the explicit allow-list of read-only RPCs a viewer may
@@ -51,34 +51,34 @@ var publicMethods = map[string]struct{}{
 //
 // GetProxyCredentials is deliberately absent: it returns secret keys.
 var viewerMethods = map[string]struct{}{
-	"/chorus.ProtectionGroups/List":                  {},
-	"/chorus.ProtectionGroups/Get":                   {},
-	"/chorus.ProtectionGroups/GetAutomaticFreeze":    {},
-	"/chorus.ProtectionGroups/ListWriters":           {},
-	"/chorus.ProtectionGroups/PlanFailoverMigration": {},
-	"/chorus.ProtectionGroups/ListUnprotectedScopes": {},
-	"/chorus.Resilience/ListRuntimeStorages":         {},
-	"/chorus.Chorus/GetStorages":                     {},
-	"/chorus.Diff/List":                              {},
-	"/chorus.Diff/GetReport":                         {},
-	"/chorus.Diff/GetReportEntries":                  {},
-	"/chorus.Policy/AvailableBuckets":                {},
-	"/chorus.Policy/GetReplication":                  {},
-	"/chorus.Policy/ListReplications":                {},
-	"/chorus.Policy/StreamReplication":               {},
-	"/chorus.Policy/GetSwitchStatus":                 {},
-	"/chorus.Policy/ListRoutings":                    {},
-	"/chorus.Resilience/GetProxyStatus":              {},
-	"/chorus.Resilience/GetStatsHistory":             {},
-	"/chorus.Resilience/GetWorkerStats":              {},
-	"/chorus.Resilience/ListFailoverPolicies":        {},
-	"/chorus.Resilience/ListFailoverEvents":          {},
-	"/chorus.Resilience/ListAccessPolicies":          {},
-	"/chorus.Resilience/ListProxyAccounts":           {},
-	"/chorus.Resilience/GetProxyFleetConfig":         {},
-	"/chorus.Resilience/GetSystemSettings":           {},
+	"/tutti.ProtectionGroups/List":                  {},
+	"/tutti.ProtectionGroups/Get":                   {},
+	"/tutti.ProtectionGroups/GetAutomaticFreeze":    {},
+	"/tutti.ProtectionGroups/ListWriters":           {},
+	"/tutti.ProtectionGroups/PlanFailoverMigration": {},
+	"/tutti.ProtectionGroups/ListUnprotectedScopes": {},
+	"/tutti.Resilience/ListRuntimeStorages":         {},
+	"/tutti.Tutti/GetStorages":                     {},
+	"/tutti.Diff/List":                              {},
+	"/tutti.Diff/GetReport":                         {},
+	"/tutti.Diff/GetReportEntries":                  {},
+	"/tutti.Policy/AvailableBuckets":                {},
+	"/tutti.Policy/GetReplication":                  {},
+	"/tutti.Policy/ListReplications":                {},
+	"/tutti.Policy/StreamReplication":               {},
+	"/tutti.Policy/GetSwitchStatus":                 {},
+	"/tutti.Policy/ListRoutings":                    {},
+	"/tutti.Resilience/GetProxyStatus":              {},
+	"/tutti.Resilience/GetStatsHistory":             {},
+	"/tutti.Resilience/GetWorkerStats":              {},
+	"/tutti.Resilience/ListFailoverPolicies":        {},
+	"/tutti.Resilience/ListFailoverEvents":          {},
+	"/tutti.Resilience/ListAccessPolicies":          {},
+	"/tutti.Resilience/ListProxyAccounts":           {},
+	"/tutti.Resilience/GetProxyFleetConfig":         {},
+	"/tutti.Resilience/GetSystemSettings":           {},
 	// ListS3Users returns metadata only (no secrets). Console user RPCs and all mutations are admin-only.
-	"/chorus.Resilience/ListS3Users": {},
+	"/tutti.Resilience/ListS3Users": {},
 }
 
 func isPublic(method string) bool {
@@ -114,7 +114,7 @@ func AllowedRequest(role, method string, req any) bool {
 	if !Allowed(role, method) {
 		return false
 	}
-	if method == "/chorus.Policy/AvailableBuckets" && role != RoleAdmin && !isPublic(method) {
+	if method == "/tutti.Policy/AvailableBuckets" && role != RoleAdmin && !isPublic(method) {
 		if r, ok := req.(*pb.AvailableBucketsRequest); ok && r.GetUser() == "" {
 			return false
 		}

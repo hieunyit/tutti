@@ -34,18 +34,18 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 // apiServices lists the gRPC services exposed by the chorus management REST
 // API and mapped in restRoutes. The Webhook service is excluded on purpose:
 // its routes use path parameters and are not called by tuttictl.
-var apiServices = []string{"chorus.Chorus", "chorus.Policy", "chorus.Diff"}
+var apiServices = []string{"tutti.Tutti", "tutti.Policy", "tutti.Diff"}
 
 // newTestGateway starts an in-process HTTP server backed by the generated
 // grpc-gateway registration code — the same code the worker serves REST with.
 // It returns a Conn pointed at that server.
-func newTestGateway(t *testing.T, chorusSrv pb.ChorusServer) *Conn {
+func newTestGateway(t *testing.T, chorusSrv pb.TuttiServer) *Conn {
 	t.Helper()
 	r := require.New(t)
 	// Same marshaler options as the worker gateway, see pkg/api/grpc_http_gateway.go.
@@ -56,7 +56,7 @@ func newTestGateway(t *testing.T, chorusSrv pb.ChorusServer) *Conn {
 		}),
 	)
 	ctx := t.Context()
-	r.NoError(pb.RegisterChorusHandlerServer(ctx, mux, chorusSrv))
+	r.NoError(pb.RegisterTuttiHandlerServer(ctx, mux, chorusSrv))
 	r.NoError(pb.RegisterPolicyHandlerServer(ctx, mux, pb.UnimplementedPolicyServer{}))
 	r.NoError(pb.RegisterDiffHandlerServer(ctx, mux, pb.UnimplementedDiffServer{}))
 	r.NoError(pb.RegisterResilienceHandlerServer(ctx, mux, pb.UnimplementedResilienceServer{}))
@@ -99,7 +99,7 @@ func newMessage(t *testing.T, md protoreflect.MessageDescriptor) proto.Message {
 // Together with the CI check that regenerates proto code and fails on
 // uncommitted changes, this pins restRoutes to proto/http.yaml.
 func TestRestRoutes_MatchGeneratedGateway(t *testing.T) {
-	conn := newTestGateway(t, pb.UnimplementedChorusServer{})
+	conn := newTestGateway(t, pb.UnimplementedTuttiServer{})
 	for fullMethod := range restRoutes {
 		t.Run(fullMethod, func(t *testing.T) {
 			r := require.New(t)
@@ -154,7 +154,7 @@ func TestRestRoutes_GetRequestsAreEmpty(t *testing.T) {
 }
 
 type stubChorusServer struct {
-	pb.UnimplementedChorusServer
+	pb.UnimplementedTuttiServer
 }
 
 func (stubChorusServer) GetAppVersion(context.Context, *emptypb.Empty) (*pb.GetAppVersionResponse, error) {
@@ -167,7 +167,7 @@ func TestConn_InvokeRoundTrip(t *testing.T) {
 	r := require.New(t)
 	conn := newTestGateway(t, stubChorusServer{})
 	var reply pb.GetAppVersionResponse
-	r.NoError(conn.Invoke(t.Context(), pb.Chorus_GetAppVersion_FullMethodName, &emptypb.Empty{}, &reply))
+	r.NoError(conn.Invoke(t.Context(), pb.Tutti_GetAppVersion_FullMethodName, &emptypb.Empty{}, &reply))
 	r.Equal("v1.2.3", reply.Version)
 	r.Equal("abc", reply.Commit)
 	r.Equal("2026-01-01", reply.Date)

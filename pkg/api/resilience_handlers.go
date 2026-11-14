@@ -22,7 +22,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 	"github.com/hieunyit/tutti/pkg/workerstats"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 // ResilienceHandlers serves proxy status and failover policies/events.

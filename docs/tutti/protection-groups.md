@@ -6,7 +6,7 @@ to every other member. When the primary fails, or on an operator switchover, the
 member and re-points the replications, so the copy count is restored instead of dropping to one.
 
 Implementation: `pkg/protectiongroups` (model, store, controller, write fence, quorum, resync),
-`pkg/policy/protection_groups.go` (routing/replication backend), API `proto/chorus/protection_groups.proto`.
+`pkg/policy/protection_groups.go` (routing/replication backend), API `proto/tutti/protection_groups.proto`.
 The controller runs in every worker (one reconcile per group per second, serialized by a Redis lock per group).
 
 ## Model

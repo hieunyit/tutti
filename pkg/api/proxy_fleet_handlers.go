@@ -14,7 +14,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/proxystatus"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func (h *resilienceHandlers) GetProxyFleetConfig(ctx context.Context, _ *emptypb.Empty) (*pb.ProxyFleetConfig, error) {

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        (unknown)
-// source: chorus/diff.proto
+// source: tutti/diff.proto
 
 package pb
 
@@ -32,7 +32,7 @@ type MigrateLocation struct {
 
 func (x *MigrateLocation) Reset() {
 	*x = MigrateLocation{}
-	mi := &file_chorus_diff_proto_msgTypes[0]
+	mi := &file_tutti_diff_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *MigrateLocation) String() string {
 func (*MigrateLocation) ProtoMessage() {}
 
 func (x *MigrateLocation) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[0]
+	mi := &file_tutti_diff_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *MigrateLocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MigrateLocation.ProtoReflect.Descriptor instead.
 func (*MigrateLocation) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{0}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *MigrateLocation) GetStorage() string {
@@ -87,7 +87,7 @@ type StartDiffCheckRequest struct {
 
 func (x *StartDiffCheckRequest) Reset() {
 	*x = StartDiffCheckRequest{}
-	mi := &file_chorus_diff_proto_msgTypes[1]
+	mi := &file_tutti_diff_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -99,7 +99,7 @@ func (x *StartDiffCheckRequest) String() string {
 func (*StartDiffCheckRequest) ProtoMessage() {}
 
 func (x *StartDiffCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[1]
+	mi := &file_tutti_diff_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -112,7 +112,7 @@ func (x *StartDiffCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartDiffCheckRequest.ProtoReflect.Descriptor instead.
 func (*StartDiffCheckRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{1}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StartDiffCheckRequest) GetLocations() []*MigrateLocation {
@@ -160,7 +160,7 @@ type StartDiffFixRequest struct {
 
 func (x *StartDiffFixRequest) Reset() {
 	*x = StartDiffFixRequest{}
-	mi := &file_chorus_diff_proto_msgTypes[2]
+	mi := &file_tutti_diff_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +172,7 @@ func (x *StartDiffFixRequest) String() string {
 func (*StartDiffFixRequest) ProtoMessage() {}
 
 func (x *StartDiffFixRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[2]
+	mi := &file_tutti_diff_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +185,7 @@ func (x *StartDiffFixRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartDiffFixRequest.ProtoReflect.Descriptor instead.
 func (*StartDiffFixRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{2}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StartDiffFixRequest) GetLocations() []*MigrateLocation {
@@ -211,7 +211,7 @@ type DiffCheckRequest struct {
 
 func (x *DiffCheckRequest) Reset() {
 	*x = DiffCheckRequest{}
-	mi := &file_chorus_diff_proto_msgTypes[3]
+	mi := &file_tutti_diff_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +223,7 @@ func (x *DiffCheckRequest) String() string {
 func (*DiffCheckRequest) ProtoMessage() {}
 
 func (x *DiffCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[3]
+	mi := &file_tutti_diff_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +236,7 @@ func (x *DiffCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffCheckRequest.ProtoReflect.Descriptor instead.
 func (*DiffCheckRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{3}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DiffCheckRequest) GetLocations() []*MigrateLocation {
@@ -265,7 +265,7 @@ type DiffCheck struct {
 
 func (x *DiffCheck) Reset() {
 	*x = DiffCheck{}
-	mi := &file_chorus_diff_proto_msgTypes[4]
+	mi := &file_tutti_diff_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -277,7 +277,7 @@ func (x *DiffCheck) String() string {
 func (*DiffCheck) ProtoMessage() {}
 
 func (x *DiffCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[4]
+	mi := &file_tutti_diff_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -290,7 +290,7 @@ func (x *DiffCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffCheck.ProtoReflect.Descriptor instead.
 func (*DiffCheck) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{4}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DiffCheck) GetLocations() []*MigrateLocation {
@@ -379,7 +379,7 @@ type ListDiffChecksResponse struct {
 
 func (x *ListDiffChecksResponse) Reset() {
 	*x = ListDiffChecksResponse{}
-	mi := &file_chorus_diff_proto_msgTypes[5]
+	mi := &file_tutti_diff_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -391,7 +391,7 @@ func (x *ListDiffChecksResponse) String() string {
 func (*ListDiffChecksResponse) ProtoMessage() {}
 
 func (x *ListDiffChecksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[5]
+	mi := &file_tutti_diff_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -404,7 +404,7 @@ func (x *ListDiffChecksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDiffChecksResponse.ProtoReflect.Descriptor instead.
 func (*ListDiffChecksResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{5}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListDiffChecksResponse) GetChecks() []*DiffCheck {
@@ -423,7 +423,7 @@ type GetDiffCheckReportRequest struct {
 
 func (x *GetDiffCheckReportRequest) Reset() {
 	*x = GetDiffCheckReportRequest{}
-	mi := &file_chorus_diff_proto_msgTypes[6]
+	mi := &file_tutti_diff_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +435,7 @@ func (x *GetDiffCheckReportRequest) String() string {
 func (*GetDiffCheckReportRequest) ProtoMessage() {}
 
 func (x *GetDiffCheckReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[6]
+	mi := &file_tutti_diff_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +448,7 @@ func (x *GetDiffCheckReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffCheckReportRequest.ProtoReflect.Descriptor instead.
 func (*GetDiffCheckReportRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{6}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetDiffCheckReportRequest) GetLocations() []*MigrateLocation {
@@ -467,7 +467,7 @@ type GetDiffCheckReportResponse struct {
 
 func (x *GetDiffCheckReportResponse) Reset() {
 	*x = GetDiffCheckReportResponse{}
-	mi := &file_chorus_diff_proto_msgTypes[7]
+	mi := &file_tutti_diff_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +479,7 @@ func (x *GetDiffCheckReportResponse) String() string {
 func (*GetDiffCheckReportResponse) ProtoMessage() {}
 
 func (x *GetDiffCheckReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[7]
+	mi := &file_tutti_diff_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +492,7 @@ func (x *GetDiffCheckReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffCheckReportResponse.ProtoReflect.Descriptor instead.
 func (*GetDiffCheckReportResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{7}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetDiffCheckReportResponse) GetCheck() *DiffCheck {
@@ -513,7 +513,7 @@ type DiffCheckStorageEntry struct {
 
 func (x *DiffCheckStorageEntry) Reset() {
 	*x = DiffCheckStorageEntry{}
-	mi := &file_chorus_diff_proto_msgTypes[8]
+	mi := &file_tutti_diff_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -525,7 +525,7 @@ func (x *DiffCheckStorageEntry) String() string {
 func (*DiffCheckStorageEntry) ProtoMessage() {}
 
 func (x *DiffCheckStorageEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[8]
+	mi := &file_tutti_diff_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -538,7 +538,7 @@ func (x *DiffCheckStorageEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffCheckStorageEntry.ProtoReflect.Descriptor instead.
 func (*DiffCheckStorageEntry) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{8}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DiffCheckStorageEntry) GetStorage() string {
@@ -575,7 +575,7 @@ type DiffCheckReportEntry struct {
 
 func (x *DiffCheckReportEntry) Reset() {
 	*x = DiffCheckReportEntry{}
-	mi := &file_chorus_diff_proto_msgTypes[9]
+	mi := &file_tutti_diff_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -587,7 +587,7 @@ func (x *DiffCheckReportEntry) String() string {
 func (*DiffCheckReportEntry) ProtoMessage() {}
 
 func (x *DiffCheckReportEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[9]
+	mi := &file_tutti_diff_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -600,7 +600,7 @@ func (x *DiffCheckReportEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffCheckReportEntry.ProtoReflect.Descriptor instead.
 func (*DiffCheckReportEntry) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{9}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DiffCheckReportEntry) GetObject() string {
@@ -649,7 +649,7 @@ type GetDiffCheckReportEntriesRequest struct {
 
 func (x *GetDiffCheckReportEntriesRequest) Reset() {
 	*x = GetDiffCheckReportEntriesRequest{}
-	mi := &file_chorus_diff_proto_msgTypes[10]
+	mi := &file_tutti_diff_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +661,7 @@ func (x *GetDiffCheckReportEntriesRequest) String() string {
 func (*GetDiffCheckReportEntriesRequest) ProtoMessage() {}
 
 func (x *GetDiffCheckReportEntriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[10]
+	mi := &file_tutti_diff_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +674,7 @@ func (x *GetDiffCheckReportEntriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffCheckReportEntriesRequest.ProtoReflect.Descriptor instead.
 func (*GetDiffCheckReportEntriesRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{10}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetDiffCheckReportEntriesRequest) GetLocations() []*MigrateLocation {
@@ -708,7 +708,7 @@ type GetDiffCheckReportEntriesResponse struct {
 
 func (x *GetDiffCheckReportEntriesResponse) Reset() {
 	*x = GetDiffCheckReportEntriesResponse{}
-	mi := &file_chorus_diff_proto_msgTypes[11]
+	mi := &file_tutti_diff_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -720,7 +720,7 @@ func (x *GetDiffCheckReportEntriesResponse) String() string {
 func (*GetDiffCheckReportEntriesResponse) ProtoMessage() {}
 
 func (x *GetDiffCheckReportEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_diff_proto_msgTypes[11]
+	mi := &file_tutti_diff_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +733,7 @@ func (x *GetDiffCheckReportEntriesResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetDiffCheckReportEntriesResponse.ProtoReflect.Descriptor instead.
 func (*GetDiffCheckReportEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_diff_proto_rawDescGZIP(), []int{11}
+	return file_tutti_diff_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetDiffCheckReportEntriesResponse) GetEntries() []*DiffCheckReportEntry {
@@ -750,27 +750,27 @@ func (x *GetDiffCheckReportEntriesResponse) GetCursor() uint64 {
 	return 0
 }
 
-var File_chorus_diff_proto protoreflect.FileDescriptor
+var File_tutti_diff_proto protoreflect.FileDescriptor
 
-const file_chorus_diff_proto_rawDesc = "" +
+const file_tutti_diff_proto_rawDesc = "" +
 	"\n" +
-	"\x11chorus/diff.proto\x12\x06chorus\x1a\x1bgoogle/protobuf/empty.proto\"C\n" +
+	"\x10tutti/diff.proto\x12\x05tutti\x1a\x1bgoogle/protobuf/empty.proto\"C\n" +
 	"\x0fMigrateLocation\x12\x18\n" +
 	"\astorage\x18\x01 \x01(\tR\astorage\x12\x16\n" +
-	"\x06bucket\x18\x02 \x01(\tR\x06bucket\"\xe1\x01\n" +
-	"\x15StartDiffCheckRequest\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\x12\x12\n" +
+	"\x06bucket\x18\x02 \x01(\tR\x06bucket\"\xe0\x01\n" +
+	"\x15StartDiffCheckRequest\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x127\n" +
 	"\x18check_only_last_versions\x18\x03 \x01(\bR\x15checkOnlyLastVersions\x12!\n" +
 	"\fignore_etags\x18\x04 \x01(\bR\vignoreEtags\x12!\n" +
-	"\fignore_sizes\x18\x05 \x01(\bR\vignoreSizes\"n\n" +
-	"\x13StartDiffFixRequest\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\x12 \n" +
-	"\vsourceIndex\x18\x02 \x01(\x04R\vsourceIndex\"I\n" +
-	"\x10DiffCheckRequest\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\"\xf3\x02\n" +
-	"\tDiffCheck\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\x12\x16\n" +
+	"\fignore_sizes\x18\x05 \x01(\bR\vignoreSizes\"m\n" +
+	"\x13StartDiffFixRequest\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\x12 \n" +
+	"\vsourceIndex\x18\x02 \x01(\x04R\vsourceIndex\"H\n" +
+	"\x10DiffCheckRequest\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\"\xf2\x02\n" +
+	"\tDiffCheck\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\x12\x16\n" +
 	"\x06queued\x18\x02 \x01(\x04R\x06queued\x12\x1c\n" +
 	"\tcompleted\x18\x03 \x01(\x04R\tcompleted\x12\x14\n" +
 	"\x05ready\x18\x04 \x01(\bR\x05ready\x12\x1e\n" +
@@ -784,94 +784,94 @@ const file_chorus_diff_proto_rawDesc = "" +
 	"fix_queued\x18\t \x01(\x04R\tfixQueued\x12#\n" +
 	"\rfix_completed\x18\n" +
 	" \x01(\x04R\ffixCompleted\x12\x1b\n" +
-	"\tfix_ready\x18\v \x01(\bR\bfixReady\"C\n" +
-	"\x16ListDiffChecksResponse\x12)\n" +
-	"\x06checks\x18\x01 \x03(\v2\x11.chorus.DiffCheckR\x06checks\"R\n" +
-	"\x19GetDiffCheckReportRequest\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\"E\n" +
-	"\x1aGetDiffCheckReportResponse\x12'\n" +
-	"\x05check\x18\x01 \x01(\v2\x11.chorus.DiffCheckR\x05check\"h\n" +
+	"\tfix_ready\x18\v \x01(\bR\bfixReady\"B\n" +
+	"\x16ListDiffChecksResponse\x12(\n" +
+	"\x06checks\x18\x01 \x03(\v2\x10.tutti.DiffCheckR\x06checks\"Q\n" +
+	"\x19GetDiffCheckReportRequest\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\"D\n" +
+	"\x1aGetDiffCheckReportResponse\x12&\n" +
+	"\x05check\x18\x01 \x01(\v2\x10.tutti.DiffCheckR\x05check\"h\n" +
 	"\x15DiffCheckStorageEntry\x12\x18\n" +
 	"\astorage\x18\x01 \x01(\tR\astorage\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x02 \x01(\tR\tversionId\x12\x16\n" +
-	"\x06bucket\x18\x03 \x01(\tR\x06bucket\"\xbf\x01\n" +
+	"\x06bucket\x18\x03 \x01(\tR\x06bucket\"\xbe\x01\n" +
 	"\x14DiffCheckReportEntry\x12\x16\n" +
 	"\x06object\x18\x01 \x01(\tR\x06object\x12\x1f\n" +
 	"\vversion_idx\x18\x02 \x01(\x04R\n" +
 	"versionIdx\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\x04R\x04size\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\x12F\n" +
-	"\x0fstorage_entries\x18\x05 \x03(\v2\x1d.chorus.DiffCheckStorageEntryR\x0estorageEntries\"\x8d\x01\n" +
-	" GetDiffCheckReportEntriesRequest\x125\n" +
-	"\tlocations\x18\x01 \x03(\v2\x17.chorus.MigrateLocationR\tlocations\x12\x16\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\x12E\n" +
+	"\x0fstorage_entries\x18\x05 \x03(\v2\x1c.tutti.DiffCheckStorageEntryR\x0estorageEntries\"\x8c\x01\n" +
+	" GetDiffCheckReportEntriesRequest\x124\n" +
+	"\tlocations\x18\x01 \x03(\v2\x16.tutti.MigrateLocationR\tlocations\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\x04R\x06cursor\x12\x1a\n" +
-	"\bpageSize\x18\x03 \x01(\x04R\bpageSize\"s\n" +
-	"!GetDiffCheckReportEntriesResponse\x126\n" +
-	"\aentries\x18\x01 \x03(\v2\x1c.chorus.DiffCheckReportEntryR\aentries\x12\x16\n" +
-	"\x06cursor\x18\x02 \x01(\x04R\x06cursor2\xf5\x03\n" +
-	"\x04Diff\x12>\n" +
-	"\x05Start\x12\x1d.chorus.StartDiffCheckRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
-	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1e.chorus.ListDiffChecksResponse\x12I\n" +
-	"\tGetReport\x12\x18.chorus.DiffCheckRequest\x1a\".chorus.GetDiffCheckReportResponse\x12g\n" +
-	"\x10GetReportEntries\x12(.chorus.GetDiffCheckReportEntriesRequest\x1a).chorus.GetDiffCheckReportEntriesResponse\x12@\n" +
-	"\fDeleteReport\x12\x18.chorus.DiffCheckRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
-	"\x03Fix\x12\x1b.chorus.StartDiffFixRequest\x1a\x16.google.protobuf.Empty\x12;\n" +
-	"\aRestart\x12\x18.chorus.DiffCheckRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
+	"\bpageSize\x18\x03 \x01(\x04R\bpageSize\"r\n" +
+	"!GetDiffCheckReportEntriesResponse\x125\n" +
+	"\aentries\x18\x01 \x03(\v2\x1b.tutti.DiffCheckReportEntryR\aentries\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\x04R\x06cursor2\xec\x03\n" +
+	"\x04Diff\x12=\n" +
+	"\x05Start\x12\x1c.tutti.StartDiffCheckRequest\x1a\x16.google.protobuf.Empty\x12=\n" +
+	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1d.tutti.ListDiffChecksResponse\x12G\n" +
+	"\tGetReport\x12\x17.tutti.DiffCheckRequest\x1a!.tutti.GetDiffCheckReportResponse\x12e\n" +
+	"\x10GetReportEntries\x12'.tutti.GetDiffCheckReportEntriesRequest\x1a(.tutti.GetDiffCheckReportEntriesResponse\x12?\n" +
+	"\fDeleteReport\x12\x17.tutti.DiffCheckRequest\x1a\x16.google.protobuf.Empty\x129\n" +
+	"\x03Fix\x12\x1a.tutti.StartDiffFixRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
+	"\aRestart\x12\x17.tutti.DiffCheckRequest\x1a\x16.google.protobuf.EmptyB*Z(github.com/hieunyit/tutti/proto/tutti;pbb\x06proto3"
 
 var (
-	file_chorus_diff_proto_rawDescOnce sync.Once
-	file_chorus_diff_proto_rawDescData []byte
+	file_tutti_diff_proto_rawDescOnce sync.Once
+	file_tutti_diff_proto_rawDescData []byte
 )
 
-func file_chorus_diff_proto_rawDescGZIP() []byte {
-	file_chorus_diff_proto_rawDescOnce.Do(func() {
-		file_chorus_diff_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_chorus_diff_proto_rawDesc), len(file_chorus_diff_proto_rawDesc)))
+func file_tutti_diff_proto_rawDescGZIP() []byte {
+	file_tutti_diff_proto_rawDescOnce.Do(func() {
+		file_tutti_diff_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tutti_diff_proto_rawDesc), len(file_tutti_diff_proto_rawDesc)))
 	})
-	return file_chorus_diff_proto_rawDescData
+	return file_tutti_diff_proto_rawDescData
 }
 
-var file_chorus_diff_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
-var file_chorus_diff_proto_goTypes = []any{
-	(*MigrateLocation)(nil),                   // 0: chorus.MigrateLocation
-	(*StartDiffCheckRequest)(nil),             // 1: chorus.StartDiffCheckRequest
-	(*StartDiffFixRequest)(nil),               // 2: chorus.StartDiffFixRequest
-	(*DiffCheckRequest)(nil),                  // 3: chorus.DiffCheckRequest
-	(*DiffCheck)(nil),                         // 4: chorus.DiffCheck
-	(*ListDiffChecksResponse)(nil),            // 5: chorus.ListDiffChecksResponse
-	(*GetDiffCheckReportRequest)(nil),         // 6: chorus.GetDiffCheckReportRequest
-	(*GetDiffCheckReportResponse)(nil),        // 7: chorus.GetDiffCheckReportResponse
-	(*DiffCheckStorageEntry)(nil),             // 8: chorus.DiffCheckStorageEntry
-	(*DiffCheckReportEntry)(nil),              // 9: chorus.DiffCheckReportEntry
-	(*GetDiffCheckReportEntriesRequest)(nil),  // 10: chorus.GetDiffCheckReportEntriesRequest
-	(*GetDiffCheckReportEntriesResponse)(nil), // 11: chorus.GetDiffCheckReportEntriesResponse
+var file_tutti_diff_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_tutti_diff_proto_goTypes = []any{
+	(*MigrateLocation)(nil),                   // 0: tutti.MigrateLocation
+	(*StartDiffCheckRequest)(nil),             // 1: tutti.StartDiffCheckRequest
+	(*StartDiffFixRequest)(nil),               // 2: tutti.StartDiffFixRequest
+	(*DiffCheckRequest)(nil),                  // 3: tutti.DiffCheckRequest
+	(*DiffCheck)(nil),                         // 4: tutti.DiffCheck
+	(*ListDiffChecksResponse)(nil),            // 5: tutti.ListDiffChecksResponse
+	(*GetDiffCheckReportRequest)(nil),         // 6: tutti.GetDiffCheckReportRequest
+	(*GetDiffCheckReportResponse)(nil),        // 7: tutti.GetDiffCheckReportResponse
+	(*DiffCheckStorageEntry)(nil),             // 8: tutti.DiffCheckStorageEntry
+	(*DiffCheckReportEntry)(nil),              // 9: tutti.DiffCheckReportEntry
+	(*GetDiffCheckReportEntriesRequest)(nil),  // 10: tutti.GetDiffCheckReportEntriesRequest
+	(*GetDiffCheckReportEntriesResponse)(nil), // 11: tutti.GetDiffCheckReportEntriesResponse
 	(*emptypb.Empty)(nil),                     // 12: google.protobuf.Empty
 }
-var file_chorus_diff_proto_depIdxs = []int32{
-	0,  // 0: chorus.StartDiffCheckRequest.locations:type_name -> chorus.MigrateLocation
-	0,  // 1: chorus.StartDiffFixRequest.locations:type_name -> chorus.MigrateLocation
-	0,  // 2: chorus.DiffCheckRequest.locations:type_name -> chorus.MigrateLocation
-	0,  // 3: chorus.DiffCheck.locations:type_name -> chorus.MigrateLocation
-	4,  // 4: chorus.ListDiffChecksResponse.checks:type_name -> chorus.DiffCheck
-	0,  // 5: chorus.GetDiffCheckReportRequest.locations:type_name -> chorus.MigrateLocation
-	4,  // 6: chorus.GetDiffCheckReportResponse.check:type_name -> chorus.DiffCheck
-	8,  // 7: chorus.DiffCheckReportEntry.storage_entries:type_name -> chorus.DiffCheckStorageEntry
-	0,  // 8: chorus.GetDiffCheckReportEntriesRequest.locations:type_name -> chorus.MigrateLocation
-	9,  // 9: chorus.GetDiffCheckReportEntriesResponse.entries:type_name -> chorus.DiffCheckReportEntry
-	1,  // 10: chorus.Diff.Start:input_type -> chorus.StartDiffCheckRequest
-	12, // 11: chorus.Diff.List:input_type -> google.protobuf.Empty
-	3,  // 12: chorus.Diff.GetReport:input_type -> chorus.DiffCheckRequest
-	10, // 13: chorus.Diff.GetReportEntries:input_type -> chorus.GetDiffCheckReportEntriesRequest
-	3,  // 14: chorus.Diff.DeleteReport:input_type -> chorus.DiffCheckRequest
-	2,  // 15: chorus.Diff.Fix:input_type -> chorus.StartDiffFixRequest
-	3,  // 16: chorus.Diff.Restart:input_type -> chorus.DiffCheckRequest
-	12, // 17: chorus.Diff.Start:output_type -> google.protobuf.Empty
-	5,  // 18: chorus.Diff.List:output_type -> chorus.ListDiffChecksResponse
-	7,  // 19: chorus.Diff.GetReport:output_type -> chorus.GetDiffCheckReportResponse
-	11, // 20: chorus.Diff.GetReportEntries:output_type -> chorus.GetDiffCheckReportEntriesResponse
-	12, // 21: chorus.Diff.DeleteReport:output_type -> google.protobuf.Empty
-	12, // 22: chorus.Diff.Fix:output_type -> google.protobuf.Empty
-	12, // 23: chorus.Diff.Restart:output_type -> google.protobuf.Empty
+var file_tutti_diff_proto_depIdxs = []int32{
+	0,  // 0: tutti.StartDiffCheckRequest.locations:type_name -> tutti.MigrateLocation
+	0,  // 1: tutti.StartDiffFixRequest.locations:type_name -> tutti.MigrateLocation
+	0,  // 2: tutti.DiffCheckRequest.locations:type_name -> tutti.MigrateLocation
+	0,  // 3: tutti.DiffCheck.locations:type_name -> tutti.MigrateLocation
+	4,  // 4: tutti.ListDiffChecksResponse.checks:type_name -> tutti.DiffCheck
+	0,  // 5: tutti.GetDiffCheckReportRequest.locations:type_name -> tutti.MigrateLocation
+	4,  // 6: tutti.GetDiffCheckReportResponse.check:type_name -> tutti.DiffCheck
+	8,  // 7: tutti.DiffCheckReportEntry.storage_entries:type_name -> tutti.DiffCheckStorageEntry
+	0,  // 8: tutti.GetDiffCheckReportEntriesRequest.locations:type_name -> tutti.MigrateLocation
+	9,  // 9: tutti.GetDiffCheckReportEntriesResponse.entries:type_name -> tutti.DiffCheckReportEntry
+	1,  // 10: tutti.Diff.Start:input_type -> tutti.StartDiffCheckRequest
+	12, // 11: tutti.Diff.List:input_type -> google.protobuf.Empty
+	3,  // 12: tutti.Diff.GetReport:input_type -> tutti.DiffCheckRequest
+	10, // 13: tutti.Diff.GetReportEntries:input_type -> tutti.GetDiffCheckReportEntriesRequest
+	3,  // 14: tutti.Diff.DeleteReport:input_type -> tutti.DiffCheckRequest
+	2,  // 15: tutti.Diff.Fix:input_type -> tutti.StartDiffFixRequest
+	3,  // 16: tutti.Diff.Restart:input_type -> tutti.DiffCheckRequest
+	12, // 17: tutti.Diff.Start:output_type -> google.protobuf.Empty
+	5,  // 18: tutti.Diff.List:output_type -> tutti.ListDiffChecksResponse
+	7,  // 19: tutti.Diff.GetReport:output_type -> tutti.GetDiffCheckReportResponse
+	11, // 20: tutti.Diff.GetReportEntries:output_type -> tutti.GetDiffCheckReportEntriesResponse
+	12, // 21: tutti.Diff.DeleteReport:output_type -> google.protobuf.Empty
+	12, // 22: tutti.Diff.Fix:output_type -> google.protobuf.Empty
+	12, // 23: tutti.Diff.Restart:output_type -> google.protobuf.Empty
 	17, // [17:24] is the sub-list for method output_type
 	10, // [10:17] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
@@ -879,26 +879,26 @@ var file_chorus_diff_proto_depIdxs = []int32{
 	0,  // [0:10] is the sub-list for field type_name
 }
 
-func init() { file_chorus_diff_proto_init() }
-func file_chorus_diff_proto_init() {
-	if File_chorus_diff_proto != nil {
+func init() { file_tutti_diff_proto_init() }
+func file_tutti_diff_proto_init() {
+	if File_tutti_diff_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_diff_proto_rawDesc), len(file_chorus_diff_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tutti_diff_proto_rawDesc), len(file_tutti_diff_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_chorus_diff_proto_goTypes,
-		DependencyIndexes: file_chorus_diff_proto_depIdxs,
-		MessageInfos:      file_chorus_diff_proto_msgTypes,
+		GoTypes:           file_tutti_diff_proto_goTypes,
+		DependencyIndexes: file_tutti_diff_proto_depIdxs,
+		MessageInfos:      file_tutti_diff_proto_msgTypes,
 	}.Build()
-	File_chorus_diff_proto = out.File
-	file_chorus_diff_proto_goTypes = nil
-	file_chorus_diff_proto_depIdxs = nil
+	File_tutti_diff_proto = out.File
+	file_tutti_diff_proto_goTypes = nil
+	file_tutti_diff_proto_depIdxs = nil
 }

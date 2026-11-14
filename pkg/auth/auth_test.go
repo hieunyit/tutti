@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func hash(t *testing.T, pw string) string {
@@ -90,7 +90,7 @@ func setup(t *testing.T, enabled bool) *env {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	srv := grpc.NewServer(grpc.UnaryInterceptor(svc.UnaryInterceptor()), grpc.StreamInterceptor(svc.StreamInterceptor()))
-	pb.RegisterChorusServer(srv, pb.UnimplementedChorusServer{})
+	pb.RegisterTuttiServer(srv, pb.UnimplementedTuttiServer{})
 	pb.RegisterPolicyServer(srv, pb.UnimplementedPolicyServer{})
 	pb.RegisterWebhookServer(srv, pb.UnimplementedWebhookServer{})
 	go func() { _ = srv.Serve(lis) }()
@@ -131,28 +131,28 @@ func TestInterceptorEnabled(t *testing.T) {
 	empty := &emptypb.Empty{}
 
 	t.Run("missing token", func(t *testing.T) {
-		_, err := pb.NewChorusClient(e.conn).GetStorages(context.Background(), empty)
+		_, err := pb.NewTuttiClient(e.conn).GetStorages(context.Background(), empty)
 		requireCode(t, err, codes.Unauthenticated)
 	})
 	t.Run("invalid token", func(t *testing.T) {
-		_, err := pb.NewChorusClient(e.conn).GetStorages(withToken("bogus"), empty)
+		_, err := pb.NewTuttiClient(e.conn).GetStorages(withToken("bogus"), empty)
 		requireCode(t, err, codes.Unauthenticated)
 	})
 	t.Run("expired token", func(t *testing.T) {
 		tok := e.login(t, "admin", "adminpw")
 		e.mr.FastForward(2 * time.Hour)
-		_, err := pb.NewChorusClient(e.conn).GetStorages(withToken(tok), empty)
+		_, err := pb.NewTuttiClient(e.conn).GetStorages(withToken(tok), empty)
 		requireCode(t, err, codes.Unauthenticated)
 	})
 	t.Run("viewer read ok, mutation denied", func(t *testing.T) {
 		tok := e.login(t, "view", "viewpw")
-		_, err := pb.NewChorusClient(e.conn).GetStorages(withToken(tok), empty)
+		_, err := pb.NewTuttiClient(e.conn).GetStorages(withToken(tok), empty)
 		requireCode(t, err, codes.Unimplemented)
 		_, err = policy.ListReplications(withToken(tok), &pb.ListReplicationsRequest{})
 		requireCode(t, err, codes.Unimplemented)
 		_, err = policy.AddReplication(withToken(tok), &pb.AddReplicationRequest{})
 		requireCode(t, err, codes.PermissionDenied)
-		_, err = pb.NewChorusClient(e.conn).GetProxyCredentials(withToken(tok), empty)
+		_, err = pb.NewTuttiClient(e.conn).GetProxyCredentials(withToken(tok), empty)
 		requireCode(t, err, codes.PermissionDenied)
 		stream, err := policy.StreamReplication(withToken(tok), &pb.ReplicationID{})
 		require.NoError(t, err)
@@ -171,7 +171,7 @@ func TestInterceptorEnabled(t *testing.T) {
 	t.Run("webhook and version public", func(t *testing.T) {
 		_, err := pb.NewWebhookClient(e.conn).SwiftEvents(context.Background(), &pb.SwiftEventsRequest{})
 		requireCode(t, err, codes.Unimplemented)
-		_, err = pb.NewChorusClient(e.conn).GetAppVersion(context.Background(), empty)
+		_, err = pb.NewTuttiClient(e.conn).GetAppVersion(context.Background(), empty)
 		requireCode(t, err, codes.Unimplemented)
 	})
 }
@@ -180,7 +180,7 @@ func newHTTP(t *testing.T, enabled bool) (*env, http.Handler) {
 	e := setup(t, enabled)
 	mux := runtime.NewServeMux()
 	require.NoError(t, e.svc.RegisterHTTP(mux))
-	require.NoError(t, pb.RegisterChorusHandlerFromEndpoint(context.Background(), mux, e.addr,
+	require.NoError(t, pb.RegisterTuttiHandlerFromEndpoint(context.Background(), mux, e.addr,
 		[]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}))
 	return e, mux
 }

@@ -1,7 +1,7 @@
 # Chorus Worker
 
 Processes replication tasks from [Asynq](https://github.com/hibiken/asynq) work queue.
-Hosts management [gRPC](../../proto/chorus/chorus.proto) API on port `:9670` and [REST](../../proto/gen/openapi/chorus/chorus.swagger.json) API on port `:9671`.
+Hosts management [gRPC](../../proto/tutti/chorus.proto) API on port `:9670` and [REST](../../proto/gen/openapi/tutti/tutti.swagger.json) API on port `:9671`.
 
 ## Usage
 

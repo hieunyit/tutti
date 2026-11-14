@@ -27,7 +27,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/replscope"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 // slCreds: storages with a connection account serve the empty user; no S3 users are configured.

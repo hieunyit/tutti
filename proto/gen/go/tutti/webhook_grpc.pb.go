@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/webhook.proto
+// source: tutti/webhook.proto
 
 package pb
 
@@ -20,8 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Webhook_SwiftEvents_FullMethodName     = "/chorus.Webhook/SwiftEvents"
-	Webhook_S3Notifications_FullMethodName = "/chorus.Webhook/S3Notifications"
+	Webhook_SwiftEvents_FullMethodName     = "/tutti.Webhook/SwiftEvents"
+	Webhook_S3Notifications_FullMethodName = "/tutti.Webhook/S3Notifications"
 )
 
 // WebhookClient is the client API for Webhook service.
@@ -165,7 +165,7 @@ func _Webhook_S3Notifications_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Webhook_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.Webhook",
+	ServiceName: "tutti.Webhook",
 	HandlerType: (*WebhookServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -178,5 +178,5 @@ var Webhook_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "chorus/webhook.proto",
+	Metadata: "tutti/webhook.proto",
 }

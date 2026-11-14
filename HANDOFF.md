@@ -87,7 +87,7 @@ Three background agents were still running at handoff time; their edits may be p
 ## 4. How to run and test
 
 - Backend: `go build ./... && go test -count=1 ./pkg/... ./service/...`; e2e with real MinIO: `go test -count=1 ./test/resilience/` (Docker needed).
-- Proto: edit `proto/chorus/*.proto` + `proto/http.yaml`, then `make proto-gen`.
+- Proto: edit `proto/tutti/*.proto` + `proto/http.yaml`, then `make proto-gen`.
 - UI: `cd ui && corepack yarn install --frozen-lockfile && corepack yarn dev` (set `VITE_DEV_API_TARGET=http://127.0.0.1:<worker REST port>`), `yarn lint`, `yarn test:unit --run`, `yarn build`.
 - Demo stack: `docker compose -p tutti -f docker-compose/docker-compose.yml --profile proxy up -d --build`
   → UI http://localhost:8080 (admin password: see worker log on first start, or set TUTTI_BOOTSTRAP_ADMIN_PASSWORD), proxy S3 :9669, worker REST :9671. (It was last built from a detached worktree in the

@@ -18,10 +18,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
-type fakeChorus struct{ pb.UnimplementedChorusServer }
+type fakeChorus struct{ pb.UnimplementedTuttiServer }
 
 func (fakeChorus) GetStorages(context.Context, *emptypb.Empty) (*pb.GetStoragesResponse, error) {
 	return &pb.GetStoragesResponse{}, nil
@@ -34,7 +34,7 @@ func mustChangeEnv(t *testing.T) (*Service, func(method, path, token, body strin
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	srv := grpc.NewServer(grpc.UnaryInterceptor(svc.UnaryInterceptor()), grpc.StreamInterceptor(svc.StreamInterceptor()))
-	pb.RegisterChorusServer(srv, fakeChorus{})
+	pb.RegisterTuttiServer(srv, fakeChorus{})
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 
@@ -42,7 +42,7 @@ func mustChangeEnv(t *testing.T) (*Service, func(method, path, token, body strin
 	mux := runtime.NewServeMux()
 	require.NoError(t, svc.RegisterHTTP(mux))
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	require.NoError(t, pb.RegisterChorusHandlerFromEndpoint(ctx, mux, lis.Addr().String(), opts))
+	require.NoError(t, pb.RegisterTuttiHandlerFromEndpoint(ctx, mux, lis.Addr().String(), opts))
 	conn, err := grpc.NewClient(lis.Addr().String(), opts...)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close() })
@@ -72,7 +72,7 @@ func TestMustChangePassword_Enforced(t *testing.T) {
 
 			// gRPC: GetStorages is allowed for both roles normally.
 			gctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+res.Token)
-			err = conn.Invoke(gctx, "/chorus.Chorus/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
+			err = conn.Invoke(gctx, "/tutti.Tutti/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
 			require.Equal(t, codes.PermissionDenied, status.Code(err))
 			require.Contains(t, status.Convert(err).Message(), "password change required")
 
@@ -103,7 +103,7 @@ func TestMustChangePassword_Enforced(t *testing.T) {
 			rec = do(http.MethodGet, "/auth/me", res.Token, "")
 			require.Equal(t, 200, rec.Code)
 			require.Contains(t, rec.Body.String(), `"mustChangePassword":false`)
-			err = conn.Invoke(gctx, "/chorus.Chorus/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
+			err = conn.Invoke(gctx, "/tutti.Tutti/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
 			require.NoError(t, err)
 			require.Equal(t, 200, do(http.MethodGet, "/storage", res.Token, "").Code)
 
@@ -113,7 +113,7 @@ func TestMustChangePassword_Enforced(t *testing.T) {
 			res2, err := svc.Login(ctx, name, npw, "1.1.1.1")
 			require.NoError(t, err)
 			g2 := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+res2.Token)
-			err = conn.Invoke(g2, "/chorus.Chorus/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
+			err = conn.Invoke(g2, "/tutti.Tutti/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{})
 			require.Equal(t, codes.PermissionDenied, status.Code(err))
 			require.Equal(t, 204, do(http.MethodPost, "/auth/logout", res2.Token, "").Code)
 		})
@@ -129,7 +129,7 @@ func TestMustChangePassword_ConfigUsersNeverFlagged(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, sess.MustChangePassword)
 	gctx := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+res.Token)
-	require.NoError(t, conn.Invoke(gctx, "/chorus.Chorus/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{}))
+	require.NoError(t, conn.Invoke(gctx, "/tutti.Tutti/GetStorages", &emptypb.Empty{}, &pb.GetStoragesResponse{}))
 	rec := do(http.MethodGet, "/auth/me", res.Token, "")
 	require.Equal(t, 200, rec.Code)
 }

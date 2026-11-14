@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
 )
 
@@ -39,7 +39,7 @@ var workersCmd = &cobra.Command{
 			logrus.WithError(err).WithField("address", address).Fatal("unable to connect to api")
 		}
 		defer conn.Close()
-		client := pb.NewChorusClient(conn)
+		client := pb.NewTuttiClient(conn)
 		appVersion, err := client.GetAppVersion(ctx, &emptypb.Empty{})
 		if err != nil {
 			logrus.WithError(err).WithField("address", address).Fatal("unable to get app version")

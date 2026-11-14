@@ -22,7 +22,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
 )
 
@@ -37,7 +37,7 @@ func newPolicyClient(ctx context.Context) (*api.Conn, pb.PolicyClient) {
 }
 
 // buildReplicationID constructs a ReplicationID from common CLI flags.
-// Semantics follow proto/chorus/policy.proto:
+// Semantics follow proto/tutti/policy.proto:
 //   - user-level replication: user/from/to set, fromBucket/toBucket empty
 //   - bucket-level replication: user/from/to and fromBucket set, toBucket optional
 func buildReplicationID(user, from, to, fromBucket, toBucket string) *pb.ReplicationID {

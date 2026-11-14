@@ -113,7 +113,7 @@ Rule (spec 4.4): conflict iff some edge pair has same `To`, or `a.From==b.To && 
 ### Task 4: API and proto — optional user, covered buckets, conflict check
 
 **Files:**
-- Modify: `proto/chorus/policy.proto`, `proto/chorus/protection_groups.proto` (only if needed), regenerate with `make proto-gen` (commit generated files under `proto/gen`), `pkg/api/policy_handlers.go`, `pkg/api/protection_groups.go`, `pkg/api/webhook_handlers.go` is NOT touched here
+- Modify: `proto/tutti/policy.proto`, `proto/tutti/protection_groups.proto` (only if needed), regenerate with `make proto-gen` (commit generated files under `proto/gen`), `pkg/api/policy_handlers.go`, `pkg/api/protection_groups.go`, `pkg/api/webhook_handlers.go` is NOT touched here
 - Test: `pkg/api/policy_handlers_*_test.go`, `pkg/api/protection_groups_*_test.go`
 
 **Interfaces — Consumes:** Task 3 (`ListScopeOwners`, `HasUser("", …)`, `replscope`).

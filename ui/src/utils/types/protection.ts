@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-/** Protection group API (proto/chorus/protection_groups.proto, grpc-gateway JSON). */
+/** Protection group API (proto/tutti/protection_groups.proto, grpc-gateway JSON). */
 
 export type ProtectionMode = 'manual' | 'auto';
 

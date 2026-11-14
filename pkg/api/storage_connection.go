@@ -30,7 +30,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/storagetest"
 	"github.com/hieunyit/tutti/pkg/store"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 // testTimeout bounds one full connection test.

@@ -29,7 +29,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3client"
 	"github.com/hieunyit/tutti/pkg/swift"
 	"github.com/hieunyit/tutti/pkg/trace"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/test/app"
 	"github.com/hieunyit/tutti/test/env"
@@ -573,7 +573,7 @@ var _ = Describe("Diff scenarious", Ordered, func() {
 		var ctx context.Context
 		var cancelFunc context.CancelFunc
 		var diffClient pb.DiffClient
-		var chorusClient pb.ChorusClient
+		var chorusClient pb.TuttiClient
 		var storeClient objstore.Common
 		var contentFiller gen.ContentFiller
 
@@ -643,7 +643,7 @@ var _ = Describe("Diff scenarious", Ordered, func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 			diffClient = pb.NewDiffClient(grpcConn)
-			chorusClient = pb.NewChorusClient(grpcConn)
+			chorusClient = pb.NewTuttiClient(grpcConn)
 
 			Eventually(func(g Gomega) {
 				_, err := chorusClient.GetAppVersion(ctx, &emptypb.Empty{})

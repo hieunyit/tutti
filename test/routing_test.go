@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/test/app"
 	"github.com/stretchr/testify/require"
 )

@@ -29,7 +29,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/hieunyit/tutti/pkg/dom"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func getFreePort(t *testing.T) int {
@@ -79,7 +79,7 @@ func TestStandaloneDefaultConfig(t *testing.T) {
 		grpc.WithTimeout(5*time.Second),
 	)
 	r.NoError(err)
-	apiClient := pb.NewChorusClient(grpcConn)
+	apiClient := pb.NewTuttiClient(grpcConn)
 
 	r.Eventually(func() bool {
 		res, err := apiClient.GetStorages(ctx, &emptypb.Empty{})

@@ -33,7 +33,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 type route struct {
@@ -57,10 +57,10 @@ var restRoutes = map[string]route{
 	pb.Diff_Fix_FullMethodName:              {http.MethodPost, "/diff/fix"},
 	pb.Diff_Restart_FullMethodName:          {http.MethodPut, "/diff/restart"},
 	// Chorus service:
-	pb.Chorus_GetAppVersion_FullMethodName:       {http.MethodGet, "/version"},
-	pb.Chorus_GetStorages_FullMethodName:         {http.MethodGet, "/storage"},
-	pb.Chorus_GetProxyCredentials_FullMethodName: {http.MethodGet, "/proxy"},
-	pb.Chorus_SetUserCredentials_FullMethodName:  {http.MethodPost, "/credentials"},
+	pb.Tutti_GetAppVersion_FullMethodName:       {http.MethodGet, "/version"},
+	pb.Tutti_GetStorages_FullMethodName:         {http.MethodGet, "/storage"},
+	pb.Tutti_GetProxyCredentials_FullMethodName: {http.MethodGet, "/proxy"},
+	pb.Tutti_SetUserCredentials_FullMethodName:  {http.MethodPost, "/credentials"},
 	// Policy service - replication:
 	pb.Policy_AvailableBuckets_FullMethodName:       {http.MethodPost, "/replication/list-buckets"},
 	pb.Policy_AddReplication_FullMethodName:         {http.MethodPost, "/replication/add"},
@@ -98,7 +98,7 @@ func SetToken(t string) { bearerToken = t }
 
 // Conn calls the chorus management API over HTTP/JSON via the grpc-gateway
 // REST endpoints. It implements grpc.ClientConnInterface so that the
-// generated gRPC client stubs (pb.NewChorusClient, pb.NewPolicyClient, ...)
+// generated gRPC client stubs (pb.NewTuttiClient, pb.NewPolicyClient, ...)
 // can be used as-is.
 type Conn struct {
 	httpClient *http.Client

@@ -36,7 +36,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/s3"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/proxy"
 	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/test/app"

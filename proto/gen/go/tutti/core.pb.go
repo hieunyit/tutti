@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        (unknown)
-// source: chorus/chorus.proto
+// source: tutti/core.proto
 
 package pb
 
@@ -54,11 +54,11 @@ func (x Storage_Type) String() string {
 }
 
 func (Storage_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_chorus_chorus_proto_enumTypes[0].Descriptor()
+	return file_tutti_core_proto_enumTypes[0].Descriptor()
 }
 
 func (Storage_Type) Type() protoreflect.EnumType {
-	return &file_chorus_chorus_proto_enumTypes[0]
+	return &file_tutti_core_proto_enumTypes[0]
 }
 
 func (x Storage_Type) Number() protoreflect.EnumNumber {
@@ -67,7 +67,7 @@ func (x Storage_Type) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Storage_Type.Descriptor instead.
 func (Storage_Type) EnumDescriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{2, 0}
+	return file_tutti_core_proto_rawDescGZIP(), []int{2, 0}
 }
 
 type GetAppVersionResponse struct {
@@ -81,7 +81,7 @@ type GetAppVersionResponse struct {
 
 func (x *GetAppVersionResponse) Reset() {
 	*x = GetAppVersionResponse{}
-	mi := &file_chorus_chorus_proto_msgTypes[0]
+	mi := &file_tutti_core_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -93,7 +93,7 @@ func (x *GetAppVersionResponse) String() string {
 func (*GetAppVersionResponse) ProtoMessage() {}
 
 func (x *GetAppVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[0]
+	mi := &file_tutti_core_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,7 +106,7 @@ func (x *GetAppVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAppVersionResponse.ProtoReflect.Descriptor instead.
 func (*GetAppVersionResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{0}
+	return file_tutti_core_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetAppVersionResponse) GetVersion() string {
@@ -139,7 +139,7 @@ type GetStoragesResponse struct {
 
 func (x *GetStoragesResponse) Reset() {
 	*x = GetStoragesResponse{}
-	mi := &file_chorus_chorus_proto_msgTypes[1]
+	mi := &file_tutti_core_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -151,7 +151,7 @@ func (x *GetStoragesResponse) String() string {
 func (*GetStoragesResponse) ProtoMessage() {}
 
 func (x *GetStoragesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[1]
+	mi := &file_tutti_core_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -164,7 +164,7 @@ func (x *GetStoragesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoragesResponse.ProtoReflect.Descriptor instead.
 func (*GetStoragesResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{1}
+	return file_tutti_core_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetStoragesResponse) GetStorages() []*Storage {
@@ -181,7 +181,7 @@ type Storage struct {
 	IsMain bool   `protobuf:"varint,2,opt,name=is_main,json=isMain,proto3" json:"is_main,omitempty"`
 	// ex: s3.clyso.com
 	Address  string       `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
-	Provider Storage_Type `protobuf:"varint,4,opt,name=provider,proto3,enum=chorus.Storage_Type" json:"provider,omitempty"`
+	Provider Storage_Type `protobuf:"varint,4,opt,name=provider,proto3,enum=tutti.Storage_Type" json:"provider,omitempty"`
 	// credentials: access key (public, aka username)
 	Credentials   []*Credential `protobuf:"bytes,5,rep,name=credentials,proto3" json:"credentials,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -190,7 +190,7 @@ type Storage struct {
 
 func (x *Storage) Reset() {
 	*x = Storage{}
-	mi := &file_chorus_chorus_proto_msgTypes[2]
+	mi := &file_tutti_core_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -202,7 +202,7 @@ func (x *Storage) String() string {
 func (*Storage) ProtoMessage() {}
 
 func (x *Storage) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[2]
+	mi := &file_tutti_core_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +215,7 @@ func (x *Storage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Storage.ProtoReflect.Descriptor instead.
 func (*Storage) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{2}
+	return file_tutti_core_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Storage) GetName() string {
@@ -264,7 +264,7 @@ type Credential struct {
 
 func (x *Credential) Reset() {
 	*x = Credential{}
-	mi := &file_chorus_chorus_proto_msgTypes[3]
+	mi := &file_tutti_core_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -276,7 +276,7 @@ func (x *Credential) String() string {
 func (*Credential) ProtoMessage() {}
 
 func (x *Credential) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[3]
+	mi := &file_tutti_core_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -289,7 +289,7 @@ func (x *Credential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Credential.ProtoReflect.Descriptor instead.
 func (*Credential) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{3}
+	return file_tutti_core_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Credential) GetAlias() string {
@@ -323,7 +323,7 @@ type GetProxyCredentialsResponse struct {
 
 func (x *GetProxyCredentialsResponse) Reset() {
 	*x = GetProxyCredentialsResponse{}
-	mi := &file_chorus_chorus_proto_msgTypes[4]
+	mi := &file_tutti_core_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +335,7 @@ func (x *GetProxyCredentialsResponse) String() string {
 func (*GetProxyCredentialsResponse) ProtoMessage() {}
 
 func (x *GetProxyCredentialsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[4]
+	mi := &file_tutti_core_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +348,7 @@ func (x *GetProxyCredentialsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProxyCredentialsResponse.ProtoReflect.Descriptor instead.
 func (*GetProxyCredentialsResponse) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{4}
+	return file_tutti_core_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetProxyCredentialsResponse) GetAddress() string {
@@ -377,7 +377,7 @@ type SetUserCredentialsRequest struct {
 
 func (x *SetUserCredentialsRequest) Reset() {
 	*x = SetUserCredentialsRequest{}
-	mi := &file_chorus_chorus_proto_msgTypes[5]
+	mi := &file_tutti_core_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -389,7 +389,7 @@ func (x *SetUserCredentialsRequest) String() string {
 func (*SetUserCredentialsRequest) ProtoMessage() {}
 
 func (x *SetUserCredentialsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[5]
+	mi := &file_tutti_core_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,7 +402,7 @@ func (x *SetUserCredentialsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUserCredentialsRequest.ProtoReflect.Descriptor instead.
 func (*SetUserCredentialsRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{5}
+	return file_tutti_core_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SetUserCredentialsRequest) GetStorage() string {
@@ -443,7 +443,7 @@ type S3Credential struct {
 
 func (x *S3Credential) Reset() {
 	*x = S3Credential{}
-	mi := &file_chorus_chorus_proto_msgTypes[6]
+	mi := &file_tutti_core_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -455,7 +455,7 @@ func (x *S3Credential) String() string {
 func (*S3Credential) ProtoMessage() {}
 
 func (x *S3Credential) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[6]
+	mi := &file_tutti_core_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -468,7 +468,7 @@ func (x *S3Credential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3Credential.ProtoReflect.Descriptor instead.
 func (*S3Credential) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{6}
+	return file_tutti_core_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *S3Credential) GetAccessKey() string {
@@ -497,7 +497,7 @@ type SwiftCredential struct {
 
 func (x *SwiftCredential) Reset() {
 	*x = SwiftCredential{}
-	mi := &file_chorus_chorus_proto_msgTypes[7]
+	mi := &file_tutti_core_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +509,7 @@ func (x *SwiftCredential) String() string {
 func (*SwiftCredential) ProtoMessage() {}
 
 func (x *SwiftCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_chorus_proto_msgTypes[7]
+	mi := &file_tutti_core_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +522,7 @@ func (x *SwiftCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwiftCredential.ProtoReflect.Descriptor instead.
 func (*SwiftCredential) Descriptor() ([]byte, []int) {
-	return file_chorus_chorus_proto_rawDescGZIP(), []int{7}
+	return file_tutti_core_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SwiftCredential) GetUsername() string {
@@ -553,23 +553,23 @@ func (x *SwiftCredential) GetTenantName() string {
 	return ""
 }
 
-var File_chorus_chorus_proto protoreflect.FileDescriptor
+var File_tutti_core_proto protoreflect.FileDescriptor
 
-const file_chorus_chorus_proto_rawDesc = "" +
+const file_tutti_core_proto_rawDesc = "" +
 	"\n" +
-	"\x13chorus/chorus.proto\x12\x06chorus\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"]\n" +
+	"\x10tutti/core.proto\x12\x05tutti\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"]\n" +
 	"\x15GetAppVersionResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\tR\x06commit\x12\x12\n" +
-	"\x04date\x18\x03 \x01(\tR\x04date\"B\n" +
-	"\x13GetStoragesResponse\x12+\n" +
-	"\bstorages\x18\x01 \x03(\v2\x0f.chorus.StorageR\bstorages\"\xd3\x01\n" +
+	"\x04date\x18\x03 \x01(\tR\x04date\"A\n" +
+	"\x13GetStoragesResponse\x12*\n" +
+	"\bstorages\x18\x01 \x03(\v2\x0e.tutti.StorageR\bstorages\"\xd1\x01\n" +
 	"\aStorage\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x17\n" +
 	"\ais_main\x18\x02 \x01(\bR\x06isMain\x12\x18\n" +
-	"\aaddress\x18\x03 \x01(\tR\aaddress\x120\n" +
-	"\bprovider\x18\x04 \x01(\x0e2\x14.chorus.Storage.TypeR\bprovider\x124\n" +
-	"\vcredentials\x18\x05 \x03(\v2\x12.chorus.CredentialR\vcredentials\"\x19\n" +
+	"\aaddress\x18\x03 \x01(\tR\aaddress\x12/\n" +
+	"\bprovider\x18\x04 \x01(\x0e2\x13.tutti.Storage.TypeR\bprovider\x123\n" +
+	"\vcredentials\x18\x05 \x03(\v2\x11.tutti.CredentialR\vcredentials\"\x19\n" +
 	"\x04Type\x12\x06\n" +
 	"\x02S3\x10\x00\x12\t\n" +
 	"\x05SWIFT\x10\x01\"`\n" +
@@ -579,16 +579,16 @@ const file_chorus_chorus_proto_rawDesc = "" +
 	"\n" +
 	"access_key\x18\x02 \x01(\tR\taccessKey\x12\x1d\n" +
 	"\n" +
-	"secret_key\x18\x03 \x01(\tR\tsecretKey\"m\n" +
+	"secret_key\x18\x03 \x01(\tR\tsecretKey\"l\n" +
 	"\x1bGetProxyCredentialsResponse\x12\x18\n" +
-	"\aaddress\x18\x01 \x01(\tR\aaddress\x124\n" +
-	"\vcredentials\x18\x02 \x03(\v2\x12.chorus.CredentialR\vcredentials\"\xd5\x01\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\x123\n" +
+	"\vcredentials\x18\x02 \x03(\v2\x11.tutti.CredentialR\vcredentials\"\xd3\x01\n" +
 	"\x19SetUserCredentialsRequest\x12\x18\n" +
 	"\astorage\x18\x01 \x01(\tR\astorage\x12\x12\n" +
-	"\x04user\x18\x02 \x01(\tR\x04user\x122\n" +
-	"\as3_cred\x18\x03 \x01(\v2\x14.chorus.S3CredentialH\x00R\x06s3Cred\x88\x01\x01\x12;\n" +
+	"\x04user\x18\x02 \x01(\tR\x04user\x121\n" +
+	"\as3_cred\x18\x03 \x01(\v2\x13.tutti.S3CredentialH\x00R\x06s3Cred\x88\x01\x01\x12:\n" +
 	"\n" +
-	"swift_cred\x18\x04 \x01(\v2\x17.chorus.SwiftCredentialH\x01R\tswiftCred\x88\x01\x01B\n" +
+	"swift_cred\x18\x04 \x01(\v2\x16.tutti.SwiftCredentialH\x01R\tswiftCred\x88\x01\x01B\n" +
 	"\n" +
 	"\b_s3_credB\r\n" +
 	"\v_swift_cred\"L\n" +
@@ -603,54 +603,54 @@ const file_chorus_chorus_proto_rawDesc = "" +
 	"\vdomain_name\x18\x03 \x01(\tR\n" +
 	"domainName\x12\x1f\n" +
 	"\vtenant_name\x18\x04 \x01(\tR\n" +
-	"tenantName2\xb9\x02\n" +
-	"\x06Chorus\x12F\n" +
-	"\rGetAppVersion\x12\x16.google.protobuf.Empty\x1a\x1d.chorus.GetAppVersionResponse\x12B\n" +
-	"\vGetStorages\x12\x16.google.protobuf.Empty\x1a\x1b.chorus.GetStoragesResponse\x12R\n" +
-	"\x13GetProxyCredentials\x12\x16.google.protobuf.Empty\x1a#.chorus.GetProxyCredentialsResponse\x12O\n" +
-	"\x12SetUserCredentials\x12!.chorus.SetUserCredentialsRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
+	"tenantName2\xb4\x02\n" +
+	"\x05Tutti\x12E\n" +
+	"\rGetAppVersion\x12\x16.google.protobuf.Empty\x1a\x1c.tutti.GetAppVersionResponse\x12A\n" +
+	"\vGetStorages\x12\x16.google.protobuf.Empty\x1a\x1a.tutti.GetStoragesResponse\x12Q\n" +
+	"\x13GetProxyCredentials\x12\x16.google.protobuf.Empty\x1a\".tutti.GetProxyCredentialsResponse\x12N\n" +
+	"\x12SetUserCredentials\x12 .tutti.SetUserCredentialsRequest\x1a\x16.google.protobuf.EmptyB*Z(github.com/hieunyit/tutti/proto/tutti;pbb\x06proto3"
 
 var (
-	file_chorus_chorus_proto_rawDescOnce sync.Once
-	file_chorus_chorus_proto_rawDescData []byte
+	file_tutti_core_proto_rawDescOnce sync.Once
+	file_tutti_core_proto_rawDescData []byte
 )
 
-func file_chorus_chorus_proto_rawDescGZIP() []byte {
-	file_chorus_chorus_proto_rawDescOnce.Do(func() {
-		file_chorus_chorus_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_chorus_chorus_proto_rawDesc), len(file_chorus_chorus_proto_rawDesc)))
+func file_tutti_core_proto_rawDescGZIP() []byte {
+	file_tutti_core_proto_rawDescOnce.Do(func() {
+		file_tutti_core_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tutti_core_proto_rawDesc), len(file_tutti_core_proto_rawDesc)))
 	})
-	return file_chorus_chorus_proto_rawDescData
+	return file_tutti_core_proto_rawDescData
 }
 
-var file_chorus_chorus_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chorus_chorus_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_chorus_chorus_proto_goTypes = []any{
-	(Storage_Type)(0),                   // 0: chorus.Storage.Type
-	(*GetAppVersionResponse)(nil),       // 1: chorus.GetAppVersionResponse
-	(*GetStoragesResponse)(nil),         // 2: chorus.GetStoragesResponse
-	(*Storage)(nil),                     // 3: chorus.Storage
-	(*Credential)(nil),                  // 4: chorus.Credential
-	(*GetProxyCredentialsResponse)(nil), // 5: chorus.GetProxyCredentialsResponse
-	(*SetUserCredentialsRequest)(nil),   // 6: chorus.SetUserCredentialsRequest
-	(*S3Credential)(nil),                // 7: chorus.S3Credential
-	(*SwiftCredential)(nil),             // 8: chorus.SwiftCredential
+var file_tutti_core_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tutti_core_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_tutti_core_proto_goTypes = []any{
+	(Storage_Type)(0),                   // 0: tutti.Storage.Type
+	(*GetAppVersionResponse)(nil),       // 1: tutti.GetAppVersionResponse
+	(*GetStoragesResponse)(nil),         // 2: tutti.GetStoragesResponse
+	(*Storage)(nil),                     // 3: tutti.Storage
+	(*Credential)(nil),                  // 4: tutti.Credential
+	(*GetProxyCredentialsResponse)(nil), // 5: tutti.GetProxyCredentialsResponse
+	(*SetUserCredentialsRequest)(nil),   // 6: tutti.SetUserCredentialsRequest
+	(*S3Credential)(nil),                // 7: tutti.S3Credential
+	(*SwiftCredential)(nil),             // 8: tutti.SwiftCredential
 	(*emptypb.Empty)(nil),               // 9: google.protobuf.Empty
 }
-var file_chorus_chorus_proto_depIdxs = []int32{
-	3,  // 0: chorus.GetStoragesResponse.storages:type_name -> chorus.Storage
-	0,  // 1: chorus.Storage.provider:type_name -> chorus.Storage.Type
-	4,  // 2: chorus.Storage.credentials:type_name -> chorus.Credential
-	4,  // 3: chorus.GetProxyCredentialsResponse.credentials:type_name -> chorus.Credential
-	7,  // 4: chorus.SetUserCredentialsRequest.s3_cred:type_name -> chorus.S3Credential
-	8,  // 5: chorus.SetUserCredentialsRequest.swift_cred:type_name -> chorus.SwiftCredential
-	9,  // 6: chorus.Chorus.GetAppVersion:input_type -> google.protobuf.Empty
-	9,  // 7: chorus.Chorus.GetStorages:input_type -> google.protobuf.Empty
-	9,  // 8: chorus.Chorus.GetProxyCredentials:input_type -> google.protobuf.Empty
-	6,  // 9: chorus.Chorus.SetUserCredentials:input_type -> chorus.SetUserCredentialsRequest
-	1,  // 10: chorus.Chorus.GetAppVersion:output_type -> chorus.GetAppVersionResponse
-	2,  // 11: chorus.Chorus.GetStorages:output_type -> chorus.GetStoragesResponse
-	5,  // 12: chorus.Chorus.GetProxyCredentials:output_type -> chorus.GetProxyCredentialsResponse
-	9,  // 13: chorus.Chorus.SetUserCredentials:output_type -> google.protobuf.Empty
+var file_tutti_core_proto_depIdxs = []int32{
+	3,  // 0: tutti.GetStoragesResponse.storages:type_name -> tutti.Storage
+	0,  // 1: tutti.Storage.provider:type_name -> tutti.Storage.Type
+	4,  // 2: tutti.Storage.credentials:type_name -> tutti.Credential
+	4,  // 3: tutti.GetProxyCredentialsResponse.credentials:type_name -> tutti.Credential
+	7,  // 4: tutti.SetUserCredentialsRequest.s3_cred:type_name -> tutti.S3Credential
+	8,  // 5: tutti.SetUserCredentialsRequest.swift_cred:type_name -> tutti.SwiftCredential
+	9,  // 6: tutti.Tutti.GetAppVersion:input_type -> google.protobuf.Empty
+	9,  // 7: tutti.Tutti.GetStorages:input_type -> google.protobuf.Empty
+	9,  // 8: tutti.Tutti.GetProxyCredentials:input_type -> google.protobuf.Empty
+	6,  // 9: tutti.Tutti.SetUserCredentials:input_type -> tutti.SetUserCredentialsRequest
+	1,  // 10: tutti.Tutti.GetAppVersion:output_type -> tutti.GetAppVersionResponse
+	2,  // 11: tutti.Tutti.GetStorages:output_type -> tutti.GetStoragesResponse
+	5,  // 12: tutti.Tutti.GetProxyCredentials:output_type -> tutti.GetProxyCredentialsResponse
+	9,  // 13: tutti.Tutti.SetUserCredentials:output_type -> google.protobuf.Empty
 	10, // [10:14] is the sub-list for method output_type
 	6,  // [6:10] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
@@ -658,28 +658,28 @@ var file_chorus_chorus_proto_depIdxs = []int32{
 	0,  // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_chorus_chorus_proto_init() }
-func file_chorus_chorus_proto_init() {
-	if File_chorus_chorus_proto != nil {
+func init() { file_tutti_core_proto_init() }
+func file_tutti_core_proto_init() {
+	if File_tutti_core_proto != nil {
 		return
 	}
-	file_chorus_chorus_proto_msgTypes[5].OneofWrappers = []any{}
+	file_tutti_core_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_chorus_proto_rawDesc), len(file_chorus_chorus_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tutti_core_proto_rawDesc), len(file_tutti_core_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_chorus_chorus_proto_goTypes,
-		DependencyIndexes: file_chorus_chorus_proto_depIdxs,
-		EnumInfos:         file_chorus_chorus_proto_enumTypes,
-		MessageInfos:      file_chorus_chorus_proto_msgTypes,
+		GoTypes:           file_tutti_core_proto_goTypes,
+		DependencyIndexes: file_tutti_core_proto_depIdxs,
+		EnumInfos:         file_tutti_core_proto_enumTypes,
+		MessageInfos:      file_tutti_core_proto_msgTypes,
 	}.Build()
-	File_chorus_chorus_proto = out.File
-	file_chorus_chorus_proto_goTypes = nil
-	file_chorus_chorus_proto_depIdxs = nil
+	File_tutti_core_proto = out.File
+	file_tutti_core_proto_goTypes = nil
+	file_tutti_core_proto_depIdxs = nil
 }

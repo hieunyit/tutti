@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/chorus.proto
+// source: tutti/core.proto
 
 package pb
 
@@ -20,16 +20,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Chorus_GetAppVersion_FullMethodName       = "/chorus.Chorus/GetAppVersion"
-	Chorus_GetStorages_FullMethodName         = "/chorus.Chorus/GetStorages"
-	Chorus_GetProxyCredentials_FullMethodName = "/chorus.Chorus/GetProxyCredentials"
-	Chorus_SetUserCredentials_FullMethodName  = "/chorus.Chorus/SetUserCredentials"
+	Tutti_GetAppVersion_FullMethodName       = "/tutti.Tutti/GetAppVersion"
+	Tutti_GetStorages_FullMethodName         = "/tutti.Tutti/GetStorages"
+	Tutti_GetProxyCredentials_FullMethodName = "/tutti.Tutti/GetProxyCredentials"
+	Tutti_SetUserCredentials_FullMethodName  = "/tutti.Tutti/SetUserCredentials"
 )
 
-// ChorusClient is the client API for Chorus service.
+// TuttiClient is the client API for Tutti service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ChorusClient interface {
+type TuttiClient interface {
 	// Get app version
 	GetAppVersion(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAppVersionResponse, error)
 	// Lists configured storages with users
@@ -40,58 +40,58 @@ type ChorusClient interface {
 	SetUserCredentials(ctx context.Context, in *SetUserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type chorusClient struct {
+type tuttiClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewChorusClient(cc grpc.ClientConnInterface) ChorusClient {
-	return &chorusClient{cc}
+func NewTuttiClient(cc grpc.ClientConnInterface) TuttiClient {
+	return &tuttiClient{cc}
 }
 
-func (c *chorusClient) GetAppVersion(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAppVersionResponse, error) {
+func (c *tuttiClient) GetAppVersion(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetAppVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAppVersionResponse)
-	err := c.cc.Invoke(ctx, Chorus_GetAppVersion_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Tutti_GetAppVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chorusClient) GetStorages(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetStoragesResponse, error) {
+func (c *tuttiClient) GetStorages(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetStoragesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStoragesResponse)
-	err := c.cc.Invoke(ctx, Chorus_GetStorages_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Tutti_GetStorages_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chorusClient) GetProxyCredentials(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetProxyCredentialsResponse, error) {
+func (c *tuttiClient) GetProxyCredentials(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetProxyCredentialsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetProxyCredentialsResponse)
-	err := c.cc.Invoke(ctx, Chorus_GetProxyCredentials_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Tutti_GetProxyCredentials_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chorusClient) SetUserCredentials(ctx context.Context, in *SetUserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *tuttiClient) SetUserCredentials(ctx context.Context, in *SetUserCredentialsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Chorus_SetUserCredentials_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Tutti_SetUserCredentials_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ChorusServer is the server API for Chorus service.
-// All implementations should embed UnimplementedChorusServer
+// TuttiServer is the server API for Tutti service.
+// All implementations should embed UnimplementedTuttiServer
 // for forward compatibility.
-type ChorusServer interface {
+type TuttiServer interface {
 	// Get app version
 	GetAppVersion(context.Context, *emptypb.Empty) (*GetAppVersionResponse, error)
 	// Lists configured storages with users
@@ -102,141 +102,141 @@ type ChorusServer interface {
 	SetUserCredentials(context.Context, *SetUserCredentialsRequest) (*emptypb.Empty, error)
 }
 
-// UnimplementedChorusServer should be embedded to have
+// UnimplementedTuttiServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedChorusServer struct{}
+type UnimplementedTuttiServer struct{}
 
-func (UnimplementedChorusServer) GetAppVersion(context.Context, *emptypb.Empty) (*GetAppVersionResponse, error) {
+func (UnimplementedTuttiServer) GetAppVersion(context.Context, *emptypb.Empty) (*GetAppVersionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAppVersion not implemented")
 }
-func (UnimplementedChorusServer) GetStorages(context.Context, *emptypb.Empty) (*GetStoragesResponse, error) {
+func (UnimplementedTuttiServer) GetStorages(context.Context, *emptypb.Empty) (*GetStoragesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStorages not implemented")
 }
-func (UnimplementedChorusServer) GetProxyCredentials(context.Context, *emptypb.Empty) (*GetProxyCredentialsResponse, error) {
+func (UnimplementedTuttiServer) GetProxyCredentials(context.Context, *emptypb.Empty) (*GetProxyCredentialsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProxyCredentials not implemented")
 }
-func (UnimplementedChorusServer) SetUserCredentials(context.Context, *SetUserCredentialsRequest) (*emptypb.Empty, error) {
+func (UnimplementedTuttiServer) SetUserCredentials(context.Context, *SetUserCredentialsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetUserCredentials not implemented")
 }
-func (UnimplementedChorusServer) testEmbeddedByValue() {}
+func (UnimplementedTuttiServer) testEmbeddedByValue() {}
 
-// UnsafeChorusServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ChorusServer will
+// UnsafeTuttiServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TuttiServer will
 // result in compilation errors.
-type UnsafeChorusServer interface {
-	mustEmbedUnimplementedChorusServer()
+type UnsafeTuttiServer interface {
+	mustEmbedUnimplementedTuttiServer()
 }
 
-func RegisterChorusServer(s grpc.ServiceRegistrar, srv ChorusServer) {
-	// If the following call panics, it indicates UnimplementedChorusServer was
+func RegisterTuttiServer(s grpc.ServiceRegistrar, srv TuttiServer) {
+	// If the following call panics, it indicates UnimplementedTuttiServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Chorus_ServiceDesc, srv)
+	s.RegisterService(&Tutti_ServiceDesc, srv)
 }
 
-func _Chorus_GetAppVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Tutti_GetAppVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChorusServer).GetAppVersion(ctx, in)
+		return srv.(TuttiServer).GetAppVersion(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chorus_GetAppVersion_FullMethodName,
+		FullMethod: Tutti_GetAppVersion_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChorusServer).GetAppVersion(ctx, req.(*emptypb.Empty))
+		return srv.(TuttiServer).GetAppVersion(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chorus_GetStorages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Tutti_GetStorages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChorusServer).GetStorages(ctx, in)
+		return srv.(TuttiServer).GetStorages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chorus_GetStorages_FullMethodName,
+		FullMethod: Tutti_GetStorages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChorusServer).GetStorages(ctx, req.(*emptypb.Empty))
+		return srv.(TuttiServer).GetStorages(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chorus_GetProxyCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Tutti_GetProxyCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChorusServer).GetProxyCredentials(ctx, in)
+		return srv.(TuttiServer).GetProxyCredentials(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chorus_GetProxyCredentials_FullMethodName,
+		FullMethod: Tutti_GetProxyCredentials_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChorusServer).GetProxyCredentials(ctx, req.(*emptypb.Empty))
+		return srv.(TuttiServer).GetProxyCredentials(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chorus_SetUserCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Tutti_SetUserCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetUserCredentialsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChorusServer).SetUserCredentials(ctx, in)
+		return srv.(TuttiServer).SetUserCredentials(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chorus_SetUserCredentials_FullMethodName,
+		FullMethod: Tutti_SetUserCredentials_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChorusServer).SetUserCredentials(ctx, req.(*SetUserCredentialsRequest))
+		return srv.(TuttiServer).SetUserCredentials(ctx, req.(*SetUserCredentialsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Chorus_ServiceDesc is the grpc.ServiceDesc for Chorus service.
+// Tutti_ServiceDesc is the grpc.ServiceDesc for Tutti service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Chorus_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.Chorus",
-	HandlerType: (*ChorusServer)(nil),
+var Tutti_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "tutti.Tutti",
+	HandlerType: (*TuttiServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetAppVersion",
-			Handler:    _Chorus_GetAppVersion_Handler,
+			Handler:    _Tutti_GetAppVersion_Handler,
 		},
 		{
 			MethodName: "GetStorages",
-			Handler:    _Chorus_GetStorages_Handler,
+			Handler:    _Tutti_GetStorages_Handler,
 		},
 		{
 			MethodName: "GetProxyCredentials",
-			Handler:    _Chorus_GetProxyCredentials_Handler,
+			Handler:    _Tutti_GetProxyCredentials_Handler,
 		},
 		{
 			MethodName: "SetUserCredentials",
-			Handler:    _Chorus_SetUserCredentials_Handler,
+			Handler:    _Tutti_SetUserCredentials_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "chorus/chorus.proto",
+	Metadata: "tutti/core.proto",
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3"
 
 	"github.com/hieunyit/tutti/pkg/objstore"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/test/app"
 	mclient "github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/require"
@@ -35,7 +35,7 @@ func Test_Dynamic_creds(t *testing.T) {
 	tstCtx := t.Context()
 
 	// verify existing storages and creds
-	storResp, err := e.ChorusClient.GetStorages(tstCtx, &emptypb.Empty{})
+	storResp, err := e.TuttiClient.GetStorages(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	r.Len(storResp.Storages, 3)
 	for _, st := range storResp.Storages {
@@ -51,35 +51,35 @@ func Test_Dynamic_creds(t *testing.T) {
 		AccessKey: "new-access-key",
 		SecretKey: "new-secret-key",
 	}
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "unknown-storage",
 		User:    newUser,
 		S3Cred:  newCred,
 	})
 	r.Error(err, "setting creds for unknown storage should fail")
 
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "main",
 		User:    "",
 		S3Cred:  newCred,
 	})
 	r.Error(err, "user name is required")
 
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "main",
 		User:    newUser,
 		S3Cred:  nil,
 	})
 	r.Error(err, "s3 credentials are required")
 
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "main",
 		User:    user,
 		S3Cred:  newCred,
 	})
 	r.Error(err, "cannot overwrite user from yaml config")
 
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "main",
 		User:    newUser,
 		S3Cred:  newCred,
@@ -88,7 +88,7 @@ func Test_Dynamic_creds(t *testing.T) {
 
 	time.Sleep(dcInterval * 2)
 	// verify new user creds are in effect
-	storResp, err = e.ChorusClient.GetStorages(tstCtx, &emptypb.Empty{})
+	storResp, err = e.TuttiClient.GetStorages(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	r.Len(storResp.Storages, 3)
 	for _, st := range storResp.Storages {
@@ -120,7 +120,7 @@ func Test_Dynamic_creds(t *testing.T) {
 	r.Error(err, "cannot start migration with missing creds in target storage")
 
 	// add creds for new user to f1 storage
-	_, err = e.ChorusClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
+	_, err = e.TuttiClient.SetUserCredentials(tstCtx, &pb.SetUserCredentialsRequest{
 		Storage: "f1",
 		User:    newUser,
 		S3Cred:  newCred,
@@ -129,7 +129,7 @@ func Test_Dynamic_creds(t *testing.T) {
 
 	time.Sleep(dcInterval * 2)
 	// verify new user creds are in effect
-	storResp, err = e.ChorusClient.GetStorages(tstCtx, &emptypb.Empty{})
+	storResp, err = e.TuttiClient.GetStorages(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	r.Len(storResp.Storages, 3)
 	mainAddr, f1addr := "", ""
@@ -156,7 +156,7 @@ func Test_Dynamic_creds(t *testing.T) {
 		}
 	}
 	// create s3 clients with new user creds
-	proxyAddr, err := e.ChorusClient.GetProxyCredentials(tstCtx, &emptypb.Empty{})
+	proxyAddr, err := e.TuttiClient.GetProxyCredentials(tstCtx, &emptypb.Empty{})
 	r.NoError(err)
 	proxyClient, _ := app.CreateClient(t, s3.StorageAddress{
 		Address:  proxyAddr.Address,

@@ -22,7 +22,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/testutil"
 	"github.com/hieunyit/tutti/pkg/util"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/proxy"
 	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/service/worker/handler"
@@ -47,7 +47,7 @@ var WorkerRetryConf = handler.Config{
 
 type Chorus struct {
 	PolicyClient  pb.PolicyClient
-	ChorusClient  pb.ChorusClient
+	TuttiClient  pb.TuttiClient
 	WebhookClient pb.WebhookClient
 
 	UrlHttpApi string
@@ -162,7 +162,7 @@ func SetupChorusRedis(t testing.TB, workerConf *worker.Config, proxyConf *proxy.
 		t.Fatal("failed to dial grpc api:", err)
 	}
 	e.PolicyClient = pb.NewPolicyClient(grpcConn)
-	e.ChorusClient = pb.NewChorusClient(grpcConn)
+	e.TuttiClient = pb.NewTuttiClient(grpcConn)
 
 	if webhookGrpcAddr != grpcAddr {
 		webhookConn, err := grpc.DialContext(ctx, webhookGrpcAddr,

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        (unknown)
-// source: chorus/webhook.proto
+// source: tutti/webhook.proto
 
 package pb
 
@@ -70,11 +70,11 @@ func (x SwiftOperation) String() string {
 }
 
 func (SwiftOperation) Descriptor() protoreflect.EnumDescriptor {
-	return file_chorus_webhook_proto_enumTypes[0].Descriptor()
+	return file_tutti_webhook_proto_enumTypes[0].Descriptor()
 }
 
 func (SwiftOperation) Type() protoreflect.EnumType {
-	return &file_chorus_webhook_proto_enumTypes[0]
+	return &file_tutti_webhook_proto_enumTypes[0]
 }
 
 func (x SwiftOperation) Number() protoreflect.EnumNumber {
@@ -83,12 +83,12 @@ func (x SwiftOperation) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SwiftOperation.Descriptor instead.
 func (SwiftOperation) EnumDescriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{0}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{0}
 }
 
 type SwiftEventsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Chorus storage alias (must be a configured SWIFT storage).
+	// Tutti storage alias (must be a configured SWIFT storage).
 	Storage string `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
 	// Events are processed independently; a failure in one does not affect others.
 	Events        []*SwiftEvent `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
@@ -98,7 +98,7 @@ type SwiftEventsRequest struct {
 
 func (x *SwiftEventsRequest) Reset() {
 	*x = SwiftEventsRequest{}
-	mi := &file_chorus_webhook_proto_msgTypes[0]
+	mi := &file_tutti_webhook_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -110,7 +110,7 @@ func (x *SwiftEventsRequest) String() string {
 func (*SwiftEventsRequest) ProtoMessage() {}
 
 func (x *SwiftEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[0]
+	mi := &file_tutti_webhook_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -123,7 +123,7 @@ func (x *SwiftEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwiftEventsRequest.ProtoReflect.Descriptor instead.
 func (*SwiftEventsRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{0}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *SwiftEventsRequest) GetStorage() string {
@@ -148,7 +148,7 @@ type SwiftEvent struct {
 	Container string `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
 	// Required for object operations.
 	Object    string         `protobuf:"bytes,3,opt,name=object,proto3" json:"object,omitempty"`
-	Operation SwiftOperation `protobuf:"varint,4,opt,name=operation,proto3,enum=chorus.SwiftOperation" json:"operation,omitempty"`
+	Operation SwiftOperation `protobuf:"varint,4,opt,name=operation,proto3,enum=tutti.SwiftOperation" json:"operation,omitempty"`
 	// Optional. Object ETag (MD5).
 	Etag string `protobuf:"bytes,5,opt,name=etag,proto3" json:"etag,omitempty"`
 	// Optional. Object last modified timestamp.
@@ -166,7 +166,7 @@ type SwiftEvent struct {
 
 func (x *SwiftEvent) Reset() {
 	*x = SwiftEvent{}
-	mi := &file_chorus_webhook_proto_msgTypes[1]
+	mi := &file_tutti_webhook_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +178,7 @@ func (x *SwiftEvent) String() string {
 func (*SwiftEvent) ProtoMessage() {}
 
 func (x *SwiftEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[1]
+	mi := &file_tutti_webhook_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +191,7 @@ func (x *SwiftEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwiftEvent.ProtoReflect.Descriptor instead.
 func (*SwiftEvent) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{1}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SwiftEvent) GetAccount() string {
@@ -259,7 +259,7 @@ func (x *SwiftEvent) GetDeleteMultipart() bool {
 
 type S3NotificationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Chorus storage alias (must be a configured S3 storage). Bound to URL path.
+	// Tutti storage alias (must be a configured S3 storage). Bound to URL path.
 	Storage string `protobuf:"bytes,1,opt,name=storage,proto3" json:"storage,omitempty"`
 	// Standard AWS S3 notification records.
 	// Events are processed independently; a failure in one does not affect others.
@@ -270,7 +270,7 @@ type S3NotificationRequest struct {
 
 func (x *S3NotificationRequest) Reset() {
 	*x = S3NotificationRequest{}
-	mi := &file_chorus_webhook_proto_msgTypes[2]
+	mi := &file_tutti_webhook_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +282,7 @@ func (x *S3NotificationRequest) String() string {
 func (*S3NotificationRequest) ProtoMessage() {}
 
 func (x *S3NotificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[2]
+	mi := &file_tutti_webhook_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +295,7 @@ func (x *S3NotificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3NotificationRequest.ProtoReflect.Descriptor instead.
 func (*S3NotificationRequest) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{2}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *S3NotificationRequest) GetStorage() string {
@@ -323,7 +323,7 @@ type S3EventRecord struct {
 
 func (x *S3EventRecord) Reset() {
 	*x = S3EventRecord{}
-	mi := &file_chorus_webhook_proto_msgTypes[3]
+	mi := &file_tutti_webhook_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +335,7 @@ func (x *S3EventRecord) String() string {
 func (*S3EventRecord) ProtoMessage() {}
 
 func (x *S3EventRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[3]
+	mi := &file_tutti_webhook_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +348,7 @@ func (x *S3EventRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3EventRecord.ProtoReflect.Descriptor instead.
 func (*S3EventRecord) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{3}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *S3EventRecord) GetEventName() string {
@@ -367,7 +367,7 @@ func (x *S3EventRecord) GetS3() *S3EventPayload {
 
 type S3EventPayload struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Encoded chorus notification ID (contains user + bucket).
+	// Encoded tutti notification ID (contains user + bucket).
 	ConfigurationId string        `protobuf:"bytes,1,opt,name=configuration_id,json=configurationId,proto3" json:"configuration_id,omitempty"`
 	Bucket          *S3BucketInfo `protobuf:"bytes,2,opt,name=bucket,proto3" json:"bucket,omitempty"`
 	Object          *S3ObjectInfo `protobuf:"bytes,3,opt,name=object,proto3" json:"object,omitempty"`
@@ -377,7 +377,7 @@ type S3EventPayload struct {
 
 func (x *S3EventPayload) Reset() {
 	*x = S3EventPayload{}
-	mi := &file_chorus_webhook_proto_msgTypes[4]
+	mi := &file_tutti_webhook_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -389,7 +389,7 @@ func (x *S3EventPayload) String() string {
 func (*S3EventPayload) ProtoMessage() {}
 
 func (x *S3EventPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[4]
+	mi := &file_tutti_webhook_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -402,7 +402,7 @@ func (x *S3EventPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3EventPayload.ProtoReflect.Descriptor instead.
 func (*S3EventPayload) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{4}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *S3EventPayload) GetConfigurationId() string {
@@ -435,7 +435,7 @@ type S3BucketInfo struct {
 
 func (x *S3BucketInfo) Reset() {
 	*x = S3BucketInfo{}
-	mi := &file_chorus_webhook_proto_msgTypes[5]
+	mi := &file_tutti_webhook_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +447,7 @@ func (x *S3BucketInfo) String() string {
 func (*S3BucketInfo) ProtoMessage() {}
 
 func (x *S3BucketInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[5]
+	mi := &file_tutti_webhook_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +460,7 @@ func (x *S3BucketInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3BucketInfo.ProtoReflect.Descriptor instead.
 func (*S3BucketInfo) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{5}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *S3BucketInfo) GetName() string {
@@ -481,7 +481,7 @@ type S3ObjectInfo struct {
 
 func (x *S3ObjectInfo) Reset() {
 	*x = S3ObjectInfo{}
-	mi := &file_chorus_webhook_proto_msgTypes[6]
+	mi := &file_tutti_webhook_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +493,7 @@ func (x *S3ObjectInfo) String() string {
 func (*S3ObjectInfo) ProtoMessage() {}
 
 func (x *S3ObjectInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_chorus_webhook_proto_msgTypes[6]
+	mi := &file_tutti_webhook_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +506,7 @@ func (x *S3ObjectInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use S3ObjectInfo.ProtoReflect.Descriptor instead.
 func (*S3ObjectInfo) Descriptor() ([]byte, []int) {
-	return file_chorus_webhook_proto_rawDescGZIP(), []int{6}
+	return file_tutti_webhook_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *S3ObjectInfo) GetKey() string {
@@ -530,37 +530,37 @@ func (x *S3ObjectInfo) GetETag() string {
 	return ""
 }
 
-var File_chorus_webhook_proto protoreflect.FileDescriptor
+var File_tutti_webhook_proto protoreflect.FileDescriptor
 
-const file_chorus_webhook_proto_rawDesc = "" +
+const file_tutti_webhook_proto_rawDesc = "" +
 	"\n" +
-	"\x14chorus/webhook.proto\x12\x06chorus\x1a\x1bgoogle/protobuf/empty.proto\"Z\n" +
+	"\x13tutti/webhook.proto\x12\x05tutti\x1a\x1bgoogle/protobuf/empty.proto\"Y\n" +
 	"\x12SwiftEventsRequest\x12\x18\n" +
-	"\astorage\x18\x01 \x01(\tR\astorage\x12*\n" +
-	"\x06events\x18\x02 \x03(\v2\x12.chorus.SwiftEventR\x06events\"\xa9\x02\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12)\n" +
+	"\x06events\x18\x02 \x03(\v2\x11.tutti.SwiftEventR\x06events\"\xa8\x02\n" +
 	"\n" +
 	"SwiftEvent\x12\x18\n" +
 	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x1c\n" +
 	"\tcontainer\x18\x02 \x01(\tR\tcontainer\x12\x16\n" +
-	"\x06object\x18\x03 \x01(\tR\x06object\x124\n" +
-	"\toperation\x18\x04 \x01(\x0e2\x16.chorus.SwiftOperationR\toperation\x12\x12\n" +
+	"\x06object\x18\x03 \x01(\tR\x06object\x123\n" +
+	"\toperation\x18\x04 \x01(\x0e2\x15.tutti.SwiftOperationR\toperation\x12\x12\n" +
 	"\x04etag\x18\x05 \x01(\tR\x04etag\x12#\n" +
 	"\rlast_modified\x18\x06 \x01(\tR\flastModified\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\a \x01(\tR\tversionId\x12\x12\n" +
 	"\x04date\x18\b \x01(\tR\x04date\x12)\n" +
-	"\x10delete_multipart\x18\t \x01(\bR\x0fdeleteMultipart\"b\n" +
+	"\x10delete_multipart\x18\t \x01(\bR\x0fdeleteMultipart\"a\n" +
 	"\x15S3NotificationRequest\x12\x18\n" +
-	"\astorage\x18\x01 \x01(\tR\astorage\x12/\n" +
-	"\arecords\x18\x02 \x03(\v2\x15.chorus.S3EventRecordR\aRecords\"V\n" +
+	"\astorage\x18\x01 \x01(\tR\astorage\x12.\n" +
+	"\arecords\x18\x02 \x03(\v2\x14.tutti.S3EventRecordR\aRecords\"U\n" +
 	"\rS3EventRecord\x12\x1d\n" +
 	"\n" +
-	"event_name\x18\x01 \x01(\tR\teventName\x12&\n" +
-	"\x02s3\x18\x02 \x01(\v2\x16.chorus.S3EventPayloadR\x02s3\"\x97\x01\n" +
+	"event_name\x18\x01 \x01(\tR\teventName\x12%\n" +
+	"\x02s3\x18\x02 \x01(\v2\x15.tutti.S3EventPayloadR\x02s3\"\x95\x01\n" +
 	"\x0eS3EventPayload\x12)\n" +
-	"\x10configuration_id\x18\x01 \x01(\tR\x0fconfigurationId\x12,\n" +
-	"\x06bucket\x18\x02 \x01(\v2\x14.chorus.S3BucketInfoR\x06bucket\x12,\n" +
-	"\x06object\x18\x03 \x01(\v2\x14.chorus.S3ObjectInfoR\x06object\"\"\n" +
+	"\x10configuration_id\x18\x01 \x01(\tR\x0fconfigurationId\x12+\n" +
+	"\x06bucket\x18\x02 \x01(\v2\x13.tutti.S3BucketInfoR\x06bucket\x12+\n" +
+	"\x06object\x18\x03 \x01(\v2\x13.tutti.S3ObjectInfoR\x06object\"\"\n" +
 	"\fS3BucketInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"I\n" +
 	"\fS3ObjectInfo\x12\x10\n" +
@@ -574,47 +574,47 @@ const file_chorus_webhook_proto_rawDesc = "" +
 	"\x10CONTAINER_DELETE\x10\x03\x12\x12\n" +
 	"\x0eOBJECT_CREATED\x10\x04\x12\x1b\n" +
 	"\x17OBJECT_METADATA_UPDATED\x10\x05\x12\x12\n" +
-	"\x0eOBJECT_DELETED\x10\x062\x96\x01\n" +
-	"\aWebhook\x12A\n" +
-	"\vSwiftEvents\x12\x1a.chorus.SwiftEventsRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
-	"\x0fS3Notifications\x12\x1d.chorus.S3NotificationRequest\x1a\x16.google.protobuf.EmptyB+Z)github.com/hieunyit/tutti/proto/chorus;pbb\x06proto3"
+	"\x0eOBJECT_DELETED\x10\x062\x94\x01\n" +
+	"\aWebhook\x12@\n" +
+	"\vSwiftEvents\x12\x19.tutti.SwiftEventsRequest\x1a\x16.google.protobuf.Empty\x12G\n" +
+	"\x0fS3Notifications\x12\x1c.tutti.S3NotificationRequest\x1a\x16.google.protobuf.EmptyB*Z(github.com/hieunyit/tutti/proto/tutti;pbb\x06proto3"
 
 var (
-	file_chorus_webhook_proto_rawDescOnce sync.Once
-	file_chorus_webhook_proto_rawDescData []byte
+	file_tutti_webhook_proto_rawDescOnce sync.Once
+	file_tutti_webhook_proto_rawDescData []byte
 )
 
-func file_chorus_webhook_proto_rawDescGZIP() []byte {
-	file_chorus_webhook_proto_rawDescOnce.Do(func() {
-		file_chorus_webhook_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_chorus_webhook_proto_rawDesc), len(file_chorus_webhook_proto_rawDesc)))
+func file_tutti_webhook_proto_rawDescGZIP() []byte {
+	file_tutti_webhook_proto_rawDescOnce.Do(func() {
+		file_tutti_webhook_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_tutti_webhook_proto_rawDesc), len(file_tutti_webhook_proto_rawDesc)))
 	})
-	return file_chorus_webhook_proto_rawDescData
+	return file_tutti_webhook_proto_rawDescData
 }
 
-var file_chorus_webhook_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chorus_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_chorus_webhook_proto_goTypes = []any{
-	(SwiftOperation)(0),           // 0: chorus.SwiftOperation
-	(*SwiftEventsRequest)(nil),    // 1: chorus.SwiftEventsRequest
-	(*SwiftEvent)(nil),            // 2: chorus.SwiftEvent
-	(*S3NotificationRequest)(nil), // 3: chorus.S3NotificationRequest
-	(*S3EventRecord)(nil),         // 4: chorus.S3EventRecord
-	(*S3EventPayload)(nil),        // 5: chorus.S3EventPayload
-	(*S3BucketInfo)(nil),          // 6: chorus.S3BucketInfo
-	(*S3ObjectInfo)(nil),          // 7: chorus.S3ObjectInfo
+var file_tutti_webhook_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tutti_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_tutti_webhook_proto_goTypes = []any{
+	(SwiftOperation)(0),           // 0: tutti.SwiftOperation
+	(*SwiftEventsRequest)(nil),    // 1: tutti.SwiftEventsRequest
+	(*SwiftEvent)(nil),            // 2: tutti.SwiftEvent
+	(*S3NotificationRequest)(nil), // 3: tutti.S3NotificationRequest
+	(*S3EventRecord)(nil),         // 4: tutti.S3EventRecord
+	(*S3EventPayload)(nil),        // 5: tutti.S3EventPayload
+	(*S3BucketInfo)(nil),          // 6: tutti.S3BucketInfo
+	(*S3ObjectInfo)(nil),          // 7: tutti.S3ObjectInfo
 	(*emptypb.Empty)(nil),         // 8: google.protobuf.Empty
 }
-var file_chorus_webhook_proto_depIdxs = []int32{
-	2, // 0: chorus.SwiftEventsRequest.events:type_name -> chorus.SwiftEvent
-	0, // 1: chorus.SwiftEvent.operation:type_name -> chorus.SwiftOperation
-	4, // 2: chorus.S3NotificationRequest.records:type_name -> chorus.S3EventRecord
-	5, // 3: chorus.S3EventRecord.s3:type_name -> chorus.S3EventPayload
-	6, // 4: chorus.S3EventPayload.bucket:type_name -> chorus.S3BucketInfo
-	7, // 5: chorus.S3EventPayload.object:type_name -> chorus.S3ObjectInfo
-	1, // 6: chorus.Webhook.SwiftEvents:input_type -> chorus.SwiftEventsRequest
-	3, // 7: chorus.Webhook.S3Notifications:input_type -> chorus.S3NotificationRequest
-	8, // 8: chorus.Webhook.SwiftEvents:output_type -> google.protobuf.Empty
-	8, // 9: chorus.Webhook.S3Notifications:output_type -> google.protobuf.Empty
+var file_tutti_webhook_proto_depIdxs = []int32{
+	2, // 0: tutti.SwiftEventsRequest.events:type_name -> tutti.SwiftEvent
+	0, // 1: tutti.SwiftEvent.operation:type_name -> tutti.SwiftOperation
+	4, // 2: tutti.S3NotificationRequest.records:type_name -> tutti.S3EventRecord
+	5, // 3: tutti.S3EventRecord.s3:type_name -> tutti.S3EventPayload
+	6, // 4: tutti.S3EventPayload.bucket:type_name -> tutti.S3BucketInfo
+	7, // 5: tutti.S3EventPayload.object:type_name -> tutti.S3ObjectInfo
+	1, // 6: tutti.Webhook.SwiftEvents:input_type -> tutti.SwiftEventsRequest
+	3, // 7: tutti.Webhook.S3Notifications:input_type -> tutti.S3NotificationRequest
+	8, // 8: tutti.Webhook.SwiftEvents:output_type -> google.protobuf.Empty
+	8, // 9: tutti.Webhook.S3Notifications:output_type -> google.protobuf.Empty
 	8, // [8:10] is the sub-list for method output_type
 	6, // [6:8] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
@@ -622,27 +622,27 @@ var file_chorus_webhook_proto_depIdxs = []int32{
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_chorus_webhook_proto_init() }
-func file_chorus_webhook_proto_init() {
-	if File_chorus_webhook_proto != nil {
+func init() { file_tutti_webhook_proto_init() }
+func file_tutti_webhook_proto_init() {
+	if File_tutti_webhook_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chorus_webhook_proto_rawDesc), len(file_chorus_webhook_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tutti_webhook_proto_rawDesc), len(file_tutti_webhook_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_chorus_webhook_proto_goTypes,
-		DependencyIndexes: file_chorus_webhook_proto_depIdxs,
-		EnumInfos:         file_chorus_webhook_proto_enumTypes,
-		MessageInfos:      file_chorus_webhook_proto_msgTypes,
+		GoTypes:           file_tutti_webhook_proto_goTypes,
+		DependencyIndexes: file_tutti_webhook_proto_depIdxs,
+		EnumInfos:         file_tutti_webhook_proto_enumTypes,
+		MessageInfos:      file_tutti_webhook_proto_msgTypes,
 	}.Build()
-	File_chorus_webhook_proto = out.File
-	file_chorus_webhook_proto_goTypes = nil
-	file_chorus_webhook_proto_depIdxs = nil
+	File_tutti_webhook_proto = out.File
+	file_tutti_webhook_proto_goTypes = nil
+	file_tutti_webhook_proto_depIdxs = nil
 }

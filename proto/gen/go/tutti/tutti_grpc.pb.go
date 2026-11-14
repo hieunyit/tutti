@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/tutti.proto
+// source: tutti/tutti.proto
 
 package pb
 
@@ -20,46 +20,46 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Resilience_ListRuntimeStorages_FullMethodName            = "/chorus.Resilience/ListRuntimeStorages"
-	Resilience_CreateRuntimeStorage_FullMethodName           = "/chorus.Resilience/CreateRuntimeStorage"
-	Resilience_UpdateRuntimeStorage_FullMethodName           = "/chorus.Resilience/UpdateRuntimeStorage"
-	Resilience_DeleteRuntimeStorage_FullMethodName           = "/chorus.Resilience/DeleteRuntimeStorage"
-	Resilience_TestRuntimeStorage_FullMethodName             = "/chorus.Resilience/TestRuntimeStorage"
-	Resilience_GetRuntimeStorage_FullMethodName              = "/chorus.Resilience/GetRuntimeStorage"
-	Resilience_TestStorageConnection_FullMethodName          = "/chorus.Resilience/TestStorageConnection"
-	Resilience_RotateStorageConnectionAccount_FullMethodName = "/chorus.Resilience/RotateStorageConnectionAccount"
-	Resilience_GetProxyStatus_FullMethodName                 = "/chorus.Resilience/GetProxyStatus"
-	Resilience_GetStatsHistory_FullMethodName                = "/chorus.Resilience/GetStatsHistory"
-	Resilience_GetWorkerStats_FullMethodName                 = "/chorus.Resilience/GetWorkerStats"
-	Resilience_ListFailoverPolicies_FullMethodName           = "/chorus.Resilience/ListFailoverPolicies"
-	Resilience_SetFailoverPolicy_FullMethodName              = "/chorus.Resilience/SetFailoverPolicy"
-	Resilience_DeleteFailoverPolicy_FullMethodName           = "/chorus.Resilience/DeleteFailoverPolicy"
-	Resilience_ListFailoverEvents_FullMethodName             = "/chorus.Resilience/ListFailoverEvents"
-	Resilience_DeleteFailoverEvent_FullMethodName            = "/chorus.Resilience/DeleteFailoverEvent"
-	Resilience_ListAccessPolicies_FullMethodName             = "/chorus.Resilience/ListAccessPolicies"
-	Resilience_SetAccessPolicy_FullMethodName                = "/chorus.Resilience/SetAccessPolicy"
-	Resilience_DeleteAccessPolicy_FullMethodName             = "/chorus.Resilience/DeleteAccessPolicy"
-	Resilience_ListProxyAccounts_FullMethodName              = "/chorus.Resilience/ListProxyAccounts"
-	Resilience_CreateProxyAccount_FullMethodName             = "/chorus.Resilience/CreateProxyAccount"
-	Resilience_RotateProxyAccountSecret_FullMethodName       = "/chorus.Resilience/RotateProxyAccountSecret"
-	Resilience_SetProxyAccountStatus_FullMethodName          = "/chorus.Resilience/SetProxyAccountStatus"
-	Resilience_DeleteProxyAccount_FullMethodName             = "/chorus.Resilience/DeleteProxyAccount"
-	Resilience_ListS3Users_FullMethodName                    = "/chorus.Resilience/ListS3Users"
-	Resilience_CreateS3User_FullMethodName                   = "/chorus.Resilience/CreateS3User"
-	Resilience_UpdateS3UserCredentials_FullMethodName        = "/chorus.Resilience/UpdateS3UserCredentials"
-	Resilience_DeleteS3UserCredentials_FullMethodName        = "/chorus.Resilience/DeleteS3UserCredentials"
-	Resilience_DeleteS3User_FullMethodName                   = "/chorus.Resilience/DeleteS3User"
-	Resilience_TestS3UserCredentials_FullMethodName          = "/chorus.Resilience/TestS3UserCredentials"
-	Resilience_ListConsoleUsers_FullMethodName               = "/chorus.Resilience/ListConsoleUsers"
-	Resilience_CreateConsoleUser_FullMethodName              = "/chorus.Resilience/CreateConsoleUser"
-	Resilience_UpdateConsoleUser_FullMethodName              = "/chorus.Resilience/UpdateConsoleUser"
-	Resilience_ResetConsoleUserPassword_FullMethodName       = "/chorus.Resilience/ResetConsoleUserPassword"
-	Resilience_DeleteConsoleUser_FullMethodName              = "/chorus.Resilience/DeleteConsoleUser"
-	Resilience_GetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/GetProxyFleetConfig"
-	Resilience_SetProxyFleetConfig_FullMethodName            = "/chorus.Resilience/SetProxyFleetConfig"
-	Resilience_ListAuditLog_FullMethodName                   = "/chorus.Resilience/ListAuditLog"
-	Resilience_GetSystemSettings_FullMethodName              = "/chorus.Resilience/GetSystemSettings"
-	Resilience_UpdateSystemSettings_FullMethodName           = "/chorus.Resilience/UpdateSystemSettings"
+	Resilience_ListRuntimeStorages_FullMethodName            = "/tutti.Resilience/ListRuntimeStorages"
+	Resilience_CreateRuntimeStorage_FullMethodName           = "/tutti.Resilience/CreateRuntimeStorage"
+	Resilience_UpdateRuntimeStorage_FullMethodName           = "/tutti.Resilience/UpdateRuntimeStorage"
+	Resilience_DeleteRuntimeStorage_FullMethodName           = "/tutti.Resilience/DeleteRuntimeStorage"
+	Resilience_TestRuntimeStorage_FullMethodName             = "/tutti.Resilience/TestRuntimeStorage"
+	Resilience_GetRuntimeStorage_FullMethodName              = "/tutti.Resilience/GetRuntimeStorage"
+	Resilience_TestStorageConnection_FullMethodName          = "/tutti.Resilience/TestStorageConnection"
+	Resilience_RotateStorageConnectionAccount_FullMethodName = "/tutti.Resilience/RotateStorageConnectionAccount"
+	Resilience_GetProxyStatus_FullMethodName                 = "/tutti.Resilience/GetProxyStatus"
+	Resilience_GetStatsHistory_FullMethodName                = "/tutti.Resilience/GetStatsHistory"
+	Resilience_GetWorkerStats_FullMethodName                 = "/tutti.Resilience/GetWorkerStats"
+	Resilience_ListFailoverPolicies_FullMethodName           = "/tutti.Resilience/ListFailoverPolicies"
+	Resilience_SetFailoverPolicy_FullMethodName              = "/tutti.Resilience/SetFailoverPolicy"
+	Resilience_DeleteFailoverPolicy_FullMethodName           = "/tutti.Resilience/DeleteFailoverPolicy"
+	Resilience_ListFailoverEvents_FullMethodName             = "/tutti.Resilience/ListFailoverEvents"
+	Resilience_DeleteFailoverEvent_FullMethodName            = "/tutti.Resilience/DeleteFailoverEvent"
+	Resilience_ListAccessPolicies_FullMethodName             = "/tutti.Resilience/ListAccessPolicies"
+	Resilience_SetAccessPolicy_FullMethodName                = "/tutti.Resilience/SetAccessPolicy"
+	Resilience_DeleteAccessPolicy_FullMethodName             = "/tutti.Resilience/DeleteAccessPolicy"
+	Resilience_ListProxyAccounts_FullMethodName              = "/tutti.Resilience/ListProxyAccounts"
+	Resilience_CreateProxyAccount_FullMethodName             = "/tutti.Resilience/CreateProxyAccount"
+	Resilience_RotateProxyAccountSecret_FullMethodName       = "/tutti.Resilience/RotateProxyAccountSecret"
+	Resilience_SetProxyAccountStatus_FullMethodName          = "/tutti.Resilience/SetProxyAccountStatus"
+	Resilience_DeleteProxyAccount_FullMethodName             = "/tutti.Resilience/DeleteProxyAccount"
+	Resilience_ListS3Users_FullMethodName                    = "/tutti.Resilience/ListS3Users"
+	Resilience_CreateS3User_FullMethodName                   = "/tutti.Resilience/CreateS3User"
+	Resilience_UpdateS3UserCredentials_FullMethodName        = "/tutti.Resilience/UpdateS3UserCredentials"
+	Resilience_DeleteS3UserCredentials_FullMethodName        = "/tutti.Resilience/DeleteS3UserCredentials"
+	Resilience_DeleteS3User_FullMethodName                   = "/tutti.Resilience/DeleteS3User"
+	Resilience_TestS3UserCredentials_FullMethodName          = "/tutti.Resilience/TestS3UserCredentials"
+	Resilience_ListConsoleUsers_FullMethodName               = "/tutti.Resilience/ListConsoleUsers"
+	Resilience_CreateConsoleUser_FullMethodName              = "/tutti.Resilience/CreateConsoleUser"
+	Resilience_UpdateConsoleUser_FullMethodName              = "/tutti.Resilience/UpdateConsoleUser"
+	Resilience_ResetConsoleUserPassword_FullMethodName       = "/tutti.Resilience/ResetConsoleUserPassword"
+	Resilience_DeleteConsoleUser_FullMethodName              = "/tutti.Resilience/DeleteConsoleUser"
+	Resilience_GetProxyFleetConfig_FullMethodName            = "/tutti.Resilience/GetProxyFleetConfig"
+	Resilience_SetProxyFleetConfig_FullMethodName            = "/tutti.Resilience/SetProxyFleetConfig"
+	Resilience_ListAuditLog_FullMethodName                   = "/tutti.Resilience/ListAuditLog"
+	Resilience_GetSystemSettings_FullMethodName              = "/tutti.Resilience/GetSystemSettings"
+	Resilience_UpdateSystemSettings_FullMethodName           = "/tutti.Resilience/UpdateSystemSettings"
 )
 
 // ResilienceClient is the client API for Resilience service.
@@ -1561,7 +1561,7 @@ func _Resilience_UpdateSystemSettings_Handler(srv interface{}, ctx context.Conte
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Resilience_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.Resilience",
+	ServiceName: "tutti.Resilience",
 	HandlerType: (*ResilienceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -1726,5 +1726,5 @@ var Resilience_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "chorus/tutti.proto",
+	Metadata: "tutti/tutti.proto",
 }

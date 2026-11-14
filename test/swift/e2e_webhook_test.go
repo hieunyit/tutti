@@ -9,7 +9,7 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/containers"
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	"github.com/hieunyit/tutti/pkg/swift"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/proxy"
 	"github.com/hieunyit/tutti/service/worker"
 	"github.com/hieunyit/tutti/test/app"
@@ -37,7 +37,7 @@ func Test_e2e_webhook(t *testing.T) {
 	proxyConf.Storage = proxyStorages
 
 	e := app.SetupChorus(t, workerConf, proxyConf)
-	chorusStorages, err := e.ChorusClient.GetStorages(ctx, &emptypb.Empty{})
+	chorusStorages, err := e.TuttiClient.GetStorages(ctx, &emptypb.Empty{})
 	r.NoError(err)
 	t.Log(chorusStorages.Storages)
 

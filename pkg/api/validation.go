@@ -21,7 +21,7 @@ import (
 	"github.com/adhocore/gronx"
 
 	"github.com/hieunyit/tutti/pkg/dom"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func validateSwitchDonwtimeOpts(in *pb.SwitchDowntimeOpts) error {

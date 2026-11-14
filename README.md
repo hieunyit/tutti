@@ -171,10 +171,10 @@ Tests emulate real-world scenarios like:
 - data migration integrity check
 
 ### Add APIs
-Chorus worker [implements gRPC server](./pkg/api/) defined in [proto/chorus/chorus.proto](./proto/chorus/chorus.proto). It also provides REST API which is automatically generated from the proto file with [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). GRPC<->REST mappings are defined in [proto/http.yaml](./proto/http.yaml).
+Chorus worker [implements gRPC server](./pkg/api/) defined in [proto/tutti/chorus.proto](./proto/tutti/chorus.proto). It also provides REST API which is automatically generated from the proto file with [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). GRPC<->REST mappings are defined in [proto/http.yaml](./proto/http.yaml).
 
 Steps to add new API:
-1. Add new service or endpoint definition to [proto/chorus/chorus.proto](./proto/chorus/chorus.proto)
+1. Add new service or endpoint definition to [proto/tutti/chorus.proto](./proto/tutti/chorus.proto)
 2. Add corresponding mapping to [proto/http.yaml](./proto/http.yaml)
 3. Run `make proto-gen` to generate go client, server, and openapi definitions to [proto/gen](./proto/gen) directory.
 4. Implement new service or endpoint in [pkg/api](./pkg/api/)

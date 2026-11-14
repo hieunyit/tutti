@@ -28,7 +28,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
 )
 
@@ -60,7 +60,7 @@ var (
 	maxWidth = 120
 )
 
-func New(ctx context.Context, policyClient pb.PolicyClient, client pb.ChorusClient) tea.Model {
+func New(ctx context.Context, policyClient pb.PolicyClient, client pb.TuttiClient) tea.Model {
 	model := &UI{
 		client:       policyClient,
 		chorusClient: client,
@@ -77,7 +77,7 @@ var _ tea.Model = &UI{}
 
 type UI struct {
 	client       pb.PolicyClient
-	chorusClient pb.ChorusClient
+	chorusClient pb.TuttiClient
 	ctx          context.Context
 
 	err error

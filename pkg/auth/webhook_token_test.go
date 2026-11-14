@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 const testWebhookToken = "s3cr3t-webhook-token"
@@ -30,7 +30,7 @@ func webhookServer(t *testing.T, token string) (*grpc.ClientConn, http.Handler) 
 	require.NoError(t, err)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(u), grpc.ChainStreamInterceptor(s))
 	pb.RegisterWebhookServer(srv, pb.UnimplementedWebhookServer{})
-	pb.RegisterChorusServer(srv, pb.UnimplementedChorusServer{})
+	pb.RegisterTuttiServer(srv, pb.UnimplementedTuttiServer{})
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
@@ -56,7 +56,7 @@ func TestWebhookTokenGRPC(t *testing.T) {
 	require.Equal(t, codes.Unimplemented, call(metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+testWebhookToken)))
 	require.Equal(t, codes.Unimplemented, call(metadata.AppendToOutgoingContext(context.Background(), "x-tutti-webhook-token", testWebhookToken)))
 	// other services are not affected by the webhook token
-	_, err := pb.NewChorusClient(conn).GetStorages(context.Background(), nil)
+	_, err := pb.NewTuttiClient(conn).GetStorages(context.Background(), nil)
 	require.NotEqual(t, codes.Unauthenticated, codeOf(err))
 }
 
@@ -115,7 +115,7 @@ func webhookServerOpts(t *testing.T, token string, opts ...WebhookOption) *grpc.
 	require.NoError(t, err)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(u), grpc.ChainStreamInterceptor(s))
 	pb.RegisterWebhookServer(srv, pb.UnimplementedWebhookServer{})
-	pb.RegisterChorusServer(srv, pb.UnimplementedChorusServer{})
+	pb.RegisterTuttiServer(srv, pb.UnimplementedTuttiServer{})
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -139,7 +139,7 @@ func TestWebhookRequireToken(t *testing.T) {
 		require.Equal(t, codes.Unauthenticated, call(ctx, conn))
 		require.Equal(t, codes.Unauthenticated, call(bearer("anything"), conn))
 		// non-webhook services are unaffected
-		_, err := pb.NewChorusClient(conn).GetStorages(ctx, nil)
+		_, err := pb.NewTuttiClient(conn).GetStorages(ctx, nil)
 		require.NotEqual(t, codes.Unauthenticated, codeOf(err))
 	})
 
@@ -159,7 +159,7 @@ func TestWebhookRequireToken(t *testing.T) {
 		_, s := WebhookTokenInterceptors("", WebhookRequireToken())
 		called := false
 		h := func(any, grpc.ServerStream) error { called = true; return nil }
-		err := s(nil, fakeCtxStream{ctx: ctx}, &grpc.StreamServerInfo{FullMethod: "/chorus.Webhook/S3Notifications"}, h)
+		err := s(nil, fakeCtxStream{ctx: ctx}, &grpc.StreamServerInfo{FullMethod: "/tutti.Webhook/S3Notifications"}, h)
 		require.Equal(t, codes.Unauthenticated, codeOf(err))
 		require.False(t, called)
 	})

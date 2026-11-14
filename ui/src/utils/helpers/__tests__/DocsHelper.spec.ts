@@ -218,11 +218,11 @@ describe('ApiDocsHelper', () => {
   it('marks viewer, public and admin operations', () => {
     expect(operationRole('Resilience_GetProxyStatus')).toBe('viewer');
     expect(operationRole('Resilience_GetStatsHistory')).toBe('viewer');
-    expect(operationRole('Chorus_GetAppVersion')).toBe('public');
+    expect(operationRole('Tutti_GetAppVersion')).toBe('public');
     expect(operationRole('Webhook_S3Notifications')).toBe('public');
     expect(operationRole('Resilience_SetFailoverPolicy')).toBe('admin');
     // secret keys are never viewer-readable
-    expect(operationRole('Chorus_GetProxyCredentials')).toBe('admin');
+    expect(operationRole('Tutti_GetProxyCredentials')).toBe('admin');
     expect(operationRole(undefined)).toBe('admin');
   });
 

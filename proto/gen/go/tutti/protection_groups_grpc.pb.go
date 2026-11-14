@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/protection_groups.proto
+// source: tutti/protection_groups.proto
 
 package pb
 
@@ -20,20 +20,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProtectionGroups_List_FullMethodName                   = "/chorus.ProtectionGroups/List"
-	ProtectionGroups_Get_FullMethodName                    = "/chorus.ProtectionGroups/Get"
-	ProtectionGroups_Create_FullMethodName                 = "/chorus.ProtectionGroups/Create"
-	ProtectionGroups_Update_FullMethodName                 = "/chorus.ProtectionGroups/Update"
-	ProtectionGroups_Delete_FullMethodName                 = "/chorus.ProtectionGroups/Delete"
-	ProtectionGroups_Switchover_FullMethodName             = "/chorus.ProtectionGroups/Switchover"
-	ProtectionGroups_AbortSwitch_FullMethodName            = "/chorus.ProtectionGroups/AbortSwitch"
-	ProtectionGroups_SetAutomaticFreeze_FullMethodName     = "/chorus.ProtectionGroups/SetAutomaticFreeze"
-	ProtectionGroups_GetAutomaticFreeze_FullMethodName     = "/chorus.ProtectionGroups/GetAutomaticFreeze"
-	ProtectionGroups_ListWriters_FullMethodName            = "/chorus.ProtectionGroups/ListWriters"
-	ProtectionGroups_ClearWriter_FullMethodName            = "/chorus.ProtectionGroups/ClearWriter"
-	ProtectionGroups_PlanFailoverMigration_FullMethodName  = "/chorus.ProtectionGroups/PlanFailoverMigration"
-	ProtectionGroups_ApplyFailoverMigration_FullMethodName = "/chorus.ProtectionGroups/ApplyFailoverMigration"
-	ProtectionGroups_ListUnprotectedScopes_FullMethodName  = "/chorus.ProtectionGroups/ListUnprotectedScopes"
+	ProtectionGroups_List_FullMethodName                   = "/tutti.ProtectionGroups/List"
+	ProtectionGroups_Get_FullMethodName                    = "/tutti.ProtectionGroups/Get"
+	ProtectionGroups_Create_FullMethodName                 = "/tutti.ProtectionGroups/Create"
+	ProtectionGroups_Update_FullMethodName                 = "/tutti.ProtectionGroups/Update"
+	ProtectionGroups_Delete_FullMethodName                 = "/tutti.ProtectionGroups/Delete"
+	ProtectionGroups_Switchover_FullMethodName             = "/tutti.ProtectionGroups/Switchover"
+	ProtectionGroups_AbortSwitch_FullMethodName            = "/tutti.ProtectionGroups/AbortSwitch"
+	ProtectionGroups_SetAutomaticFreeze_FullMethodName     = "/tutti.ProtectionGroups/SetAutomaticFreeze"
+	ProtectionGroups_GetAutomaticFreeze_FullMethodName     = "/tutti.ProtectionGroups/GetAutomaticFreeze"
+	ProtectionGroups_ListWriters_FullMethodName            = "/tutti.ProtectionGroups/ListWriters"
+	ProtectionGroups_ClearWriter_FullMethodName            = "/tutti.ProtectionGroups/ClearWriter"
+	ProtectionGroups_PlanFailoverMigration_FullMethodName  = "/tutti.ProtectionGroups/PlanFailoverMigration"
+	ProtectionGroups_ApplyFailoverMigration_FullMethodName = "/tutti.ProtectionGroups/ApplyFailoverMigration"
+	ProtectionGroups_ListUnprotectedScopes_FullMethodName  = "/tutti.ProtectionGroups/ListUnprotectedScopes"
 )
 
 // ProtectionGroupsClient is the client API for ProtectionGroups service.
@@ -559,7 +559,7 @@ func _ProtectionGroups_ListUnprotectedScopes_Handler(srv interface{}, ctx contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ProtectionGroups_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.ProtectionGroups",
+	ServiceName: "tutti.ProtectionGroups",
 	HandlerType: (*ProtectionGroupsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -620,5 +620,5 @@ var ProtectionGroups_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "chorus/protection_groups.proto",
+	Metadata: "tutti/protection_groups.proto",
 }

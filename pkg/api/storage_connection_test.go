@@ -14,7 +14,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/storagetest/fakes3"
 	"github.com/hieunyit/tutti/pkg/testutil"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func connTestSetup(t *testing.T) (*resilienceHandlers, objstore.CredsService, *fakes3.Server) {

@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/ui"
 )
@@ -42,7 +42,7 @@ var dashCmd = &cobra.Command{
 			logrus.WithError(err).WithField("address", address).Fatal("unable to connect to api")
 		}
 		defer conn.Close()
-		client := pb.NewChorusClient(conn)
+		client := pb.NewTuttiClient(conn)
 		policyClient := pb.NewPolicyClient(conn)
 		model := ui.New(ctx, policyClient, client)
 		p := tea.NewProgram(model, tea.WithAltScreen())

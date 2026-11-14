@@ -4,241 +4,241 @@ config_version: 3
 http:
   rules:
     # Diff service:
-    - selector: chorus.Diff.Start
+    - selector: tutti.Diff.Start
       post: /diff/start
       body: "*"
-    - selector: chorus.Diff.List
+    - selector: tutti.Diff.List
       get: /diff/list
-    - selector: chorus.Diff.GetReport
+    - selector: tutti.Diff.GetReport
       post: /diff/report
       body: "*"
-    - selector: chorus.Diff.GetReportEntries
+    - selector: tutti.Diff.GetReportEntries
       post: /diff/report-entries
       body: "*"
-    - selector: chorus.Diff.DeleteReport
+    - selector: tutti.Diff.DeleteReport
       put: /diff/delete
       body: "*"
-    - selector: chorus.Diff.Fix
+    - selector: tutti.Diff.Fix
       post: /diff/fix
       body: "*"
-    - selector: chorus.Diff.Restart
+    - selector: tutti.Diff.Restart
       put: /diff/restart
       body: "*"
-      # Chorus service:
-    - selector: chorus.Chorus.GetAppVersion
+      # Tutti service:
+    - selector: tutti.Tutti.GetAppVersion
       get: /version
-    - selector: chorus.Chorus.GetStorages
+    - selector: tutti.Tutti.GetStorages
       get: /storage
-    - selector: chorus.Chorus.GetProxyCredentials
+    - selector: tutti.Tutti.GetProxyCredentials
       get: /proxy
-    - selector: chorus.Chorus.SetUserCredentials
+    - selector: tutti.Tutti.SetUserCredentials
       body: "*"
       post: /credentials
       # Policy service - replication:
-    - selector: chorus.Policy.AvailableBuckets
+    - selector: tutti.Policy.AvailableBuckets
       post: /replication/list-buckets
       body: "*"
-    - selector: chorus.Policy.AddReplication
+    - selector: tutti.Policy.AddReplication
       post: /replication/add
       body: "*"
-    - selector: chorus.Policy.GetReplication
+    - selector: tutti.Policy.GetReplication
       post: /replication/get
       body: "*"
-    - selector: chorus.Policy.ListReplications
+    - selector: tutti.Policy.ListReplications
       post: /replication
       body: "*"
-    - selector: chorus.Policy.PauseReplication
+    - selector: tutti.Policy.PauseReplication
       put: /replication/pause
       body: "*"
-    - selector: chorus.Policy.ResumeReplication
+    - selector: tutti.Policy.ResumeReplication
       put: /replication/resume
       body: "*"
-    - selector: chorus.Policy.DeleteReplication
+    - selector: tutti.Policy.DeleteReplication
       put: /replication/delete
       body: "*"
-    - selector: chorus.Policy.SwitchWithZeroDowntime
+    - selector: tutti.Policy.SwitchWithZeroDowntime
       post: /replication/switch/zero-downtime
       body: "*"
-    - selector: chorus.Policy.SwitchWithDowntime
+    - selector: tutti.Policy.SwitchWithDowntime
       post: /replication/switch
       body: "*"
-    - selector: chorus.Policy.DeleteSwitch
+    - selector: tutti.Policy.DeleteSwitch
       post: /replication/switch/delete
       body: "*"
-    - selector: chorus.Policy.GetSwitchStatus
+    - selector: tutti.Policy.GetSwitchStatus
       post: /replication/switch/get
       body: "*"
       # Policy service - routing:
-    - selector: chorus.Policy.ListRoutings
+    - selector: tutti.Policy.ListRoutings
       post: /routing
       body: "*"
-    - selector: chorus.Policy.AddRouting
+    - selector: tutti.Policy.AddRouting
       post: /routing/add
       body: "*"
-    - selector: chorus.Policy.UpdateRouting
+    - selector: tutti.Policy.UpdateRouting
       put: /routing/update
       body: "*"
-    - selector: chorus.Policy.DeleteRouting
+    - selector: tutti.Policy.DeleteRouting
       put: /routing/delete
       body: "*"
-    - selector: chorus.Policy.BlockRouting
+    - selector: tutti.Policy.BlockRouting
       put: /routing/block
       body: "*"
-    - selector: chorus.Policy.UnblockRouting
+    - selector: tutti.Policy.UnblockRouting
       put: /routing/unblock
       body: "*"
-    - selector: chorus.Policy.TestProxy
+    - selector: tutti.Policy.TestProxy
       post: /test-proxy
       body: "*"
       # Webhook service:
-    - selector: chorus.Webhook.SwiftEvents
+    - selector: tutti.Webhook.SwiftEvents
       post: "/webhook/{storage}/swift"
       body: "*"
-    - selector: chorus.Webhook.S3Notifications
+    - selector: tutti.Webhook.S3Notifications
       post: "/webhook/{storage}/s3-notifications"
       body: "*"
       # Resilience service:
-    - selector: chorus.Resilience.GetProxyStatus
+    - selector: tutti.Resilience.GetProxyStatus
       get: /tutti/proxies
-    - selector: chorus.Resilience.GetStatsHistory
+    - selector: tutti.Resilience.GetStatsHistory
       get: /tutti/stats/history
-    - selector: chorus.Resilience.GetWorkerStats
+    - selector: tutti.Resilience.GetWorkerStats
       get: /tutti/worker-stats
-    - selector: chorus.Resilience.ListFailoverPolicies
+    - selector: tutti.Resilience.ListFailoverPolicies
       get: /tutti/failover/policies
-    - selector: chorus.Resilience.SetFailoverPolicy
+    - selector: tutti.Resilience.SetFailoverPolicy
       post: /tutti/failover/policies
       body: "*"
-    - selector: chorus.Resilience.DeleteFailoverPolicy
+    - selector: tutti.Resilience.DeleteFailoverPolicy
       put: /tutti/failover/policies/delete
       body: "*"
-    - selector: chorus.Resilience.ListFailoverEvents
+    - selector: tutti.Resilience.ListFailoverEvents
       get: /tutti/failover/events
-    - selector: chorus.Resilience.DeleteFailoverEvent
+    - selector: tutti.Resilience.DeleteFailoverEvent
       put: /tutti/failover/events/delete
       body: "*"
-    - selector: chorus.Resilience.ListAccessPolicies
+    - selector: tutti.Resilience.ListAccessPolicies
       get: /tutti/access-policies
-    - selector: chorus.Resilience.SetAccessPolicy
+    - selector: tutti.Resilience.SetAccessPolicy
       post: /tutti/access-policies
       body: "*"
-    - selector: chorus.Resilience.DeleteAccessPolicy
+    - selector: tutti.Resilience.DeleteAccessPolicy
       put: /tutti/access-policies/delete
       body: "*"
-    - selector: chorus.Resilience.ListProxyAccounts
+    - selector: tutti.Resilience.ListProxyAccounts
       get: /tutti/proxy-accounts
-    - selector: chorus.Resilience.CreateProxyAccount
+    - selector: tutti.Resilience.CreateProxyAccount
       post: /tutti/proxy-accounts
       body: "*"
-    - selector: chorus.Resilience.RotateProxyAccountSecret
+    - selector: tutti.Resilience.RotateProxyAccountSecret
       put: /tutti/proxy-accounts/rotate
       body: "*"
-    - selector: chorus.Resilience.SetProxyAccountStatus
+    - selector: tutti.Resilience.SetProxyAccountStatus
       put: /tutti/proxy-accounts/status
       body: "*"
-    - selector: chorus.Resilience.DeleteProxyAccount
+    - selector: tutti.Resilience.DeleteProxyAccount
       put: /tutti/proxy-accounts/delete
       body: "*"
-    - selector: chorus.Resilience.ListS3Users
+    - selector: tutti.Resilience.ListS3Users
       get: /tutti/users
-    - selector: chorus.Resilience.CreateS3User
+    - selector: tutti.Resilience.CreateS3User
       post: /tutti/users
       body: "*"
-    - selector: chorus.Resilience.UpdateS3UserCredentials
+    - selector: tutti.Resilience.UpdateS3UserCredentials
       put: /tutti/users/credentials
       body: "*"
-    - selector: chorus.Resilience.DeleteS3UserCredentials
+    - selector: tutti.Resilience.DeleteS3UserCredentials
       put: /tutti/users/credentials/delete
       body: "*"
-    - selector: chorus.Resilience.DeleteS3User
+    - selector: tutti.Resilience.DeleteS3User
       put: /tutti/users/delete
       body: "*"
-    - selector: chorus.Resilience.TestS3UserCredentials
+    - selector: tutti.Resilience.TestS3UserCredentials
       post: /tutti/users/test
       body: "*"
-    - selector: chorus.Resilience.ListConsoleUsers
+    - selector: tutti.Resilience.ListConsoleUsers
       get: /tutti/console-users
-    - selector: chorus.Resilience.CreateConsoleUser
+    - selector: tutti.Resilience.CreateConsoleUser
       post: /tutti/console-users
       body: "*"
-    - selector: chorus.Resilience.UpdateConsoleUser
+    - selector: tutti.Resilience.UpdateConsoleUser
       put: /tutti/console-users
       body: "*"
-    - selector: chorus.Resilience.ResetConsoleUserPassword
+    - selector: tutti.Resilience.ResetConsoleUserPassword
       put: /tutti/console-users/password
       body: "*"
-    - selector: chorus.Resilience.DeleteConsoleUser
+    - selector: tutti.Resilience.DeleteConsoleUser
       put: /tutti/console-users/delete
       body: "*"
 
-    - selector: chorus.Resilience.ListRuntimeStorages
+    - selector: tutti.Resilience.ListRuntimeStorages
       get: /tutti/storages
-    - selector: chorus.Resilience.CreateRuntimeStorage
+    - selector: tutti.Resilience.CreateRuntimeStorage
       post: /tutti/storages
       body: "*"
-    - selector: chorus.Resilience.UpdateRuntimeStorage
+    - selector: tutti.Resilience.UpdateRuntimeStorage
       put: /tutti/storages
       body: "*"
-    - selector: chorus.Resilience.DeleteRuntimeStorage
+    - selector: tutti.Resilience.DeleteRuntimeStorage
       put: /tutti/storages/delete
       body: "*"
-    - selector: chorus.Resilience.TestRuntimeStorage
+    - selector: tutti.Resilience.TestRuntimeStorage
       post: /tutti/storages/test-credential
       body: "*"
-    - selector: chorus.Resilience.TestStorageConnection
+    - selector: tutti.Resilience.TestStorageConnection
       post: /tutti/storages/test
       body: "*"
-    - selector: chorus.Resilience.RotateStorageConnectionAccount
+    - selector: tutti.Resilience.RotateStorageConnectionAccount
       put: /tutti/storages/connection-account
       body: "*"
-    - selector: chorus.Resilience.GetRuntimeStorage
+    - selector: tutti.Resilience.GetRuntimeStorage
       get: /tutti/storages/{name}
-    - selector: chorus.ProtectionGroups.List
+    - selector: tutti.ProtectionGroups.List
       get: /tutti/protection-groups
-    - selector: chorus.ProtectionGroups.Get
+    - selector: tutti.ProtectionGroups.Get
       get: /tutti/protection-groups/{id}
-    - selector: chorus.ProtectionGroups.Create
+    - selector: tutti.ProtectionGroups.Create
       post: /tutti/protection-groups
       body: "*"
-    - selector: chorus.ProtectionGroups.Update
+    - selector: tutti.ProtectionGroups.Update
       put: /tutti/protection-groups
       body: "*"
-    - selector: chorus.ProtectionGroups.Delete
+    - selector: tutti.ProtectionGroups.Delete
       post: /tutti/protection-groups/delete
       body: "*"
-    - selector: chorus.ProtectionGroups.Switchover
+    - selector: tutti.ProtectionGroups.Switchover
       post: /tutti/protection-groups/switchover
       body: "*"
-    - selector: chorus.ProtectionGroups.AbortSwitch
+    - selector: tutti.ProtectionGroups.AbortSwitch
       post: /tutti/protection-groups/abort-switch
       body: "*"
-    - selector: chorus.ProtectionGroups.SetAutomaticFreeze
+    - selector: tutti.ProtectionGroups.SetAutomaticFreeze
       put: /tutti/protection-groups/automatic-freeze
       body: "*"
-    - selector: chorus.ProtectionGroups.GetAutomaticFreeze
+    - selector: tutti.ProtectionGroups.GetAutomaticFreeze
       get: /tutti/protection-groups/automatic-freeze/status
-    - selector: chorus.ProtectionGroups.ListWriters
+    - selector: tutti.ProtectionGroups.ListWriters
       get: /tutti/protection-groups/{id}/writers
-    - selector: chorus.ProtectionGroups.ClearWriter
+    - selector: tutti.ProtectionGroups.ClearWriter
       post: /tutti/protection-groups/clear-writer
       body: "*"
-    - selector: chorus.ProtectionGroups.PlanFailoverMigration
+    - selector: tutti.ProtectionGroups.PlanFailoverMigration
       get: /tutti/failover/migration/plan
-    - selector: chorus.ProtectionGroups.ApplyFailoverMigration
+    - selector: tutti.ProtectionGroups.ApplyFailoverMigration
       post: /tutti/failover/migration/apply
       body: "*"
-    - selector: chorus.ProtectionGroups.ListUnprotectedScopes
+    - selector: tutti.ProtectionGroups.ListUnprotectedScopes
       get: /tutti/unprotected-scopes
-    - selector: chorus.Resilience.GetProxyFleetConfig
+    - selector: tutti.Resilience.GetProxyFleetConfig
       get: /tutti/proxy-config
-    - selector: chorus.Resilience.SetProxyFleetConfig
+    - selector: tutti.Resilience.SetProxyFleetConfig
       put: /tutti/proxy-config
       body: "*"
-    - selector: chorus.Resilience.ListAuditLog
+    - selector: tutti.Resilience.ListAuditLog
       get: /tutti/audit-log
-    - selector: chorus.Resilience.GetSystemSettings
+    - selector: tutti.Resilience.GetSystemSettings
       get: /tutti/system-settings
-    - selector: chorus.Resilience.UpdateSystemSettings
+    - selector: tutti.Resilience.UpdateSystemSettings
       put: /tutti/system-settings
       body: "*"
 

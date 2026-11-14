@@ -27,14 +27,14 @@ import (
 	"github.com/hieunyit/tutti/pkg/rpc"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/swift"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
 func ChorusHandlers(
 	credsSvc objstore.CredsService,
 	proxyClient rpc.Proxy,
 	appInfo *dom.AppInfo,
-) pb.ChorusServer {
+) pb.TuttiServer {
 	return &chorusHandlers{
 		credsSvc:    credsSvc,
 		proxyClient: proxyClient,
@@ -42,7 +42,7 @@ func ChorusHandlers(
 	}
 }
 
-var _ pb.ChorusServer = &chorusHandlers{}
+var _ pb.TuttiServer = &chorusHandlers{}
 
 type chorusHandlers struct {
 	proxyClient rpc.Proxy

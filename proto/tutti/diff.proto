@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package chorus;
+package tutti;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/hieunyit/tutti/proto/chorus;pb";
+option go_package = "github.com/hieunyit/tutti/proto/tutti;pb";
 
 service Diff {
   rpc Start(StartDiffCheckRequest) returns (google.protobuf.Empty);

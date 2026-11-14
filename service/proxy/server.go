@@ -57,7 +57,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/trace"
 	"github.com/hieunyit/tutti/pkg/trafficstats"
 	"github.com/hieunyit/tutti/pkg/util"
-	pb "github.com/hieunyit/tutti/proto/gen/go/chorus"
+	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/service/proxy/access"
 	"github.com/hieunyit/tutti/service/proxy/auth"
 	"github.com/hieunyit/tutti/service/proxy/cors"

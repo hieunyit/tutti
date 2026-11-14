@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             (unknown)
-// source: chorus/diff.proto
+// source: tutti/diff.proto
 
 package pb
 
@@ -20,13 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Diff_Start_FullMethodName            = "/chorus.Diff/Start"
-	Diff_List_FullMethodName             = "/chorus.Diff/List"
-	Diff_GetReport_FullMethodName        = "/chorus.Diff/GetReport"
-	Diff_GetReportEntries_FullMethodName = "/chorus.Diff/GetReportEntries"
-	Diff_DeleteReport_FullMethodName     = "/chorus.Diff/DeleteReport"
-	Diff_Fix_FullMethodName              = "/chorus.Diff/Fix"
-	Diff_Restart_FullMethodName          = "/chorus.Diff/Restart"
+	Diff_Start_FullMethodName            = "/tutti.Diff/Start"
+	Diff_List_FullMethodName             = "/tutti.Diff/List"
+	Diff_GetReport_FullMethodName        = "/tutti.Diff/GetReport"
+	Diff_GetReportEntries_FullMethodName = "/tutti.Diff/GetReportEntries"
+	Diff_DeleteReport_FullMethodName     = "/tutti.Diff/DeleteReport"
+	Diff_Fix_FullMethodName              = "/tutti.Diff/Fix"
+	Diff_Restart_FullMethodName          = "/tutti.Diff/Restart"
 )
 
 // DiffClient is the client API for Diff service.
@@ -311,7 +311,7 @@ func _Diff_Restart_Handler(srv interface{}, ctx context.Context, dec func(interf
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Diff_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chorus.Diff",
+	ServiceName: "tutti.Diff",
 	HandlerType: (*DiffServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -344,5 +344,5 @@ var Diff_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "chorus/diff.proto",
+	Metadata: "tutti/diff.proto",
 }

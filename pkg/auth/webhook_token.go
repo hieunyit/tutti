@@ -18,7 +18,7 @@ import (
 // alternative to "Authorization: Bearer <token>".
 const WebhookTokenHeader = "X-Tutti-Webhook-Token"
 
-const webhookMethodPrefix = "/chorus.Webhook/"
+const webhookMethodPrefix = "/tutti.Webhook/"
 
 // WarningWebhookUnauthenticated is reported by GET /auth/me when webhooks are served on the main API port without
 // api.webhook.token.
@@ -79,7 +79,7 @@ func checkWebhook(ctx context.Context, method, token string, requireToken bool) 
 	return nil
 }
 
-// WebhookRequireToken makes the interceptors reject every /chorus.Webhook/* call when no token is configured
+// WebhookRequireToken makes the interceptors reject every /tutti.Webhook/* call when no token is configured
 // (fail closed) instead of being no-ops.
 func WebhookRequireToken() WebhookOption { return func(o *webhookOpts) { o.require = true } }
 
@@ -88,7 +88,7 @@ type webhookOpts struct{ require bool }
 // WebhookOption configures WebhookTokenInterceptors.
 type WebhookOption func(*webhookOpts)
 
-// WebhookTokenInterceptors enforce token on /chorus.Webhook/* calls. With an empty token they are no-ops unless
+// WebhookTokenInterceptors enforce token on /tutti.Webhook/* calls. With an empty token they are no-ops unless
 // WebhookRequireToken is given.
 func WebhookTokenInterceptors(token string, opts ...WebhookOption) (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
 	var o webhookOpts

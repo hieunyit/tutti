@@ -70,7 +70,7 @@ mapped user (storage credentials, routing, replication and access policies are a
 * Storage: Redis config DB hash `tutti:proxy-accounts` (field = access key id, value = JSON record with sealed
   `secret` / `previousSecret`).
 * Access key id: `TUT` + 17 uppercase alphanumerics; secret: 40 random alphanumerics (crypto/rand).
-* API (admin only), service `chorus.Resilience`:
+* API (admin only), service `tutti.Resilience`:
   * `CreateProxyAccount{user, description}` `POST /tutti/proxy-accounts` - returns `accessKeyId` + `secretAccessKey` once.
   * `RotateProxyAccountSecret{accessKeyId, gracePeriod}` `PUT /tutti/proxy-accounts/rotate` - new secret returned once;
     the previous secret keeps working for `gracePeriod` (default 1h, `0s` = immediate).
