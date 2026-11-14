@@ -288,6 +288,25 @@ func EstimateParallelCopyBuffer(size int64, partSize uint64, threads int) int64 
 	return est
 }
 
+// Outcome reports what CopyObject did. Attach it with WithOutcome to learn whether bytes were transferred.
+type Outcome struct {
+	// Called is set once CopyObject ran.
+	Called bool
+	// Skipped is set when the destination already held the object and nothing was transferred.
+	Skipped bool
+	// Missing is set when the object does not exist in the source (nothing to copy).
+	Missing bool
+	// Bytes is the number of transferred bytes.
+	Bytes int64
+}
+
+type outcomeKey struct{}
+
+// WithOutcome returns a context that makes CopyObject fill o.
+func WithOutcome(ctx context.Context, o *Outcome) context.Context {
+	return context.WithValue(ctx, outcomeKey{}, o)
+}
+
 // CopyObject copies one object and records the throughput counters (in-flight, result, bytes, duration).
 func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to File) error {
 	start := time.Now()
@@ -297,6 +316,14 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 	var copiedBytes int64 = -1 // stays -1 when nothing was transferred (skipped as already present)
 	err := r.copyObject(ctx, user, from, to, &copiedBytes)
 	d := time.Since(start)
+	if o, ok := ctx.Value(outcomeKey{}).(*Outcome); ok && o != nil {
+		o.Called = true
+		o.Skipped = err == nil && copiedBytes < 0
+		o.Missing = errors.Is(err, dom.ErrNotFound)
+		if copiedBytes > 0 {
+			o.Bytes = copiedBytes
+		}
+	}
 	switch {
 	case err != nil:
 		workerstats.Default.FinishFailure()

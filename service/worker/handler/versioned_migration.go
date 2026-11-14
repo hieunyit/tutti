@@ -81,12 +81,22 @@ func (s *svc) HandleVersionedObjectMigration(ctx context.Context, t *asynq.Task)
 		return err
 	}
 
+	// activity feed: one entry per object, covering all of its versions
+	act := s.activityBegin(ctx, migratePayload.ID, migratePayload.Generation, migratePayload.Prefix, "", 0, store.ActivityFlowInit)
+	var outcome copy.Outcome
+	var err error
+	if act != nil {
+		ctx = copy.WithOutcome(ctx, &outcome)
+		defer func() { act.finish(ctx, err, &outcome) }()
+	}
+
 	user := migratePayload.ID.User()
 	fromBucket, toBucket := migratePayload.ID.FromToBuckets(migratePayload.Bucket)
 	replicationID := entity.NewBucketReplicationPolicy(user, migratePayload.ID.FromStorage(), fromBucket, migratePayload.ID.ToStorage(), toBucket)
 
-	if err := s.versionedSvc.MigrateVersions(ctx, replicationID, migratePayload.Prefix, migratePayload.Generation); err != nil {
-		return fmt.Errorf("unable to migrate object version: %w", err)
+	if err = s.versionedSvc.MigrateVersions(ctx, replicationID, migratePayload.Prefix, migratePayload.Generation); err != nil {
+		err = fmt.Errorf("unable to migrate object version: %w", err)
+		return err
 	}
 
 	return nil

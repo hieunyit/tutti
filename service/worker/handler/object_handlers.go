@@ -26,7 +26,9 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/service/worker/copy"
 )
 
 func (s *svc) HandleObjectSync(ctx context.Context, t *asynq.Task) (err error) {
@@ -49,5 +51,12 @@ func (s *svc) HandleObjectSync(ctx context.Context, t *asynq.Task) (err error) {
 		return err
 	}
 
-	return s.syncer.Sync(ctx, p)
+	act := s.activityBegin(ctx, p.ID, p.Generation, p.Object.Name, p.Object.Version, p.ObjSize, store.ActivityFlowLive)
+	if act == nil {
+		return s.syncer.Sync(ctx, p)
+	}
+	var outcome copy.Outcome
+	err = s.syncer.Sync(copy.WithOutcome(ctx, &outcome), p)
+	act.finish(ctx, err, &outcome)
+	return err
 }

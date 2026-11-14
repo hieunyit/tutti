@@ -31,6 +31,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/s3"
+	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	"github.com/hieunyit/tutti/service/worker/copy"
 )
@@ -63,6 +64,13 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 		p.ID.ToStorage(), []s3.Method{s3.HeadObject, s3.PutObject, s3.PutObjectAcl}); err != nil {
 		logger.Debug().Err(err).Str(log.Storage, storage).Msg("rate limit error")
 		return err
+	}
+
+	act := s.activityBegin(ctx, p.ID, p.Generation, p.Obj.Name, p.Obj.VersionID, p.Obj.Size, store.ActivityFlowInit)
+	var outcome copy.Outcome
+	if act != nil {
+		ctx = copy.WithOutcome(ctx, &outcome)
+		defer func() { act.finish(ctx, err, &outcome) }()
 	}
 
 	domObj := dom.Object{
