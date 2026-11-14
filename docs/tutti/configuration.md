@@ -55,6 +55,8 @@ Source: `service/proxy/auth/config.go`, `pkg/s3/auth.go` (`validateSignedHeaders
 
 ## Managed console users (worker)
 
+The first admin password (`TUTTI_BOOTSTRAP_ADMIN_PASSWORD`, `api.auth.bootstrapAdminPassword`, or generated), its minimum length and the `worker admin reset-password` recovery command are described in [First login and password recovery](operations.md#first-login-and-password-recovery).
+
 Console users sign in to the worker management API and the UI. They come from two sources:
 
 - `api.auth.users` in the worker config (bcrypt `passwordHash`, role `admin` or `viewer`): read-only, always win on name conflicts.

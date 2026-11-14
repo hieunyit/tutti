@@ -167,12 +167,39 @@ Failback never happens automatically. After the old storage is repaired:
 
 Until step 5 the event stays listed; it has no effect on routing.
 
+## First login and password recovery
+
+On the first start (no console users in the database) the worker creates the user `admin`. There are three ways to get its initial password:
+
+1. **Environment variable**: set `TUTTI_BOOTSTRAP_ADMIN_PASSWORD` (Docker Compose: in `docker-compose/.env`, see `.env.example`; Kubernetes: `auth.bootstrapAdmin.existingSecret` in the Helm values). An empty value counts as unset.
+2. **Config**: `api.auth.bootstrapAdminPassword` in the worker config. The environment variable wins.
+3. **Generated**: when neither is set, the worker generates a random password and prints it once as a banner on **stderr** (not in the JSON log; the JSON log only carries the warning `initial admin password generated; see the banner on stderr`). Read it with
+   `docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'` or `kubectl logs deploy/<release>-worker | grep -A6 'INITIAL ADMIN PASSWORD'`.
+
+The password must have at least 12 characters (at most 72 bytes) and must not equal the username; otherwise the worker refuses to start and the error names the variable. Users are forced to change the bootstrap password at first login; `TUTTI_BOOTSTRAP_ADMIN_FORCE_CHANGE=false` disables this for a password you supplied (a generated password always requires the change). Nothing is created when users already exist, so the variable has no effect on later restarts.
+
+**Lost the admin password.** Run the reset command in the worker container; it uses the worker's own config, Redis and PostgreSQL:
+
+```shell
+# Docker Compose: prints a new random password
+docker compose exec worker /bin/chorus admin reset-password
+# choose the password yourself
+docker compose exec -e TUTTI_ADMIN_NEW_PASSWORD='<min 12 characters>' worker /bin/chorus admin reset-password
+# Kubernetes
+kubectl exec deploy/<release>-worker -- /bin/chorus admin reset-password
+# another user: add --user <name> (created as admin when missing); --password-env <VAR> reads another variable
+```
+
+The user must change the new password at first login. The command sets the password change time to now, so **all existing sessions of that user stop working** immediately. It needs `api.auth.enabled: true`.
+
+> **Warning:** the generated password is visible in the container's stderr. Do not forward it to a log aggregation system (Loki, ELK, ...) in clear text: filter the `INITIAL ADMIN PASSWORD` / `NEW ADMIN PASSWORD` banner lines, or set the password yourself, and change it at first login.
+
 ## Managing S3 users and console users
 
 - **Creating an S3 user** (`POST /tutti/users`, see [api.md](api.md#s3-users-api)) needs `storage.dynamicCredentials.enabled` with a `masterPassword` on the workers and proxies. Use `verify: true` to catch wrong keys before saving. The user should have credentials on every storage (`complete: true` in `GET /tutti/users`), otherwise replication to or failover onto a storage lacking them cannot work. Give the credentials of each storage; the proxy access key (`createAccessKey: true`) is what clients use against the proxy.
 - **Changing credentials**: `PUT /tutti/users/credentials` writes the sealed credentials to Redis; every worker and proxy picks them up on its next poll (`storage.dynamicCredentials.pollInterval`). Credentials defined in the worker config can only be changed in the config.
 - **Deleting an S3 user** drops the dynamic credentials on all storages and deletes dynamic access keys and the access policy. Delete the user's replications, routings and failover events first. If a user's credentials come from the config, remove them there (and restart) before the remaining dynamic parts can be cleaned; the API never edits config. Deleted credentials disappear from proxies and workers on the next poll; until then requests with its access key may still be served.
-- **Console users**: keep at least one admin in `api.auth.users`: it can always sign in even if all managed admins are lost or Redis data is wiped. To recover a locked-out managed user, sign in as a config admin and use `PUT /tutti/console-users/password`, or delete the record: `redis-cli -n <configDB> hdel tutti:console-users <username>`. Disabling, deleting or resetting a user invalidates its sessions immediately. A generated password is shown once; share it over a secure channel (the user is flagged `mustChangePassword` until it is changed through `POST /auth/password`).
+- **Console users**: if the admin password is lost, see [First login and password recovery](#first-login-and-password-recovery). Keep at least one admin in `api.auth.users`: it can always sign in even if all managed admins are lost or Redis data is wiped. To recover a locked-out managed user, sign in as a config admin and use `PUT /tutti/console-users/password`, or delete the record: `redis-cli -n <configDB> hdel tutti:console-users <username>`. Disabling, deleting or resetting a user invalidates its sessions immediately. A generated password is shown once; share it over a secure channel (the user is flagged `mustChangePassword` until it is changed through `POST /auth/password`).
 
 ## Sign-in lockouts and webhook protection
 
