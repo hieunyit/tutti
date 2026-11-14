@@ -277,14 +277,20 @@ func (r *policySvc) fillExtendedReplicationStatus(ctx context.Context, id entity
 // and the object counters keep working.
 func (r *policySvc) initBytesStats(ctx context.Context, id entity.UniversalReplicationID, listing entity.QueueStats) entity.InitBytesStats {
 	res := entity.InitBytesStats{ListingComplete: listing.Unprocessed == 0 && listing.Archived == 0}
-	if r.client == nil {
+	// counters live in the same Redis database as the task queues (the worker writes them there)
+	qr, ok := r.queueSvc.(interface{ RedisClient() redis.Cmdable })
+	if !ok || qr == nil {
+		return res
+	}
+	rc := qr.RedisClient()
+	if rc == nil {
 		return res
 	}
 	gen, err := r.GetReplicationGeneration(ctx, id)
 	if err != nil {
 		return res
 	}
-	b, err := store.NewInitBytesStore(r.client).Get(ctx, id.AsString(), gen, time.Now())
+	b, err := store.NewInitBytesStore(rc).Get(ctx, id.AsString(), gen, time.Now())
 	if err != nil {
 		zerolog.Ctx(ctx).Debug().Err(err).Msg("unable to read initial replication bytes")
 		return res
