@@ -46,7 +46,7 @@ func StorageRow(in *pb.Storage) string {
 }
 
 func ReplHeader() string {
-	return "ID\tNAME\tPROGRESS\tOBJECTS\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
+	return "ID\tNAME\tPROGRESS\tOBJECTS\tINIT_BYTES\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
 }
 
 func ReplRow(in *pb.Replication) string {
@@ -62,11 +62,12 @@ func ReplRow(in *pb.Replication) string {
 	if name == "" {
 		name = "-"
 	}
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
 		id,
 		name,
 		ToPercentage(p),
 		objects,
+		InitBytesToStr(in),
 		events,
 		DurationToStr(in.EventLag.AsDuration()),
 		in.IsPaused,
@@ -106,6 +107,41 @@ func AvailableBucketsLines(res *pb.AvailableBucketsResponse) []string {
 		}
 	}
 	return lines
+}
+
+// InitBytesToStr renders initial replication progress by bytes, e.g. "12.4GB/812GB 8.7MB/s ~1d1h".
+// "at least" totals (listing still running) are prefixed with ">=". Returns "-" when there is nothing to show.
+func InitBytesToStr(in *pb.Replication) string {
+	if in.IsInitDone || in.InitBytesTotal <= 0 {
+		return "-"
+	}
+	total := HumanBytes(in.InitBytesTotal)
+	if !in.InitListingComplete {
+		total = ">=" + total
+	}
+	speed, eta := "?/s", "?"
+	if in.InitBytesPerSecond > 0 {
+		speed = HumanBytes(in.InitBytesPerSecond) + "/s"
+	}
+	if in.InitEtaSeconds > 0 {
+		eta = "~" + DurationToStr(time.Duration(in.InitEtaSeconds)*time.Second)
+	}
+	return fmt.Sprintf("%s/%s %s %s", HumanBytes(in.InitBytesDone), total, speed, eta)
+}
+
+// HumanBytes formats bytes with 1024 based units.
+func HumanBytes(n int64) string {
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+	v := float64(n)
+	i := 0
+	for v >= 1024 && i < len(units)-1 {
+		v /= 1024
+		i++
+	}
+	if i == 0 || v >= 100 {
+		return fmt.Sprintf("%.0f%s", v, units[i])
+	}
+	return fmt.Sprintf("%.1f%s", v, units[i])
 }
 
 func ToProgress(in *pb.Replication) float64 {

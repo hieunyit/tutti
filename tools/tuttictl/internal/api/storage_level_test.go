@@ -93,3 +93,17 @@ func TestReplRow_Name(t *testing.T) {
 	r.Equal("-", row("")[1])
 	r.Len(row("x"), len(strings.Split(ReplHeader(), "\t")))
 }
+
+func TestInitBytesToStr(t *testing.T) {
+	r := require.New(t)
+	r.Equal("-", InitBytesToStr(&pb.Replication{}))
+	r.Equal("-", InitBytesToStr(&pb.Replication{IsInitDone: true, InitBytesTotal: 10}))
+	r.Equal("12.4GB/812GB 8.7MB/s ~1d1h", InitBytesToStr(&pb.Replication{
+		InitBytesTotal:      812 << 30,
+		InitBytesDone:       13314398617,
+		InitBytesPerSecond:  9122611,
+		InitEtaSeconds:      25*3600 + 10*60,
+		InitListingComplete: true,
+	}))
+	r.Equal("1.0KB/>=2.0KB ?/s ?", InitBytesToStr(&pb.Replication{InitBytesTotal: 2048, InitBytesDone: 1024}))
+}
