@@ -151,6 +151,8 @@ type Replications interface {
 	// DeleteStatus drops the status row (DeleteOp).
 	DeleteStatus(ctx context.Context, id ReplicationID) error
 	GetStatus(ctx context.Context, id ReplicationID) (ReplicationStatus, error)
+	// SetName changes only the display name of an existing status (empty clears it). ErrNotFound if absent.
+	SetName(ctx context.Context, id ReplicationID, name string) error
 	// ListStatuses returns all statuses; user filters the bucket-level ones and user-level ones when non-empty.
 	ListStatuses(ctx context.Context, user string) (map[ReplicationID]ReplicationStatus, error)
 	// BucketReplicationExistsForUser reports whether the user has a bucket-level replication.

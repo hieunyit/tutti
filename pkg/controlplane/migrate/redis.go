@@ -430,5 +430,6 @@ func parseStatus(h map[string]string) (controlplane.ReplicationStatus, error) {
 	st.Archived = h["archived"] == "1" || h["archived"] == "true"
 	st.AgentURL = h["agent_url"]
 	st.EventSource = h["event_source"]
+	st.Name = h["name"]
 	return st, nil
 }

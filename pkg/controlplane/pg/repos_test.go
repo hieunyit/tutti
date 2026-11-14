@@ -401,6 +401,40 @@ func TestReplications(t *testing.T) {
 	require.EqualValues(t, 7, g)
 }
 
+func TestReplicationName(t *testing.T) {
+	s := newStore(t)
+	ctx := actorCtx("tester")
+	r := s.Repos().Replications
+	id := controlplane.ReplicationID{FromStorage: "s1", ToStorage: "s2", FromBucket: "b", ToBucket: "b"}
+
+	require.NoError(t, r.Add(ctx, id, controlplane.ReplicationStatus{Name: "prod to dr", EventSource: "proxy"}))
+	st, err := r.GetStatus(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, "prod to dr", st.Name)
+	g0, _ := r.IncrementGeneration(ctx, id)
+
+	require.NoError(t, r.SetName(ctx, id, "renamed"))
+	st, _ = r.GetStatus(ctx, id)
+	require.Equal(t, "renamed", st.Name)
+	require.Equal(t, "proxy", st.EventSource, "rename keeps the other status fields")
+	all, err := r.ListStatuses(ctx, "")
+	require.NoError(t, err)
+	require.Equal(t, "renamed", all[id].Name)
+	g1, _ := r.Generation(ctx, id)
+	require.Equal(t, g0, g1, "rename never changes the generation")
+
+	require.NoError(t, r.SetName(ctx, id, ""))
+	st, _ = r.GetStatus(ctx, id)
+	require.Empty(t, st.Name)
+
+	require.ErrorIs(t, r.SetName(ctx, controlplane.ReplicationID{FromStorage: "x", ToStorage: "y"}, "n"), dom.ErrNotFound)
+
+	// a status written before the column existed (empty name) lists and renames normally
+	require.NoError(t, r.Add(ctx, controlplane.ReplicationID{User: "u", FromStorage: "s1", ToStorage: "s2"}, controlplane.ReplicationStatus{}))
+	old, _ := r.GetStatus(ctx, controlplane.ReplicationID{User: "u", FromStorage: "s1", ToStorage: "s2"})
+	require.Empty(t, old.Name)
+}
+
 func TestIdenticalWritesAreNoOps(t *testing.T) {
 	s := newStore(t)
 	ctx := actorCtx("tester")

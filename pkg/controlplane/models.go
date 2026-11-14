@@ -204,6 +204,8 @@ type ReplicationStatus struct {
 	ArchivedAt  *time.Time
 	AgentURL    string
 	EventSource string
+	// Name is the optional display label of the replication (not part of its identity).
+	Name string
 }
 
 // AuditEntry is one row of the audit log.
