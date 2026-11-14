@@ -147,7 +147,7 @@ describe('TuttiSystemSettingsPage', () => {
     expect(
       (wrapper.get('#settings-multipartThreads').element as HTMLInputElement)
         .value,
-    ).toBe('4');
+    ).toBe('1');
     wrapper.unmount();
   });
 

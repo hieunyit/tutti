@@ -75,7 +75,7 @@ describe('recommendSettings', () => {
     expect(recommendSettings(4, 32)).toEqual({
       concurrency: 64,
       bufferBudgetBytes: String(8 * 1024 ** 3),
-      multipartThreads: 4,
+      multipartThreads: 1,
       bulkConcurrencyPercent: 80,
     });
   });

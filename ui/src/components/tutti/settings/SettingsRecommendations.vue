@@ -77,6 +77,7 @@
   <details
     class="settings-rec"
     data-test="recommendations"
+    open
   >
     <summary class="settings-rec__summary">{{ t('recTitle') }}</summary>
     <p class="settings-rec__intro">{{ t('recIntro') }}</p>

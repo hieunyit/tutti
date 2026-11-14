@@ -147,7 +147,8 @@ export default <I18nMessages>{
     recFill: 'Fill in',
     recConcurrency: 'Task concurrency: about 16 per core, at most 256.',
     recBuffer: 'Buffer budget: 25% of RAM, at most 8 GiB.',
-    recThreads: 'Multipart threads: 4 for object storage over a WAN.',
+    recThreads:
+      'Multipart threads: 1 (default). Increase only after measuring on your network; parallel parts were slower in local tests.',
     recBulk: 'Bulk share: 80% when live proxy traffic is light.',
     throughputLink: 'Open throughput panel',
     lockTitle: 'Distributed locking',
@@ -301,7 +302,8 @@ export default <I18nMessages>{
     recFill: 'Übernehmen',
     recConcurrency: 'Task-Parallelität: etwa 16 je Kern, höchstens 256.',
     recBuffer: 'Pufferbudget: 25 % des RAM, höchstens 8 GiB.',
-    recThreads: 'Multipart-Threads: 4 für Objektspeicher über WAN.',
+    recThreads:
+      'Multipart-Threads: 1 (Standard). Nur nach Messung im eigenen Netzwerk erhöhen; parallele Teile waren in lokalen Tests langsamer.',
     recBulk: 'Bulk-Anteil: 80 %, wenn der Live-Proxy-Verkehr gering ist.',
     throughputLink: 'Durchsatz-Panel öffnen',
     lockTitle: 'Verteilte Sperren',
@@ -450,7 +452,8 @@ export default <I18nMessages>{
     recFill: 'Điền',
     recConcurrency: 'Số tác vụ song song: khoảng 16 mỗi lõi, tối đa 256.',
     recBuffer: 'Ngân sách bộ đệm: 25% RAM, tối đa 8 GiB.',
-    recThreads: 'Số luồng multipart: 4 cho object storage qua WAN.',
+    recThreads:
+      'Số luồng multipart: 1 (mặc định). Chỉ tăng sau khi đo trên mạng của bạn; các phần song song chậm hơn trong thử nghiệm cục bộ.',
     recBulk: 'Tỷ lệ bulk: 80% khi lưu lượng proxy trực tiếp thấp.',
     throughputLink: 'Mở bảng thông lượng',
     lockTitle: 'Khóa phân tán',

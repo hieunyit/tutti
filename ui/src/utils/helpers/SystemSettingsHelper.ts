@@ -95,7 +95,8 @@ export function recommendSettings(
   return {
     concurrency: Math.min(256, 16 * c),
     bufferBudgetBytes: String(Math.floor(Math.min(ram * GIB * 0.25, 8 * GIB))),
-    multipartThreads: 4,
+    // Default 1: parallel parts were slower in local tests; raise only after measuring.
+    multipartThreads: 1,
     bulkConcurrencyPercent: 80,
   };
 }
