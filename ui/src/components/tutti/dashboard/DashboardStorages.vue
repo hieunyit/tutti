@@ -73,55 +73,57 @@
       {{ t('storagesEmpty') }}
     </p>
 
-    <table
+    <div
       v-else
-      class="tt-table"
+      class="tt-table-wrap"
     >
-      <thead>
-        <tr>
-          <th scope="col">{{ t('columnName') }}</th>
-          <th scope="col">{{ t('columnProvider') }}</th>
-          <th scope="col">{{ t('columnStatus') }}</th>
-          <th
-            scope="col"
-            class="tt-num"
-          >
-            {{ t('columnReqPerSecond') }}
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="storage in storages"
-          :key="storage.name"
-        >
-          <td class="dashboard-storages__name">
-            <RouterLink
-              :to="{
-                name: RouteName.TUTTI_STORAGE_DETAILS,
-                params: { storageName: storage.name },
-              }"
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('columnName') }}</th>
+            <th scope="col">{{ t('columnProvider') }}</th>
+            <th scope="col">{{ t('columnStatus') }}</th>
+            <th
+              scope="col"
+              class="tt-num"
             >
-              {{ storage.name }}
-            </RouterLink>
-          </td>
-          <td>{{ storage.provider || 'S3' }}</td>
-          <td>
-            <StatusTag
-              :variant="VARIANT[storage.state]"
-              :label="t(STATE_KEY[storage.state])"
-            />
-          </td>
-          <td class="tt-num">
-            {{
-              rates && storage.name in rates
-                ? TrafficStatsHelper.formatRate(rates[storage.name] ?? 0)
-                : t('kpiNoData')
-            }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+              {{ t('columnReqPerSecond') }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="storage in storages"
+            :key="storage.name"
+          >
+            <td class="dashboard-storages__name">
+              <RouterLink
+                :to="{
+                  name: RouteName.TUTTI_STORAGE_DETAILS,
+                  params: { storageName: storage.name },
+                }"
+              >
+                {{ storage.name }}
+              </RouterLink>
+            </td>
+            <td>{{ storage.provider || 'S3' }}</td>
+            <td>
+              <StatusTag
+                :variant="VARIANT[storage.state]"
+                :label="t(STATE_KEY[storage.state])"
+              />
+            </td>
+            <td class="tt-num">
+              {{
+                rates && storage.name in rates
+                  ? TrafficStatsHelper.formatRate(rates[storage.name] ?? 0)
+                  : t('kpiNoData')
+              }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </SectionCard>
 </template>
 

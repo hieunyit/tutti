@@ -140,6 +140,7 @@
         :data="rows"
         :row-key="rowKey"
         :max-height="360"
+        :scroll-x="640"
         :bordered="false"
       />
       <p
