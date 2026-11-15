@@ -291,7 +291,10 @@
   );
 
   /** clears the selection afterwards, keeping only the rows the action failed for */
-  async function runBulk(action: (rows: Row[]) => Promise<Row[]>, rows: Row[]) {
+  async function runBulk(
+    action: (targets: Row[]) => Promise<Row[]>,
+    targets: Row[],
+  ) {
     const failed = await action(rows);
 
     table.value?.select(failed.map(rowKey));
