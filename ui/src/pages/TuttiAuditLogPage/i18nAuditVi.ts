@@ -18,7 +18,7 @@ export default {
   title: 'Nhật ký kiểm toán',
   retry: 'Thử lại',
   errorText: 'Không tải được nhật ký kiểm toán. Hãy thử lại.',
-  loadOlder: 'Tải thêm bản ghi cũ hơn',
+  loadOlder: 'Tải thêm',
   loadNewer: 'Tải thêm bản ghi mới hơn',
   loadMoreFailed:
     'Không tải thêm được bản ghi. Các bản ghi đã tải vẫn được giữ lại.',

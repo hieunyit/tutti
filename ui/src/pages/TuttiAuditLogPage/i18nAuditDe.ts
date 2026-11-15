@@ -19,7 +19,7 @@ export default {
   retry: 'Erneut versuchen',
   errorText:
     'Das Audit-Protokoll konnte nicht geladen werden. Versuchen Sie es erneut.',
-  loadOlder: 'Ältere Einträge laden',
+  loadOlder: 'Mehr laden',
   loadNewer: 'Neuere Einträge laden',
   loadMoreFailed:
     'Weitere Einträge konnten nicht geladen werden. Bereits geladene Einträge bleiben erhalten.',

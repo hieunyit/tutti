@@ -18,7 +18,7 @@ export default {
   title: 'Audit log',
   retry: 'Retry',
   errorText: 'The audit log could not be loaded. Try again.',
-  loadOlder: 'Load older entries',
+  loadOlder: 'Load more',
   loadNewer: 'Load newer entries',
   loadMoreFailed:
     'Could not load more entries. Entries already loaded are kept.',

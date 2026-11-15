@@ -174,8 +174,20 @@ describe('TuttiAuditLogPage', () => {
     wrapper.unmount();
   });
 
+  it('asks for 25 entries by default', async () => {
+    vi.mocked(AuditLogService.list).mockResolvedValue(list([entry(1)]));
+
+    const wrapper = mountPage();
+
+    await flushPromises();
+    expect(AuditLogService.list).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 25 }),
+    );
+    wrapper.unmount();
+  });
+
   it('loads older entries with the last id as cursor', async () => {
-    const page1 = Array.from({ length: 50 }, (_, i) => entry(100 - i));
+    const page1 = Array.from({ length: 25 }, (_, i) => entry(100 - i));
 
     vi.mocked(AuditLogService.list)
       .mockResolvedValueOnce(list(page1))
@@ -187,12 +199,12 @@ describe('TuttiAuditLogPage', () => {
 
     const older = wrapper
       .findAll('button')
-      .find((b) => b.text() === 'Load older entries')!;
+      .find((b) => b.text() === 'Load more')!;
 
     await older.trigger('click');
     await flushPromises();
     expect(AuditLogService.list).toHaveBeenLastCalledWith(
-      expect.objectContaining({ beforeId: '51' }),
+      expect.objectContaining({ beforeId: '76' }),
     );
     expect(wrapper.text()).toContain('main-50');
     wrapper.unmount();

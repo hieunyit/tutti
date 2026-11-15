@@ -39,7 +39,7 @@ function emptyFilters(): AuditFilterState {
     action: '',
     dateFrom: '',
     dateTo: '',
-    limit: 50,
+    limit: 25,
   };
 }
 
