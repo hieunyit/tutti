@@ -24,7 +24,7 @@
     StatusBadge,
     type StatusTone,
   } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import {
     ProtectionGroupHelper,
     type MemberHealth,
@@ -63,12 +63,7 @@
     {
       title: t('colStorage'),
       key: 'storage',
-      render: (row) =>
-        h(
-          'span',
-          { class: 'tt-mono' },
-          row.isPrimary ? `${row.storage} (${t('primaryMark')})` : row.storage,
-        ),
+      render: (row) => h('span', { class: 'tt-mono' }, row.storage),
     },
     {
       title: t('colRole'),
@@ -95,14 +90,6 @@
       render: (row) => ProtectionGroupHelper.lagText(row.lag),
     },
     { title: t('colInitialSync'), key: 'sync', render: syncText },
-    {
-      title: t('colExcluded'),
-      key: 'excluded',
-      render: (row) =>
-        row.excluded
-          ? h(StatusBadge, { tone: 'danger', label: t('excludedYes') })
-          : EMPTY_VALUE,
-    },
   ]);
 </script>
 

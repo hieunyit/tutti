@@ -81,19 +81,24 @@ describe('ProtectionGroupWizard draft', () => {
     await flushPromises();
     await typeId('gold-group');
 
-    const startOver = Array.from(
-      document.body.querySelectorAll<HTMLButtonElement>('button'),
-    ).find((button) => button.textContent?.trim() === 'Start over');
+    const button = (label: string) =>
+      Array.from(
+        document.body.querySelectorAll<HTMLButtonElement>('button'),
+      ).find((b) => b.textContent?.trim() === label);
 
-    startOver!.click();
+    // nothing to start over on the first step
+    expect(button('Start over')).toBeUndefined();
+    button('Next')!.click();
+    await flushPromises();
+    button('Start over')!.click();
     await flushPromises();
 
     expect(idInput().value).toBe('');
     // the reset form is re-persisted, but nothing typed survives
     expect(stored()?.id ?? '').toBe('');
-    expect(
+    expect([null, '0']).toContain(
       window.sessionStorage.getItem(wizardDraftStorageKey(KEY, 'step')),
-    ).toBe(null);
+    );
 
     wrapper!.unmount();
     document.body.innerHTML = '';

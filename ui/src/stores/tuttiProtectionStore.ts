@@ -30,6 +30,9 @@ import type {
   ProtectionWriters,
 } from '@/utils/types/protection';
 
+/** createGroup result when the backend answers 409: a replication already covers the scope. */
+export const OVERLAP_ERROR = 'overlap';
+
 export const PROTECTION_POLL_MS = 5000;
 const LEGACY_STATUS_REFRESH_MS = 30_000;
 
@@ -243,13 +246,25 @@ export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
     }
   }
 
-  function createGroup(form: ProtectionGroupForm) {
-    return run(async () => {
+  async function createGroup(
+    form: ProtectionGroupForm,
+  ): Promise<string | null> {
+    try {
       await ProtectionGroupService.create(
         ProtectionGroupHelper.buildCreateRequest(form),
       );
-      await refresh();
-    });
+    } catch (e) {
+      // 409: another replication or group already covers this scope
+      if (axios.isAxiosError(e) && e.response?.status === 409) {
+        return OVERLAP_ERROR;
+      }
+
+      return backendMessage(e) ?? 'unknown';
+    }
+
+    await refresh();
+
+    return null;
   }
 
   function updateGroup(current: ProtectionGroup, form: ProtectionGroupForm) {

@@ -15,20 +15,24 @@
   -->
 
 <script setup lang="ts">
-  import { NFormItem, NInput, NModal, NTag } from 'naive-ui';
+  import { NModal } from 'naive-ui';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import i18nProtection from './i18nProtectionUi';
+  import i18nProtection from './i18nProtection';
   import WizardMembersStep from './WizardMembersStep.vue';
   import WizardOptionsStep from './WizardOptionsStep.vue';
+  import WizardScopeStep from './WizardScopeStep.vue';
+  import WizardSummary from './WizardSummary.vue';
   import {
     ErrorBlock,
-    FormSection,
     WizardShell,
     clearWizardDraft,
     useWizardDraft,
   } from '@/components/kit';
-  import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
+  import {
+    OVERLAP_ERROR,
+    useTuttiProtectionStore,
+  } from '@/stores/tuttiProtectionStore';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import type {
     ProtectionFormError,
@@ -50,7 +54,7 @@
   const form = useWizardDraft<ProtectionGroupForm>(DRAFT_KEY, () =>
     ProtectionGroupHelper.emptyForm(),
   );
-  const bucketInput = ref('');
+  const scopeStep = ref<InstanceType<typeof WizardScopeStep> | null>(null);
   const isSaving = ref(false);
   const backendError = ref<string | null>(null);
   const touched = ref(false);
@@ -63,16 +67,17 @@
     'ID_INVALID',
     'BUCKET_INVALID',
   ];
-  const scopeValid = computed(
-    () => !errors.value.some((code) => SCOPE_ERRORS.includes(code)),
-  );
-  const membersValid = computed(
-    () => !errors.value.some((code) => !SCOPE_ERRORS.includes(code)),
-  );
   const steps = computed(() => [
-    { key: 'scope', label: t('wizStepScope'), valid: scopeValid.value },
-    { key: 'members', label: t('wizStepMembers'), valid: membersValid.value },
-    { key: 'confirm', label: t('wizStepConfirm'), valid: true },
+    {
+      key: 'scope',
+      label: t('wizStepScope'),
+      valid: !errors.value.some((code) => SCOPE_ERRORS.includes(code)),
+    },
+    {
+      key: 'members',
+      label: t('wizStepMembers'),
+      valid: errors.value.length === 0,
+    },
   ]);
 
   watch(
@@ -84,12 +89,18 @@
       );
     },
   );
-
   watch(
     () => form.value.id,
     () => {
       backendError.value = null;
     },
+  );
+  watch(
+    () => props.show,
+    (open) => {
+      if (open) store.loadOptions();
+    },
+    { immediate: true },
   );
 
   function errorText(...codes: ProtectionFormError[]): string | undefined {
@@ -100,33 +111,12 @@
     return found ? t(found) : undefined;
   }
 
-  watch(
-    () => props.show,
-    (open) => {
-      if (open) store.loadOptions();
-    },
-    { immediate: true },
-  );
-
-  function addBucket() {
-    const value = bucketInput.value.trim();
-
-    if (!value) return;
-
-    form.value.buckets = [...form.value.buckets, value];
-    bucketInput.value = '';
-  }
-
   function close() {
     emit('update:show', false);
   }
 
-  function onStep() {
-    touched.value = false;
-  }
-
   async function finish() {
-    if (bucketInput.value.trim() !== '') addBucket();
+    scopeStep.value?.addBucket();
 
     if (errors.value.length > 0) {
       touched.value = true;
@@ -142,7 +132,10 @@
     isSaving.value = false;
 
     if (err !== null) {
-      backendError.value = t('saveFailed', { message: err });
+      backendError.value =
+        err === OVERLAP_ERROR
+          ? t('overlapError')
+          : t('saveFailed', { message: err });
 
       return;
     }
@@ -150,16 +143,9 @@
     const id = form.value.id.trim();
 
     clearWizardDraft(DRAFT_KEY);
-    bucketInput.value = '';
     emit('saved', id);
     close();
   }
-
-  const scopeSummary = computed(() =>
-    form.value.buckets.length
-      ? form.value.buckets.join(', ')
-      : t('wizAllBuckets'),
-  );
 </script>
 
 <template>
@@ -169,7 +155,7 @@
     :title="t('wizTitle')"
     :closable="!isSaving"
     :mask-closable="false"
-    :style="{ width: 'min(680px, calc(100vw - 32px))' }"
+    :style="{ width: 'min(760px, calc(100vw - 32px))' }"
     @update:show="!$event && !isSaving && close()"
   >
     <WizardShell
@@ -177,62 +163,16 @@
       :draft-key="DRAFT_KEY"
       :finish-label="t('wizFinish')"
       :busy="isSaving"
-      start-over-on-first-step
       @finish="finish"
-      @step="onStep"
+      @step="touched = false"
     >
       <template #scope>
-        <FormSection
-          :title="t('wizStepScope')"
-          :description="t('wizScopeDesc')"
-        >
-          <NFormItem
-            :label="t('fieldId')"
-            :validation-status="
-              errorText('ID_REQUIRED', 'ID_INVALID') ? 'error' : undefined
-            "
-            :feedback="
-              errorText('ID_REQUIRED', 'ID_INVALID') ?? t('fieldIdHelp')
-            "
-          >
-            <NInput
-              v-model:value="form.id"
-              @blur="touched = true"
-            />
-          </NFormItem>
-          <NFormItem
-            :label="t('fieldBuckets')"
-            :validation-status="
-              errorText('BUCKET_INVALID') ? 'error' : undefined
-            "
-            :feedback="errorText('BUCKET_INVALID') ?? t('fieldBucketsHelp')"
-          >
-            <div class="pg-wizard__stack">
-              <div
-                v-if="form.buckets.length"
-                class="pg-wizard__row"
-              >
-                <NTag
-                  v-for="(bucket, index) in form.buckets"
-                  :key="`${bucket}-${index}`"
-                  round
-                  closable
-                  @close="
-                    form.buckets = form.buckets.filter((_, i) => i !== index)
-                  "
-                >
-                  {{ bucket }}
-                </NTag>
-              </div>
-              <NInput
-                v-model:value="bucketInput"
-                :placeholder="t('fieldBucketsPlaceholder')"
-                @keydown.enter.prevent="addBucket"
-                @blur="addBucket"
-              />
-            </div>
-          </NFormItem>
-        </FormSection>
+        <WizardScopeStep
+          ref="scopeStep"
+          v-model="form"
+          :error-text="errorText"
+          @blur="touched = true"
+        />
       </template>
 
       <template #members>
@@ -244,98 +184,17 @@
           v-model="form"
           :error-text="errorText"
         />
+        <ErrorBlock
+          v-if="backendError"
+          :title="t('wizSaveFailed')"
+          :description="backendError"
+          @retry="finish"
+        />
       </template>
 
-      <template #confirm>
-        <FormSection
-          :title="t('wizStepConfirm')"
-          :description="t('wizConfirmDesc')"
-        >
-          <dl class="pg-wizard__summary">
-            <div>
-              <dt>{{ t('fieldId') }}</dt>
-              <dd class="tt-mono">{{ form.id.trim() }}</dd>
-            </div>
-            <div>
-              <dt>{{ t('colScope') }}</dt>
-              <dd>{{ scopeSummary }}</dd>
-            </div>
-            <div>
-              <dt>{{ t('wizPrimary') }}</dt>
-              <dd class="tt-mono">{{ form.members[0] }}</dd>
-            </div>
-            <div>
-              <dt>{{ t('fieldMembers') }}</dt>
-              <dd class="tt-mono">{{ form.members.join(' → ') }}</dd>
-            </div>
-            <div>
-              <dt>{{ t('fieldCopies') }}</dt>
-              <dd>{{ form.copies }}</dd>
-            </div>
-            <div>
-              <dt>{{ t('fieldMode') }}</dt>
-              <dd>
-                {{ form.mode === 'auto' ? t('modeAuto') : t('modeManual') }}
-              </dd>
-            </div>
-          </dl>
-          <ErrorBlock
-            v-if="backendError"
-            :title="t('wizSaveFailed')"
-            :description="backendError"
-            @retry="finish"
-          />
-        </FormSection>
+      <template #summary>
+        <WizardSummary :form="form" />
       </template>
     </WizardShell>
   </NModal>
 </template>
-
-<style lang="scss" scoped>
-  .pg-wizard {
-    &__stack {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-2);
-      width: 100%;
-    }
-
-    &__row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--tt-space-2);
-      width: 100%;
-    }
-
-    &__member {
-      flex: 1;
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
-    &__hint {
-      margin: 0;
-      color: var(--tt-text-3);
-      font-size: var(--tt-text-sm);
-    }
-
-    &__summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--tt-space-3) var(--tt-space-5);
-      margin: 0;
-
-      dt {
-        color: var(--tt-text-3);
-        font-size: var(--tt-text-xs);
-      }
-
-      dd {
-        margin: var(--tt-space-1) 0 0;
-        font-weight: var(--tt-weight-medium);
-        overflow-wrap: anywhere;
-      }
-    }
-  }
-</style>

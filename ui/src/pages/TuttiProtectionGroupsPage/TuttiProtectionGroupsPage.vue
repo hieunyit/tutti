@@ -15,142 +15,120 @@
   -->
 
 <script setup lang="ts">
-  import { NButton, NSwitch, type DataTableColumns } from 'naive-ui';
+  import { NButton, NFormItem, NSelect, type DataTableColumns } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { computed, h, onBeforeMount, onBeforeUnmount, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { RouterLink, useRouter } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import {
-    ConfirmDialog,
     DataTable,
-    EMPTY_VALUE,
     EmptyBlock,
-    ErrorBlock,
     PageShell,
-    StatTile,
     StatusBadge,
+    TableToolbar,
+    type FilterChip,
     type PageState,
-    type StatusTone,
   } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import AutomaticFailoverControl from '@/components/tutti/protection/AutomaticFailoverControl.vue';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
+  import ProtectionGroupCards from '@/components/tutti/protection/ProtectionGroupCards.vue';
   import ProtectionGroupWizard from '@/components/tutti/protection/ProtectionGroupWizard.vue';
+  import {
+    matchesQuery,
+    toProtectionRow,
+    type ProtectionRow,
+  } from '@/components/tutti/protection/protectionRows';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
-  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
-  import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
-  import type { ProtectionGroup } from '@/utils/types/protection';
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nProtection });
   const router = useRouter();
+  const narrow = useNarrowScreen();
   const store = useTuttiProtectionStore();
-  const { isLoading, isLoaded, hasError, groups, statuses, automaticFrozen } =
+  const { isLoading, isLoaded, hasError, groups, statuses } =
     storeToRefs(store);
 
   const showCreate = ref(false);
-  const showFreezeConfirm = ref(false);
-  const isFreezing = ref(false);
-  const freezeError = ref(false);
+  const query = ref('');
+  const health = ref<'all' | 'ready' | 'attention'>('all');
 
   onBeforeMount(() => store.startPolling());
   onBeforeUnmount(() => store.stopPolling());
 
   const state = computed<PageState>(() => {
-    if (hasError.value) return 'error';
-
-    if (!isLoaded.value) return 'loading';
+    if (!isLoaded.value) return hasError.value ? 'error' : 'loading';
 
     return groups.value.length === 0 ? 'empty' : 'ready';
   });
 
-  const switchingCount = computed(
-    () => groups.value.filter((g) => !!g.target).length,
+  const rows = computed(() =>
+    groups.value.map((group) =>
+      toProtectionRow(group, statuses.value[group.id], t),
+    ),
   );
-  const maxLag = computed(() => {
-    const lags = groups.value
-      .map((g) => ProtectionGroupHelper.maxLag(statuses.value[g.id]))
-      .filter((lag): lag is number => lag !== null);
+  const filtered = computed(() =>
+    rows.value.filter(
+      (row) =>
+        matchesQuery(row, query.value) &&
+        (health.value === 'all' ||
+          (health.value === 'ready') === (row.display === 'ready')),
+    ),
+  );
+  const healthOptions = computed(() =>
+    (['all', 'ready', 'attention'] as const).map((value) => ({
+      label: t(`filter.${value}`),
+      value,
+    })),
+  );
+  const chips = computed<FilterChip[]>(() =>
+    health.value === 'all'
+      ? []
+      : [
+          {
+            key: 'health',
+            label: `${t('colState')}: ${t(`filter.${health.value}`)}`,
+          },
+        ],
+  );
 
-    return lags.length ? Math.max(...lags) : null;
-  });
-
-  function scopeText(group: ProtectionGroup): string {
-    const kind = ProtectionGroupHelper.scopeKind(group);
-
-    if (kind === 'storage') return t('scopeStorage');
-
-    if (kind === 'user') return t('scopeUser');
-
-    const count = (group.buckets ?? []).length;
-
-    return count === 1 ? t('scopeBucketsOne') : t('scopeBuckets', { count });
+  function clearFilters() {
+    query.value = '';
+    health.value = 'all';
   }
 
-  const columns = computed<DataTableColumns<ProtectionGroup>>(() => [
+  const columns = computed<DataTableColumns<ProtectionRow>>(() => [
     {
       title: t('colName'),
       key: 'id',
-      render: (g) =>
+      render: (row) =>
         h(
           RouterLink,
           {
             to: {
               name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
-              params: { name: g.id },
+              params: { name: row.id },
             },
             class: 'tt-mono',
           },
-          { default: () => g.id },
-        ),
-    },
-    { title: t('colScope'), key: 'scope', render: scopeText },
-    {
-      title: t('colCopies'),
-      key: 'copies',
-      render: (g) =>
-        t('copiesValue', {
-          healthy: statuses.value[g.id]?.healthyCopies ?? EMPTY_VALUE,
-          wanted: ProtectionGroupHelper.wantedCopies(g),
-        }),
-    },
-    {
-      title: t('colLag'),
-      key: 'lag',
-      render: (g) =>
-        ProtectionGroupHelper.lagText(
-          ProtectionGroupHelper.maxLag(statuses.value[g.id]),
+          { default: () => row.id },
         ),
     },
     {
-      title: t('colChange'),
-      key: 'change',
-      render: (g) =>
-        formatDateTime(ProtectionGroupHelper.historyNewestFirst(g)[0]?.at),
+      title: t('colStorages'),
+      key: 'storages',
+      render: (row) => h('span', { class: 'tt-mono' }, row.storages),
     },
+    { title: t('colScope'), key: 'covers' },
+    { title: t('colCopies'), key: 'copies' },
+    { title: t('colLag'), key: 'lag' },
     {
       title: t('colState'),
       key: 'state',
-      render: (g) => {
-        const display = ProtectionGroupHelper.displayState(g);
-
-        return h(StatusBadge, {
-          tone: ProtectionGroupHelper.stateVariant(display) as StatusTone,
-          label: t(`state.${display}`),
-        });
-      },
+      render: (row) => h(StatusBadge, { tone: row.tone, label: row.state }),
     },
   ]);
-
-  async function confirmToggleFreeze() {
-    isFreezing.value = true;
-    freezeError.value = false;
-
-    const err = await store.setAutomaticFreeze(!automaticFrozen.value);
-
-    isFreezing.value = false;
-    showFreezeConfirm.value = false;
-    freezeError.value = err !== null;
-  }
 
   function openGroup(id: string) {
     router.push({
@@ -163,35 +141,15 @@
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('pageDescription')"
     :state="state"
     :error-text="t('errorText')"
     @retry="store.refresh()"
   >
-    <template #actions>
-      <label
-        v-if="automaticFrozen !== null"
-        class="pg-list__freeze"
-      >
-        <span>{{ t('freezeSwitch') }}</span>
-        <WriteGate>
-          <NSwitch
-            :value="!automaticFrozen"
-            :loading="isFreezing"
-            @update:value="showFreezeConfirm = true"
-          />
-        </WriteGate>
-        <span class="pg-list__freeze-state">
-          {{ automaticFrozen ? t('freezeSwitchOff') : t('freezeSwitchOn') }}
-        </span>
-      </label>
-      <NButton
-        :loading="isLoading"
-        @click="store.refresh()"
-      >
-        {{ t('refresh') }}
-      </NButton>
-      <WriteGate v-if="!hasError">
+    <template
+      v-if="state === 'ready'"
+      #actions
+    >
+      <WriteGate>
         <NButton
           type="primary"
           @click="showCreate = true"
@@ -215,41 +173,51 @@
           </NButton>
         </WriteGate>
       </EmptyBlock>
+      <AutomaticFailoverControl class="pg-list__failover" />
     </template>
 
     <div class="pg-list">
-      <ErrorBlock
-        v-if="freezeError"
-        :title="t('freezeErrorTitle')"
-        :description="t('freezeFailed')"
-        @retry="showFreezeConfirm = true"
+      <div class="pg-list__bar">
+        <TableToolbar
+          v-model:search="query"
+          :search-label="t('search')"
+          :search-placeholder="t('search')"
+          :chips="chips"
+          @remove="health = 'all'"
+          @clear="clearFilters"
+        >
+          <NFormItem
+            :label="t('colState')"
+            label-placement="left"
+            :show-feedback="false"
+          >
+            <NSelect
+              v-model:value="health"
+              :options="healthOptions"
+              size="small"
+            />
+          </NFormItem>
+        </TableToolbar>
+        <AutomaticFailoverControl />
+      </div>
+      <ProtectionGroupCards
+        v-if="narrow && filtered.length > 0"
+        :rows="filtered"
       />
-      <section class="pg-list__tiles">
-        <StatTile
-          :label="t('kpiGroups')"
-          :value="groups.length"
-          :hint="t('kpiGroupsSub')"
-        />
-        <StatTile
-          :label="t('kpiSwitching')"
-          :value="switchingCount"
-          :hint="t('kpiSwitchingSub')"
-          :tone="switchingCount > 0 ? 'warning' : 'neutral'"
-        />
-        <StatTile
-          :label="t('kpiMaxLag')"
-          :value="ProtectionGroupHelper.lagText(maxLag)"
-          :hint="t('kpiMaxLagSub')"
-          :tone="maxLag ? 'warning' : 'neutral'"
-        />
-      </section>
       <DataTable
+        v-else
         :columns="columns"
-        :rows="groups"
+        :rows="filtered"
         :loading="isLoading && !isLoaded"
-        :row-key="(g: ProtectionGroup) => g.id"
+        :row-key="(row: ProtectionRow) => row.id"
         @retry="store.refresh()"
-      />
+      >
+        <template #empty>
+          <EmptyBlock :title="t('noMatch')">
+            <NButton @click="clearFilters">{{ t('clearFilters') }}</NButton>
+          </EmptyBlock>
+        </template>
+      </DataTable>
     </div>
   </PageShell>
 
@@ -257,20 +225,6 @@
     v-model:show="showCreate"
     @saved="openGroup"
   />
-
-  <ConfirmDialog
-    :open="showFreezeConfirm"
-    :title="automaticFrozen ? t('freezeDisableTitle') : t('freezeEnableTitle')"
-    :danger="!automaticFrozen"
-    :loading="isFreezing"
-    :confirm-label="
-      automaticFrozen ? t('freezeDisableAction') : t('freezeEnableAction')
-    "
-    @confirm="confirmToggleFreeze"
-    @cancel="showFreezeConfirm = false"
-  >
-    {{ automaticFrozen ? t('freezeDisableText') : t('freezeEnableText') }}
-  </ConfirmDialog>
 </template>
 
 <style lang="scss" scoped>
@@ -278,24 +232,18 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-4);
+    min-width: 0;
 
-    &__tiles {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: var(--tt-space-4);
+    &__bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--tt-space-3) var(--tt-space-5);
     }
 
-    &__freeze {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--tt-space-2);
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-2);
-    }
-
-    &__freeze-state {
-      font-weight: var(--tt-weight-medium);
-      color: var(--tt-text);
+    &__failover {
+      margin-top: var(--tt-space-4);
     }
   }
 </style>

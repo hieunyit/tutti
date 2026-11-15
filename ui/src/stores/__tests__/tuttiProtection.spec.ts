@@ -14,9 +14,14 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTuttiProtectionStore } from '../tuttiProtectionStore';
+import {
+  OVERLAP_ERROR,
+  useTuttiProtectionStore,
+} from '../tuttiProtectionStore';
+import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
 import { ProtectionGroupService } from '@/services/ProtectionGroupService';
 
 vi.mock('@/services/ProtectionGroupService', () => ({
@@ -24,6 +29,7 @@ vi.mock('@/services/ProtectionGroupService', () => ({
     list: vi.fn(),
     get: vi.fn(),
     getAutomaticFreeze: vi.fn(),
+    create: vi.fn(),
   },
 }));
 vi.mock('@/services/TuttiCoreService', () => ({ TuttiCoreService: {} }));
@@ -83,5 +89,27 @@ describe('tuttiProtectionStore refresh', () => {
     await store.refresh();
     expect(ProtectionGroupService.get).toHaveBeenCalledTimes(2);
     expect(store.statuses['a']?.healthyCopies).toBe(1);
+  });
+});
+
+describe('tuttiProtectionStore createGroup', () => {
+  const form = ProtectionGroupHelper.emptyForm();
+
+  it('reports a 409 as an overlap, other failures with the backend text', async () => {
+    const store = useTuttiProtectionStore();
+    const conflict = new AxiosError('conflict');
+
+    conflict.response = { status: 409, data: {} } as AxiosError['response'];
+    vi.mocked(ProtectionGroupService.create).mockRejectedValueOnce(conflict);
+    expect(await store.createGroup(form)).toBe(OVERLAP_ERROR);
+
+    const rejected = new AxiosError('bad');
+
+    rejected.response = {
+      status: 400,
+      data: { message: 'bad scope' },
+    } as AxiosError['response'];
+    vi.mocked(ProtectionGroupService.create).mockRejectedValueOnce(rejected);
+    expect(await store.createGroup(form)).toBe('bad scope');
   });
 });

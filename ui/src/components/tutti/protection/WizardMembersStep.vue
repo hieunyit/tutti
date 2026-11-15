@@ -19,8 +19,7 @@
   import { storeToRefs } from 'pinia';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import i18nProtection from './i18nProtectionUi';
-  import { FormSection } from '@/components/kit';
+  import i18nProtection from './i18nProtection';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import type {
@@ -70,10 +69,8 @@
 </script>
 
 <template>
-  <FormSection
-    :title="t('wizStepMembers')"
-    :description="t('wizMembersDesc')"
-  >
+  <div class="pg-wizard">
+    <p class="pg-wizard__hint">{{ t('wizMembersDesc') }}</p>
     <NFormItem
       :label="t('fieldMembers')"
       :validation-status="errorText('MEMBERS_MIN') ? 'error' : undefined"
@@ -153,7 +150,7 @@
         :precision="0"
       />
     </NFormItem>
-  </FormSection>
+  </div>
 </template>
 
 <style lang="scss" scoped>

@@ -26,7 +26,7 @@
     EMPTY_VALUE,
     ErrorBlock,
   } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import { backendMessage } from '@/stores/tuttiProtectionStore';
   import type { ProtectionGroupActions } from '@/utils/composables/useProtectionGroupActions';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';

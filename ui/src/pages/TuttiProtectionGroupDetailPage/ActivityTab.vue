@@ -19,7 +19,7 @@
   import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { DataTable, EMPTY_VALUE, StatusBadge } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import type {

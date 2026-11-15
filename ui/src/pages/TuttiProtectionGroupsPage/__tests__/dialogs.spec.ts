@@ -56,11 +56,11 @@ function page() {
 }
 
 describe('Protection groups actions with an empty list', () => {
-  it('opens the create wizard from the header and empty state', async () => {
+  it('opens the create wizard from the empty state', async () => {
     const wrapper = page();
     const buttons = wrapper
       .findAll('button')
-      .filter((button) => button.text().includes('Create group'));
+      .filter((button) => button.text().includes('Create protection group'));
 
     expect(buttons.length).toBeGreaterThan(0);
     await buttons[0]!.trigger('click');
@@ -73,6 +73,30 @@ describe('Protection groups actions with an empty list', () => {
 
     await wrapper.get('[role="switch"]').trigger('click');
     expect(wrapper.get('[role="alertdialog"]').text()).toBe('Confirm failover');
+    wrapper.unmount();
+  });
+});
+
+describe('Protection groups list', () => {
+  it('shows readable storages, filters by text and keeps the failover control out of the header', async () => {
+    const store = useTuttiProtectionStore();
+
+    store.groups = [
+      {
+        id: 'gold',
+        members: ['hcm04', 'hcm02'],
+        primary: 'hcm02',
+        state: 'ready',
+      },
+      { id: 'silver', members: ['a', 'b'], primary: 'a', state: 'error' },
+    ];
+    const wrapper = page();
+
+    expect(wrapper.text()).toContain('hcm02 → hcm04');
+    expect(wrapper.find('.kit-header [role="switch"]').exists()).toBe(false);
+    await wrapper.get('input').setValue('silver');
+    expect(wrapper.text()).toContain('silver');
+    expect(wrapper.text()).not.toContain('gold');
     wrapper.unmount();
   });
 });

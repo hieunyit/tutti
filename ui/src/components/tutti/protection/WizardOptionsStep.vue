@@ -26,7 +26,7 @@
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import i18nProtection from './i18nProtectionUi';
+  import i18nProtection from './i18nProtection';
   import { FormSection } from '@/components/kit';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import type {
@@ -132,6 +132,15 @@
       <NCheckbox v-model:checked="form.adoptExisting">
         {{ t('fieldAdopt') }}
       </NCheckbox>
+      <p class="pg-wizard__hint">{{ t('fieldAdoptHelp') }}</p>
     </FormSection>
   </div>
 </template>
+
+<style lang="scss" scoped>
+  .pg-wizard__hint {
+    margin: var(--tt-space-1) 0 0;
+    color: var(--tt-text-3);
+    font-size: var(--tt-text-sm);
+  }
+</style>

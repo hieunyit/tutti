@@ -34,8 +34,12 @@
     type PageState,
     type StatusTone,
   } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import ProtectionGroupDialog from '@/components/tutti/protection/ProtectionGroupDialog.vue';
+  import {
+    coversText,
+    storagesText,
+  } from '@/components/tutti/protection/protectionRows';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
   import { useProtectionGroupActions } from '@/utils/composables/useProtectionGroupActions';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
@@ -47,8 +51,7 @@
   const route = useRoute();
   const router = useRouter();
   const store = useTuttiProtectionStore();
-  const { detail, detailLoading, detailMissing, detailError, writers } =
-    storeToRefs(store);
+  const { detail, detailMissing, detailError, writers } = storeToRefs(store);
   const { writersError } = storeToRefs(store);
 
   const groupId = computed(() => props.name || String(route.params.name ?? ''));
@@ -99,19 +102,12 @@
         }
       : undefined,
   );
-  const description = computed(() => {
-    const g = group.value;
-
-    if (!g) return undefined;
-
-    const parts = [
-      g.primary ? `${t('rolePrimary')}: ${g.primary}` : '',
-      t('generation', { value: g.generation ?? 0 }),
-      g.mode === 'auto' ? t('modeAuto') : t('modeManual'),
-    ];
-
-    return parts.filter(Boolean).join(' · ');
-  });
+  // one line: where the data lives and what it covers (state is the badge)
+  const description = computed(() =>
+    group.value
+      ? `${storagesText(group.value)} · ${coversText(group.value, t)}`
+      : undefined,
+  );
   const tabs = computed(() => [
     { key: 'members', label: t('tabMembers') },
     { key: 'writers', label: t('tabWriters') },
@@ -153,12 +149,6 @@
 
     <template #actions>
       <template v-if="group">
-        <NButton
-          :loading="detailLoading"
-          @click="store.loadDetail(groupId)"
-        >
-          {{ t('refreshDetail') }}
-        </NButton>
         <GroupActions
           :group="group"
           :lag-of="lagOf"

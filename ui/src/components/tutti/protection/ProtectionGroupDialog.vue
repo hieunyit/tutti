@@ -271,50 +271,6 @@
       gap: 4px;
     }
 
-    &__stack {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-    }
-
-    &__tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    &__tag-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    &__inline {
-      display: flex;
-      gap: 8px;
-      width: 100%;
-    }
-
-    &__empty {
-      margin: 0;
-      font-size: 13px;
-      color: var(--tt-text-3);
-    }
-
-    &__member {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    &__member-name {
-      flex: 1;
-      font-weight: 500;
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-
     &__grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -323,18 +279,6 @@
       @media (max-width: 560px) {
         grid-template-columns: minmax(0, 1fr);
       }
-    }
-
-    &__adopt {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    &__adopt-help {
-      margin: 0;
-      font-size: 12px;
-      color: var(--tt-text-3);
     }
 
     &__footer {

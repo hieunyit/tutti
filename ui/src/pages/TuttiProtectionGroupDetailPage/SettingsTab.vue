@@ -20,7 +20,7 @@
   import { useI18n } from 'vue-i18n';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { Callout, ConfirmDialog, EMPTY_VALUE } from '@/components/kit';
-  import i18nProtection from '@/components/tutti/protection/i18nProtectionUi';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import { backendMessage } from '@/stores/tuttiProtectionStore';
   import type { ProtectionGroupActions } from '@/utils/composables/useProtectionGroupActions';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
