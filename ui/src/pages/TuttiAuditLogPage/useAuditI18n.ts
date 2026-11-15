@@ -14,75 +14,34 @@
  *  limitations under the License.
  */
 
-import { watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import messages from './i18nAudit';
-import { useAuditLogStore } from '@/stores/tuttiAuditLogStore';
+import { familyKey, humanize, parseAction } from './auditLabels';
 import { EMPTY_VALUE } from '@/components/kit';
-import type { StatusTone } from '@/components/kit';
 
-/**
- * Local-scope i18n shared by the audit components. The page's vi/en toggle
- * lives in the store (`localeOverride`) so every component switches together;
- * without an override the app language applies.
- */
+/** Local-scope i18n shared by the audit components (follows the app language). */
 export function useAuditI18n() {
-  const store = useAuditLogStore();
-  const { t, locale } = useI18n({ useScope: 'local', messages });
-
-  watchEffect(() => {
-    if (store.localeOverride)
-      locale.value = store.localeOverride as 'en' | 'vi';
-  });
+  const { t, te } = useI18n({ useScope: 'local', messages });
 
   function familyLabel(family: string): string {
     if (!family) return EMPTY_VALUE;
 
-    const key = `family.${family}`;
-    const translated = t(key);
+    const key = `family_${familyKey(family)}`;
 
-    return translated !== key ? translated : family;
+    return te(key) ? t(key) : humanize(family);
   }
 
   function actionLabel(action: string): string {
     if (!action) return EMPTY_VALUE;
 
-    const key = `action.${action.toLowerCase()}`;
-    const translated = t(key);
+    const { base, intent } = parseAction(action);
+    const key = `action_${base}`;
+    const label = te(key) ? t(key) : humanize(base);
 
-    return translated !== key ? translated : action;
+    return intent ? t('action_intent', { action: label }) : label;
   }
 
-  return { t, locale, familyLabel, actionLabel };
-}
-
-export function actionTone(action: string): StatusTone {
-  switch ((action || '').trim().toLowerCase()) {
-    case 'create':
-
-    case 'unblock':
-      return 'success';
-
-    case 'update':
-
-    case 'set':
-
-    case 'generation':
-      return 'info';
-
-    case 'delete':
-
-    case 'block':
-      return 'danger';
-
-    case 'rotate':
-
-    case 'archive':
-      return 'warning';
-
-    default:
-      return 'neutral';
-  }
+  return { t, familyLabel, actionLabel };
 }
 
 export function formatJsonPayload(raw?: string): string {

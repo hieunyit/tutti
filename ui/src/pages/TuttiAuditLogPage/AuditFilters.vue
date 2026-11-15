@@ -18,24 +18,26 @@
   /** Search and filter controls of the audit log; applying refetches page 1. */
   import { computed, onBeforeUnmount } from 'vue';
   import { NDatePicker, NInput, NSelect } from 'naive-ui';
+  import { AUDIT_ACTION_FILTERS, AUDIT_FAMILY_FILTERS } from './auditLabels';
   import { useAuditI18n } from './useAuditI18n';
-  import { FilterBar, type FilterChip } from '@/components/kit';
+  import { TableToolbar, type FilterChip } from '@/components/kit';
   import { useAuditLogStore } from '@/stores/tuttiAuditLogStore';
-  import { AUDIT_LOG_ACTIONS, AUDIT_LOG_FAMILIES } from '@/utils/types/audit';
+
+  defineProps<{ hidden?: boolean }>();
 
   const store = useAuditLogStore();
   const { t, familyLabel, actionLabel } = useAuditI18n();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const familyOptions = computed(() =>
-    AUDIT_LOG_FAMILIES.map((family) => ({
-      label: `${familyLabel(family)} (${family})`,
+    AUDIT_FAMILY_FILTERS.map((family) => ({
+      label: familyLabel(family),
       value: family,
     })),
   );
   const actionOptions = computed(() =>
-    AUDIT_LOG_ACTIONS.map((action) => ({
-      label: `${actionLabel(action)} (${action})`,
+    AUDIT_ACTION_FILTERS.map((action) => ({
+      label: actionLabel(action),
       value: action,
     })),
   );
@@ -121,80 +123,95 @@
 </script>
 
 <template>
-  <FilterBar
+  <TableToolbar
     :search="store.filters.entityKey"
-    :search-label="t('entityKeyLabel')"
-    :search-placeholder="t('entityKeyPlaceholder')"
+    :search-label="t('searchLabel')"
+    :search-placeholder="t('searchPlaceholder')"
     :chips="chips"
+    :hidden="hidden"
     @update:search="setSearch"
     @remove="removeChip"
     @clear="clearAll"
   >
     <div class="audit-filters">
-      <NSelect
-        v-model:value="store.filters.family"
-        class="audit-filters__control"
-        :aria-label="t('familyLabel')"
-        :placeholder="t('familyAll')"
-        :options="familyOptions"
-        filterable
-        clearable
-        @update:value="applyNow"
-      />
-      <NSelect
-        v-model:value="store.filters.action"
-        class="audit-filters__control"
-        :aria-label="t('actionLabel')"
-        :placeholder="t('actionAll')"
-        :options="actionOptions"
-        filterable
-        tag
-        clearable
-        @update:value="applyNow"
-      />
-      <NInput
-        v-model:value="store.filters.actor"
-        class="audit-filters__control"
-        :aria-label="t('actorLabel')"
-        :placeholder="t('actorPlaceholder')"
-        clearable
-        @update:value="applyDebounced"
-        @keyup.enter="applyNow"
-      />
-      <NDatePicker
-        :aria-label="t('dateRangeLabel')"
-        :formatted-value="range"
-        class="audit-filters__control"
-        type="daterange"
-        value-format="yyyy-MM-dd"
-        @update:formatted-value="setRange"
-        clearable
-      />
-      <NSelect
-        v-model:value="store.filters.limit"
-        class="audit-filters__limit"
-        :aria-label="t('limitLabel')"
-        :options="limitOptions"
-        @update:value="applyNow"
-      />
+      <div class="audit-filters__field">
+        <span>{{ t('familyLabel') }}</span>
+        <NSelect
+          v-model:value="store.filters.family"
+          :aria-label="t('familyLabel')"
+          :placeholder="t('familyAll')"
+          :options="familyOptions"
+          filterable
+          clearable
+          @update:value="applyNow"
+        />
+      </div>
+      <div class="audit-filters__field">
+        <span>{{ t('actionLabel') }}</span>
+        <NSelect
+          v-model:value="store.filters.action"
+          :aria-label="t('actionLabel')"
+          :placeholder="t('actionAll')"
+          :options="actionOptions"
+          filterable
+          clearable
+          @update:value="applyNow"
+        />
+      </div>
+      <div class="audit-filters__field">
+        <label for="audit-actor">{{ t('actorLabel') }}</label>
+        <NInput
+          v-model:value="store.filters.actor"
+          :input-props="{ id: 'audit-actor' }"
+          :placeholder="t('actorPlaceholder')"
+          clearable
+          @update:value="applyDebounced"
+          @keyup.enter="applyNow"
+        />
+      </div>
+      <div class="audit-filters__field">
+        <span>{{ t('dateRangeLabel') }}</span>
+        <NDatePicker
+          :aria-label="t('dateRangeLabel')"
+          :formatted-value="range"
+          type="daterange"
+          value-format="yyyy-MM-dd"
+          clearable
+          @update:formatted-value="setRange"
+        />
+      </div>
+      <div class="audit-filters__field audit-filters__field--narrow">
+        <span>{{ t('limitLabel') }}</span>
+        <NSelect
+          v-model:value="store.filters.limit"
+          :aria-label="t('limitLabel')"
+          :options="limitOptions"
+          @update:value="applyNow"
+        />
+      </div>
     </div>
-  </FilterBar>
+  </TableToolbar>
 </template>
 
 <style lang="scss" scoped>
   .audit-filters {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--tt-space-2);
+    align-items: flex-end;
+    gap: var(--tt-space-3);
 
-    &__control {
+    &__field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--tt-space-1);
       width: 200px;
       max-width: 100%;
-    }
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-2);
 
-    &__limit {
-      width: 90px;
+      &--narrow {
+        width: 120px;
+      }
     }
   }
 </style>

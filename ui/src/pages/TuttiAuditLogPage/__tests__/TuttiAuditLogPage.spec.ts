@@ -90,7 +90,7 @@ describe('TuttiAuditLogPage', () => {
     const wrapper = mountPage();
 
     await flushPromises();
-    expect(wrapper.text()).toContain('No audit log entries found');
+    expect(wrapper.text()).toContain('No audit entries yet');
     wrapper.unmount();
   });
 
@@ -117,29 +117,60 @@ describe('TuttiAuditLogPage', () => {
     const wrapper = mountPage();
 
     await flushPromises();
-    expect(wrapper.text()).toContain(
-      'Transactional audit log requires PostgreSQL backend',
-    );
-    expect(wrapper.text()).toContain('Control plane is in read-only mode');
+    expect(wrapper.text()).toContain('History is not kept durably');
+    expect(wrapper.text()).toContain('Configuration is read-only');
     wrapper.unmount();
   });
 
-  it('toggles the page language between English and Vietnamese', async () => {
+  it('has no page-level language switch, refresh button or jargon pills', async () => {
     vi.mocked(AuditLogService.list).mockResolvedValue(list([entry(1)]));
 
     const wrapper = mountPage();
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Control-Plane Audit Log');
 
-    const toggle = wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Tiếng Việt')!;
+    const labels = wrapper.findAll('button').map((b) => b.text());
 
-    await toggle.trigger('click');
+    expect(labels).not.toContain('Tiếng Việt');
+    expect(labels).not.toContain('Refresh');
+    expect(wrapper.text()).not.toContain('PostgreSQL (transactional)');
+    expect(wrapper.text()).not.toContain('Read-write');
+    wrapper.unmount();
+  });
+
+  it('shows readable labels for raw families and actions', async () => {
+    vi.mocked(AuditLogService.list).mockResolvedValue(
+      list([
+        { ...entry(3), family: 'system_settings', action: 'RENAME' },
+        { ...entry(2), family: 'storages', action: 'PAUSE_INTENT' },
+      ]),
+    );
+
+    const wrapper = mountPage();
+
     await flushPromises();
-    expect(wrapper.text()).toContain('Nhật ký kiểm toán Control-Plane');
-    expect(wrapper.text()).toContain('Làm mới');
+    expect(wrapper.text()).toContain('System settings');
+    expect(wrapper.text()).toContain('Rename');
+    expect(wrapper.text()).toContain('Pause requested');
+    expect(wrapper.text()).not.toContain('system_settings');
+    expect(wrapper.text()).not.toContain('PAUSE_INTENT');
+    wrapper.unmount();
+  });
+
+  it('offers View changes only where a snapshot exists', async () => {
+    vi.mocked(AuditLogService.list).mockResolvedValue(
+      list([
+        entry(2),
+        { ...entry(1), beforeJson: undefined, afterJson: undefined },
+      ]),
+    );
+
+    const wrapper = mountPage();
+
+    await flushPromises();
+    expect(
+      wrapper.findAll('button').filter((b) => b.text() === 'View changes'),
+    ).toHaveLength(1);
     wrapper.unmount();
   });
 

@@ -16,23 +16,26 @@
 
 <script setup lang="ts">
   import { computed, onBeforeMount, ref } from 'vue';
-  import { NButton } from 'naive-ui';
   import AuditEntryDrawer from './AuditEntryDrawer.vue';
   import AuditFilters from './AuditFilters.vue';
   import AuditTable from './AuditTable.vue';
   import { useAuditI18n } from './useAuditI18n';
-  import { Callout, PageShell, StatusBadge } from '@/components/kit';
+  import { Callout, PageShell } from '@/components/kit';
   import { useAuditLogStore } from '@/stores/tuttiAuditLogStore';
   import type { AuditLogEntry } from '@/utils/types/audit';
 
   const store = useAuditLogStore();
-  const { t, locale } = useAuditI18n();
+  const { t } = useAuditI18n();
   const selected = ref<AuditLogEntry | null>(null);
   const state = computed(() => {
     if (store.loadFailed) return 'error';
 
     return store.loaded ? 'ready' : 'loading';
   });
+  // nothing recorded and nothing filtered: the toolbar would only be noise
+  const bare = computed(
+    () => store.entries.length === 0 && !store.hasActiveFilters,
+  );
 
   onBeforeMount(() => {
     void store.refresh();
@@ -42,39 +45,10 @@
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('pageDescription')"
     :state="state"
     :error-text="t('errorText')"
     @retry="store.refresh()"
   >
-    <template #actions>
-      <NButton
-        size="small"
-        @click="store.toggleLocale(locale)"
-      >
-        {{ locale === 'vi' ? t('langSwitchEn') : t('langSwitchVi') }}
-      </NButton>
-      <NButton
-        :loading="store.loading"
-        @click="store.refresh()"
-        >{{ t('refresh') }}</NButton
-      >
-    </template>
-    <template #meta>
-      <StatusBadge
-        :tone="store.backend === 'postgres' ? 'success' : 'info'"
-        :label="
-          store.backend === 'postgres'
-            ? t('backendPostgres')
-            : t('backendRedis')
-        "
-      />
-      <StatusBadge
-        :tone="store.readOnly ? 'warning' : 'success'"
-        :label="store.readOnly ? t('modeReadOnly') : t('modeReadWrite')"
-      />
-    </template>
-
     <div class="audit-page">
       <Callout
         v-if="store.backend === 'redis'"
@@ -90,7 +64,7 @@
       >
         {{ t('readOnlyBannerText') }}
       </Callout>
-      <AuditFilters />
+      <AuditFilters :hidden="bare" />
       <AuditTable @open="selected = $event" />
     </div>
     <AuditEntryDrawer

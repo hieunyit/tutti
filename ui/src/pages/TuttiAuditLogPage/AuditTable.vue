@@ -18,9 +18,11 @@
   /** Audit entries in a kit DataTable plus cursor paging (older / newer). */
   import { computed, h } from 'vue';
   import { NButton, NTooltip, type DataTableColumns } from 'naive-ui';
-  import { actionTone, useAuditI18n } from './useAuditI18n';
+  import { actionTone, hasChanges } from './auditLabels';
+  import { useAuditI18n } from './useAuditI18n';
   import {
     DataTable,
+    EmptyBlock,
     EMPTY_VALUE,
     StatusBadge,
     type StatusTone,
@@ -38,12 +40,6 @@
   const { t, familyLabel, actionLabel } = useAuditI18n();
 
   const columns = computed<DataTableColumns<AuditLogEntry>>(() => [
-    {
-      key: 'id',
-      title: t('colId'),
-      width: 90,
-      render: (row) => h('span', { class: 'tt-mono' }, `#${row.id}`),
-    },
     {
       key: 'at',
       title: t('colTimestamp'),
@@ -65,17 +61,7 @@
     {
       key: 'actor',
       title: t('colActor'),
-      render: (row) =>
-        h('div', [
-          h('strong', row.actor || EMPTY_VALUE),
-          row.requestId
-            ? h(
-                'div',
-                { class: 'tt-mono', style: 'font-size: 11px' },
-                `${t('requestIdPrefix')} ${row.requestId}`,
-              )
-            : null,
-        ]),
+      render: (row) => row.actor || EMPTY_VALUE,
     },
     {
       key: 'action',
@@ -87,26 +73,34 @@
         }),
     },
     {
-      key: 'family',
-      title: t('colFamily'),
-      render: (row) => familyLabel(row.family),
-    },
-    {
-      key: 'entityKey',
-      title: t('colEntityKey'),
+      key: 'object',
+      title: t('colObject'),
       render: (row) =>
-        h('span', { class: 'tt-mono' }, row.entityKey || EMPTY_VALUE),
+        h('div', [
+          h('div', familyLabel(row.family)),
+          h(
+            'small',
+            { class: 'tt-mono', style: 'color: var(--tt-text-3)' },
+            row.entityKey || EMPTY_VALUE,
+          ),
+        ]),
     },
     {
       key: 'details',
-      title: t('colDetails'),
+      title: '',
       align: 'right',
       render: (row) =>
-        h(
-          NButton,
-          { size: 'small', onClick: () => emitOpen(row) },
-          { default: () => t('showDiff') },
-        ),
+        hasChanges(row)
+          ? h(
+              NButton,
+              {
+                size: 'small',
+                quaternary: true,
+                onClick: () => emitOpen(row),
+              },
+              { default: () => t('showDiff') },
+            )
+          : null,
     },
   ]);
 
@@ -140,15 +134,18 @@
       :page-size="200"
     >
       <template #empty>
-        <div class="audit-table__empty">
-          <strong>{{ t('emptyTitle') }}</strong>
-          <p>{{ t('emptyText') }}</p>
-          <NButton
-            v-if="store.hasActiveFilters"
-            @click="store.resetFilters()"
-            >{{ t('resetFilters') }}</NButton
-          >
-        </div>
+        <EmptyBlock
+          v-if="store.hasActiveFilters"
+          :title="t('noMatchTitle')"
+        >
+          <NButton @click="store.resetFilters()">{{
+            t('clearFilters')
+          }}</NButton>
+        </EmptyBlock>
+        <EmptyBlock
+          v-else
+          :title="t('emptyTitle')"
+        />
       </template>
     </DataTable>
     <footer
@@ -187,21 +184,6 @@
       margin: 0;
       color: var(--tt-danger);
       font-size: var(--tt-text-sm);
-    }
-
-    &__empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--tt-space-2);
-      padding: var(--tt-space-7) var(--tt-space-4);
-      color: var(--tt-text-2);
-      text-align: center;
-
-      p {
-        margin: 0;
-        max-width: var(--tt-measure);
-      }
     }
 
     &__footer {

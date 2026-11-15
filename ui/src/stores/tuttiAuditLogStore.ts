@@ -57,8 +57,6 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
   const applied = reactive<AuditFilterState>(emptyFilters());
   const backend = ref('postgres');
   const readOnly = ref(false);
-  /** display-language override for the page's vi/en toggle; null = follow app */
-  const localeOverride = ref<string | null>(null);
 
   const cursor = useAuditCursor<AuditLogEntry>(
     async (beforeId) => {
@@ -141,16 +139,11 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
     return cursor.refresh({ discardOnError: true });
   }
 
-  function toggleLocale(current: string) {
-    localeOverride.value = current === 'vi' ? 'en' : 'vi';
-  }
-
   return {
     filters,
     applied,
     backend,
     readOnly,
-    localeOverride,
     entries,
     loading: cursor.loading,
     error: cursor.error,
@@ -163,6 +156,5 @@ export const useAuditLogStore = defineStore('tuttiAuditLog', () => {
     loadNewer: cursor.loadNewer,
     applyFilters,
     resetFilters,
-    toggleLocale,
   };
 });

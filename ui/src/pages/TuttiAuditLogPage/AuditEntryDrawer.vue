@@ -18,8 +18,8 @@
   /** Side panel with one audit entry: summary, changed fields, before/after JSON. */
   import { computed } from 'vue';
   import { NDrawer, NDrawerContent } from 'naive-ui';
+  import { actionTone } from './auditLabels';
   import {
-    actionTone,
     changedTopLevelKeys,
     formatJsonPayload,
     useAuditI18n,
@@ -63,13 +63,11 @@
         </div>
         <div>
           <dt>{{ t('colActor') }}</dt>
-          <dd>
-            {{ entry.actor || EMPTY_VALUE }}
-            <CopyValue
-              v-if="entry.requestId"
-              :value="entry.requestId"
-            />
-          </dd>
+          <dd>{{ entry.actor || EMPTY_VALUE }}</dd>
+        </div>
+        <div v-if="entry.requestId">
+          <dt>{{ t('requestId') }}</dt>
+          <dd><CopyValue :value="entry.requestId" /></dd>
         </div>
         <div>
           <dt>{{ t('colAction') }}</dt>
@@ -81,14 +79,13 @@
           </dd>
         </div>
         <div>
-          <dt>{{ t('colFamily') }}</dt>
+          <dt>{{ t('familyLabel') }}</dt>
           <dd>
             {{ familyLabel(entry.family) }}
-            <span class="tt-mono audit-drawer__muted">{{ entry.family }}</span>
           </dd>
         </div>
         <div>
-          <dt>{{ t('colEntityKey') }}</dt>
+          <dt>{{ t('colObject') }}</dt>
           <dd class="tt-mono">{{ entry.entityKey || EMPTY_VALUE }}</dd>
         </div>
         <div>
