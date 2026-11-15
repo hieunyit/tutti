@@ -22,18 +22,19 @@
     CNotificationProvider,
   } from '@clyso/clyso-ui-kit';
   import { computed, toRefs } from 'vue';
-  import { NConfigProvider, dateViVN, viVN } from 'naive-ui';
+  import { NConfigProvider } from 'naive-ui';
   import SessionExpiryDialog from '@/components/auth/SessionExpiryDialog.vue';
   import { useAuthStore } from '@/stores/authStore';
   import { useSessionKeeper } from '@/utils/composables/useSessionKeeper';
   import { toKitLocale } from '@/i18n/locales';
+  import { NAIVE_LOCALES } from '@/i18n/naiveLocale';
   import { useI18nStore } from '@/stores/i18nStore';
   import { useColorSchemeStore } from '@/stores/colorSchemeStore';
   import { DARK_THEME_OVERRIDES, LIGHT_THEME_OVERRIDES } from '@/styles/theme';
 
   const { locale } = toRefs(useI18nStore());
   const { colorScheme } = toRefs(useColorSchemeStore());
-  // ui-kit only knows en/de; Naive UI gets the vi locale from the inner provider.
+  // ui-kit only knows en/de; Naive UI gets en/de/vi from the inner provider.
   const kitLocale = computed(() => toKitLocale(locale.value));
   const authStore = useAuthStore();
   const { remainingIdleMs, remainingMaxMs, warning, extend } =
@@ -44,7 +45,7 @@
     await authStore.expire('signedOut');
   }
 
-  const isVi = computed(() => locale.value === 'vi');
+  const naiveLocale = computed(() => NAIVE_LOCALES[locale.value]);
 </script>
 
 <template>
@@ -56,8 +57,8 @@
     :custom-dark-theme="DARK_THEME_OVERRIDES"
   >
     <NConfigProvider
-      :locale="isVi ? viVN : undefined"
-      :date-locale="isVi ? dateViVN : undefined"
+      :locale="naiveLocale.locale"
+      :date-locale="naiveLocale.dateLocale"
       abstract
     >
       <RouterView />
