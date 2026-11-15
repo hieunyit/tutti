@@ -26,7 +26,11 @@ import {
 
 tolerateNaiveStyles();
 
-vi.mock('@/components/tutti/accounts/ProxyAccountsTile.vue', () => ({
+vi.mock('@/utils/helpers/DateTimeHelper', () => ({
+  formatDateTime: (v?: string) => v ?? '-',
+  formatTime: (v?: string) => v ?? '-',
+}));
+vi.mock('@/components/tutti/accounts/ProxyAccountKeysTable.vue', () => ({
   default: { template: '<div class="tile-stub" />' },
 }));
 
@@ -72,10 +76,22 @@ describe('TuttiProxyAccountsPage', () => {
     expect(wrapper.find('.tile-stub').exists()).toBe(false);
   });
 
-  it('renders the accounts table when ready', async () => {
-    const wrapper = mountPage(() => {});
+  it('renders the keys table when a user has keys', async () => {
+    const wrapper = mountPage((store) => {
+      store.accounts = [{ user: 'alice', accessKeyIds: ['AK1'] }] as never;
+    });
 
     await flushPromises();
     expect(wrapper.find('.tile-stub').exists()).toBe(true);
+  });
+
+  it('shows one empty state with a single create action', async () => {
+    const wrapper = mountPage(() => {});
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('No access keys yet');
+    expect(
+      wrapper.findAll('button').filter((b) => b.text() === 'Create access key'),
+    ).toHaveLength(1);
   });
 });

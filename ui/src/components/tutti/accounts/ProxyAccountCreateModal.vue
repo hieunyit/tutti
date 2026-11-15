@@ -94,12 +94,12 @@
   <NModal
     :show="show"
     preset="card"
-    :title="t('createAccountTitle')"
+    :title="t('createKeyTitle')"
     :style="{ width: '480px', maxWidth: '95vw' }"
     :mask-closable="false"
     @update:show="emit('update:show', $event)"
   >
-    <p>{{ t('createAccountHint') }}</p>
+    <p>{{ t('createKeyHint') }}</p>
 
     <NForm label-placement="top">
       <NFormItem :label="t('fieldUser')">
@@ -107,7 +107,6 @@
           v-model:value="user"
           filterable
           :options="options"
-          :placeholder="t('createUserPlaceholder')"
           :disabled="isSaving"
         />
       </NFormItem>
