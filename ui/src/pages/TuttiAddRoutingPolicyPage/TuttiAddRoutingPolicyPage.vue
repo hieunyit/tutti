@@ -177,6 +177,7 @@
     &__footer {
       display: flex;
       gap: var(--tt-space-2);
+      justify-content: flex-end;
       padding-top: var(--tt-space-3);
       border-top: 1px solid var(--tt-border);
     }
