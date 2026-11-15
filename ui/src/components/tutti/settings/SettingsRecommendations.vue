@@ -176,9 +176,10 @@
         :key="row.key"
         class="settings-rec__row"
       >
-        <span
-          >{{ row.text }} <strong class="tt-mono">{{ row.value }}</strong></span
-        >
+        <span class="settings-rec__text">
+          {{ row.text }}
+          <strong class="settings-rec__value tt-mono">{{ row.value }}</strong>
+        </span>
         <NButton
           size="small"
           :disabled="disabled"
@@ -238,6 +239,17 @@
       margin: var(--tt-space-3) 0 0;
       padding: 0;
       list-style: none;
+    }
+
+    &__text {
+      display: flex;
+      flex-direction: column;
+      gap: var(--tt-space-1);
+      color: var(--tt-text-2);
+    }
+
+    &__value {
+      color: var(--tt-text-1);
     }
 
     &__row {
