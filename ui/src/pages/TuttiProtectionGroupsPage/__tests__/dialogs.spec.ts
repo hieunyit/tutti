@@ -75,6 +75,17 @@ describe('Protection groups actions with an empty list', () => {
     expect(wrapper.text()).not.toContain('Automatic failover');
     wrapper.unmount();
   });
+
+  it('keeps the failover control reachable under the empty state while failover is frozen', () => {
+    const store = useTuttiProtectionStore();
+
+    store.automaticFrozen = true;
+    const wrapper = page();
+
+    expect(wrapper.text()).toContain('Automatic failover');
+    store.automaticFrozen = false;
+    wrapper.unmount();
+  });
 });
 
 describe('Protection groups list', () => {

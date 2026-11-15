@@ -173,6 +173,8 @@
           </NButton>
         </WriteGate>
       </EmptyBlock>
+      <!-- Frozen failover must stay reversible even when every group was removed. -->
+      <AutomaticFailoverControl v-if="store.automaticFrozen" />
     </template>
 
     <div class="pg-list">
