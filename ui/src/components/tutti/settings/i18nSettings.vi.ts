@@ -78,7 +78,6 @@ export default {
     'Theo worker. 0 = tự động (25% bộ nhớ); nếu không thì tối thiểu 16 MiB.',
   tuneTitle: 'Thông lượng đồng bộ',
   tuneDesc: 'Để trống để giữ giá trị tự động hiển thị trong ô.',
-  needsRestart: 'Cần restart worker',
   appliesLive: 'Áp dụng ngay',
   bulkConcurrencyPercent: 'Tỷ lệ sao chép ban đầu (%)',
   bulkConcurrencyPercentHint:

@@ -80,7 +80,6 @@ export default {
     'Je Worker. 0 = automatisch (25 % des Speichers); sonst mindestens 16 MiB.',
   tuneTitle: 'Replikationsdurchsatz',
   tuneDesc: 'Ein leeres Feld behält den darin angezeigten automatischen Wert.',
-  needsRestart: 'Worker-Neustart erforderlich',
   appliesLive: 'Wirkt sofort',
   bulkConcurrencyPercent: 'Anteil Erstkopie (%)',
   bulkConcurrencyPercentHint:

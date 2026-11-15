@@ -108,7 +108,7 @@
           :hint="t(`${key}Hint`)"
           :error="err(key)"
           :restart="
-            key === 'bulkConcurrencyPercent' ? t('needsRestart') : undefined
+            key === 'bulkConcurrencyPercent' ? t('restartRequired') : undefined
           "
           :live="
             key === 'bulkConcurrencyPercent' ? undefined : t('appliesLive')

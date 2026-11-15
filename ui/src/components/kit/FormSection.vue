@@ -28,7 +28,7 @@
       description?: string;
       /** section-level error, e.g. a server rejection for this group */
       error?: string;
-      /** tag shown next to the title, e.g. "Needs worker restart" */
+      /** tag shown next to the title, e.g. "Requires worker restart" */
       tag?: string;
     }>(),
     { description: undefined, error: undefined, tag: undefined },

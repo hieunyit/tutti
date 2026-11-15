@@ -79,7 +79,6 @@ export default {
     'Per worker. 0 = auto (25% of memory); otherwise at least 16 MiB.',
   tuneTitle: 'Replication throughput',
   tuneDesc: 'Leave a field empty to keep the automatic value shown in it.',
-  needsRestart: 'Needs worker restart',
   appliesLive: 'Applies immediately',
   bulkConcurrencyPercent: 'Initial copy share (%)',
   bulkConcurrencyPercentHint:
