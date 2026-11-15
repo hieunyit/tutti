@@ -6,7 +6,9 @@
   import { NButton, type DataTableColumns } from 'naive-ui';
   import { DataTable, StatusBadge } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
+  import i18nProtection from '@/components/tutti/protection/i18nProtection';
   import messages from '@/components/tutti/users/i18nUsers';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import {
     bucketsLabel,
     permissionLabel,
@@ -22,7 +24,9 @@
   }>();
   const emit = defineEmits<{ (e: 'edit'): void }>();
 
-  const { t } = useI18n({ messages });
+  const { t } = useI18n({
+    messages: mergeMessages(i18nProtection, messages),
+  });
 
   const scopeKeys = {
     storage: 'scopeStorage',
@@ -39,7 +43,7 @@
           {
             to: {
               name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
-              params: { id: group.id },
+              params: { name: group.id },
             },
           },
           () => h('strong', group.id),
@@ -65,7 +69,7 @@
 
         return h(StatusBadge, {
           tone: ProtectionGroupHelper.stateVariant(state),
-          label: state,
+          label: t(`state.${state}`),
         });
       },
     },
