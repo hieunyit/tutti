@@ -97,7 +97,14 @@ const settings: TuttiSystemSettings = {
 async function mountPage(tab?: string) {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/system-settings', component: { template: '<div/>' } }],
+    routes: [
+      { path: '/system-settings', component: { template: '<div/>' } },
+      {
+        path: '/dashboard',
+        name: 'TUTTI_DASHBOARD',
+        component: { template: '<div/>' },
+      },
+    ],
   });
 
   await router.push(tab ? `/system-settings?tab=${tab}` : '/system-settings');
