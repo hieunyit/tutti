@@ -50,8 +50,8 @@
   const eta = computed(() => H.formatDuration(progress.value.etaSeconds));
   const objects = computed(() =>
     t('initObjectsCount', {
-      done: props.replication.initObjDone,
-      total: props.replication.initObjListed,
+      done: Number(props.replication.initObjDone).toLocaleString(),
+      total: Number(props.replication.initObjListed).toLocaleString(),
     }),
   );
   const lag = computed(() =>
