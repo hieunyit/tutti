@@ -272,7 +272,6 @@ export const useTuttiAddReplicationStore = defineStore(
         );
 
         state.createError = content.join('; ');
-        showCreateError(state.createError);
       } else {
         router.push({ name: RouteName.TUTTI_REPLICATION });
       }
@@ -290,15 +289,6 @@ export const useTuttiAddReplicationStore = defineStore(
       createNotification({
         type: 'success',
         title: t('createdTitle'),
-        isClosable: true,
-      });
-    }
-
-    function showCreateError(reason?: string) {
-      createNotification({
-        type: 'error',
-        title: t('createFailedTitle'),
-        content: reason || t('createFailedText'),
         isClosable: true,
       });
     }

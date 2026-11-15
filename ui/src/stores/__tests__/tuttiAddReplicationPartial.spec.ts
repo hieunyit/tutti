@@ -86,7 +86,7 @@ describe('createReplication partial failure', () => {
     expect(store.isSubmitting).toBe(false);
   });
 
-  it('reports the created ones as a success notification and the failure separately', async () => {
+  it('reports the created ones as a success notification and the failure inline', async () => {
     add.mockImplementation(async ({ id }) => {
       if (id.fromBucket === 'b2') throw rejection('nope');
     });
@@ -97,8 +97,8 @@ describe('createReplication partial failure', () => {
 
     const types = notify.mock.calls.map(([arg]) => arg.type);
 
-    expect(types).toContain('success');
-    expect(types).toHaveLength(2);
+    expect(types).toEqual(['success']);
+    expect(store.createError).toContain('b2');
   });
 
   it('a retry of the remaining buckets then succeeds and navigates once', async () => {

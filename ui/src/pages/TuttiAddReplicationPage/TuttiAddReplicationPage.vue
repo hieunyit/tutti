@@ -164,7 +164,7 @@
       class="add-replication__error"
       :title="t('createFailedTitle')"
     >
-      {{ createError }} {{ t('createFailedHint') }}
+      {{ createError }}<br />{{ t('createFailedHint') }}
     </Callout>
     <WizardShell
       :steps="steps"
