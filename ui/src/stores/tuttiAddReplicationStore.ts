@@ -276,10 +276,7 @@ export const useTuttiAddReplicationStore = defineStore(
         }
 
         const content = errorList.map(([id, reason]) =>
-          // the backend often names the bucket itself ('bucket "b" on x->y ...')
-          id.fromBucket && !reason.includes(`"${id.fromBucket}"`)
-            ? `${id.fromBucket}: ${reason}`
-            : reason,
+          id.fromBucket ? `${id.fromBucket}: ${reason}` : reason,
         );
 
         state.createError = content.join('; ');

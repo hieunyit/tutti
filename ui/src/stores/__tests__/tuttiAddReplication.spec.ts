@@ -248,8 +248,6 @@ describe('tuttiAddReplicationStore', () => {
     expect(created).toBe(false);
     expect(push).not.toHaveBeenCalled();
     expect(store.createError).toContain(reason);
-    // the reason already names the bucket: not repeated as a prefix
-    expect(store.createError).toBe(reason);
     expect(store.selectedBuckets).toEqual(['b1']);
     expect(store.selectedFromStorage?.name).toBe('main');
     expect(store.isSubmitting).toBe(false);
