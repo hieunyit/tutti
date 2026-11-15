@@ -48,13 +48,48 @@ import type {
   ReplicationActivityResponse,
 } from '@/utils/types/replicationActivity';
 
-export abstract class TuttiCoreService {
-  static async getProxyCredentials(): Promise<TuttiProxyCredentials> {
-    const { data } = await apiClient.get<TuttiProxyCredentials>(
-      ApiHelper.getTuttiAPIUrl('/proxy'),
-    );
+const PROXY_UNAVAILABLE_KEY = 'tutti.proxyUnavailable';
 
-    return data;
+function readProxyUnavailable(): boolean {
+  try {
+    return sessionStorage.getItem(PROXY_UNAVAILABLE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberProxyUnavailable() {
+  try {
+    sessionStorage.setItem(PROXY_UNAVAILABLE_KEY, '1');
+  } catch {
+    // storage blocked: the next load simply asks once more
+  }
+}
+
+export abstract class TuttiCoreService {
+  /**
+   * `GET /proxy` answers 501 when no proxy is configured. That answer is
+   * remembered for the browser session, so later loads skip the call (and its
+   * console error) and get an empty address.
+   */
+  static async getProxyCredentials(): Promise<TuttiProxyCredentials> {
+    if (readProxyUnavailable()) return { address: '', credentials: [] };
+
+    try {
+      const { data } = await apiClient.get<TuttiProxyCredentials>(
+        ApiHelper.getTuttiAPIUrl('/proxy'),
+      );
+
+      return data;
+    } catch (err) {
+      if (
+        (err as { response?: { status?: number } }).response?.status === 501
+      ) {
+        rememberProxyUnavailable();
+      }
+
+      throw err;
+    }
   }
 
   static async getStorages(): Promise<TuttiStorageListResponse> {
