@@ -50,8 +50,8 @@ export default {
   redactedNote: 'Geheimnisse werden vor dem Speichern maskiert.',
   beforeSnapshot: 'Vorher',
   afterSnapshot: 'Nachher',
-  noBeforeSnapshot: 'Kein früherer Zustand (neu angelegt)',
-  noAfterSnapshot: 'Kein späterer Zustand (gelöscht)',
+  noBeforeSnapshot: 'Kein früherer Zustand erfasst',
+  noAfterSnapshot: 'Kein späterer Zustand erfasst',
   redisBannerTitle: 'Der Verlauf wird nicht dauerhaft gespeichert',
   redisBannerText:
     'Der Konfigurationsspeicher ist Redis und zeichnet keine Audit-Einträge mit Vorher-Nachher-Stand auf. Mit PostgreSQL bleibt der Verlauf dauerhaft erhalten.',

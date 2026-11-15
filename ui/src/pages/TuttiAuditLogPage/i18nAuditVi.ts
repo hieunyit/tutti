@@ -49,8 +49,8 @@ export default {
   redactedNote: 'Thông tin bí mật được che trước khi lưu.',
   beforeSnapshot: 'Trước',
   afterSnapshot: 'Sau',
-  noBeforeSnapshot: 'Không có trạng thái trước (tạo mới)',
-  noAfterSnapshot: 'Không có trạng thái sau (đã xóa)',
+  noBeforeSnapshot: 'Chưa ghi nhận trạng thái trước',
+  noAfterSnapshot: 'Chưa ghi nhận trạng thái sau',
   redisBannerTitle: 'Lịch sử không được lưu bền vững',
   redisBannerText:
     'Kho cấu hình đang là Redis, không ghi bản ghi kiểm toán kèm trạng thái trước và sau. Dùng PostgreSQL để giữ lịch sử bền vững.',

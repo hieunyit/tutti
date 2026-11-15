@@ -49,8 +49,8 @@ export default {
   redactedNote: 'Secrets are masked before an entry is stored.',
   beforeSnapshot: 'Before',
   afterSnapshot: 'After',
-  noBeforeSnapshot: 'No earlier state (created)',
-  noAfterSnapshot: 'No later state (deleted)',
+  noBeforeSnapshot: 'No earlier state recorded',
+  noAfterSnapshot: 'No later state recorded',
   redisBannerTitle: 'History is not kept durably',
   redisBannerText:
     'The configuration store is Redis, which does not record audit entries with before and after snapshots. Use PostgreSQL to keep a durable history.',
