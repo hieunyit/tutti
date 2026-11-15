@@ -15,22 +15,22 @@
   -->
 <script setup lang="ts">
   /**
-   * Replication hub: replications, routing policies and diff reports as three
-   * query-synced tabs (?tab=routing | ?tab=diff). Each tab keeps its store and
-   * owns its loading, empty and error states.
+   * Replication hub: replications and diff reports as two query-synced tabs
+   * (?tab=diff). Each tab keeps its store and owns its loading, empty and
+   * error states. Routing rules have their own page (/routing); the old
+   * ?tab=routing deep link is redirected by the router.
    */
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton } from 'naive-ui';
   import DiffTab from './DiffTab.vue';
   import ReplicationsTab from './ReplicationsTab.vue';
-  import RoutingTab from './RoutingTab.vue';
   import i18nReplicationHub from './i18nReplicationHub';
   import { RouteName } from '@/utils/types/router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { PageShell, useQueryTab, type PageShellTab } from '@/components/kit';
 
-  const TAB_KEYS = ['replications', 'routing', 'diff'] as const;
+  const TAB_KEYS = ['replications', 'diff'] as const;
 
   const { t } = useI18n({ messages: i18nReplicationHub });
   const queryTab = useQueryTab('tab', 'replications');
@@ -47,17 +47,10 @@
 
   const tabs = computed<PageShellTab[]>(() => [
     { key: 'replications', label: t('tabReplications') },
-    { key: 'routing', label: t('tabRouting') },
     { key: 'diff', label: t('tabDiff') },
   ]);
 
   const addAction = computed(() => {
-    if (activeTab.value === 'routing')
-      return {
-        to: RouteName.TUTTI_ADD_ROUTING_POLICY,
-        label: t('addRoutingPolicy'),
-      };
-
     if (activeTab.value === 'diff')
       return {
         to: RouteName.TUTTI_ADD_DIFF_REPORT,
@@ -90,8 +83,7 @@
       </WriteGate>
     </template>
 
-    <RoutingTab v-if="activeTab === 'routing'" />
-    <DiffTab v-else-if="activeTab === 'diff'" />
+    <DiffTab v-if="activeTab === 'diff'" />
     <ReplicationsTab v-else />
   </PageShell>
 </template>

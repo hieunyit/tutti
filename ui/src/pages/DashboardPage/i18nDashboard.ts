@@ -22,7 +22,7 @@ export default <I18nMessages>{
     description:
       'Operations overview: storage health, replication progress and live traffic at a glance.',
     tabOverview: 'Overview',
-    tabMetrics: 'Metrics',
+    tabMetrics: 'Traffic',
     refresh: 'Refresh',
     updatedAt: 'Updated at {time}',
     notUpdated: 'Not updated yet',
@@ -42,7 +42,7 @@ export default <I18nMessages>{
     description:
       'Betriebsübersicht: Storage-Zustand, Replikationsfortschritt und Live-Traffic auf einen Blick.',
     tabOverview: 'Übersicht',
-    tabMetrics: 'Metriken',
+    tabMetrics: 'Datenverkehr',
     refresh: 'Aktualisieren',
     updatedAt: 'Aktualisiert um {time}',
     notUpdated: 'Noch nicht aktualisiert',
@@ -62,7 +62,7 @@ export default <I18nMessages>{
     description:
       'Tổng quan vận hành: tình trạng storage, tiến độ replication và lưu lượng trực tiếp.',
     tabOverview: 'Tổng quan',
-    tabMetrics: 'Số liệu',
+    tabMetrics: 'Lưu lượng',
     refresh: 'Làm mới',
     updatedAt: 'Cập nhật lúc {time}',
     notUpdated: 'Chưa cập nhật',

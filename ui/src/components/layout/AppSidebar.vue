@@ -15,16 +15,21 @@
   -->
 
 <script setup lang="ts">
+  /**
+   * Sidebar shell: brand, the data-driven navigation (utils/constants/navigation.ts,
+   * filtered by role) and the footer. `collapsed` is the icon-only rail
+   * (desktop); `isDrawer` renders it inside the mobile drawer (<= 1024 px).
+   */
   import { computed } from 'vue';
   import { useRoute } from 'vue-router';
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
-  import { NTooltip } from 'naive-ui';
   import i18nLayout from './i18nLayout';
-  import { NAV_GROUPS } from '@/utils/constants/navigation';
+  import SidebarFooter from './sidebar/SidebarFooter.vue';
+  import SidebarNavGroup from './sidebar/SidebarNavGroup.vue';
+  import { visibleNavGroups } from '@/utils/constants/navigation';
   import { useAuthStore } from '@/stores/authStore';
   import { useNavBadges } from '@/utils/composables/useNavBadges';
-  import { APP_VERSION } from '@/utils/constants/env';
   import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
@@ -40,26 +45,19 @@
   }>();
 
   const { t } = useI18n({ messages: i18nLayout });
+  const { t: tRoute } = useI18n({ useScope: 'global' });
   const route = useRoute();
   const badges = useNavBadges();
   const { isAdmin } = storeToRefs(useAuthStore());
 
-  // Viewers see neither admin-only items nor admin-only groups (Console
-  // users, System settings, Audit log); the router guard blocks the URLs.
-  const groups = computed(() =>
-    NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value)
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => !item.adminOnly || isAdmin.value),
-      }))
-      .filter((group) => group.items.length > 0),
-  );
-
+  // Viewers do not see admin-only items (Console users, System settings,
+  // Audit log); the router guard blocks the URLs as well.
+  const groups = computed(() => visibleNavGroups(isAdmin.value));
   const isRail = computed(() => Boolean(props.collapsed) && !props.isDrawer);
-
   const activeItem = computed<string | undefined>(() =>
     String(route.meta.navSection ?? route.name ?? ''),
   );
+  const NAV_ID = 'app-sidebar-nav';
 </script>
 
 <template>
@@ -88,109 +86,30 @@
     </RouterLink>
 
     <nav
+      :id="NAV_ID"
       class="app-sidebar__nav"
       :aria-label="t('navLabel')"
     >
-      <section
+      <SidebarNavGroup
         v-for="group in groups"
         :key="group.id"
-        class="app-sidebar__group"
-      >
-        <h2
-          v-if="!isRail"
-          class="app-sidebar__group-label"
-        >
-          {{ t(`group.${group.id}`) }}
-        </h2>
-        <div
-          v-else
-          class="app-sidebar__group-divider"
-        />
-
-        <NTooltip
-          v-for="item in group.items"
-          :key="item.routeName"
-          placement="right"
-          :disabled="!isRail"
-        >
-          <template #trigger>
-            <RouterLink
-              class="app-sidebar__item"
-              :class="{
-                'app-sidebar__item--active': activeItem === item.routeName,
-              }"
-              :to="{ name: item.routeName }"
-              :aria-label="$t(item.routeName)"
-              :aria-current="activeItem === item.routeName ? 'page' : undefined"
-              @click="emit('navigate')"
-            >
-              <svg
-                class="app-sidebar__icon"
-                aria-hidden="true"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path :d="item.iconPath" />
-              </svg>
-              <span
-                v-if="!isRail"
-                class="app-sidebar__label"
-                >{{ $t(item.routeName) }}</span
-              >
-              <template v-if="item.badgeKey && badges[item.badgeKey]">
-                <span
-                  v-if="!isRail"
-                  class="app-sidebar__badge"
-                >
-                  {{ badges[item.badgeKey] }}
-                  <span class="tt-sr-only">{{ t('badgeLabel') }}</span>
-                </span>
-                <span
-                  v-else
-                  class="app-sidebar__badge-dot"
-                  aria-hidden="true"
-                />
-              </template>
-            </RouterLink>
-          </template>
-          {{ $t(item.routeName) }}
-        </NTooltip>
-      </section>
+        :group="group"
+        :label="t(`group.${group.id}`)"
+        :rail="isRail"
+        :active-item="activeItem"
+        :badges="badges"
+        :item-label="(name) => tRoute(name)"
+        @navigate="emit('navigate')"
+      />
     </nav>
 
-    <div class="app-sidebar__footer">
-      <div class="app-sidebar__meta">
-        <span
-          class="app-sidebar__version"
-          :title="`Tutti v${APP_VERSION}`"
-          >v{{ APP_VERSION }}</span
-        >
-
-        <NTooltip
-          v-if="!isDrawer"
-          placement="right"
-        >
-          <template #trigger>
-            <button
-              type="button"
-              class="app-sidebar__toggle"
-              :aria-label="collapsed ? t('expand') : t('collapse')"
-              :aria-expanded="!collapsed"
-              @click="emit('toggle')"
-            >
-              <span aria-hidden="true">{{ collapsed ? '›' : '‹' }}</span>
-            </button>
-          </template>
-          {{ collapsed ? t('expand') : t('collapse') }}
-        </NTooltip>
-      </div>
-    </div>
+    <SidebarFooter
+      :collapsed="Boolean(collapsed)"
+      :is-drawer="Boolean(isDrawer)"
+      :rail="isRail"
+      :controls="NAV_ID"
+      @toggle="emit('toggle')"
+    />
   </aside>
 </template>
 
@@ -219,6 +138,7 @@
       border-radius: var(--tt-radius-control);
 
       &:focus-visible {
+        outline: 2px solid var(--tt-nav-accent);
         outline-offset: -2px;
       }
     }
@@ -233,7 +153,7 @@
       border-radius: 8px;
       font-weight: 700;
       font-size: 16px;
-      color: #ffffff;
+      color: var(--tt-nav-strong);
       background-color: var(--tt-nav-logo);
     }
 
@@ -263,186 +183,12 @@
       overflow-y: auto;
     }
 
-    &__group {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding-top: 12px;
-    }
-
-    &__group-label {
-      margin: 0;
-      padding: 0 10px 6px;
-      font-size: 11px;
-      line-height: 16px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--tt-nav-muted);
-    }
-
-    &__group-divider {
-      height: 1px;
-      margin: 6px 8px;
-      background-color: var(--tt-nav-border);
-    }
-
-    &__item {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-sizing: border-box;
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: var(--tt-radius-control);
-      font-size: 14px;
-      line-height: 20px;
-      font-weight: 500;
-      color: var(--tt-nav-text);
-      text-decoration: none;
-      transition: background-color 0.15s;
-
-      &:hover {
-        background-color: var(--tt-nav-hover-bg);
-        color: var(--tt-nav-strong);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--tt-nav-accent);
-        outline-offset: -2px;
-      }
-
-      &--active {
-        background-color: var(--tt-nav-active-bg);
-        color: #ffffff;
-        font-weight: 600;
-        box-shadow: inset 2px 0 0 var(--tt-nav-accent);
-      }
-    }
-
-    &__icon {
-      flex: none;
-    }
-
-    &__label {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    &__badge {
-      margin-left: auto;
-      padding: 1px 7px;
-      border-radius: var(--tt-radius-pill);
-      font-size: 11px;
-      line-height: 16px;
-      font-weight: 600;
-      color: var(--tt-nav-badge-text);
-      background-color: var(--tt-nav-badge-bg);
-    }
-
-    &__badge-dot {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: #f97066;
-    }
-
-    &__footer {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px 10px 0;
-      border-top: 1px solid var(--tt-nav-border);
-      font-size: 12px;
-      color: var(--tt-nav-muted);
-    }
-
-    &__about {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 4px 0;
-      border: 0;
-      background: transparent;
-      font: inherit;
-      font-size: 12px;
-      color: var(--tt-nav-text);
-      cursor: pointer;
-
-      &:hover {
-        color: var(--tt-nav-strong);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--tt-nav-accent);
-        outline-offset: 2px;
-      }
-    }
-
-    &__meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    &__toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border: 1px solid var(--tt-nav-border);
-      border-radius: 6px;
-      background: transparent;
-      font-size: 16px;
-      line-height: 1;
-      color: var(--tt-nav-text);
-      cursor: pointer;
-
-      &:hover {
-        background-color: var(--tt-nav-hover-bg);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--tt-nav-accent);
-      }
-    }
-
     &--rail {
       padding-inline: 6px;
 
       .app-sidebar__brand {
         justify-content: center;
         padding-inline: 0;
-      }
-
-      .app-sidebar__item {
-        justify-content: center;
-        padding-inline: 0;
-      }
-
-      .app-sidebar__about {
-        justify-content: center;
-      }
-
-      .app-sidebar__footer {
-        padding-inline: 0;
-        align-items: center;
-      }
-
-      .app-sidebar__meta {
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .app-sidebar__version {
-        font-size: 10px;
       }
     }
   }

@@ -23,7 +23,7 @@
   import { useAuthStore } from '@/stores/authStore';
   import {
     HELP_ITEMS,
-    NAV_GROUPS,
+    visibleNavGroups,
     type NavItem,
   } from '@/utils/constants/navigation';
   import {
@@ -42,15 +42,12 @@
   const activeIndex = ref(0);
 
   const entries = computed<SearchableItem<NavItem>[]>(() => [
-    ...NAV_GROUPS.filter((group) => !group.adminOnly || isAdmin.value).flatMap(
-      (group) =>
-        group.items
-          .filter((item) => !item.adminOnly || isAdmin.value)
-          .map((item) => ({
-            item,
-            label: tGlobal(item.routeName),
-            group: t(`group.${group.id}`),
-          })),
+    ...visibleNavGroups(isAdmin.value).flatMap((group) =>
+      group.items.map((item) => ({
+        item,
+        label: tGlobal(item.routeName),
+        group: group.unlabeled ? '' : t(`group.${group.id}`),
+      })),
     ),
     ...HELP_ITEMS.map((item) => ({
       item,
@@ -235,7 +232,11 @@
         @mousemove="activeIndex = index"
       >
         <span>{{ entry.label }}</span>
-        <span class="quick-search__group">{{ entry.group }}</span>
+        <span
+          v-if="entry.group"
+          class="quick-search__group"
+          >{{ entry.group }}</span
+        >
       </li>
       <li
         v-if="results.length === 0"

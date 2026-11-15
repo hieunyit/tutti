@@ -20,12 +20,11 @@ export default <Record<string, Record<string, string>>>{
   en: {
     title: 'Replication',
     description:
-      'Replications copy objects between storages. Routing policies decide where requests go, diff reports compare two buckets.',
+      'Replications copy objects between storages; diff reports compare two buckets.',
     tabReplications: 'Replications',
-    tabRouting: 'Routing',
     tabDiff: 'Diff reports',
     addReplication: 'Add replication',
-    addRoutingPolicy: 'Add routing policy',
+    addRoutingPolicy: 'Add routing rule',
     addDiffReport: 'Create diff report',
     search: 'Search',
     clearFilters: 'Clear filters',
@@ -159,12 +158,11 @@ export default <Record<string, Record<string, string>>>{
   de: {
     title: 'Replikation',
     description:
-      'Replikationen kopieren Objekte zwischen Storages. Routing-Richtlinien steuern, wohin Anfragen gehen, Diff-Berichte vergleichen zwei Buckets.',
+      'Replikationen kopieren Objekte zwischen Storages; Diff-Berichte vergleichen zwei Buckets.',
     tabReplications: 'Replikationen',
-    tabRouting: 'Routing',
     tabDiff: 'Diff-Berichte',
     addReplication: 'Replikation hinzufügen',
-    addRoutingPolicy: 'Routing-Richtlinie hinzufügen',
+    addRoutingPolicy: 'Routing-Regel hinzufügen',
     addDiffReport: 'Diff-Bericht erstellen',
     search: 'Suchen',
     clearFilters: 'Filter zurücksetzen',
@@ -301,12 +299,11 @@ export default <Record<string, Record<string, string>>>{
   vi: {
     title: 'Replication',
     description:
-      'Replication sao chép object giữa các storage. Routing policy quyết định request đi đâu, diff report so sánh hai bucket.',
+      'Replication sao chép object giữa các storage; diff report so sánh hai bucket.',
     tabReplications: 'Replication',
-    tabRouting: 'Routing',
     tabDiff: 'Diff report',
     addReplication: 'Thêm replication',
-    addRoutingPolicy: 'Thêm policy',
+    addRoutingPolicy: 'Thêm routing rule',
     addDiffReport: 'Tạo diff report',
     search: 'Tìm kiếm',
     clearFilters: 'Xóa bộ lọc',

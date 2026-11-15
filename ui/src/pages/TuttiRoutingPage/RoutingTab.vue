@@ -18,7 +18,7 @@
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import { NButton, type DataTableColumns } from 'naive-ui';
-  import i18nReplicationHub from './i18nReplicationHub';
+  import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import {
     ConfirmDialog,
     DataTable,

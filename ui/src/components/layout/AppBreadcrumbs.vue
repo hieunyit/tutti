@@ -35,7 +35,8 @@
     const name = route.name as RouteName | undefined;
     const list: Crumb[] = [];
 
-    if (navGroup) {
+    // the Dashboard is a lone item: no group crumb
+    if (navGroup && navGroup !== 'overview') {
       list.push({ label: t(`group.${navGroup}`) });
     }
 

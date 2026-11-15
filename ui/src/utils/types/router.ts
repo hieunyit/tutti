@@ -16,7 +16,7 @@
 
 export enum RouteName {
   LOGIN = 'LOGIN',
-  /** /dashboard: Home + Monitoring (tabs overview, metrics) */
+  /** /dashboard: Home + Monitoring (tabs overview, traffic; `metrics` is an alias) */
   TUTTI_DASHBOARD = 'TUTTI_DASHBOARD',
   /** /home: redirects to TUTTI_DASHBOARD */
   TUTTI_HOME = 'TUTTI_HOME',
@@ -27,9 +27,11 @@ export enum RouteName {
   TUTTI_STORAGES = 'TUTTI_STORAGES',
   TUTTI_STORAGE_DETAILS = 'TUTTI_STORAGE_DETAILS',
   TUTTI_SET_CREDENTIAL = 'TUTTI_SET_CREDENTIAL',
-  /** /monitoring: redirects to TUTTI_DASHBOARD ?tab=metrics */
+  /** /monitoring: redirects to TUTTI_DASHBOARD ?tab=traffic */
   TUTTI_MONITORING = 'TUTTI_MONITORING',
-  /** /routing-policies: redirects to TUTTI_REPLICATION ?tab=routing */
+  /** /routing: the Routing rules page */
+  TUTTI_ROUTING_RULES = 'TUTTI_ROUTING_RULES',
+  /** /routing-policies: redirects to TUTTI_ROUTING_RULES */
   TUTTI_ROUTING_POLICIES = 'TUTTI_ROUTING_POLICIES',
   TUTTI_ADD_ROUTING_POLICY = 'TUTTI_ADD_ROUTING_POLICY',
   /** /diff-reports: redirects to TUTTI_REPLICATION ?tab=diff */
@@ -48,6 +50,9 @@ export enum RouteName {
   TUTTI_FAILOVER = 'TUTTI_FAILOVER',
   TUTTI_PROTECTION_GROUPS = 'TUTTI_PROTECTION_GROUPS',
   TUTTI_PROTECTION_GROUP_DETAIL = 'TUTTI_PROTECTION_GROUP_DETAIL',
+  /** /access-keys (old /proxy-accounts redirects here) */
+  TUTTI_ACCESS_KEYS = 'TUTTI_ACCESS_KEYS',
+  /** /proxy-accounts: redirects to TUTTI_ACCESS_KEYS */
   TUTTI_PROXY_ACCOUNTS = 'TUTTI_PROXY_ACCOUNTS',
   TUTTI_SYSTEM_SETTINGS = 'TUTTI_SYSTEM_SETTINGS',
   TUTTI_AUDIT_LOG = 'TUTTI_AUDIT_LOG',
@@ -56,11 +61,12 @@ export enum RouteName {
 }
 
 export type NavGroupId =
+  // Dashboard alone (its group has no visible label)
   | 'overview'
-  | 'storage'
-  | 'dataProtection'
+  | 'connect'
+  | 'replicate'
   | 'access'
-  | 'administration'
+  | 'admin'
   // not a sidebar group any more (docs open from the topbar Help menu);
   // still the breadcrumb root of /docs and /docs/api
   | 'help';
@@ -69,8 +75,13 @@ declare module 'vue-router' {
   interface RouteMeta {
     /** Route performs mutations: blocked for read-only (viewer) accounts. */
     requiresWrite?: boolean;
-    /** Administrators only (console users). */
+    /** Administrators only (console users, system settings, audit log). */
     requiresAdmin?: boolean;
+    /**
+     * Values of `?tab=` that only administrators may open (e.g. the Dashboard
+     * Traffic tab). Viewers are sent to the page without the tab.
+     */
+    adminTabs?: string[];
     /** Navigation group (sidebar section + first breadcrumb). */
     navGroup?: NavGroupId;
     /** Sidebar item (route name) this page belongs to; also the 2nd breadcrumb. */

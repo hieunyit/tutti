@@ -95,7 +95,7 @@
 
     <RouterLink
       class="dashboard-endpoint__link"
-      :to="{ name: RouteName.TUTTI_PROXY_ACCOUNTS }"
+      :to="{ name: RouteName.TUTTI_ACCESS_KEYS }"
     >
       {{ t('endpointManage') }}
     </RouterLink>

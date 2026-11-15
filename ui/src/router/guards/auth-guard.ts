@@ -52,6 +52,21 @@ const authGuard: NavigationGuard = async (to) => {
     return { name: RouteName.TUTTI_HOME };
   }
 
+  // tabs only admins may open (Dashboard Traffic): viewers get the page without it
+  const { tab } = to.query;
+
+  if (
+    !auth.isAdmin &&
+    typeof tab === 'string' &&
+    to.meta.adminTabs?.includes(tab)
+  ) {
+    const query = { ...to.query };
+
+    delete query.tab;
+
+    return { name: to.name, params: to.params, query, hash: to.hash };
+  }
+
   if (to.meta.requiresWrite && !auth.canWrite) {
     return { name: RouteName.TUTTI_HOME };
   }

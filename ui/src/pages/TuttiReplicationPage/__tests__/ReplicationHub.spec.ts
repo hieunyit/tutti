@@ -32,9 +32,6 @@ vi.mock('@/components/auth/WriteGate.vue', () => ({
 vi.mock('../ReplicationsTab.vue', () => ({
   default: { template: '<div class="tab-replications" />' },
 }));
-vi.mock('../RoutingTab.vue', () => ({
-  default: { template: '<div class="tab-routing" />' },
-}));
 vi.mock('../DiffTab.vue', () => ({
   default: { template: '<div class="tab-diff" />' },
 }));
@@ -68,14 +65,12 @@ describe('ReplicationHub', () => {
     const wrapper = await mountHub('/replication');
 
     expect(wrapper.find('.tab-replications').exists()).toBe(true);
-    expect(wrapper.find('.tab-routing').exists()).toBe(false);
   });
 
-  it('selects the routing tab from ?tab=routing', async () => {
-    const wrapper = await mountHub('/replication?tab=routing');
+  it('has two tabs: replications and diff reports (routing is its own page)', async () => {
+    const wrapper = await mountHub('/replication');
 
-    expect(wrapper.find('.tab-routing').exists()).toBe(true);
-    expect(wrapper.find('.tab-replications').exists()).toBe(false);
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(2);
   });
 
   it('selects the diff tab from ?tab=diff', async () => {

@@ -17,9 +17,12 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
+import { createPinia, setActivePinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import DashboardPage from '../DashboardPage.vue';
 import { tolerateNaiveStyles } from '@/components/kit/__tests__/kitTestUtils';
+import { useAuthStore } from '@/stores/authStore';
+import { AuthRole } from '@/utils/types/auth';
 
 tolerateNaiveStyles();
 
@@ -41,7 +44,16 @@ vi.mock('../useDashboardData', async () => {
   };
 });
 
-async function mountAt(url: string) {
+async function mountAt(url: string, role = AuthRole.ADMIN) {
+  const pinia = createPinia();
+
+  setActivePinia(pinia);
+
+  const auth = useAuthStore();
+
+  auth.authEnabled = true;
+  auth.role = role;
+
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/dashboard', component: { template: '<div />' } }],
@@ -54,6 +66,7 @@ async function mountAt(url: string) {
     global: {
       plugins: [
         router,
+        pinia,
         createI18n({ legacy: false, locale: 'en', messages: {} }),
       ],
     },
@@ -63,29 +76,44 @@ async function mountAt(url: string) {
 }
 
 describe('DashboardPage', () => {
-  it('renders the overview and metrics tabs, overview selected by default', async () => {
+  it('renders the overview and traffic tabs, overview selected by default', async () => {
     const { wrapper } = await mountAt('/dashboard');
     const tabs = wrapper.findAll('[role="tab"]');
 
-    expect(tabs.map((tab) => tab.text())).toEqual(['Overview', 'Metrics']);
+    expect(tabs.map((tab) => tab.text())).toEqual(['Overview', 'Traffic']);
     expect(tabs[0]?.attributes('aria-selected')).toBe('true');
     expect(wrapper.find('.overview-tab').exists()).toBe(true);
     expect(wrapper.find('.metrics-tab').exists()).toBe(false);
   });
 
-  it('selects the metrics tab from ?tab=metrics', async () => {
-    const { wrapper } = await mountAt('/dashboard?tab=metrics');
+  it('selects the traffic tab from ?tab=traffic and from the old ?tab=metrics', async () => {
+    const { wrapper } = await mountAt('/dashboard?tab=traffic');
     const tabs = wrapper.findAll('[role="tab"]');
 
     expect(tabs[1]?.attributes('aria-selected')).toBe('true');
     expect(wrapper.find('.metrics-tab').exists()).toBe(true);
+
+    const old = await mountAt('/dashboard?tab=metrics');
+
+    expect(old.wrapper.find('.metrics-tab').exists()).toBe(true);
   });
 
-  it('writes the tab to the URL when clicking Metrics', async () => {
+  it('hides the Traffic tab from viewers, even for ?tab=traffic', async () => {
+    const { wrapper } = await mountAt(
+      '/dashboard?tab=traffic',
+      AuthRole.VIEWER,
+    );
+
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(0);
+    expect(wrapper.find('.metrics-tab').exists()).toBe(false);
+    expect(wrapper.find('.overview-tab').exists()).toBe(true);
+  });
+
+  it('writes the tab to the URL when clicking Traffic', async () => {
     const { wrapper, router } = await mountAt('/dashboard');
 
     await wrapper.findAll('[role="tab"]')[1]?.trigger('click');
     await flushPromises();
-    expect(router.currentRoute.value.query.tab).toBe('metrics');
+    expect(router.currentRoute.value.query.tab).toBe('traffic');
   });
 });

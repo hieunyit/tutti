@@ -27,6 +27,7 @@
     useQueryTab,
     type PageShellTab,
   } from '@/components/kit';
+  import ProxyConfigTab from '@/pages/TuttiProxiesPage/ProxyConfigTab.vue';
   import SettingsConflictDialog from '@/components/tutti/settings/SettingsConflictDialog.vue';
   import SettingsPanels from '@/components/tutti/settings/SettingsPanels.vue';
   import SettingsSaveBar from '@/components/tutti/settings/SettingsSaveBar.vue';
@@ -48,8 +49,10 @@
       : 'features',
   );
   const busy = computed(() => store.isLoading || store.isSaving);
+  // the Proxies tab has its own store: it must not wait for the settings load
+  const isProxies = computed(() => activeTab.value === 'proxies');
   const state = computed(() => {
-    if (store.settings) return 'ready';
+    if (store.settings || isProxies.value) return 'ready';
 
     if (store.hasError) return 'error';
 
@@ -61,6 +64,7 @@
     worker: 'tabWorker',
     locking: 'tabLocking',
     webhook: 'tabWebhook',
+    proxies: 'tabProxies',
   };
   const tabs = computed<PageShellTab[]>(() =>
     SETTINGS_TABS.map((key) => ({
@@ -154,7 +158,10 @@
     @update:active-tab="tab = $event"
     @retry="store.load()"
   >
-    <template #actions>
+    <template
+      v-if="!isProxies"
+      #actions
+    >
       <NButton
         :disabled="busy"
         :loading="store.isLoading"
@@ -163,7 +170,7 @@
       >
     </template>
     <template
-      v-if="store.settings"
+      v-if="store.settings && !isProxies"
       #meta
     >
       <StatusBadge
@@ -177,40 +184,43 @@
       />
     </template>
 
-    <p
-      v-if="store.settings"
-      class="settings-page__updated"
-    >
-      {{ t('lastUpdated') }}:
-      {{
-        store.settings.updatedAt
-          ? formatDateTime(store.settings.updatedAt)
-          : t('never')
-      }}
-    </p>
-    <Callout
-      v-if="store.hasError && !store.conflictError"
-      tone="danger"
-      :title="t('bannerFailed')"
-    >
-      {{ store.errorMessage }}
-    </Callout>
-    <SettingsConflictDialog />
-    <form
-      class="settings-page__form"
-      :aria-busy="busy"
-      @submit.prevent
-    >
-      <SettingsPanels
-        :tab="activeTab"
-        :disabled="busy"
-      />
-      <p class="settings-page__note">{{ t('effectiveNotice') }}</p>
-      <SettingsSaveBar
-        @discard="discard"
-        @invalid="reviewInvalidFields"
-      />
-    </form>
+    <ProxyConfigTab v-if="isProxies" />
+    <template v-else>
+      <p
+        v-if="store.settings"
+        class="settings-page__updated"
+      >
+        {{ t('lastUpdated') }}:
+        {{
+          store.settings.updatedAt
+            ? formatDateTime(store.settings.updatedAt)
+            : t('never')
+        }}
+      </p>
+      <Callout
+        v-if="store.hasError && !store.conflictError"
+        tone="danger"
+        :title="t('bannerFailed')"
+      >
+        {{ store.errorMessage }}
+      </Callout>
+      <SettingsConflictDialog />
+      <form
+        class="settings-page__form"
+        :aria-busy="busy"
+        @submit.prevent
+      >
+        <SettingsPanels
+          :tab="activeTab"
+          :disabled="busy"
+        />
+        <p class="settings-page__note">{{ t('effectiveNotice') }}</p>
+        <SettingsSaveBar
+          @discard="discard"
+          @invalid="reviewInvalidFields"
+        />
+      </form>
+    </template>
 
     <ConfirmDialog
       :open="showDiscard"

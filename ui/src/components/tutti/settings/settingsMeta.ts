@@ -40,6 +40,8 @@ export const SETTINGS_TABS = [
   'worker',
   'locking',
   'webhook',
+  /** proxy defaults: the former Proxies > Config tab (own store and save flow) */
+  'proxies',
 ] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 

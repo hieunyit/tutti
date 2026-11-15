@@ -6,8 +6,6 @@ export default <Record<string, Record<string, string>>>{
     title: 'Proxies',
     description:
       'S3 proxy instances, their health and the fleet configuration pushed to them.',
-    tabFleet: 'Fleet',
-    tabConfig: 'Config',
     refresh: 'Refresh now',
     pause: 'Pause auto-refresh',
     resume: 'Resume auto-refresh',
@@ -114,8 +112,6 @@ export default <Record<string, Record<string, string>>>{
     title: 'Proxys',
     description:
       'S3-Proxy-Instanzen, ihr Zustand und die an sie verteilte Flottenkonfiguration.',
-    tabFleet: 'Flotte',
-    tabConfig: 'Konfiguration',
     refresh: 'Jetzt aktualisieren',
     pause: 'Automatisches Aktualisieren pausieren',
     resume: 'Automatisches Aktualisieren fortsetzen',
@@ -223,8 +219,6 @@ export default <Record<string, Record<string, string>>>{
     title: 'Proxy',
     description:
       'Các instance S3 proxy, tình trạng của chúng và cấu hình fleet được đẩy xuống.',
-    tabFleet: 'Fleet',
-    tabConfig: 'Cấu hình',
     refresh: 'Làm mới ngay',
     pause: 'Tạm dừng tự làm mới',
     resume: 'Tiếp tục tự làm mới',

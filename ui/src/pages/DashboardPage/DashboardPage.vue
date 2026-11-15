@@ -17,22 +17,35 @@
 <script setup lang="ts">
   import { NButton } from 'naive-ui';
   import { computed } from 'vue';
+  import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
   import DashboardMetricsTab from './DashboardMetricsTab.vue';
   import DashboardOverviewTab from './DashboardOverviewTab.vue';
   import i18nDashboard from './i18nDashboard';
   import { useDashboardData } from './useDashboardData';
   import { PageShell, useQueryTab } from '@/components/kit';
+  import { useAuthStore } from '@/stores/authStore';
 
   const { t } = useI18n({ messages: i18nDashboard });
   const data = useDashboardData();
-  const activeTab = useQueryTab('tab', 'overview');
+  const queryTab = useQueryTab('tab', 'overview');
+  const { isAdmin } = storeToRefs(useAuthStore());
 
+  // The Traffic tab is admin-only; `metrics` is the old name of `traffic`.
+  const isTrafficQuery = computed(() =>
+    ['traffic', 'metrics'].includes(queryTab.value),
+  );
+  const activeTab = computed<string>({
+    get: () => (isTrafficQuery.value && isAdmin.value ? 'traffic' : 'overview'),
+    set: (value) => {
+      queryTab.value = value;
+    },
+  });
   const tabs = computed(() => [
     { key: 'overview', label: t('tabOverview') },
-    { key: 'metrics', label: t('tabMetrics') },
+    ...(isAdmin.value ? [{ key: 'traffic', label: t('tabMetrics') }] : []),
   ]);
-  const isMetrics = computed(() => activeTab.value === 'metrics');
+  const isMetrics = computed(() => activeTab.value === 'traffic');
   const shellState = computed(() =>
     isMetrics.value ? 'ready' : data.state.value,
   );
@@ -53,7 +66,7 @@
     :title="t('title')"
     :description="t('description')"
     :state="shellState"
-    :tabs="tabs"
+    :tabs="tabs.length > 1 ? tabs : undefined"
     :active-tab="activeTab"
     :error-text="t('errorText')"
     @update:active-tab="activeTab = $event"

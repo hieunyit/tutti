@@ -31,6 +31,8 @@ const TuttiAddReplicationPage = () =>
   import('@/pages/TuttiAddReplicationPage/TuttiAddReplicationPage.vue');
 const TuttiStorageDetailPage = () =>
   import('@/pages/TuttiStorageDetailsPage/TuttiStorageDetailsPage.vue');
+const TuttiRoutingPage = () =>
+  import('@/pages/TuttiRoutingPage/TuttiRoutingPage.vue');
 const TuttiAddRoutingPolicyPage = () =>
   import('@/pages/TuttiAddRoutingPolicyPage/TuttiAddRoutingPolicyPage.vue');
 const TuttiAddDiffReportPage = () =>
@@ -72,6 +74,22 @@ function keepQuery(name: RouteName, extra: LocationQuery = {}) {
 }
 
 /**
+ * beforeEnter for a page whose `?tab=<tab>` moved elsewhere: sends the old
+ * deep link to `name` (the rest of the query and the hash are kept).
+ */
+function movedTab(tab: string, name: RouteName, extra: LocationQuery = {}) {
+  return (to: RouteLocation) => {
+    if (to.query.tab !== tab) return true;
+
+    const rest = { ...to.query };
+
+    delete rest.tab;
+
+    return { name, query: { ...rest, ...extra }, hash: to.hash };
+  };
+}
+
+/**
  * /diff-reports/detail?from=..&to=.. (and ?id=..) -> /replication/diff/:id.
  * The whole query is kept (the detail store still reads from/to); the id is
  * ?id when given, else "<from>~<to>", which identifies a diff report.
@@ -110,23 +128,29 @@ export const routes: RouteRecordRaw[] = [
     children: [
       {
         path: 'dashboard',
-        meta: { navGroup: 'overview', navSection: RouteName.TUTTI_DASHBOARD },
+        meta: {
+          navGroup: 'overview',
+          navSection: RouteName.TUTTI_DASHBOARD,
+          adminTabs: ['traffic', 'metrics'],
+        },
         name: RouteName.TUTTI_DASHBOARD,
         component: TuttiDashboardPage,
       },
       {
         path: 'replication',
         meta: {
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_REPLICATION,
         },
         name: RouteName.TUTTI_REPLICATION,
         component: TuttiReplicationPage,
+        // old deep link: the Routing tab became its own page
+        beforeEnter: movedTab('routing', RouteName.TUTTI_ROUTING_RULES),
       },
       {
         path: 'replication/detail',
         meta: {
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_REPLICATION,
         },
         name: RouteName.TUTTI_REPLICATION_DETAIL,
@@ -136,18 +160,27 @@ export const routes: RouteRecordRaw[] = [
         path: 'replication/add',
         meta: {
           requiresWrite: true,
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_REPLICATION,
         },
         name: RouteName.TUTTI_ADD_REPLICATION,
         component: TuttiAddReplicationPage,
       },
       {
-        path: 'replication/routing/add',
+        path: 'routing',
+        meta: {
+          navGroup: 'replicate',
+          navSection: RouteName.TUTTI_ROUTING_RULES,
+        },
+        name: RouteName.TUTTI_ROUTING_RULES,
+        component: TuttiRoutingPage,
+      },
+      {
+        path: 'routing/add',
         meta: {
           requiresWrite: true,
-          navGroup: 'dataProtection',
-          navSection: RouteName.TUTTI_REPLICATION,
+          navGroup: 'replicate',
+          navSection: RouteName.TUTTI_ROUTING_RULES,
         },
         name: RouteName.TUTTI_ADD_ROUTING_POLICY,
         component: TuttiAddRoutingPolicyPage,
@@ -156,7 +189,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'replication/diff/add',
         meta: {
           requiresWrite: true,
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_REPLICATION,
         },
         name: RouteName.TUTTI_ADD_DIFF_REPORT,
@@ -165,7 +198,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'replication/diff/:id',
         meta: {
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_REPLICATION,
         },
         name: RouteName.TUTTI_REPLICATION_DIFF_DETAIL,
@@ -173,22 +206,26 @@ export const routes: RouteRecordRaw[] = [
       },
       {
         path: 'storages',
-        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_STORAGES },
+        meta: { navGroup: 'connect', navSection: RouteName.TUTTI_STORAGES },
         name: RouteName.TUTTI_STORAGES,
         component: TuttiStoragesPage,
       },
       {
         path: 'storages/:storageName',
-        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_STORAGES },
+        meta: { navGroup: 'connect', navSection: RouteName.TUTTI_STORAGES },
         name: RouteName.TUTTI_STORAGE_DETAILS,
         component: TuttiStorageDetailPage,
         props: true,
       },
       {
         path: 'proxies',
-        meta: { navGroup: 'storage', navSection: RouteName.TUTTI_PROXIES },
+        meta: { navGroup: 'connect', navSection: RouteName.TUTTI_PROXIES },
         name: RouteName.TUTTI_PROXIES,
         component: TuttiProxiesPage,
+        // old deep link: the Config tab moved to System settings > Proxies
+        beforeEnter: movedTab('config', RouteName.TUTTI_SYSTEM_SETTINGS, {
+          tab: 'proxies',
+        }),
       },
       {
         path: 'users',
@@ -217,7 +254,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'console-users',
         meta: {
           requiresAdmin: true,
-          navGroup: 'access',
+          navGroup: 'admin',
           navSection: RouteName.TUTTI_CONSOLE_USERS,
         },
         name: RouteName.TUTTI_CONSOLE_USERS,
@@ -227,7 +264,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'audit-log',
         meta: {
           requiresAdmin: true,
-          navGroup: 'administration',
+          navGroup: 'admin',
           navSection: RouteName.TUTTI_AUDIT_LOG,
         },
         name: AUDIT_LOG_ROUTE_NAME,
@@ -237,25 +274,25 @@ export const routes: RouteRecordRaw[] = [
         path: 'system-settings',
         meta: {
           requiresAdmin: true,
-          navGroup: 'administration',
+          navGroup: 'admin',
           navSection: RouteName.TUTTI_SYSTEM_SETTINGS,
         },
         name: RouteName.TUTTI_SYSTEM_SETTINGS,
         component: TuttiSystemSettingsPage,
       },
       {
-        path: 'proxy-accounts',
+        path: 'access-keys',
         meta: {
           navGroup: 'access',
-          navSection: RouteName.TUTTI_PROXY_ACCOUNTS,
+          navSection: RouteName.TUTTI_ACCESS_KEYS,
         },
-        name: RouteName.TUTTI_PROXY_ACCOUNTS,
+        name: RouteName.TUTTI_ACCESS_KEYS,
         component: TuttiProxyAccountsPage,
       },
       {
         path: 'protection-groups',
         meta: {
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_PROTECTION_GROUPS,
         },
         name: RouteName.TUTTI_PROTECTION_GROUPS,
@@ -264,7 +301,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'protection-groups/:name',
         meta: {
-          navGroup: 'dataProtection',
+          navGroup: 'replicate',
           navSection: RouteName.TUTTI_PROTECTION_GROUPS,
         },
         name: RouteName.TUTTI_PROTECTION_GROUP_DETAIL,
@@ -294,7 +331,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'monitoring',
         name: RouteName.TUTTI_MONITORING,
-        redirect: keepQuery(RouteName.TUTTI_DASHBOARD, { tab: 'metrics' }),
+        redirect: keepQuery(RouteName.TUTTI_DASHBOARD, { tab: 'traffic' }),
       },
       {
         path: 'health',
@@ -303,7 +340,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'routing-policies',
         name: RouteName.TUTTI_ROUTING_POLICIES,
-        redirect: keepQuery(RouteName.TUTTI_REPLICATION, { tab: 'routing' }),
+        redirect: keepQuery(RouteName.TUTTI_ROUTING_RULES),
       },
       {
         path: 'routing-policies/add',
@@ -328,8 +365,13 @@ export const routes: RouteRecordRaw[] = [
         redirect: keepQuery(RouteName.TUTTI_PROTECTION_GROUPS),
       },
       {
-        path: 'access-keys',
-        redirect: keepQuery(RouteName.TUTTI_PROXY_ACCOUNTS),
+        path: 'proxy-accounts',
+        name: RouteName.TUTTI_PROXY_ACCOUNTS,
+        redirect: keepQuery(RouteName.TUTTI_ACCESS_KEYS),
+      },
+      {
+        path: 'replication/routing/add',
+        redirect: keepQuery(RouteName.TUTTI_ADD_ROUTING_POLICY),
       },
       {
         // the old credentials page: credentials now live on the user pages
