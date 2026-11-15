@@ -14,21 +14,26 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
+  /**
+   * Add replication in three steps: Storages (source, destination), Buckets
+   * (all or a selection) and Review (optional name, then one primary button).
+   * The draft survives leaving the page; a failed create keeps it and says
+   * what the server answered.
+   */
   import { computed, onBeforeMount, onUnmounted } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import {
+    Callout,
     clearWizardDraft,
     WizardShell,
     type WizardStep,
   } from '@/components/kit';
-  import { Callout } from '@/components/kit';
   import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
-  import FromStorageFormStep from '@/components/tutti/add-replication/FromStorageFormStep/FromStorageFormStep.vue';
-  import ToStorageFormStep from '@/components/tutti/add-replication/ToStorageFormStep/ToStorageFormStep.vue';
+  import StoragesStep from '@/components/tutti/add-replication/StoragesStep.vue';
   import BucketsFormStep from '@/components/tutti/add-replication/BucketsFormStep/BucketsFormStep.vue';
   import AddReplicationSummary from '@/components/tutti/add-replication/AddReplicationSummary/AddReplicationSummary.vue';
-  import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
+  import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
@@ -43,11 +48,12 @@
     name: string;
   }
 
-  const { t } = useI18n({ messages: i18nReplicationHub });
+  const { t } = useI18n({ messages: i18nAddReplication });
   const store = useTuttiAddReplicationStore();
   const {
     isLoading,
     hasError,
+    hasEnoughStorages,
     storages,
     selectedFromStorage,
     selectedToStorage,
@@ -60,8 +66,13 @@
   } = storeToRefs(store);
 
   const ready = computed(
-    () => !isLoading.value && !hasError.value && storages.value.length > 0,
+    () => !isLoading.value && !hasError.value && hasEnoughStorages.value,
   );
+  const state = computed(() => {
+    if (isLoading.value) return 'loading';
+
+    return hasError.value || !hasEnoughStorages.value ? 'error' : 'ready';
+  });
 
   useStoreDraft<ReplicationDraft>({
     draftKey: DRAFT_KEY,
@@ -91,7 +102,7 @@
       name.value = draft.name ?? '';
 
       if (from && to && draft.buckets.length) {
-        // marks the bucket list as requested, so opening step 3 keeps the choice
+        // marks the bucket list as requested, so opening step 2 keeps the choice
         bucketsRequestOptions.value = {
           fromStorage: from.name,
           toStorage: to.name,
@@ -105,16 +116,12 @@
 
   const steps = computed<WizardStep[]>(() => [
     {
-      key: 'from',
-      label: t('stepFrom'),
-      valid: selectedFromStorage.value !== null,
-    },
-    {
-      key: 'to',
-      label: t('stepTo'),
+      key: 'storages',
+      label: t('stepStorages'),
       valid:
+        selectedFromStorage.value !== null &&
         selectedToStorage.value !== null &&
-        selectedToStorage.value.name !== selectedFromStorage.value?.name,
+        selectedToStorage.value.name !== selectedFromStorage.value.name,
     },
     {
       key: 'buckets',
@@ -122,8 +129,8 @@
       valid: isForAllBuckets.value || selectedBuckets.value.length > 0,
     },
     {
-      key: 'confirm',
-      label: t('stepConfirm'),
+      key: 'review',
+      label: t('stepReview'),
       valid: ReplicationNameHelper.getProblem(name.value) === null,
     },
   ]);
@@ -139,56 +146,49 @@
     store.initAddReplicationPage();
   }
 
-  onBeforeMount(() => {
-    store.initAddReplicationPage();
-  });
-
-  onUnmounted(() => {
-    store.$reset();
-  });
+  onBeforeMount(() => store.initAddReplicationPage());
+  onUnmounted(() => store.$reset());
 </script>
 
 <template>
   <TuttiWizardPage
-    :title="t('addReplicationTitle')"
-    :description="t('addReplicationDescription')"
-    :state="isLoading ? 'loading' : hasError ? 'error' : 'ready'"
-    :error-text="t('wizardLoadError')"
+    :title="t('title')"
+    :state="state"
+    :error-text="hasError ? t('loadError') : t('notEnoughStorages')"
+    back-to="replication"
     @retry="store.initAddReplicationPage()"
   >
     <Callout
       v-if="createError"
       tone="danger"
-      class="add-replication-error"
-      role="alert"
-      >{{ createError }}</Callout
+      class="add-replication__error"
+      :title="t('createFailedTitle')"
     >
+      {{ createError }} {{ t('createFailedHint') }}
+    </Callout>
     <WizardShell
       :steps="steps"
       :draft-key="DRAFT_KEY"
-      :finish-label="t('finishReplication')"
+      :finish-label="t('create')"
       :busy="isSubmitting"
       @finish="finish"
       @reset="startOver"
     >
-      <template #from>
-        <FromStorageFormStep />
-      </template>
-      <template #to>
-        <ToStorageFormStep />
+      <template #storages>
+        <StoragesStep />
       </template>
       <template #buckets>
         <BucketsFormStep />
       </template>
-      <template #confirm>
+      <template #review>
         <AddReplicationSummary />
       </template>
     </WizardShell>
   </TuttiWizardPage>
 </template>
 
-<style lang="scss" scoped>
-  .add-replication-error {
-    margin-bottom: 16px;
+<style scoped lang="scss">
+  .add-replication__error {
+    margin-bottom: var(--tt-space-4);
   }
 </style>

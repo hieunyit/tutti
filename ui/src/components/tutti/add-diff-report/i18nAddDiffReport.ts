@@ -1,5 +1,5 @@
 /*
- * Copyright © 2026 Clyso GmbH
+ * Copyright © 2026 hieunyit
  *
  *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,250 +18,140 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    // Breadcrumbs
-    backToDiffReports: 'Diff reports',
-    breadcrumbCreateDiffReport: 'Add Diff Report',
-    // Page / tile
-    addDiffReportTitle: 'New diff report',
-    addDiffReportDescription:
-      'Run an on-demand verification check between two storage locations. Select a source and target storage/bucket pair with optional validation criteria.',
-    // Wizard
-    step1Title: 'Diff Report Source',
-    step1Description: 'Select source storage and bucket',
-    step2Title: 'Diff Report Destination',
-    step2Description: 'Select storage and bucket for comparison',
-    step3Title: 'User',
-    step3Description: 'Select user',
-    step4Title: 'Additional Settings',
-    step4Description: 'Select additional settings',
-    nextAction: 'Next',
-    // Submit button
-    actionAddDiffReport: 'Add Diff Report',
-    // Error state
-    errorTitle: 'Error',
-    errorText: 'An error occurred while loading storages.\nPlease try again.',
-    errorAction: 'Retry',
-    // Not enough storages
-    notEnoughStoragesTitle: 'Not Enough Storages',
-    notEnoughStoragesText:
-      'At least two storages are required to create a diff report.',
-    // From Storage section
-    fromStorageTitle: 'Source Storage',
-    fromStorageDescription:
-      'Select the source storage location where the original data resides.',
-    fromStorageRequired: 'Please select a source storage.',
-    // Bucket section
-    fromBucketTitle: 'Source Bucket',
-    fromBucketDescription:
-      'Enter the target bucket from the source storage to include in the consistency check.',
-    bucketPlaceholder: 'e.g. my-bucket',
-    bucketRequired: 'Please enter a bucket name.',
-    bucketErrLength: 'Bucket name must be between 3 and 63 characters.',
+    title: 'Create diff report',
+    loadError: 'Storages could not be loaded. Try again.',
+    notEnoughStorages:
+      'A diff report needs two storages. Add another storage, then try again.',
+    stepLocations: 'Source and destination',
+    stepChecks: 'Checks',
+    sourceStorage: 'Source storage',
+    sourceBucket: 'Source bucket',
+    destinationStorage: 'Destination storage',
+    destinationBucket: 'Destination bucket',
+    bucketPlaceholder: 'my-bucket',
+    storageRequired: 'Choose a storage.',
+    bucketRequired: 'Enter a bucket name.',
+    bucketErrLength: 'A bucket name has 3 to 63 characters.',
     bucketErrChars:
-      'Bucket name may only contain lowercase letters, numbers, dots, and hyphens.',
-    bucketErrStartEnd:
-      'Bucket name must start and end with a letter or number.',
-    bucketErrAdjacentPeriods: 'Bucket name must not contain adjacent periods.',
-    bucketErrIpAddress: 'Bucket name must not be formatted as an IP address.',
-    bucketErrPrefixSuffix:
-      'Bucket name contains a restricted AWS prefix or suffix.',
-    // To Storage section
-    toStorageTitle: 'Destination Storage',
-    toStorageDescription:
-      'Select the destination storage location to compare against the source.',
-    toStorageRequired: 'Please select a destination storage.',
-    // To Bucket section
-    toBucketTitle: 'Destination Bucket',
-    toBucketDescription:
-      'Enter the bucket from the destination storage to compare against the source bucket.',
-    // User section
-    userTitle: 'User',
-    userDescription:
-      'Select the S3 credential alias used to access both storages. Only users with credentials on both storages are shown.',
-    userRequired: 'Please select a user.',
-    noUsersTitle: 'No User Credentials Found',
-    noUsersText:
-      'No users with credentials on both selected storages were found.',
-    // Additional settings section
-    additionalSettingsTitle: 'Additional Settings',
-    checkOnlyLastVersionsLabel: 'Check only last versions',
-    checkOnlyLastVersionsDescription:
-      'Verify only the latest version of each object. Disabled it to check historical versions as well.',
-    ignoreEtagsLabel: 'Ignore ETags',
-    ignoreEtagsDescription:
-      'Skip checksum comparison based on ETags. Helpful when comparing data between different cloud providers that calculate hashes differently.',
-    ignoreSizesLabel: 'Ignore Sizes',
-    ignoreSizesDescription:
-      'Skip object size verification. Use this if payload sizes differ due to automated server-side transformation or encryption during transit.',
-    // Confirm dialog
-    confirmDiffReportTitle: 'Confirm Diff Report',
-    confirmDiffReportDescription:
-      'You are about to create the following diff report.',
-    confirmDiffReportPositive: 'Create Diff Report',
-    confirmDiffReportNegative: 'Cancel',
-    // Summary
-    summaryStorages: 'Storages',
-    summaryBuckets: 'Buckets',
-    summaryUser: 'User',
-    summaryOptions: 'Options',
-    // Success / error notifications
-    successTitle: 'Success',
-    createDiffReportSuccess: 'Diff report has been created successfully.',
-    createDiffReportError: 'An error occurred while creating the diff report.',
+      'Use only lowercase letters, numbers, dots and hyphens in a bucket name.',
+    bucketErrStartEnd: 'A bucket name starts and ends with a letter or number.',
+    bucketErrAdjacentPeriods: 'A bucket name cannot contain two dots in a row.',
+    bucketErrIpAddress: 'A bucket name cannot look like an IP address.',
+    bucketErrPrefixSuffix: 'This bucket name uses a reserved prefix or suffix.',
+    userLabel: 'User',
+    userHint: 'Reads both buckets. Only users on both storages are listed.',
+    userRequired: 'Choose a user.',
+    noUsers:
+      'No user exists on both storages. Add the user to the other storage, then try again.',
+    checksLegend: 'Checks',
+    lastVersions: 'Compare only the latest version of each object',
+    lastVersionsHint: 'Turn off to compare older versions too.',
+    ignoreEtags: 'Ignore ETags',
+    ignoreEtagsHint:
+      'Skips the checksum comparison. Useful when the storages calculate hashes differently.',
+    ignoreSizes: 'Ignore sizes',
+    ignoreSizesHint:
+      'Skips the size comparison. Useful when objects are transformed or encrypted on the way.',
+    summarySource: 'Source',
+    summaryDestination: 'Destination',
+    create: 'Create diff report',
+    created: 'Diff report created',
+    createFailed: 'The diff report could not be created',
+    createFailedHint: 'Your entries are kept. Check them and try again.',
+    unknownError: 'The server gave no reason.',
   },
   [I18nLocale.DE]: {
-    backToDiffReports: 'Diff-Reports',
-    breadcrumbCreateDiffReport: 'Diff-Report hinzufügen',
-    addDiffReportTitle: 'Diff-Report erstellen',
-    addDiffReportDescription:
-      'Führen Sie eine On-Demand-Prüfung zwischen zwei Storage-Standorten durch. Wählen Sie ein Quell- und Ziel-Storage-/Bucket-Paar mit optionalen Validierungskriterien.',
-    step1Title: 'Diff-Report Quelle',
-    step1Description: 'Quell-Storage und -Bucket auswählen',
-    step2Title: 'Diff-Report Ziel',
-    step2Description: 'Storage und Bucket zum Vergleich auswählen',
-    step3Title: 'Benutzer',
-    step3Description: 'Benutzer auswählen',
-    step4Title: 'Erweiterte Einstellungen',
-    step4Description: 'Erweiterte Einstellungen auswählen',
-    nextAction: 'Weiter',
-    actionAddDiffReport: 'Diff-Report hinzufügen',
-    errorTitle: 'Fehler',
-    errorText:
-      'Beim Laden der Storages ist ein Fehler aufgetreten.\nBitte versuchen Sie es erneut.',
-    errorAction: 'Erneut versuchen',
-    notEnoughStoragesTitle: 'Nicht genug Storages',
-    notEnoughStoragesText:
-      'Für einen Diff-Report werden mindestens zwei Storages benötigt.',
-    fromStorageTitle: 'Quell-Storage',
-    fromStorageDescription:
-      'Wählen Sie den Quell-Storage, in dem sich die Originaldaten befinden.',
-    fromStorageRequired: 'Bitte wählen Sie einen Quell-Storage.',
-    fromBucketTitle: 'Quell-Bucket',
-    fromBucketDescription:
-      'Geben Sie den Ziel-Bucket des Quell-Storages für die Konsistenzprüfung ein.',
-    bucketPlaceholder: 'z.B. my-bucket',
-    bucketRequired: 'Bitte geben Sie einen Bucket-Namen ein.',
-    bucketErrLength:
-      'Der Bucket-Name muss zwischen 3 und 63 Zeichen lang sein.',
+    title: 'Diff-Report erstellen',
+    loadError:
+      'Die Speicher konnten nicht geladen werden. Versuchen Sie es erneut.',
+    notEnoughStorages:
+      'Ein Diff-Report braucht zwei Speicher. Fügen Sie einen weiteren Speicher hinzu und versuchen Sie es erneut.',
+    stepLocations: 'Quelle und Ziel',
+    stepChecks: 'Prüfungen',
+    sourceStorage: 'Quellspeicher',
+    sourceBucket: 'Quell-Bucket',
+    destinationStorage: 'Zielspeicher',
+    destinationBucket: 'Ziel-Bucket',
+    bucketPlaceholder: 'mein-bucket',
+    storageRequired: 'Wählen Sie einen Speicher.',
+    bucketRequired: 'Geben Sie einen Bucket-Namen ein.',
+    bucketErrLength: 'Ein Bucket-Name hat 3 bis 63 Zeichen.',
     bucketErrChars:
-      'Der Bucket-Name darf nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche enthalten.',
+      'Ein Bucket-Name darf nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche enthalten.',
     bucketErrStartEnd:
-      'Der Bucket-Name muss mit einem Buchstaben oder einer Zahl beginnen und enden.',
+      'Ein Bucket-Name beginnt und endet mit einem Buchstaben oder einer Zahl.',
     bucketErrAdjacentPeriods:
-      'Der Bucket-Name darf keine aufeinanderfolgenden Punkte enthalten.',
+      'Ein Bucket-Name darf nicht zwei Punkte hintereinander enthalten.',
     bucketErrIpAddress:
-      'Der Bucket-Name darf nicht als IP-Adresse formatiert sein.',
+      'Ein Bucket-Name darf nicht wie eine IP-Adresse aussehen.',
     bucketErrPrefixSuffix:
-      'Der Bucket-Name enthält ein unzulässiges AWS-Präfix oder -Suffix.',
-    toStorageTitle: 'Ziel-Storage',
-    toStorageDescription:
-      'Wählen Sie den Ziel-Storage, mit dem die Quelle verglichen werden soll.',
-    toStorageRequired: 'Bitte wählen Sie einen Ziel-Storage.',
-    toBucketTitle: 'Ziel-Bucket',
-    toBucketDescription:
-      'Geben Sie den Bucket des Ziel-Storages ein, der mit dem Quell-Bucket verglichen werden soll.',
-    userTitle: 'Benutzer',
-    userDescription:
-      'Wählen Sie den S3-Credential-Alias für den Zugriff auf beide Storages. Es werden nur Benutzer angezeigt, die auf beiden Storages konfiguriert sind.',
-    userRequired: 'Bitte wählen Sie einen Benutzer.',
-    noUsersTitle: 'Keine Benutzer-Credentials gefunden',
-    noUsersText:
-      'Es wurden keine Benutzer mit Credentials auf beiden ausgewählten Storages gefunden.',
-    additionalSettingsTitle: 'Erweiterte Einstellungen',
-    checkOnlyLastVersionsLabel: 'Nur letzte Versionen prüfen',
-    checkOnlyLastVersionsDescription:
-      'Überprüft nur die neueste Version jedes Objekts. Deaktivieren, um auch historische Versionen zu prüfen.',
-    ignoreEtagsLabel: 'ETags ignorieren',
-    ignoreEtagsDescription:
-      'Überspringt den Prüfsummenvergleich anhand von ETags. Hilfreich beim Vergleich zwischen verschiedenen Cloud-Anbietern mit unterschiedlicher Hash-Berechnung.',
-    ignoreSizesLabel: 'Größen ignorieren',
-    ignoreSizesDescription:
-      'Überspringt die Objektgrößenprüfung. Verwenden, wenn sich Payload-Größen durch serverseitige Transformation oder Verschlüsselung unterscheiden.',
-    confirmDiffReportTitle: 'Diff-Report bestätigen',
-    confirmDiffReportDescription:
-      'Sie sind dabei den folgenden Diff-Report zu erstellen',
-    confirmDiffReportPositive: 'Diff-Report erstellen',
-    confirmDiffReportNegative: 'Abbrechen',
-    summaryStorages: 'Storages',
-    summaryBuckets: 'Buckets',
-    summaryUser: 'Benutzer',
-    summaryOptions: 'Optionen',
-    successTitle: 'Erfolg',
-    createDiffReportSuccess: 'Der Diff-Report wurde erfolgreich erstellt.',
-    createDiffReportError:
-      'Beim Erstellen des Diff-Reports ist ein Fehler aufgetreten.',
+      'Dieser Bucket-Name verwendet ein reserviertes Präfix oder Suffix.',
+    userLabel: 'Benutzer',
+    userHint:
+      'Liest beide Buckets. Es werden nur Benutzer auf beiden Speichern angezeigt.',
+    userRequired: 'Wählen Sie einen Benutzer.',
+    noUsers:
+      'Kein Benutzer existiert auf beiden Speichern. Fügen Sie den Benutzer zum anderen Speicher hinzu und versuchen Sie es erneut.',
+    checksLegend: 'Prüfungen',
+    lastVersions: 'Nur die neueste Version jedes Objekts vergleichen',
+    lastVersionsHint: 'Ausschalten, um auch ältere Versionen zu vergleichen.',
+    ignoreEtags: 'ETags ignorieren',
+    ignoreEtagsHint:
+      'Überspringt den Prüfsummenvergleich. Nützlich, wenn die Speicher Hashes unterschiedlich berechnen.',
+    ignoreSizes: 'Größen ignorieren',
+    ignoreSizesHint:
+      'Überspringt den Größenvergleich. Nützlich, wenn Objekte unterwegs umgewandelt oder verschlüsselt werden.',
+    summarySource: 'Quelle',
+    summaryDestination: 'Ziel',
+    create: 'Diff-Report erstellen',
+    created: 'Diff-Report erstellt',
+    createFailed: 'Der Diff-Report konnte nicht erstellt werden',
+    createFailedHint:
+      'Ihre Eingaben bleiben erhalten. Prüfen Sie sie und versuchen Sie es erneut.',
+    unknownError: 'Der Server hat keinen Grund genannt.',
   },
   vi: {
-    backToDiffReports: 'Báo cáo diff',
-    breadcrumbCreateDiffReport: 'Thêm báo cáo diff',
-    addDiffReportTitle: 'Báo cáo diff mới',
-    addDiffReportDescription:
-      'Chạy kiểm tra đối chiếu theo yêu cầu giữa hai vị trí storage. Chọn cặp storage/bucket nguồn và đích, kèm tiêu chí kiểm tra tùy chọn.',
-    step1Title: 'Nguồn của báo cáo diff',
-    step1Description: 'Chọn storage và bucket nguồn',
-    step2Title: 'Đích của báo cáo diff',
-    step2Description: 'Chọn storage và bucket để so sánh',
-    step3Title: 'User',
-    step3Description: 'Chọn user',
-    step4Title: 'Cài đặt bổ sung',
-    step4Description: 'Chọn các cài đặt bổ sung',
-    nextAction: 'Tiếp theo',
-    actionAddDiffReport: 'Thêm báo cáo diff',
-    errorTitle: 'Lỗi',
-    errorText: 'Đã xảy ra lỗi khi tải danh sách storage.\nVui lòng thử lại.',
-    errorAction: 'Thử lại',
-    notEnoughStoragesTitle: 'Không đủ storage',
-    notEnoughStoragesText: 'Cần ít nhất hai storage để tạo báo cáo diff.',
-    fromStorageTitle: 'Storage nguồn',
-    fromStorageDescription: 'Chọn vị trí storage nguồn chứa dữ liệu gốc.',
-    fromStorageRequired: 'Vui lòng chọn storage nguồn.',
-    fromBucketTitle: 'Bucket nguồn',
-    fromBucketDescription:
-      'Nhập bucket từ storage nguồn cần đưa vào kiểm tra tính nhất quán.',
-    bucketPlaceholder: 'ví dụ: my-bucket',
-    bucketRequired: 'Vui lòng nhập tên bucket.',
-    bucketErrLength: 'Tên bucket phải dài từ 3 đến 63 ký tự.',
+    title: 'Tạo báo cáo diff',
+    loadError: 'Không tải được danh sách storage. Hãy thử lại.',
+    notEnoughStorages:
+      'Báo cáo diff cần hai storage. Hãy thêm một storage nữa rồi thử lại.',
+    stepLocations: 'Nguồn và đích',
+    stepChecks: 'Kiểm tra',
+    sourceStorage: 'Storage nguồn',
+    sourceBucket: 'Bucket nguồn',
+    destinationStorage: 'Storage đích',
+    destinationBucket: 'Bucket đích',
+    bucketPlaceholder: 'my-bucket',
+    storageRequired: 'Hãy chọn một storage.',
+    bucketRequired: 'Hãy nhập tên bucket.',
+    bucketErrLength: 'Tên bucket dài từ 3 đến 63 ký tự.',
     bucketErrChars:
-      'Tên bucket chỉ được chứa chữ thường, số, dấu chấm và dấu gạch ngang.',
-    bucketErrStartEnd:
-      'Tên bucket phải bắt đầu và kết thúc bằng chữ cái hoặc số.',
-    bucketErrAdjacentPeriods:
-      'Tên bucket không được chứa hai dấu chấm liền nhau.',
-    bucketErrIpAddress: 'Tên bucket không được có định dạng địa chỉ IP.',
+      'Tên bucket chỉ gồm chữ thường, số, dấu chấm và dấu gạch ngang.',
+    bucketErrStartEnd: 'Tên bucket phải bắt đầu và kết thúc bằng chữ hoặc số.',
+    bucketErrAdjacentPeriods: 'Tên bucket không có hai dấu chấm liền nhau.',
+    bucketErrIpAddress: 'Tên bucket không được giống địa chỉ IP.',
     bucketErrPrefixSuffix:
-      'Tên bucket chứa tiền tố hoặc hậu tố bị AWS hạn chế.',
-    toStorageTitle: 'Storage đích',
-    toStorageDescription: 'Chọn vị trí storage đích để so sánh với nguồn.',
-    toStorageRequired: 'Vui lòng chọn storage đích.',
-    toBucketTitle: 'Bucket đích',
-    toBucketDescription:
-      'Nhập bucket từ storage đích để so sánh với bucket nguồn.',
-    userTitle: 'User',
-    userDescription:
-      'Chọn bí danh credential S3 dùng để truy cập cả hai storage. Chỉ hiển thị các user có credential trên cả hai storage.',
-    userRequired: 'Vui lòng chọn user.',
-    noUsersTitle: 'Không tìm thấy credential của user',
-    noUsersText: 'Không có user nào có credential trên cả hai storage đã chọn.',
-    additionalSettingsTitle: 'Cài đặt bổ sung',
-    checkOnlyLastVersionsLabel: 'Chỉ kiểm tra phiên bản mới nhất',
-    checkOnlyLastVersionsDescription:
-      'Chỉ xác minh phiên bản mới nhất của mỗi object. Tắt tùy chọn này để kiểm tra cả các phiên bản cũ.',
-    ignoreEtagsLabel: 'Bỏ qua ETag',
-    ignoreEtagsDescription:
-      'Bỏ qua việc so sánh checksum dựa trên ETag. Hữu ích khi so sánh dữ liệu giữa các nhà cung cấp cloud tính hash khác nhau.',
-    ignoreSizesLabel: 'Bỏ qua kích thước',
-    ignoreSizesDescription:
-      'Bỏ qua việc xác minh kích thước object. Dùng khi kích thước payload khác nhau do máy chủ tự động biến đổi hoặc mã hóa trong quá trình truyền.',
-    confirmDiffReportTitle: 'Xác nhận báo cáo diff',
-    confirmDiffReportDescription: 'Bạn sắp tạo báo cáo diff sau.',
-    confirmDiffReportPositive: 'Tạo báo cáo diff',
-    confirmDiffReportNegative: 'Hủy',
-    summaryStorages: 'Storage',
-    summaryBuckets: 'Bucket',
-    summaryUser: 'User',
-    summaryOptions: 'Tùy chọn',
-    successTitle: 'Thành công',
-    createDiffReportSuccess: 'Đã tạo báo cáo diff thành công.',
-    createDiffReportError: 'Đã xảy ra lỗi khi tạo báo cáo diff.',
+      'Tên bucket này dùng tiền tố hoặc hậu tố dành riêng.',
+    userLabel: 'User',
+    userHint: 'Đọc cả hai bucket. Chỉ hiện user có trên cả hai storage.',
+    userRequired: 'Hãy chọn một user.',
+    noUsers:
+      'Không có user nào tồn tại trên cả hai storage. Hãy thêm user vào storage còn lại rồi thử lại.',
+    checksLegend: 'Kiểm tra',
+    lastVersions: 'Chỉ so sánh phiên bản mới nhất của mỗi object',
+    lastVersionsHint: 'Tắt để so sánh cả các phiên bản cũ.',
+    ignoreEtags: 'Bỏ qua ETag',
+    ignoreEtagsHint:
+      'Bỏ qua so sánh checksum. Hữu ích khi các storage tính hash khác nhau.',
+    ignoreSizes: 'Bỏ qua kích thước',
+    ignoreSizesHint:
+      'Bỏ qua so sánh kích thước. Hữu ích khi object bị biến đổi hoặc mã hóa trên đường truyền.',
+    summarySource: 'Nguồn',
+    summaryDestination: 'Đích',
+    create: 'Tạo báo cáo diff',
+    created: 'Đã tạo báo cáo diff',
+    createFailed: 'Không thể tạo báo cáo diff',
+    createFailedHint: 'Các mục đã nhập được giữ lại. Hãy kiểm tra và thử lại.',
+    unknownError: 'Server không nêu lý do.',
   },
 };

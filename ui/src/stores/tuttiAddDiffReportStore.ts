@@ -14,16 +14,12 @@
  *  limitations under the License.
  */
 
-import type { Step } from '@clyso/clyso-ui-kit';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs, watch } from 'vue';
 import { helpers } from '@vuelidate/validators';
 import useVuelidate from '@vuelidate/core';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
-import {
-  AddDiffReportStepName,
-  type TuttiStorage,
-} from '@/utils/types/tuttiCore';
+import type { TuttiStorage } from '@/utils/types/tuttiCore';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
 import i18nAddDiffReport from '@/components/tutti/add-diff-report/i18nAddDiffReport';
 import {
@@ -52,9 +48,6 @@ interface TuttiAddDiffReportState {
   ignoreEtags: boolean;
   ignoreSizes: boolean;
 
-  currentStep: AddDiffReportStepName;
-
-  isConfirmDialogOpen: boolean;
   isSubmitting: boolean;
 }
 
@@ -75,9 +68,6 @@ function getInitialState(): TuttiAddDiffReportState {
     ignoreEtags: false,
     ignoreSizes: false,
 
-    currentStep: AddDiffReportStepName.FROM_STORAGE_BUCKET,
-
-    isConfirmDialogOpen: false,
     isSubmitting: false,
   };
 }
@@ -104,26 +94,6 @@ export const useTuttiAddDiffReportStore = defineStore(
         .filter((alias) => fromStorageAliases.has(alias))
         .sort();
     });
-
-    const steps = computed<Step[]>(() => [
-      {
-        title: t('step1Title'),
-        description: t('step1Description'),
-      },
-      {
-        title: t('step2Title'),
-        description: t('step2Description'),
-      },
-      {
-        title: t('step3Title'),
-        description: t('step3Description'),
-      },
-      {
-        title: t('step4Title'),
-        description: t('step4Description'),
-      },
-    ]);
-    const stepsCount = computed(() => steps.value.length);
 
     function bucketNameValidationRules() {
       return {
@@ -152,14 +122,14 @@ export const useTuttiAddDiffReportStore = defineStore(
     const validationRules = computed(() => ({
       fromStorage: {
         required: helpers.withMessage(
-          t('fromStorageRequired'),
+          t('storageRequired'),
           (value: TuttiStorage | null) => !!value,
         ),
       },
       fromBucketName: bucketNameValidationRules(),
       toStorage: {
         required: helpers.withMessage(
-          t('toStorageRequired'),
+          t('storageRequired'),
           (value: TuttiStorage | null) => !!value,
         ),
       },
@@ -173,24 +143,6 @@ export const useTuttiAddDiffReportStore = defineStore(
     }));
 
     const validator = useVuelidate(validationRules, state);
-
-    const stepValidationFields: Record<AddDiffReportStepName, string[]> = {
-      [AddDiffReportStepName.FROM_STORAGE_BUCKET]: [
-        'fromStorage',
-        'fromBucketName',
-      ],
-      [AddDiffReportStepName.TO_STORAGE_BUCKET]: ['toStorage', 'toBucketName'],
-      [AddDiffReportStepName.USER]: ['selectedUser'],
-      [AddDiffReportStepName.SETTINGS]: [],
-    };
-
-    function validateCurrentStep(): boolean {
-      const fields = stepValidationFields[state.currentStep];
-
-      fields.forEach((field) => validator.value[field].$touch());
-
-      return fields.every((field) => !validator.value[field].$error);
-    }
 
     async function initAddDiffReportPage() {
       state.isLoading = true;
@@ -208,17 +160,16 @@ export const useTuttiAddDiffReportStore = defineStore(
       }
     }
 
-    function findStorageToCompare(
-      excludedStorage: TuttiStorage,
-    ): TuttiStorage | null {
-      return (
-        state.storages.find(
-          (storage) => storage.name !== excludedStorage.name,
-        ) ?? null
+    /** the only other storage is the obvious destination; with more, the user picks */
+    function defaultDestination(source: TuttiStorage): TuttiStorage | null {
+      const others = state.storages.filter(
+        (storage) => storage.name !== source.name,
       );
+
+      return others.length === 1 ? (others[0] ?? null) : null;
     }
 
-    // Update toStorage in case of fromStorage updates
+    // a source that equals the destination clears the destination
     watch(
       () => state.fromStorage,
       (newFromStorage) => {
@@ -227,12 +178,12 @@ export const useTuttiAddDiffReportStore = defineStore(
           state.toStorage &&
           state.toStorage.name === newFromStorage.name
         ) {
-          state.toStorage = findStorageToCompare(newFromStorage);
+          state.toStorage = defaultDestination(newFromStorage);
         }
       },
     );
 
-    // Update selectedUser if fromStorage and/or toStorage have been updated
+    // keep the user valid when the storages change
     watch(users, (newUsers) => {
       if (state.selectedUser && newUsers.includes(state.selectedUser)) return;
 
@@ -246,7 +197,7 @@ export const useTuttiAddDiffReportStore = defineStore(
         null;
 
       state.fromStorage = mainStorage;
-      state.toStorage = mainStorage ? findStorageToCompare(mainStorage) : null;
+      state.toStorage = mainStorage ? defaultDestination(mainStorage) : null;
       state.selectedUser = users.value[0] ?? null;
     }
 
@@ -283,10 +234,7 @@ export const useTuttiAddDiffReportStore = defineStore(
       hasEnoughStorages,
       users,
       initAddDiffReportPage,
-      validateCurrentStep,
       validator,
-      steps,
-      stepsCount,
       createDiffReport,
       $reset,
     };

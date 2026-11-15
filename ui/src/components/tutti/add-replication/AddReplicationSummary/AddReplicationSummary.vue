@@ -1,5 +1,5 @@
 <!--
-  - Copyright © 2026 Clyso GmbH
+  - Copyright © 2026 hieunyit
   -
   -  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
   -  you may not use this file except in compliance with the License.
@@ -13,28 +13,19 @@
   -  See the License for the specific language governing permissions and
   -  limitations under the License.
   -->
-
 <script setup lang="ts">
+  /**
+   * Last step: what will be created, plus the optional name. The wizard's
+   * primary button creates the replication.
+   */
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
-  import {
-    CDescriptionItem,
-    CDescriptionList,
-    CIcon,
-    CTag,
-  } from '@clyso/clyso-ui-kit';
-  import { computed } from 'vue';
-  import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
-  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
-  import { IconName } from '@/utils/types/icon';
-  import TuttiStorageCard from '@/components/tutti/common/TuttiStorageCard/TuttiStorageCard.vue';
+  import i18nAddReplication from '../i18nAddReplication';
   import ReplicationNameField from '@/components/tutti/replications/ReplicationNameField/ReplicationNameField.vue';
-  import SummaryBucketsList from '@/components/tutti/add-replication/SummaryBucketsList/SummaryBucketsList.vue';
+  import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
 
-  const { t } = useI18n({
-    messages: i18nAddReplication,
-  });
-
+  const { t } = useI18n({ messages: i18nAddReplication });
   const {
     selectedFromStorage,
     selectedToStorage,
@@ -43,106 +34,90 @@
     name,
   } = storeToRefs(useTuttiAddReplicationStore());
 
-  const orderedSelectedBuckets = computed<string[]>(() =>
-    [...selectedBuckets.value].sort(),
-  );
+  const buckets = computed(() => [...selectedBuckets.value].sort());
 </script>
 
 <template>
-  <div class="add-replication-summary">
-    <CDescriptionList
-      size="medium"
-      class="summary-list"
-      label-placement="top"
-      :columns="1"
-    >
-      <CDescriptionItem
-        v-if="selectedFromStorage && selectedToStorage"
-        class="summary-list__item"
-      >
-        <template #label> {{ t('direction') }}: </template>
+  <div class="review">
+    <dl class="review__list">
+      <div class="review__row">
+        <dt>{{ t('reviewSource') }}</dt>
+        <dd>{{ selectedFromStorage?.name }}</dd>
+      </div>
+      <div class="review__row">
+        <dt>{{ t('reviewDestination') }}</dt>
+        <dd>{{ selectedToStorage?.name }}</dd>
+      </div>
+      <div class="review__row">
+        <dt>{{ t('reviewBuckets') }}</dt>
+        <dd v-if="isForAllBuckets">{{ t('reviewAll') }}</dd>
+        <dd v-else>
+          <ul class="review__buckets">
+            <li
+              v-for="bucket in buckets"
+              :key="bucket"
+            >
+              {{ bucket }}
+            </li>
+          </ul>
+        </dd>
+      </div>
+    </dl>
 
-        <div class="replication-direction">
-          <TuttiStorageCard
-            type="success"
-            size="small"
-            class="replication-direction__storage"
-            :storage="selectedFromStorage"
-          />
-          <CIcon
-            class="replication-direction__arrow"
-            :is-inline="true"
-            :name="IconName.BASE_ARROW_FORWARD"
-          />
-          <TuttiStorageCard
-            type="warning"
-            size="small"
-            class="replication-direction__storage"
-            :storage="selectedToStorage"
-          />
-        </div>
-      </CDescriptionItem>
+    <ReplicationNameField v-model="name" />
 
-      <CDescriptionItem
-        v-if="isForAllBuckets || selectedBuckets.length"
-        class="summary-list__item"
-      >
-        <template #label>
-          <span v-if="isForAllBuckets"> {{ t('buckets') }}: </span>
-          <span v-else>
-            {{ t('buckets') }} <span>({{ selectedBuckets.length }})</span>:
-          </span>
-        </template>
-
-        <div class="buckets-list">
-          <CTag
-            v-if="isForAllBuckets"
-            key="all"
-            round
-            type="info"
-          >
-            {{
-              t('summaryAllBuckets', { fromStorage: selectedFromStorage?.name })
-            }}
-          </CTag>
-          <div v-else>
-            <SummaryBucketsList :buckets="orderedSelectedBuckets" />
-          </div>
-        </div>
-      </CDescriptionItem>
-    </CDescriptionList>
-
-    <ReplicationNameField
-      v-model="name"
-      class="add-replication-summary__name"
-    />
+    <p class="review__note">{{ t('reviewNote') }}</p>
   </div>
 </template>
 
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
+<style scoped lang="scss">
+  .review {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-5);
+    max-width: 560px;
 
-  .add-replication-summary__name {
-    margin-top: utils.unit(4);
-  }
-
-  .replication-direction {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: utils.unit(2);
-
-    &__storage {
-      flex-grow: 1;
-      align-self: stretch;
+    &__list {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-card);
     }
-  }
 
-  .user-card {
-    min-width: 218px;
+    &__row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: var(--tt-space-3);
+      padding: var(--tt-space-3) var(--tt-space-4);
 
-    @include utils.mobile {
-      width: 100%;
+      & + & {
+        border-top: 1px solid var(--tt-border);
+      }
+
+      dt {
+        color: var(--tt-text-2);
+      }
+
+      dd {
+        margin: 0;
+        font-weight: var(--tt-weight-strong);
+        overflow-wrap: anywhere;
+      }
+    }
+
+    &__buckets {
+      max-height: 160px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      overflow-y: auto;
+    }
+
+    &__note {
+      margin: 0;
+      color: var(--tt-text-3);
+      font-size: var(--tt-text-sm);
     }
   }
 </style>

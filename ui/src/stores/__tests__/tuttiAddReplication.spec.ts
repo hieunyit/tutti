@@ -20,7 +20,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiAddReplicationStore } from '../tuttiAddReplicationStore';
 import { TuttiService } from '@/services/TuttiService';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
-import { AddReplicationStepName } from '@/utils/types/tuttiCore';
 
 const push = vi.hoisted(() => vi.fn());
 
@@ -84,17 +83,54 @@ beforeEach(() => {
 });
 
 describe('tuttiAddReplicationStore', () => {
-  it('has 3 steps and neither asks for nor discovers a user', async () => {
+  it('neither asks for nor discovers a user', async () => {
     const store = useTuttiAddReplicationStore();
 
     await store.initAddReplicationPage();
 
-    expect(AddReplicationStepName.BUCKETS).toBe(3);
-    expect(store.stepsCount).toBe(3);
     expect('selectedUser' in store).toBe(false);
     expect('users' in store).toBe(false);
     expect('eligibleUsers' in store).toBe(false);
     expect(tutti.getUsers).not.toHaveBeenCalled();
+  });
+
+  describe('defaults', () => {
+    it('picks the main storage as source and the only other storage as destination', async () => {
+      const store = useTuttiAddReplicationStore();
+
+      await store.initAddReplicationPage();
+
+      expect(store.selectedFromStorage?.name).toBe('main');
+      expect(store.selectedToStorage?.name).toBe('backup');
+      expect(store.hasEnoughStorages).toBe(true);
+    });
+
+    it('leaves the destination open when there are several other storages', async () => {
+      tuttiCore.getStorages!.mockResolvedValue({
+        storages: [
+          { name: 'a', isMain: false, credentials: [] },
+          { name: 'main', isMain: true, credentials: [] },
+          { name: 'c', isMain: false, credentials: [] },
+        ],
+      });
+      const store = useTuttiAddReplicationStore();
+
+      await store.initAddReplicationPage();
+
+      expect(store.selectedFromStorage?.name).toBe('main');
+      expect(store.selectedToStorage).toBeNull();
+    });
+
+    it('needs two storages', async () => {
+      tuttiCore.getStorages!.mockResolvedValue({
+        storages: [{ name: 'main', isMain: true, credentials: [] }],
+      });
+      const store = useTuttiAddReplicationStore();
+
+      await store.initAddReplicationPage();
+
+      expect(store.hasEnoughStorages).toBe(false);
+    });
   });
 
   it('lists buckets without a user', async () => {
@@ -130,9 +166,9 @@ describe('tuttiAddReplicationStore', () => {
 
     expect(store.coveredRows).toHaveLength(2);
     expect(store.coveredRows[0]).toMatchObject({ name: 'b2' });
-    expect(store.coveredRows[0]!.reason).toContain('group');
+    expect(store.coveredRows[0]!.reason).toContain('coveredByGroup');
     expect(store.coveredRows[0]!.reason).toContain('g1');
-    expect(store.coveredRows[1]!.reason).toContain('replication');
+    expect(store.coveredRows[1]!.reason).toContain('coveredByReplication');
     expect(store.isAllBucketsDisabled).toBe(true);
     expect(store.allBucketsDisabledReason).toContain('g1');
   });

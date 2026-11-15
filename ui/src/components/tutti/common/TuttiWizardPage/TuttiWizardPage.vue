@@ -14,41 +14,57 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
-  /** Frame of an Add* wizard page: title, back link, loading and error state. */
+  /**
+   * Frame of an add page (replication, diff report, routing rule): title, a
+   * back link to the list it came from, and the loading / error state.
+   */
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import type { RouteLocationRaw } from 'vue-router';
+  import i18nWizardPage from './i18nWizardPage';
   import { BackLink, PageShell } from '@/components/kit';
-  import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { RouteName } from '@/utils/types/router';
 
-  defineProps<{
+  const props = defineProps<{
     title: string;
-    description: string;
     state: 'loading' | 'error' | 'ready';
     errorText?: string;
-    /** hub tab to go back to */
-    backTab?: 'routing' | 'diff';
+    /** list the user came from */
+    backTo: 'replication' | 'diff' | 'routing';
   }>();
 
   defineEmits<{ (e: 'retry'): void }>();
 
-  const { t } = useI18n({ messages: i18nReplicationHub });
+  const { t } = useI18n({ messages: i18nWizardPage });
+
+  const back = computed<{ to: RouteLocationRaw; label: string }>(() => {
+    if (props.backTo === 'routing')
+      return {
+        to: { name: RouteName.TUTTI_ROUTING_RULES },
+        label: t('backToRouting'),
+      };
+
+    return {
+      to: {
+        name: RouteName.TUTTI_REPLICATION,
+        query: props.backTo === 'diff' ? { tab: 'diff' } : {},
+      },
+      label: t(props.backTo === 'diff' ? 'backToDiff' : 'backToReplication'),
+    };
+  });
 </script>
 
 <template>
   <PageShell
     :title="title"
-    :description="description"
     :state="state"
     :error-text="errorText"
     @retry="$emit('retry')"
   >
     <template #back>
       <BackLink
-        :to="{
-          name: RouteName.TUTTI_REPLICATION,
-          query: backTab ? { tab: backTab } : {},
-        }"
-        :label="t('backToReplication')"
+        :to="back.to"
+        :label="back.label"
       />
     </template>
 

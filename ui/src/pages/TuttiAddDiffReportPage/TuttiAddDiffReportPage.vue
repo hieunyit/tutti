@@ -14,22 +14,26 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
-  import { computed, onBeforeMount, onUnmounted } from 'vue';
+  /**
+   * Create a diff report in two steps: source and destination, then the
+   * checks (the defaults suit most). The entries survive leaving the page; a
+   * failed create keeps them and says what to do next.
+   */
+  import { computed, onBeforeMount, onUnmounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import { useRouter } from 'vue-router';
   import {
+    Callout,
     clearWizardDraft,
     WizardShell,
     type WizardStep,
   } from '@/components/kit';
   import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
-  import FromStep from '@/components/tutti/add-diff-report/FromStep/FromStep.vue';
-  import ToStep from '@/components/tutti/add-diff-report/ToStep/ToStep.vue';
-  import UserStep from '@/components/tutti/add-diff-report/UserStep/UserStep.vue';
-  import AdditionalSettingsStep from '@/components/tutti/add-diff-report/AdditionalSettingsStep/AdditionalSettingsStep.vue';
-  import AddDiffReportSummary from '@/components/tutti/add-diff-report/AddDiffReportSummary/AddDiffReportSummary.vue';
-  import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
+  import AddDiffReportSummary from '@/components/tutti/add-diff-report/AddDiffReportSummary.vue';
+  import ChecksStep from '@/components/tutti/add-diff-report/ChecksStep.vue';
+  import LocationsStep from '@/components/tutti/add-diff-report/LocationsStep.vue';
+  import i18nAddDiffReport from '@/components/tutti/add-diff-report/i18nAddDiffReport';
   import { useTuttiAddDiffReportStore } from '@/stores/tuttiAddDiffReportStore';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
@@ -48,7 +52,7 @@
     ignoreSizes: boolean;
   }
 
-  const { t } = useI18n({ messages: i18nReplicationHub });
+  const { t } = useI18n({ messages: i18nAddDiffReport });
   const router = useRouter();
   const store = useTuttiAddDiffReportStore();
   const {
@@ -68,10 +72,16 @@
     validator,
   } = storeToRefs(store);
   const { createNotification } = useTuttiNotification();
+  const submitError = ref('');
 
   const ready = computed(
     () => !isLoading.value && !hasError.value && hasEnoughStorages.value,
   );
+  const state = computed(() => {
+    if (isLoading.value) return 'loading';
+
+    return hasError.value || !hasEnoughStorages.value ? 'error' : 'ready';
+  });
 
   useStoreDraft<DiffDraft>({
     draftKey: DRAFT_KEY,
@@ -116,38 +126,29 @@
 
   const steps = computed<WizardStep[]>(() => [
     {
-      key: 'from',
-      label: t('stepFrom'),
+      key: 'locations',
+      label: t('stepLocations'),
       valid:
         !validator.value.fromStorage.$invalid &&
-        !validator.value.fromBucketName.$invalid,
-    },
-    {
-      key: 'to',
-      label: t('stepTo'),
-      valid:
+        !validator.value.fromBucketName.$invalid &&
         !validator.value.toStorage.$invalid &&
         !validator.value.toBucketName.$invalid,
     },
     {
-      key: 'user',
-      label: t('stepUser'),
-      valid: !validator.value.selectedUser.$invalid,
-    },
-    { key: 'options', label: t('stepOptions'), valid: true },
-    {
-      key: 'confirm',
-      label: t('stepConfirm'),
+      key: 'checks',
+      label: t('stepChecks'),
       valid: !validator.value.$invalid,
     },
   ]);
 
   async function finish() {
+    submitError.value = '';
+
     try {
       await store.createDiffReport();
       createNotification({
         type: 'success',
-        title: t('createdReport'),
+        title: t('created'),
         duration: 4000,
       });
       clearWizardDraft(DRAFT_KEY);
@@ -156,11 +157,10 @@
         query: { tab: 'diff' },
       });
     } catch (error: unknown) {
-      createNotification({
-        type: 'error',
-        title: t('createFailed'),
-        content: error instanceof Error ? error.message : undefined,
-      });
+      submitError.value =
+        error instanceof Error && error.message
+          ? error.message
+          : t('unknownError');
     }
   }
 
@@ -169,49 +169,49 @@
     store.initAddDiffReportPage();
   }
 
-  onBeforeMount(() => {
-    store.initAddDiffReportPage();
-  });
-
-  onUnmounted(() => {
-    store.$reset();
-  });
+  onBeforeMount(() => store.initAddDiffReportPage());
+  onUnmounted(() => store.$reset());
 </script>
 
 <template>
   <TuttiWizardPage
-    :title="t('addDiffTitle')"
-    :description="t('addDiffDescription')"
-    :state="
-      isLoading ? 'loading' : hasError || !hasEnoughStorages ? 'error' : 'ready'
-    "
-    :error-text="hasError ? t('wizardLoadError') : t('notEnoughStorages')"
-    back-tab="diff"
+    :title="t('title')"
+    :state="state"
+    :error-text="hasError ? t('loadError') : t('notEnoughStorages')"
+    back-to="diff"
     @retry="store.initAddDiffReportPage()"
   >
+    <Callout
+      v-if="submitError"
+      tone="danger"
+      class="add-diff__error"
+      :title="t('createFailed')"
+    >
+      {{ submitError }} {{ t('createFailedHint') }}
+    </Callout>
     <WizardShell
       :steps="steps"
       :draft-key="DRAFT_KEY"
-      :finish-label="t('finishDiffReport')"
+      :finish-label="t('create')"
       :busy="isSubmitting"
       @finish="finish"
       @reset="startOver"
     >
-      <template #from>
-        <FromStep />
+      <template #locations>
+        <LocationsStep />
       </template>
-      <template #to>
-        <ToStep />
+      <template #checks>
+        <ChecksStep />
       </template>
-      <template #user>
-        <UserStep />
-      </template>
-      <template #options>
-        <AdditionalSettingsStep />
-      </template>
-      <template #confirm>
+      <template #summary>
         <AddDiffReportSummary />
       </template>
     </WizardShell>
   </TuttiWizardPage>
 </template>
+
+<style scoped lang="scss">
+  .add-diff__error {
+    margin-bottom: var(--tt-space-4);
+  }
+</style>

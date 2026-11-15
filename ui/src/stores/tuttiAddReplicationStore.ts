@@ -16,13 +16,10 @@
 
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
-import type { Step } from '@clyso/clyso-ui-kit';
-import useVuelidate from '@vuelidate/core';
 import { useNotification } from '@clyso/clyso-ui-kit';
 import { useRouter } from 'vue-router';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
-  AddReplicationStepName,
   type TuttiBucketListRequest,
   type TuttiCoveredBucket,
   type TuttiReplicationId,
@@ -38,7 +35,6 @@ interface TuttiAddReplicationState {
   isLoading: boolean;
   hasError: boolean;
   storages: TuttiStorage[];
-  isMainAsSourceAlertShown: boolean;
   selectedFromStorage: TuttiStorage | null;
   selectedToStorage: TuttiStorage | null;
   isForAllBuckets: boolean;
@@ -55,8 +51,6 @@ interface TuttiAddReplicationState {
   selectedBuckets: string[];
   /** optional display name applied to every replication created */
   name: string;
-  currentStep: AddReplicationStepName;
-  isConfirmDialogOpen: boolean;
   isSubmitting: boolean;
 }
 
@@ -65,7 +59,6 @@ function getInitialState(): TuttiAddReplicationState {
     isLoading: false,
     hasError: false,
     storages: [],
-    isMainAsSourceAlertShown: false,
     selectedFromStorage: null,
     selectedToStorage: null,
     isForAllBuckets: false,
@@ -80,8 +73,6 @@ function getInitialState(): TuttiAddReplicationState {
     createError: '',
     selectedBuckets: [],
     name: '',
-    currentStep: AddReplicationStepName.FROM_STORAGE,
-    isConfirmDialogOpen: false,
     isSubmitting: false,
   };
 }
@@ -112,31 +103,21 @@ export const useTuttiAddReplicationStore = defineStore(
       messages: i18nAddReplication,
     });
 
-    const steps = computed<Step[]>(() => [
-      {
-        title: t('step1Title'),
-        description: t('step1Description'),
-      },
-      {
-        title: t('step2Title'),
-        description: t('step2Description'),
-      },
-      {
-        title: t('step3Title'),
-        description: t('step3Description'),
-      },
-    ]);
-    const stepsCount = computed(() => steps.value.length);
+    const hasEnoughStorages = computed(() => state.storages.length >= 2);
 
+    /** the main storage is the usual source; one other storage is the obvious destination */
     function prepareForm() {
-      state.selectedFromStorage = state.storages[0] ?? null;
-      state.selectedToStorage =
-        state.storages.find(
-          (s) => s.name !== state.selectedFromStorage?.name,
-        ) ??
-        state.storages[1] ??
+      state.selectedFromStorage =
+        state.storages.find((storage) => storage.isMain) ??
+        state.storages[0] ??
         null;
-      state.isMainAsSourceAlertShown = false;
+
+      const others = state.storages.filter(
+        (storage) => storage.name !== state.selectedFromStorage?.name,
+      );
+
+      state.selectedToStorage =
+        others.length === 1 ? (others[0] ?? null) : null;
     }
 
     async function getBucketsList() {
@@ -164,10 +145,12 @@ export const useTuttiAddReplicationStore = defineStore(
     }
 
     function coveredReason(covered: TuttiCoveredBucket): string {
-      return t('coveredReason', {
-        kind: covered.ownerKind,
-        id: covered.ownerId,
-      });
+      return t(
+        covered.ownerKind === 'group'
+          ? 'coveredByGroup'
+          : 'coveredByReplication',
+        { id: covered.ownerId },
+      );
     }
 
     /** covered buckets are shown as disabled rows with the owner as reason */
@@ -215,25 +198,6 @@ export const useTuttiAddReplicationStore = defineStore(
           state.selectedFromStorage?.name &&
         state.bucketsRequestOptions?.toStorage ===
           state.selectedToStorage?.name,
-    );
-
-    const validator = useVuelidate(
-      {
-        state: {
-          selectedBuckets: {
-            required: () => {
-              if (state.isForAllBuckets) {
-                return true;
-              }
-
-              return state.selectedBuckets.length > 0;
-            },
-          },
-        },
-      },
-      {
-        state,
-      },
     );
 
     /** resolves true only when every replication was created */
@@ -285,8 +249,7 @@ export const useTuttiAddReplicationStore = defineStore(
           });
           successList.push(replicationId);
         } catch (error: unknown) {
-          const reason =
-            ErrorHelper.getReason(error) || t('createReplicationErrorUnknown');
+          const reason = ErrorHelper.getReason(error) || t('createFailedText');
 
           errorList.push([replicationId, reason]);
         }
@@ -326,39 +289,33 @@ export const useTuttiAddReplicationStore = defineStore(
     function showCreateSuccess() {
       createNotification({
         type: 'success',
-        title: `${t('successTitle')}`,
-        content: t('createReplicationSuccess'),
+        title: t('createdTitle'),
         isClosable: true,
       });
     }
 
     function showCreateError(reason?: string) {
-      const content = reason ? reason : t('createReplicationError');
-
       createNotification({
         type: 'error',
-        title: `${t('errorTitle')}`,
-        content: content,
+        title: t('createFailedTitle'),
+        content: reason || t('createFailedText'),
         isClosable: true,
       });
     }
 
     function $reset() {
       Object.assign(state, getInitialState());
-      validator.value.$reset();
     }
 
     return {
       ...toRefs(state),
-      steps,
-      stepsCount,
+      hasEnoughStorages,
       initBucketsList,
       getBucketsList,
       isBucketsAlreadyRequested,
       coveredRows,
       isAllBucketsDisabled,
       allBucketsDisabledReason,
-      validator,
       createReplication,
       $reset,
       initAddReplicationPage,

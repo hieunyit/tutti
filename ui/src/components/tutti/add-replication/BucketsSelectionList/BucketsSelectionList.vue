@@ -1,5 +1,5 @@
 <!--
-  - Copyright © 2026 Clyso GmbH
+  - Copyright © 2026 hieunyit
   -
   -  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
   -  you may not use this file except in compliance with the License.
@@ -13,346 +13,186 @@
   -  See the License for the specific language governing permissions and
   -  limitations under the License.
   -->
-
 <script setup lang="ts">
+  /**
+   * Bucket picker of the add replication wizard: search, a switch for already
+   * replicated buckets, and a selectable list. Buckets that cannot be picked
+   * (replicated, or covered by a protection group or replication) are
+   * disabled and say why.
+   */
   import { storeToRefs } from 'pinia';
   import {
-    CCollapseTransition,
     CDataTable,
     CInput,
-    CResult,
     CSwitch,
-    CTag,
     type DataTableBaseColumn,
     type DataTableRowData,
     type DataTableSelectionColumn,
   } from '@clyso/clyso-ui-kit';
+  import { NButton } from 'naive-ui';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import i18nAddReplication from '../i18nAddReplication';
+  import { useBucketRows, type BucketRowData } from '../useBucketRows';
+  import { EmptyBlock } from '@/components/kit';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
-  import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
-  import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
-  import { IconName } from '@/utils/types/icon';
-  import TuttiListError from '@/components/tutti/common/TuttiListError/TuttiListError.vue';
-
-  interface BucketRowData {
-    name: string;
-    isReplicated: boolean;
-    /** set when a group or replication already covers the bucket */
-    coveredReason?: string;
-  }
 
   const {
-    bucketsList,
-    replicatedBucketsList,
     selectedBuckets,
     isBucketsListLoading,
-    hasBucketsError,
-    bucketsError,
     isReplicatedShown,
     selectedFromStorage,
-    coveredRows,
   } = storeToRefs(useTuttiAddReplicationStore());
-  const { initBucketsList } = useTuttiAddReplicationStore();
+  const { t } = useI18n({ messages: i18nAddReplication });
 
-  const { t } = useI18n({
-    messages: i18nAddReplication,
-  });
+  const search = ref('');
+  const rows = useBucketRows(search);
 
-  const columns = ref<
+  const columns = computed<
     (DataTableBaseColumn<BucketRowData> | DataTableSelectionColumn)[]
-  >([
+  >(() => [
     {
       type: 'selection',
       width: 44,
-      disabled(row: DataTableRowData) {
-        return row.isReplicated || !!row.coveredReason;
-      },
+      disabled: (row: DataTableRowData) =>
+        row.isReplicated || !!row.coveredReason,
     },
-    {
-      title: t('columnName'),
-      key: 'name',
-      width: '50%',
-      sorter: 'default',
-    },
-    {
-      title: t('columnStatus'),
-      key: 'status',
-    },
+    { title: t('columnBucket'), key: 'name', width: '45%', sorter: 'default' },
+    { title: t('columnStatus'), key: 'status' },
   ]);
 
-  const bucketsSearchString = ref<string>('');
-
-  function getBucketRowList(
-    nameList: string[],
-    isReplicated: boolean,
-  ): BucketRowData[] {
-    return nameList
-      .map((bucketName) => ({ name: bucketName, isReplicated }))
-      .filter((bucketsRow) =>
-        bucketsRow.name
-          .toLowerCase()
-          .includes(bucketsSearchString.value.toLowerCase()),
-      );
-  }
-
-  const bucketsRows = computed<BucketRowData[]>(() => {
-    const coveredBucketsRows: BucketRowData[] = coveredRows.value
-      .map(({ name, reason }) => ({
-        name,
-        isReplicated: false,
-        coveredReason: reason,
-      }))
-      .filter((bucketsRow) =>
-        bucketsRow.name
-          .toLowerCase()
-          .includes(bucketsSearchString.value.toLowerCase()),
-      );
-    const availableBucketsRows: BucketRowData[] = [
-      ...getBucketRowList(bucketsList.value, false),
-      ...coveredBucketsRows,
-    ];
-
-    if (!isReplicatedShown.value) {
-      return GeneralHelper.orderBy(availableBucketsRows, 'name', 'asc');
-    }
-
-    const replicatedBucketsRows: BucketRowData[] = getBucketRowList(
-      replicatedBucketsList.value,
-      true,
-    );
-
-    return GeneralHelper.orderBy(
-      [...availableBucketsRows, ...replicatedBucketsRows],
-      'name',
-      'asc',
-    );
-  });
-
-  const rowKey = (row: BucketRowData) => row.name;
+  const statusOf = (row: BucketRowData) =>
+    row.coveredReason
+      ? t('statusCovered')
+      : t(row.isReplicated ? 'statusReplicated' : 'statusAvailable');
+  const isLocked = (row: BucketRowData) =>
+    row.isReplicated || !!row.coveredReason;
 </script>
 
 <template>
-  <div class="buckets-selection-list">
-    <div class="buckets-filters">
-      <div class="buckets-filters__item">
-        <CInput
-          v-model:value="bucketsSearchString"
+  <div class="bucket-picker">
+    <div class="bucket-picker__tools">
+      <CInput
+        v-model:value="search"
+        class="bucket-picker__search"
+        size="small"
+        clearable
+        :placeholder="t('searchBuckets')"
+        :input-props="{ 'aria-label': t('searchBuckets') }"
+      />
+      <label class="bucket-picker__switch">
+        <CSwitch
+          v-model:value="isReplicatedShown"
           size="small"
-          clearable
-          :placeholder="t('searchBuckets')"
         />
-      </div>
-      <div class="buckets-filters__item">
-        <div
-          tabindex="0"
-          class="switch-block"
-          @click="isReplicatedShown = !isReplicatedShown"
-          @keydown.enter="isReplicatedShown = !isReplicatedShown"
-        >
-          <CSwitch
-            :value="isReplicatedShown"
-            size="small"
-            tabindex="-1"
-            @keydown.enter="isReplicatedShown = !isReplicatedShown"
-          />
-          <span>{{ t('showReplicatedBuckets') }}</span>
-        </div>
-      </div>
+        <span>{{ t('showReplicated') }}</span>
+      </label>
+      <span
+        v-if="selectedBuckets.length"
+        class="bucket-picker__count"
+        role="status"
+      >
+        {{ t('selectedCount', { total: selectedBuckets.length }) }}
+      </span>
     </div>
 
-    <CCollapseTransition
-      class="tag-list"
-      :show="selectedBuckets.length !== 0"
-    >
-      <CTag
-        v-if="selectedBuckets.length !== 0"
-        round
-        closable
-        type="info"
-        class="tag-list__selected-tag"
-        @close="selectedBuckets = []"
-      >
-        {{ t('selectedBuckets', { total: selectedBuckets.length }) }}
-      </CTag>
-    </CCollapseTransition>
-
-    <div class="buckets-selection-list__container">
+    <div class="bucket-picker__table">
       <CDataTable
         v-model:checked-row-keys="selectedBuckets"
-        class="buckets-list"
+        class="bucket-picker__list"
         :columns="columns"
-        :data="bucketsRows"
+        :data="rows"
         selectable
         virtual-scroll
-        min-height="426px"
-        max-height="426px"
-        :row-key="rowKey"
+        min-height="320px"
+        max-height="320px"
+        :row-key="(row: BucketRowData) => row.name"
         :is-loading="isBucketsListLoading"
-        :has-error="hasBucketsError"
       >
         <template #name="{ rowData }">
-          <span
-            :class="{
-              'buckets-list__name--disabled':
-                rowData.isReplicated || rowData.coveredReason,
-            }"
-            class="buckets-list__name"
-            :title="rowData.coveredReason"
-          >
+          <span :class="{ 'bucket-picker__locked': isLocked(rowData) }">
             {{ rowData.name }}
           </span>
         </template>
 
         <template #status="{ rowData }">
-          <CTag
-            class="buckets-list__tag"
-            :class="{
-              'buckets-list__tag--disabled':
-                rowData.isReplicated || rowData.coveredReason,
-            }"
-            :type="
-              rowData.isReplicated || rowData.coveredReason ? 'default' : 'info'
-            "
-            :title="rowData.coveredReason"
-            round
-            size="small"
-          >
-            {{
-              rowData.coveredReason
-                ? t('statusCovered')
-                : t(
-                    rowData.isReplicated
-                      ? 'statusReplicated'
-                      : 'statusAvailable',
-                  )
-            }}
-          </CTag>
-          <span
+          <span :class="{ 'bucket-picker__locked': isLocked(rowData) }">
+            {{ statusOf(rowData) }}
+          </span>
+          <small
             v-if="rowData.coveredReason"
-            class="buckets-list__reason"
+            class="bucket-picker__reason"
           >
             {{ rowData.coveredReason }}
-          </span>
-        </template>
-
-        <template #error>
-          <TuttiListError
-            v-if="hasBucketsError"
-            class="buckets-selection-list__error"
-            :title="t('errorTitle')"
-            :text="bucketsError || t('initBucketsError')"
-            :action-text="t('errorAction')"
-            :max-width="400"
-            key="error"
-            @retry="initBucketsList"
-          />
+          </small>
         </template>
 
         <template #empty>
-          <CResult
-            v-if="!bucketsSearchString"
-            class="buckets-selection-list__empty"
-            type="empty"
-            :icon-name="IconName.BASE_CYLINDER"
-            :max-width="600"
+          <EmptyBlock
+            :title="
+              search
+                ? t('noMatch')
+                : t('noBuckets', { storage: selectedFromStorage?.name })
+            "
           >
-            <template #title>
-              {{ t('noResultsTitle') }}
-            </template>
-
-            <p>
-              {{ t('noResultsText', { storage: selectedFromStorage?.name }) }}
-            </p>
-          </CResult>
-          <CResult
-            v-else
-            class="buckets-selection-list__empty-filter"
-            type="empty"
-            :max-width="600"
-            :icon-name="IconName.BASE_CYLINDER"
-            @positive-click="bucketsSearchString = ''"
-          >
-            <template #title>
-              {{ t('filterNoResultsTitle') }}
-            </template>
-
-            <p>{{ t('filterNoResultsText') }}</p>
-
-            <template #positive-text>
-              {{ t('filterNoResultsAction') }}
-            </template>
-          </CResult>
+            <NButton
+              v-if="search"
+              @click="search = ''"
+            >
+              {{ t('clearSearch') }}
+            </NButton>
+          </EmptyBlock>
         </template>
       </CDataTable>
     </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
+<style scoped lang="scss">
+  .bucket-picker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-3);
 
-  .buckets-selection-list {
-    &__container {
+    &__tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--tt-space-3) var(--tt-space-5);
+    }
+
+    &__search {
+      flex: 1 1 220px;
+      max-width: 320px;
+    }
+
+    &__switch {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--tt-space-2);
+      cursor: pointer;
+    }
+
+    &__count {
+      color: var(--tt-text-2);
+      font-size: var(--tt-text-sm);
+    }
+
+    &__table {
       overflow-x: auto;
     }
-  }
 
-  .buckets-filters {
-    padding: utils.unit(3);
-    border-radius: utils.$border-radius;
-    background-color: var(--filters-card-color);
-    border: 1px solid var(--border-color);
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: utils.unit(3) utils.unit(5);
-    align-items: center;
-    margin-bottom: utils.unit(4);
-
-    @include utils.mobile {
-      padding: 0;
-      border-radius: 0;
-      background-color: unset;
-      border: 0;
-    }
-  }
-
-  .switch-block {
-    display: flex;
-    align-items: center;
-    gap: utils.unit(2);
-    outline: none;
-    border-radius: utils.$border-radius-small;
-    cursor: pointer;
-
-    &:focus-visible {
-      outline: 1px solid var(--primary-color);
-    }
-  }
-
-  .buckets-list {
-    min-width: 500px;
-
-    &__name {
-      &--disabled {
-        opacity: 0.4;
-      }
+    &__list {
+      min-width: 480px;
     }
 
-    &__tag {
-      &--disabled {
-        opacity: 0.4;
-      }
+    &__locked {
+      color: var(--tt-text-3);
     }
 
     &__reason {
-      margin-left: utils.unit(2);
-      font-size: 12px;
-      opacity: 0.7;
+      margin-left: var(--tt-space-2);
+      color: var(--tt-text-3);
     }
-  }
-
-  .tag-list {
-    margin-bottom: utils.unit(3);
   }
 </style>
