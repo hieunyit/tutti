@@ -33,7 +33,7 @@
 
   const props = defineProps<{ replication: TuttiReplication }>();
 
-  const { t } = useI18n({
+  const { t, locale } = useI18n({
     messages: mergeMessages(i18nReplications, i18nReplicationInit),
   });
 
@@ -50,8 +50,8 @@
   const eta = computed(() => H.formatDuration(progress.value.etaSeconds));
   const objects = computed(() =>
     t('initObjectsCount', {
-      done: Number(props.replication.initObjDone).toLocaleString(),
-      total: Number(props.replication.initObjListed).toLocaleString(),
+      done: Number(props.replication.initObjDone).toLocaleString(locale.value),
+      total: Number(props.replication.initObjListed).toLocaleString(locale.value),
     }),
   );
   const lag = computed(() =>

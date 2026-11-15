@@ -21,7 +21,7 @@
   import { InitProgressHelper as H } from '@/utils/helpers/InitProgressHelper';
   import type { TuttiReplication } from '@/utils/types/tuttiCore';
 
-  const { t } = useI18n({ messages: i18nReplicationInit });
+  const { t, locale } = useI18n({ messages: i18nReplicationInit });
 
   const props = defineProps<{
     replication: TuttiReplication;
@@ -40,8 +40,8 @@
 
   const objectsText = computed<string>(() =>
     t('initObjectsCount', {
-      done: Number(props.replication.initObjDone).toLocaleString(),
-      total: Number(props.replication.initObjListed).toLocaleString(),
+      done: Number(props.replication.initObjDone).toLocaleString(locale.value),
+      total: Number(props.replication.initObjListed).toLocaleString(locale.value),
     }),
   );
 </script>

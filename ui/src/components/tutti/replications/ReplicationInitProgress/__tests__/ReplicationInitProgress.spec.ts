@@ -32,7 +32,7 @@ describe('ReplicationInitProgress', () => {
     }).text();
 
     expect(text).toContain('Copied 200 MB (incl. in progress) · 8.0 MB/s');
-    expect(text).toContain('24 / 5000 objects');
+    expect(text).toContain('24 / 5,000 objects');
     expect(text).not.toContain('10.0 GB');
     expect(text).not.toContain('%');
     expect(text).not.toContain('left');

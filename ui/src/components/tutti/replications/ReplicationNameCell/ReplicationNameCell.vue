@@ -161,6 +161,7 @@
         >
         <WriteGate>
           <NButton
+            class="replication-name-cell__rename"
             quaternary
             size="tiny"
             :aria-label="`${t('renameAction')}: ${primary}`"
@@ -186,6 +187,20 @@
     gap: 2px;
     min-width: 0;
     max-width: 100%;
+
+    /* on a pointer device the rename control appears with the row hover or focus */
+    @media (hover: hover) {
+      &__rename {
+        opacity: 0;
+        transition: opacity var(--tt-duration) var(--tt-ease);
+      }
+
+      &:hover &__rename,
+      &:focus-within &__rename,
+      :global(.n-data-table-tr:hover) &__rename {
+        opacity: 1;
+      }
+    }
 
     &__row,
     &__edit {
