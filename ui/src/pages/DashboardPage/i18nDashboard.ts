@@ -42,7 +42,7 @@ export default <I18nMessages>{
     sourceEvents: 'Failover-Ereignisse',
   },
   vi: {
-    title: 'Dashboard',
+    title: 'Bảng điều khiển',
     tabOverview: 'Tổng quan',
     tabMetrics: 'Lưu lượng',
     errorText: 'Không tải được trạng thái hệ thống.',
