@@ -25,7 +25,7 @@ export const GROUPS: { key: GroupKey; fields: (keyof RuntimeStorage)[] }[] = [
 /** State and actions of the storage settings tab (forms, test, save, delete). */
 export function useStorageSettings(
   props: { storage: RuntimeStorage },
-  emit: (e: 'saved' | 'deleted') => void,
+  emit: { (e: 'saved'): void; (e: 'deleted'): void },
 ) {
   const { t } = useI18n({ messages: i18nStorages });
   const auth = useAuthStore();
