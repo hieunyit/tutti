@@ -1,11 +1,32 @@
 # Upgrading from Chorus
 
-Tutti is a drop-in fork of Chorus (compatible protobuf package, gRPC service names, Redis schema, config format). This page lists every behavior that differs from upstream and how to restore upstream behavior. Config details: [configuration.md](./configuration.md).
+Tutti started as a fork of Chorus, but after the rename it is **not wire- or data-compatible** with upstream Chorus. There is no automatic upgrade of an existing Chorus deployment. This page lists what changed and every behavior that differs from upstream. Config details: [configuration.md](./configuration.md).
+
+## Compatibility
+
+| Area | Chorus | Tutti | Compatible |
+|---|---|---|---|
+| Go module | `github.com/clyso/chorus` | `github.com/hieunyit/tutti` | No (imports, `go install` paths) |
+| Binary / image entrypoint | `/bin/chorus` (`worker`, `proxy`, `chorus`) | `/bin/tutti`; CLI `tuttictl` | No |
+| Admin recovery | `chorus admin reset-password` | `/bin/tutti admin reset-password` | No |
+| Protobuf package | `chorus` | `tutti` | No: existing gRPC clients must be regenerated |
+| gRPC service paths | `/chorus.Chorus...` | `/tutti.Tutti...` (e.g. `TuttiCoreService`) | No |
+| Redis keys | `chorus:*` and related | `tutti:*` | No: Tutti refuses to start with `incompatible with existing Redis schema` |
+| Postgres control plane migrations | upstream set | changed set | No: existing volumes fail with `checksum mismatch` |
+| S3 proxy API and config format (S3 clients, storage settings) | | | Same concepts; config keys are listed below |
+
+## Migrating existing data
+
+- New deployments need nothing special.
+- Existing Chorus data (Redis, Postgres) cannot be upgraded in place. Re-create the configuration in a fresh Tutti deployment, or export it from Chorus and import it again (storages, users and credentials, routing, replication policies). Object data in your S3 storages is not touched; start replications again and let the initial copy reconcile.
+- `docker compose down -v` removes the old volumes, which also deletes all configuration. Export storages and users first.
+- Do not point Tutti at a Redis or Postgres that still holds Chorus data.
+- Rolling back to Chorus requires its original volumes; Tutti-written data is not readable by Chorus.
 
 ## Renames
 
-- Go module: `github.com/clyso/chorus` -> `github.com/hieunyit/tutti` (imports, `go install` paths). The CLI binary `tuttictl` is renamed to `tuttictl`. The other binary names (`worker`, `proxy`, `chorus`) and the protobuf package/service names (`chorus.*`) are unchanged, so existing gRPC/REST clients keep working.
-- Redis: all existing keys are unchanged. Tutti only adds new `tutti:*` keys (below).
+- The CLI is `tuttictl`; Tutti binary is `/bin/tutti`.
+- Redis: Tutti uses its own `tutti:*` keys (below) and does not read Chorus keys.
 
 ## Behavior changes
 
@@ -25,7 +46,7 @@ Tutti is a drop-in fork of Chorus (compatible protobuf package, gRPC service nam
 - `tutti:failover:user:<user>`, `tutti:failover:bucket:<user>:<bucket>` (config DB): created only on an automatic failover.
 - `tutti:failover-lock:<storage>` (lock DB): only while a failover runs.
 
-Rolling back to Chorus leaves these keys behind; they are Tutti-specific and can be deleted.
+These keys are Tutti-specific.
 
 ## New config sections
 
