@@ -209,7 +209,9 @@ export default {
   wizOptionsTitle: 'Tùy chọn',
   wizFinish: 'Tạo nhóm',
   wizAllBuckets: 'Tất cả bucket',
-  wizSaveFailed: 'Chưa tạo được nhóm',
+  wizSaveFailed: 'Không thể tạo nhóm',
+  createFailedBody:
+    '{message} (chưa có gì được tạo, hãy sửa cấu hình rồi thử lại)',
   tabMembers: 'Member',
   tabWriters: 'Writer',
   tabActivity: 'Hoạt động',

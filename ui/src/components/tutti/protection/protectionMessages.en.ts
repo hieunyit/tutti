@@ -205,7 +205,9 @@ export default {
   wizOptionsTitle: 'Options',
   wizFinish: 'Create group',
   wizAllBuckets: 'All buckets',
-  wizSaveFailed: 'The group was not created',
+  wizSaveFailed: 'Could not create the group',
+  createFailedBody:
+    '{message} (nothing was created, fix the settings and retry)',
   tabMembers: 'Members',
   tabWriters: 'Writers',
   tabActivity: 'Activity',

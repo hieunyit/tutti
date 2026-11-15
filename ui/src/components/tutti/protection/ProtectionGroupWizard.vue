@@ -136,7 +136,7 @@
       backendError.value =
         err === OVERLAP_ERROR
           ? t('overlapError')
-          : t('saveFailed', { message: err });
+          : t('createFailedBody', { message: err });
 
       // the block sits below the long form: bring it into view, the submit
       // button in the footer would otherwise look dead
