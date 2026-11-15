@@ -39,6 +39,7 @@
   import ReplicationSummary from '@/components/tutti/replications/ReplicationSummary.vue';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import { useNow } from '@/utils/composables/useNow';
   import { useReplicationActivity } from '@/utils/composables/useReplicationActivity';
   import { useReplicationDetail } from '@/utils/composables/useReplicationDetail';
@@ -46,8 +47,9 @@
   import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
   import { RouteName } from '@/utils/types/router';
 
-  const { t } = useI18n({ messages: i18nReplicationActivity });
-  const { t: tStatus } = useI18n({ messages: i18nReplications });
+  const { t } = useI18n({
+    messages: mergeMessages(i18nReplications, i18nReplicationActivity),
+  });
   const route = useRoute();
   const router = useRouter();
 
@@ -88,7 +90,7 @@
   const status = computed(() => {
     if (!replication.value) return undefined;
 
-    const { tone, label } = getReplicationStatus(replication.value, tStatus);
+    const { tone, label } = getReplicationStatus(replication.value, t);
 
     return { tone, label };
   });
