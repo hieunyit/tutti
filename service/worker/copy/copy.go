@@ -449,10 +449,7 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 		}
 	}
 
-	if toObjectPresent &&
-		fromObjectStat.ETag == toObjectStat.ETag &&
-		fromObjectStat.Size == toObjectStat.Size &&
-		sameMetadata(fromObjectStat, toObjectStat, features.Tagging(ctx)) {
+	if toObjectPresent && alreadyUpToDate(fromObjectStat, toObjectStat, features.Tagging(ctx)) {
 		return nil
 	}
 
@@ -478,7 +475,7 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	provider := toStorage.Provider
 
 	putObjectOpts := minio.PutObjectOptions{
-		UserMetadata:       fromObjectStat.UserMetadata,
+		UserMetadata:       userMetaWithoutMarker(fromObjectStat.UserMetadata),
 		ContentType:        fromObjectStat.ContentType,
 		ContentEncoding:    fromObjectStat.ContentEncoding,
 		ContentDisposition: fromObjectStat.Metadata.Get("Content-Disposition"),
@@ -541,19 +538,36 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 		putObjectOpts.DisableContentSha256 = true
 	}
 
+	if recordSourceETag.Load() && stat.ETag != "" {
+		// the marker lets the next run skip this object even when the destination ETag differs from the source ETag
+		putObjectOpts.UserMetadata["x-amz-meta-"+s3.TuttiSrcETagMeta] = trimETag(stat.ETag)
+	}
+
 	// Multipart tuning: objects above the part size are uploaded with several parts in flight.
 	// Defaults (1 thread) keep the sequential single-stream upload.
 	threads, partSize, partExplicit := systemsettings.EffectiveMultipart()
 	// The pipeline engine streams objects larger than one part; an object of at most one part is a single PUT
 	// on the legacy path in both engines.
 	enginePart := pipelinePartSize(stat.Size, partSize)
+	// A multipart source ETag depends on the part layout: upload with the layout of the source so that the
+	// destination ETag equals the source ETag (and the skip check holds on the next run).
+	inferredPart, inferred := etagPreservingPartSize(stat.ETag, stat.Size)
+	effPart := int64(partSize)
+	if inferred {
+		enginePart, effPart = inferredPart, inferredPart
+	}
 	usePipeline := systemsettings.EffectiveCopyEngine() == systemsettings.CopyEnginePipeline && stat.Size > enginePart
 	pipelineThreads := systemsettings.EffectivePipelineThreads()
-	parallel := !usePipeline && threads > 1 && stat.Size > int64(partSize)
+	parallel := !usePipeline && threads > 1 && stat.Size > effPart
 	// legacyPartSize also raises the part size when size/9000 needs it (10000 parts limit)
 	if parallel {
 		putObjectOpts.NumThreads = uint(threads)
 		putObjectOpts.PartSize = legacyPartSize(stat.Size, partSize)
+		if inferred {
+			putObjectOpts.PartSize = uint64(inferredPart)
+		}
+	} else if inferred {
+		putObjectOpts.PartSize = uint64(inferredPart)
 	} else if partExplicit && stat.Size > int64(partSize) {
 		putObjectOpts.PartSize = legacyPartSize(stat.Size, partSize)
 	} else if ps := legacyPartSize(stat.Size, 0); ps > 0 {
@@ -863,7 +877,7 @@ func sameMetadata(from, to minio.ObjectInfo, checkTags bool) bool {
 	if !from.Expires.Equal(to.Expires) {
 		return false
 	}
-	if !maps.Equal(from.UserMetadata, to.UserMetadata) {
+	if !maps.Equal(userMetaWithoutMarker(from.UserMetadata), userMetaWithoutMarker(to.UserMetadata)) {
 		return false
 	}
 	if checkTags && !maps.Equal(from.UserTags, to.UserTags) {

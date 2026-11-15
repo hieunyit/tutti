@@ -57,6 +57,12 @@ type Config struct {
 	// OrphanUploadCleanup: abort incomplete multipart uploads left by failed copies (fresh context) and sweep
 	// stale ones of the same key before a multipart copy. Default true; false rolls the behaviour back.
 	OrphanUploadCleanup bool `yaml:"orphanUploadCleanup"`
+	// RecordSourceETag: write the source ETag as user metadata (X-Amz-Meta-Tutti-Src-Etag) on every copied object
+	// and skip an object whose recorded source ETag still matches. Default true.
+	RecordSourceETag bool `yaml:"recordSourceETag"`
+	// TrustSameSizeMultipart: skip objects whose source and destination ETags are both multipart ETags (different
+	// part layout) when sizes are equal and the destination is not older. A heuristic; default false.
+	TrustSameSizeMultipart bool `yaml:"trustSameSizeMultipart"`
 	// CopyEngine: "pipeline" or "legacy" (default legacy); the System setting worker.copyEngine wins.
 	CopyEngine string `yaml:"copyEngine"`
 	// ResumeMultipart: continue interrupted multipart uploads of retried copies (pipeline engine only, default

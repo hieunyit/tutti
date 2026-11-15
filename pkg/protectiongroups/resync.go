@@ -18,6 +18,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	pkgs3 "github.com/hieunyit/tutti/pkg/s3"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -103,7 +104,7 @@ func NewS3Resyncer(clients objstore.Clients, scope *accesspolicy.Scope) *S3Resyn
 			},
 			put: func(ctx context.Context, bucket, key string, reader io.Reader, size uint64, info minio.ObjectInfo) error {
 				_, err := s3.PutObject(ctx, bucket, key, reader, int64(size), minio.PutObjectOptions{
-					UserMetadata: info.UserMetadata, ContentType: info.ContentType, ContentEncoding: info.Metadata.Get("Content-Encoding"),
+					UserMetadata: withoutTuttiMarker(info.UserMetadata), ContentType: info.ContentType, ContentEncoding: info.Metadata.Get("Content-Encoding"),
 					ContentDisposition: info.Metadata.Get("Content-Disposition"), ContentLanguage: info.Metadata.Get("Content-Language"),
 					CacheControl: info.Metadata.Get("Cache-Control"), Expires: info.Expires,
 				})
@@ -514,4 +515,15 @@ func hashResyncObject(ctx context.Context, client resyncObjects, bucket, key str
 		err = errors.Join(err, closer.Close())
 	}
 	return hash.Sum(nil), n, err
+}
+
+// withoutTuttiMarker drops the worker's internal source-ETag key: it describes another object's source.
+func withoutTuttiMarker(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		if !strings.EqualFold(k, pkgs3.TuttiSrcETagMeta) {
+			out[k] = v
+		}
+	}
+	return out
 }

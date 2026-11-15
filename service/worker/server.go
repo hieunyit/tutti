@@ -165,6 +165,8 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	systemsettings.SetConfigFallbacks(conf.BulkConcurrencyPercent, conf.MultipartThreads, conf.MultipartPartSizeMiB)
 	systemsettings.SetLargeObjectStreamsFallback(conf.LargeObjectStreams)
 	copy.SetOrphanSweep(conf.OrphanUploadCleanup)
+	copy.SetRecordSourceETag(conf.RecordSourceETag)
+	copy.SetTrustSameSizeMultipart(conf.TrustSameSizeMultipart)
 	systemsettings.SetCopyEngineFallback(conf.CopyEngine)
 	systemsettings.SetResumeMultipartFallback(conf.ResumeMultipart)
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {

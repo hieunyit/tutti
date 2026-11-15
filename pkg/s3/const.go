@@ -16,6 +16,11 @@
 
 package s3
 
+// TuttiSrcETagMeta is the canonical user-metadata key (header X-Amz-Meta-Tutti-Src-Etag) under which the worker
+// records the ETag of the source object on every object it writes. It is internal: it is never copied to another
+// storage and never counts as a metadata difference.
+const TuttiSrcETagMeta = "Tutti-Src-Etag"
+
 // Standard S3 HTTP response constants
 const (
 	LastModified       = "Last-Modified"

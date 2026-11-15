@@ -404,6 +404,23 @@ A copy that fails or is cancelled in the middle of a multipart upload leaves an 
 
 Uploads older than the sweep window of keys that are never copied again are not found by this mechanism; use a bucket lifecycle rule `AbortIncompleteMultipartUpload` on the destination (for example 7 days) as a safety net.
 
+## Skipping objects already copied
+
+Before copying an object the worker compares source and destination. It skips the copy when the sizes and the metadata (content type, encoding, disposition, language, cache control, expires, user metadata, tags when tagging replication is on) are equal and one of these holds:
+
+1. the ETags are equal;
+2. the destination carries the user metadata `X-Amz-Meta-Tutti-Src-Etag` (written by the worker on every copy) and it equals the current source ETag (`recordSourceETag`, default `true`);
+3. only with `trustSameSizeMultipart: true`: both ETags are multipart ETags (`<md5>-N`, different N), the sizes are equal and the destination `LastModified` is not older than the source.
+
+Why: the ETag of a multipart object is the MD5 of the part MD5s plus `-N`, so it depends on the part size. An object uploaded to the source with 15 MiB parts and copied with 16 MiB parts got a different ETag, which made the comparison fail and every such object was copied again on each restart or re-created replication (single-part objects have an MD5 ETag and always matched). Two changes fix it:
+
+- **ETag-preserving part size.** When the source ETag is `<32 hex>-N` with `N >= 2`, the worker picks the part size `p` with `ceil(size / p) == N` (so `p` lies in `[size/N, size/(N-1))`) among whole MiB values and uploads with it, in both engines, the resume record and every copy path (live, bulk, versioned migration, diff-fix). If several MiB values fit, the first of 15, 16, 8, 5, 10, 20, 25, 32, 50, 64, 100, 128 MiB wins, otherwise the smallest (then whole MB). Nothing is inferred (current policy applies) for `N < 2`, `N > 10000`, `p < 5 MiB` or `p > 128 MiB`. Examples: 448,698,984 bytes with `-29` gives 15 MiB; 151,769,090 bytes with `-10` fits 15 and 16 MiB and gets 15 MiB; 44,325,999 bytes with `-3` gets 15 MiB. A wrong guess is harmless: the ETag then differs and rule 2 decides.
+- **Source ETag marker.** For layouts that cannot be reproduced (irregular part sizes, a different ETag from the destination, SSE ETags that are not MD5) rule 2 still skips the object on the next run. The marker is internal: it is not copied to another storage (a reverse replication writes its own), it is ignored when metadata is compared and it is stripped by protection-group resync. `recordSourceETag: false` (env `CFG_RECORDSOURCEETAG=false`) stops writing it and reading it.
+
+**One-time re-copy.** Objects that an earlier version copied with a different part layout have no marker and a different multipart ETag, and the worker cannot prove their content equal, so it copies each of them once more; afterwards they carry the right ETag and the marker and are skipped. For a destination you trust, `trustSameSizeMultipart: true` (env `CFG_TRUSTSAMESIZEMULTIPART=true`) skips them instead. This is a heuristic: it does not verify content, so a same-size object changed at the source with an older destination timestamp, or modified on the destination, is not detected. Turn it back off after the first complete run.
+
+To verify on a real Ceph RGW: `X-Amz-Meta-*` must be accepted on `CreateMultipartUpload` and returned by `HEAD`, and identical part layouts must give the same `-N` ETag.
+
 ## Profiling the worker
 
 The worker can serve Go pprof profiles (CPU, heap, goroutines, trace) to find out where CPU time and memory go during a real copy. It is **off by default**: nothing listens unless `debug.pprofAddr` (env `CFG_DEBUG_PPROFADDR`) is set. The endpoint is unauthenticated, so bind it to loopback and reach it from inside the container or pod:
