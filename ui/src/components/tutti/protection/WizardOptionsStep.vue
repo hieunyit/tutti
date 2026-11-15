@@ -48,7 +48,7 @@
 </script>
 
 <template>
-  <div>
+  <div class="pg-options">
     <FormSection :title="t('wizFailoverTitle')">
       <NFormItem :label="t('fieldMode')">
         <NSpace
@@ -138,6 +138,12 @@
 </template>
 
 <style lang="scss" scoped>
+  .pg-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-3);
+  }
+
   .pg-wizard__hint {
     margin: var(--tt-space-1) 0 0;
     color: var(--tt-text-3);

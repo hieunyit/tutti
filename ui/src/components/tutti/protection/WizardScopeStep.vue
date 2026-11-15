@@ -93,6 +93,10 @@
 
 <style lang="scss" scoped>
   .pg-scope {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-3);
+
     &__stack {
       display: flex;
       flex-direction: column;
