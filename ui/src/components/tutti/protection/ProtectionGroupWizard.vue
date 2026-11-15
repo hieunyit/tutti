@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
   import { NModal } from 'naive-ui';
-  import { computed, ref, watch } from 'vue';
+  import { computed, nextTick, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import i18nProtection from './i18nProtection';
   import WizardMembersStep from './WizardMembersStep.vue';
@@ -57,6 +57,7 @@
   const scopeStep = ref<InstanceType<typeof WizardScopeStep> | null>(null);
   const isSaving = ref(false);
   const backendError = ref<string | null>(null);
+  const errorAnchor = ref<HTMLElement | null>(null);
   const touched = ref(false);
 
   const errors = computed<ProtectionFormError[]>(() =>
@@ -137,6 +138,14 @@
           ? t('overlapError')
           : t('saveFailed', { message: err });
 
+      // the block sits below the long form: bring it into view, the submit
+      // button in the footer would otherwise look dead
+      await nextTick();
+      errorAnchor.value?.scrollIntoView?.({
+        block: 'nearest',
+        behavior: 'smooth',
+      });
+
       return;
     }
 
@@ -184,12 +193,16 @@
           v-model="form"
           :error-text="errorText"
         />
-        <ErrorBlock
+        <div
           v-if="backendError"
-          :title="t('wizSaveFailed')"
-          :description="backendError"
-          @retry="finish"
-        />
+          ref="errorAnchor"
+        >
+          <ErrorBlock
+            :title="t('wizSaveFailed')"
+            :description="backendError"
+            @retry="finish"
+          />
+        </div>
       </template>
 
       <template #summary>
