@@ -56,8 +56,7 @@ export default <I18nMessages>{
     replicationsTitle: 'Replications',
     replicationsAdd: 'Add replication',
     replicationsEmptyTitle: 'No replications configured',
-    replicationsEmptyText:
-      'Objects are copied between storages automatically.',
+    replicationsEmptyText: 'Objects are copied between storages automatically.',
     breakdownLabel: 'Replication status distribution',
     breakdownUpToDate: 'Up to date',
     breakdownInitial: 'Initial copy',
@@ -195,8 +194,7 @@ export default <I18nMessages>{
     replicationsTitle: 'Replication',
     replicationsAdd: 'Thêm replication',
     replicationsEmptyTitle: 'Chưa cấu hình replication',
-    replicationsEmptyText:
-      'Object được sao chép tự động giữa các storage.',
+    replicationsEmptyText: 'Object được sao chép tự động giữa các storage.',
     breakdownLabel: 'Phân bố trạng thái replication',
     breakdownUpToDate: 'Đã cập nhật mới nhất',
     breakdownInitial: 'Sao chép ban đầu',
