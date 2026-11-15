@@ -2,26 +2,23 @@
 <script setup lang="ts">
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
-  import { NButton, NCheckbox } from 'naive-ui';
+  import { NButton } from 'naive-ui';
+  import { RouterLink } from 'vue-router';
   import CredentialsTab from './CredentialsTab.vue';
+  import UserDeleteDialog from './UserDeleteDialog.vue';
   import PermissionsTab from './PermissionsTab.vue';
   import {
     BackLink,
     Callout,
-    ConfirmDialog,
     DetailLayout,
     EmptyBlock,
-    FormSection,
-    useQueryTab,
+    SectionCard,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import ProxyAccountKeysTable from '@/components/tutti/accounts/ProxyAccountKeysTable.vue';
-  import ProxyKeyRotateModal from '@/components/tutti/accounts/ProxyKeyRotateModal.vue';
   import ProxySecretModal from '@/components/tutti/accounts/ProxySecretModal.vue';
   import AccessPolicyDrawer from '@/components/tutti/accounts/AccessPolicyDrawer.vue';
-  import messages from '@/components/tutti/users/i18nAccess';
-  import { TuttiService } from '@/services/TuttiService';
+  import messages from '@/components/tutti/users/i18nUsers';
+  import { keyCount, keysLink } from '@/components/tutti/users/userColumns';
   import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
   import { useTuttiAccessPolicyStore } from '@/stores/tuttiAccessPolicyStore';
   import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
@@ -35,8 +32,6 @@
   const store = useTuttiUsersStore();
   const keys = useTuttiAccessPolicyStore();
   const protection = useTuttiProtectionStore();
-  const router = useRouter();
-  const tab = useQueryTab('tab', 'credentials');
 
   const user = computed(() => store.find(props.name));
   const account = computed(
@@ -87,28 +82,11 @@
 
     return user.value ? ('ready' as const) : ('empty' as const);
   });
-  const tabs = computed(() => [
-    { key: 'credentials', label: t('credentials') },
-    {
-      key: 'keys',
-      label: t('keys'),
-      badge: account.value
-        ? ProxyAccountHelper.getKeyRows(account.value).length
-        : 0,
-    },
-    { key: 'permissions', label: t('permission') },
-  ]);
-
   const busy = ref(false);
   const error = ref('');
-  const showDelete = ref(false);
-  const force = ref(false);
-  const canForce = ref(false);
   const showPolicy = ref(false);
   /** one-time key secret: memory only, cleared on close */
   const secret = ref<TuttiProxyAccountSecret | null>(null);
-  const secretKind = ref<'created' | 'rotated'>('created');
-  const rotateId = ref<string | null>(null);
 
   async function load() {
     await Promise.all([
@@ -119,7 +97,6 @@
   }
 
   async function createKey() {
-    secretKind.value = 'created';
     busy.value = true;
     error.value = '';
 
@@ -130,34 +107,6 @@
     } finally {
       busy.value = false;
     }
-  }
-
-  function askDelete() {
-    error.value = '';
-    force.value = false;
-    canForce.value = false;
-    showDelete.value = true;
-  }
-
-  async function remove() {
-    busy.value = true;
-    error.value = '';
-
-    try {
-      await TuttiService.deleteUser(props.name, force.value);
-      await router.push({ name: RouteName.TUTTI_USERS });
-    } catch (e) {
-      error.value = ProxyAccountHelper.getMessage(e) ?? t('error');
-      canForce.value = UserHelper.parseDeleteBlockers(error.value).canForce;
-    } finally {
-      busy.value = false;
-    }
-  }
-
-  function onRotated(value: TuttiProxyAccountSecret) {
-    secretKind.value = 'rotated';
-    secret.value = value;
-    rotateId.value = null;
   }
 
   function closeSecret() {
@@ -181,16 +130,10 @@
 <template>
   <DetailLayout
     :title="name"
-    :description="t('usersHint')"
     :state="state"
     :status="
-      user
-        ? { tone: 'success', label: t(isConfig ? 'config' : 'managed') }
-        : undefined
+      user && isConfig ? { tone: 'neutral', label: t('config') } : undefined
     "
-    :tabs="tabs"
-    :active-tab="tab"
-    @update:active-tab="tab = $event"
     @retry="load"
   >
     <template #back>
@@ -200,15 +143,21 @@
       />
     </template>
     <template #actions>
+      <RouterLink
+        v-if="user"
+        :to="keysLink(name)"
+      >
+        <NButton>{{
+          t('keysCount', { count: keyCount(user) }, keyCount(user))
+        }}</NButton>
+      </RouterLink>
       <WriteGate>
         <NButton
           type="primary"
           :loading="busy"
           :disabled="!user || !store.dynamicEnabled"
           @click="createKey"
-          >{{
-            user && user.accessKeys?.dynamicActive ? t('newKey') : t('firstKey')
-          }}</NButton
+          >{{ t('newKey') }}</NButton
         >
       </WriteGate>
     </template>
@@ -223,93 +172,53 @@
       </EmptyBlock>
     </template>
 
-    <template v-if="user">
-      <Callout
-        v-if="error && !showDelete"
-        tone="danger"
-        >{{ error }}</Callout
-      >
-      <CredentialsTab
-        v-if="tab === 'credentials'"
-        :user-name="name"
-        :storages="storages"
-        :dynamic-enabled="store.dynamicEnabled"
-        @changed="load"
-      />
-      <template v-else-if="tab === 'keys'">
-        <ProxyAccountKeysTable
-          v-if="account"
-          :account="account"
-          @rotate="rotateId = $event"
-        />
-        <p
-          v-else
-          class="user-detail__muted"
-        >
-          {{ t('keyHint') }}
-        </p>
-      </template>
-      <PermissionsTab
-        v-else
-        :user="user"
-        :groups="groups"
-        :wildcard="wildcard"
-        @edit="showPolicy = true"
-      />
-
-      <WriteGate>
-        <FormSection
-          class="user-detail__danger"
-          :title="t('dangerZone')"
-          :description="t('dangerZoneHint')"
-        >
-          <NButton
-            type="error"
-            secondary
-            :disabled="isConfig"
-            @click="askDelete"
-            >{{ t('deleteUser') }}</NButton
-          >
-        </FormSection>
-      </WriteGate>
-    </template>
-
-    <ConfirmDialog
-      :open="showDelete"
-      :title="t('deleteUser')"
-      :target-name="name"
-      :confirm-label="t('deleteUser')"
-      :loading="busy"
-      require-typing
-      danger
-      @cancel="showDelete = false"
-      @confirm="remove"
+    <div
+      v-if="user"
+      class="user-detail"
     >
-      {{ t('confirmDelete', { name }) }}
       <Callout
         v-if="error"
         tone="danger"
         >{{ error }}</Callout
       >
-      <NCheckbox
-        v-if="canForce"
-        v-model:checked="force"
-        >{{ t('force') }}</NCheckbox
+      <SectionCard
+        :title="t('storages')"
+        variant="section"
       >
-    </ConfirmDialog>
+        <CredentialsTab
+          :user-name="name"
+          :storages="storages"
+          :dynamic-enabled="store.dynamicEnabled"
+          @changed="load"
+        />
+      </SectionCard>
+      <SectionCard
+        :title="t('accessPolicy')"
+        variant="section"
+      >
+        <PermissionsTab
+          :user="user"
+          :groups="groups"
+          @edit="showPolicy = true"
+        />
+      </SectionCard>
+
+      <WriteGate>
+        <UserDeleteDialog
+          :name="name"
+          :disabled="isConfig"
+        />
+      </WriteGate>
+    </div>
+
     <AccessPolicyDrawer
       v-model:show="showPolicy"
       :account="account ?? { user: name }"
       @update:show="!$event && load()"
     />
-    <ProxyKeyRotateModal
-      :access-key-id="rotateId"
-      @close="rotateId = null"
-      @rotated="onRotated"
-    />
     <ProxySecretModal
       :secret="secret"
-      :kind="secretKind"
+      kind="created"
       @close="closeSecret"
     />
   </DetailLayout>
@@ -317,15 +226,8 @@
 
 <style lang="scss" scoped>
   .user-detail {
-    &__muted {
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-3);
-    }
-
-    &__danger {
-      margin-top: var(--tt-space-6);
-      padding-top: var(--tt-space-5);
-      border-top: 1px solid var(--tt-danger-border);
-    }
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-6);
   }
 </style>

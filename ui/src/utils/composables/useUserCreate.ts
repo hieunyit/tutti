@@ -21,7 +21,14 @@ import { RuntimeStorageService } from '@/services/RuntimeStorageService';
 import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
 import { useTuttiProtectionStore } from '@/stores/tuttiProtectionStore';
 import { UserHelper } from '@/utils/helpers/UserHelper';
-import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
+import {
+  availableGroupBuckets as groupBucketItems,
+  nextGroupBuckets,
+  storageScopeGroups,
+  storagesToQuery,
+  type GrantMode,
+  type GroupBucketItem,
+} from '@/components/tutti/accounts/policyBuckets';
 import { AccessPolicyHelper } from '@/utils/helpers/AccessPolicyHelper';
 import {
   BucketDiscoveryHelper,
@@ -32,8 +39,7 @@ import type { S3UserCredentialInput } from '@/utils/types/users';
 
 export const USER_CREATE_DRAFT_KEY = 'user-create';
 
-export type GrantMode = 'all' | 'groups' | 'custom';
-export type UserCreateStep = 'identity' | 'permission' | 'keys';
+export type { GrantMode, GroupBucketItem };
 
 /** Wizard form. It is saved as a draft: it must never hold a secret. */
 export interface UserCreateForm {
@@ -46,11 +52,6 @@ export interface UserCreateForm {
   buckets: string;
   createKey: boolean;
   description: string;
-}
-
-export interface GroupBucketItem {
-  bucket: string;
-  groupId: string;
 }
 
 function initialForm(): UserCreateForm {
@@ -74,7 +75,6 @@ export function useUserCreate() {
     USER_CREATE_DRAFT_KEY,
     initialForm,
   );
-  const step = ref<UserCreateStep>('identity');
   const busy = ref(false);
   /** i18n key of the last submit problem (or API message), '' when none */
   const error = ref('');
@@ -133,40 +133,16 @@ export function useUserCreate() {
   );
 
   const storageGroups = computed(() =>
-    protection.groups.filter(
-      (g) =>
-        form.value.selectedGroupIds.includes(g.id) &&
-        ProtectionGroupHelper.scopeKind(g) === 'storage',
-    ),
+    storageScopeGroups(protection.groups, form.value.selectedGroupIds),
   );
 
-  const availableGroupBuckets = computed<GroupBucketItem[]>(() => {
-    const items: GroupBucketItem[] = [];
-    const seen = new Set<string>();
-
-    for (const g of protection.groups) {
-      if (!form.value.selectedGroupIds.includes(g.id)) continue;
-
-      for (const b of g.buckets ?? []) {
-        if (!seen.has(b)) {
-          seen.add(b);
-          items.push({ bucket: b, groupId: g.id });
-        }
-      }
-    }
-
-    for (const entry of discovered.value) {
-      if (!seen.has(entry.bucket)) {
-        seen.add(entry.bucket);
-        items.push({
-          bucket: entry.bucket,
-          groupId: `storage: ${entry.storage}`,
-        });
-      }
-    }
-
-    return items;
-  });
+  const availableGroupBuckets = computed<GroupBucketItem[]>(() =>
+    groupBucketItems(
+      protection.groups,
+      form.value.selectedGroupIds,
+      discovered.value,
+    ),
+  );
 
   /** Buckets the policy will list, or ['*'] when it is unrestricted. */
   const effectiveBuckets = computed<string[]>(() => {
@@ -185,7 +161,7 @@ export function useUserCreate() {
     return parsed.patterns.length > 0 ? parsed.patterns : ['*'];
   });
 
-  /** i18n key of what blocks the permission step, null when it is fine */
+  /** i18n key of what blocks the access section, null when it is fine */
   const permissionProblem = computed<string | null>(() => {
     const f = form.value;
 
@@ -212,33 +188,22 @@ export function useUserCreate() {
       credentialsValid.value,
   );
   const permissionValid = computed(() => permissionProblem.value === null);
-  const canNext = computed(() => {
-    if (step.value === 'identity') return identityValid.value;
-
-    if (step.value === 'permission') return permissionValid.value;
-
-    return true;
-  });
+  const formValid = computed(
+    () => identityValid.value && permissionValid.value,
+  );
 
   async function discoverStorageBuckets() {
-    const storages = new Set<string>();
+    const storages = storagesToQuery(storageGroups.value);
 
-    for (const g of storageGroups.value) {
-      if (g.primary) storages.add(g.primary);
-
-      (g.members ?? []).forEach((m) => storages.add(m));
-    }
-
-    if (storages.size === 0) {
+    if (storages.length === 0) {
       discovered.value = [];
 
       return;
     }
 
     try {
-      discovered.value = await BucketDiscoveryHelper.discoverStorageBuckets([
-        ...storages,
-      ]);
+      discovered.value =
+        await BucketDiscoveryHelper.discoverStorageBuckets(storages);
     } catch {
       discovered.value = [];
     }
@@ -257,20 +222,13 @@ export function useUserCreate() {
 
     form.value.selectedGroupIds = ids;
     await discoverStorageBuckets();
-
-    const available = new Set(availableGroupBuckets.value.map((b) => b.bucket));
-    const next = form.value.selectedGroupBuckets.filter((b) =>
-      available.has(b),
+    form.value.selectedGroupBuckets = nextGroupBuckets(
+      protection.groups,
+      previous,
+      ids,
+      form.value.selectedGroupBuckets,
+      discovered.value,
     );
-    const addedGroups = ids.filter((id) => !previous.includes(id));
-    const fresh = [
-      ...protection.groups
-        .filter((g) => addedGroups.includes(g.id))
-        .flatMap((g) => g.buckets ?? []),
-      ...discovered.value.map((e) => e.bucket),
-    ];
-
-    form.value.selectedGroupBuckets = [...new Set([...next, ...fresh])];
   }
 
   function setGroupBucket(bucket: string, checked: boolean) {
@@ -355,7 +313,7 @@ export function useUserCreate() {
       created.value = result.accessKey ?? null;
       credentials.value = [];
       // the draft stays until dismissSecret(): clearing it now would reset the
-      // form and bounce the wizard to step 0 behind the one-time secret modal
+      // form and reset the form behind the one-time secret modal
       submitted = true;
 
       return { name, secret: result.accessKey?.secretAccessKey ?? '' };
@@ -376,7 +334,6 @@ export function useUserCreate() {
 
   return {
     form,
-    step,
     busy,
     error,
     created,
@@ -387,7 +344,7 @@ export function useUserCreate() {
     credentialsError,
     verifyCredentials,
     loadCredentialRequirements,
-    canNext,
+    formValid,
     identityValid,
     permissionValid,
     permissionProblem,
@@ -410,7 +367,7 @@ export function useUserCreate() {
 
 export type UserCreateController = ReturnType<typeof useUserCreate>;
 
-/** The page provides the controller; the three step components inject it. */
+/** The page provides the controller; the form sections inject it. */
 export const USER_CREATE_KEY: InjectionKey<UserCreateController> =
   Symbol('userCreate');
 

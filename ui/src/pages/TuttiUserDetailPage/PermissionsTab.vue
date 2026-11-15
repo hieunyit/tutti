@@ -4,14 +4,13 @@
   import { RouterLink } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { NButton, type DataTableColumns } from 'naive-ui';
-  import {
-    DataTable,
-    EmptyBlock,
-    FormSection,
-    StatusBadge,
-  } from '@/components/kit';
+  import { DataTable, StatusBadge } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import messages from '@/components/tutti/users/i18nAccess';
+  import messages from '@/components/tutti/users/i18nUsers';
+  import {
+    bucketsLabel,
+    permissionLabel,
+  } from '@/components/tutti/users/userColumns';
   import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
   import { RouteName } from '@/utils/types/router';
   import type { S3User } from '@/utils/types/users';
@@ -20,7 +19,6 @@
   defineProps<{
     user: S3User;
     groups: ProtectionGroup[];
-    wildcard: boolean;
   }>();
   const emit = defineEmits<{ (e: 'edit'): void }>();
 
@@ -76,44 +74,28 @@
 
 <template>
   <div class="user-perm">
-    <FormSection
-      :title="t('permission')"
-      :description="t('policyHint')"
+    <div class="user-perm__row">
+      <StatusBadge
+        :tone="user.policy?.permission === 'read-only' ? 'info' : 'success'"
+        :label="permissionLabel(user, t)"
+      />
+      <span>{{ bucketsLabel(user, t) }}</span>
+      <WriteGate>
+        <NButton @click="emit('edit')">{{ t('editPolicy') }}</NButton>
+      </WriteGate>
+    </div>
+    <section
+      v-if="groups.length > 0"
+      class="user-perm__coverage"
     >
-      <div class="user-perm__row">
-        <StatusBadge
-          :tone="user.policy?.permission === 'read-only' ? 'info' : 'success'"
-          :label="user.policy?.permission || 'read-write'"
-        />
-        <span
-          >{{ t('summaryBuckets') }}:
-          <code>{{ user.policy?.buckets?.join(', ') || '*' }}</code></span
-        >
-        <span
-          v-if="wildcard"
-          class="user-perm__muted"
-          >{{ t('allBucketsNote') }}</span
-        >
-        <WriteGate>
-          <NButton @click="emit('edit')">{{ t('editPolicy') }}</NButton>
-        </WriteGate>
-      </div>
-    </FormSection>
-    <FormSection
-      :title="t('coverageTitle')"
-      :description="t('coverageHint')"
-    >
+      <h3>{{ t('coverageTitle') }}</h3>
       <DataTable
         :columns="columns"
         :rows="groups"
         :loading="false"
         :row-key="(group: ProtectionGroup) => group.id"
-      >
-        <template #empty>
-          <EmptyBlock :title="t('noGroupsTitle')" />
-        </template>
-      </DataTable>
-    </FormSection>
+      />
+    </section>
   </div>
 </template>
 
@@ -131,8 +113,10 @@
       font-size: var(--tt-text-sm);
     }
 
-    &__muted {
-      color: var(--tt-text-3);
+    &__coverage h3 {
+      margin: 0 0 var(--tt-space-2);
+      font-size: var(--tt-text-md);
+      font-weight: var(--tt-weight-medium);
     }
   }
 </style>

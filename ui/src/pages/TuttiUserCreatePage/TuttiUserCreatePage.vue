@@ -1,54 +1,42 @@
 <!-- Copyright © 2026 hieunyit. Licensed under AGPL-3.0. -->
 <script setup lang="ts">
-  import { computed, onBeforeUnmount, onMounted, provide } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
+  import { RouterLink, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import IdentityStep from './IdentityStep.vue';
-  import PermissionStep from './PermissionStep.vue';
-  import KeysStep from './KeysStep.vue';
-  import {
-    BackLink,
-    Callout,
-    PageShell,
-    WizardShell,
-    type WizardStep,
-  } from '@/components/kit';
+  import { NButton } from 'naive-ui';
+  import AccessSection from './AccessSection.vue';
+  import KeySection from './KeySection.vue';
+  import NameSection from './NameSection.vue';
+  import { BackLink, Callout, PageShell } from '@/components/kit';
   import ProxySecretModal from '@/components/tutti/accounts/ProxySecretModal.vue';
-  import messages from '@/components/tutti/users/i18nAccess';
+  import i18nUsers from '@/components/tutti/users/i18nUsers';
   import {
-    USER_CREATE_DRAFT_KEY,
     USER_CREATE_KEY,
     useUserCreate,
-    type UserCreateStep,
   } from '@/utils/composables/useUserCreate';
   import { useTuttiUsersStore } from '@/stores/tuttiUsersStore';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import { RouteName } from '@/utils/types/router';
 
-  const { t, te } = useI18n({ messages });
+  const { t, te } = useI18n({ messages: i18nUsers });
   const store = useTuttiUsersStore();
   const router = useRouter();
   const ctl = useUserCreate();
+  /** errors show on blur; after a failed submit attempt they show everywhere */
+  const attempted = ref(false);
 
   provide(USER_CREATE_KEY, ctl);
 
-  const steps = computed<WizardStep[]>(() => [
-    { key: 'identity', label: t('identity'), valid: ctl.identityValid.value },
-    {
-      key: 'permission',
-      label: t('permission'),
-      valid: ctl.permissionValid.value,
-    },
-    { key: 'keys', label: t('keys'), valid: true },
-  ]);
   const canCreate = computed(
     () => store.dynamicEnabled && !store.hasError && !ctl.busy.value,
   );
 
   let createdName = '';
 
-  async function finish() {
-    if (!canCreate.value) return;
+  async function create() {
+    attempted.value = true;
+
+    if (!canCreate.value || !ctl.formValid.value) return;
 
     try {
       const { name } = await ctl.submit();
@@ -68,10 +56,7 @@
     const name = createdName || ctl.form.value.name;
 
     ctl.dismissSecret();
-    await router.push({
-      name: RouteName.TUTTI_USER_DETAIL,
-      params: { name },
-    });
+    await router.push({ name: RouteName.TUTTI_USER_DETAIL, params: { name } });
   }
 
   onMounted(() => ctl.init());
@@ -81,7 +66,6 @@
 <template>
   <PageShell
     :title="t('createUser')"
-    :description="t('createHint')"
     state="ready"
   >
     <template #back>
@@ -105,18 +89,27 @@
       tone="danger"
       >{{ ctl.error.value }}</Callout
     >
-    <WizardShell
-      :steps="steps"
-      :draft-key="USER_CREATE_DRAFT_KEY"
-      :finish-label="t('createUser')"
-      :busy="ctl.busy.value || !canCreate"
-      @step="ctl.step.value = $event as UserCreateStep"
-      @finish="finish"
+    <form
+      class="user-create"
+      novalidate
+      @submit.prevent="create"
     >
-      <template #identity><IdentityStep /></template>
-      <template #permission><PermissionStep /></template>
-      <template #keys><KeysStep /></template>
-    </WizardShell>
+      <NameSection :show-errors="attempted" />
+      <AccessSection :show-errors="attempted" />
+      <KeySection />
+      <div class="user-create__footer">
+        <RouterLink :to="{ name: RouteName.TUTTI_USERS }">
+          <NButton>{{ t('cancel') }}</NButton>
+        </RouterLink>
+        <NButton
+          type="primary"
+          attr-type="submit"
+          :loading="ctl.busy.value"
+          :disabled="!canCreate"
+          >{{ t('createUser') }}</NButton
+        >
+      </div>
+    </form>
     <ProxySecretModal
       :secret="ctl.created.value?.secretAccessKey ? ctl.created.value : null"
       kind="created"
@@ -124,3 +117,18 @@
     />
   </PageShell>
 </template>
+
+<style lang="scss" scoped>
+  .user-create {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-4);
+    max-width: 720px;
+
+    &__footer {
+      display: flex;
+      gap: var(--tt-space-2);
+      justify-content: flex-end;
+    }
+  }
+</style>

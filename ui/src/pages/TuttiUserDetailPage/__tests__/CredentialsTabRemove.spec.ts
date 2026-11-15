@@ -63,7 +63,7 @@ function dialogOpen() {
 }
 
 async function openRemove() {
-  button('Remove override')!.click();
+  button('Remove own key')!.click();
   await flushPromises();
 }
 

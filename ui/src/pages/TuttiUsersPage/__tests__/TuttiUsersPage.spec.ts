@@ -77,7 +77,11 @@ describe('TuttiUsersPage', () => {
 
     const empty = await mountPage();
 
-    expect(empty.text()).toContain('No S3 users yet');
+    expect(empty.text()).toContain('No users yet');
+    // one primary action, and no duplicate in the page header
+    expect(
+      empty.findAll('button').filter((b) => b.text() === 'Create user'),
+    ).toHaveLength(1);
 
     vi.mocked(TuttiService.getUsers).mockResolvedValue({
       users: [{ name: 'alice', complete: true, storages: [] }],
@@ -87,7 +91,7 @@ describe('TuttiUsersPage', () => {
 
     expect(wrapper.text()).toContain('alice');
     await wrapper.get('input').setValue('zzz');
-    expect(wrapper.text()).toContain('No users match this filter');
-    expect(wrapper.text()).not.toContain('No S3 users yet');
+    expect(wrapper.text()).toContain('No users match');
+    expect(wrapper.text()).not.toContain('No users yet');
   });
 });

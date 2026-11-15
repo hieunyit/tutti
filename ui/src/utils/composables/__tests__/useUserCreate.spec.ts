@@ -80,18 +80,18 @@ describe('useUserCreate', () => {
     });
   });
 
-  it('canNext stays false until the name is valid', async () => {
+  it('the form stays invalid until the name is valid', async () => {
     useTuttiUsersStore().users = [{ name: 'taken' }] as never;
 
-    const { form, canNext } = await readyController();
+    const { form, formValid } = await readyController();
 
-    expect(canNext.value).toBe(false);
+    expect(formValid.value).toBe(false);
     form.value.name = '-bad';
-    expect(canNext.value).toBe(false);
+    expect(formValid.value).toBe(false);
     form.value.name = 'taken';
-    expect(canNext.value).toBe(false);
+    expect(formValid.value).toBe(false);
     form.value.name = 'alice';
-    expect(canNext.value).toBe(true);
+    expect(formValid.value).toBe(true);
   });
 
   it('submit calls createUser once and keeps the secret out of storage', async () => {
@@ -135,14 +135,13 @@ describe('useUserCreate', () => {
   });
 
   it('custom mode needs valid bucket patterns', async () => {
-    const { form, step, canNext } = await readyController();
+    const { form, permissionValid } = await readyController();
 
-    step.value = 'permission';
     form.value.grantMode = 'custom';
     form.value.buckets = '';
-    expect(canNext.value).toBe(false);
+    expect(permissionValid.value).toBe(false);
     form.value.buckets = 'logs-*, data';
-    expect(canNext.value).toBe(true);
+    expect(permissionValid.value).toBe(true);
   });
 
   it('requires legacy storage credentials and sends them for an all-buckets user without persisting secrets', async () => {

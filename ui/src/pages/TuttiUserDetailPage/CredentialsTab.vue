@@ -3,7 +3,8 @@
   import { computed, h, ref } from 'vue';
   import { RouterLink } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { NButton, NInput, NModal, type DataTableColumns } from 'naive-ui';
+  import { NButton, type DataTableColumns } from 'naive-ui';
+  import CredentialEditModal from './CredentialEditModal.vue';
   import {
     Callout,
     ConfirmDialog,
@@ -13,7 +14,7 @@
     type StatusTone,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import messages from '@/components/tutti/users/i18nAccess';
+  import messages from '@/components/tutti/users/i18nUsers';
   import { TuttiService } from '@/services/TuttiService';
   import { UserHelper } from '@/utils/helpers/UserHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
@@ -33,9 +34,6 @@
   const results = ref<Record<string, string>>({});
   const editStorage = ref<string | null>(null);
   const removeStorage = ref<string | null>(null);
-  const accessKey = ref('');
-  /** typed secret: memory only, cleared on close */
-  const secretKey = ref('');
 
   const tones: Record<string, StatusTone> = {
     'connection-account': 'success',
@@ -50,14 +48,11 @@
 
   function openEdit(storage: string) {
     editStorage.value = storage;
-    accessKey.value = '';
-    secretKey.value = '';
     error.value = '';
   }
 
   function closeEdit() {
     editStorage.value = null;
-    secretKey.value = '';
   }
 
   async function guarded(task: () => Promise<void>) {
@@ -77,15 +72,15 @@
     }
   }
 
-  async function save() {
-    if (!editStorage.value || !accessKey.value || !secretKey.value) return;
+  async function save(accessKeyId: string, secretAccessKey: string) {
+    if (!editStorage.value) return;
 
     const ok = await guarded(async () => {
       await TuttiService.updateUserCredentials({
         name: props.userName,
         storage: editStorage.value as string,
-        accessKeyId: accessKey.value,
-        secretAccessKey: secretKey.value,
+        accessKeyId,
+        secretAccessKey,
         verify: true,
       });
     });
@@ -229,7 +224,6 @@
 
 <template>
   <div>
-    <p class="user-cred__hint">{{ t('credentialHint') }}</p>
     <DataTable
       :columns="columns"
       :rows="storages"
@@ -237,53 +231,17 @@
       :row-key="(entry: S3UserStorage) => entry.storage"
     >
       <template #empty>
-        <EmptyBlock
-          :title="t('noCredentialsTitle')"
-          :description="t('noCredentialsText')"
-        />
+        <EmptyBlock :title="t('noCredentialsTitle')" />
       </template>
     </DataTable>
 
-    <NModal
-      :show="editStorage !== null"
-      preset="card"
-      :title="t('add')"
-      style="width: 560px; max-width: 94vw"
-      @update:show="!$event && closeEdit()"
-    >
-      <form
-        class="user-cred__form"
-        @submit.prevent="save"
-      >
-        <Callout
-          v-if="error"
-          tone="danger"
-          >{{ error }}</Callout
-        >
-        <label class="user-cred__field">
-          {{ t('accessKeyId') }}
-          <NInput
-            v-model:value="accessKey"
-            :input-props="{ autocomplete: 'off' }"
-          />
-        </label>
-        <label class="user-cred__field">
-          {{ t('secret') }}
-          <NInput
-            v-model:value="secretKey"
-            type="password"
-            :input-props="{ autocomplete: 'new-password' }"
-          />
-        </label>
-        <NButton
-          type="primary"
-          attr-type="submit"
-          :loading="busy"
-          :disabled="!accessKey || !secretKey"
-          >{{ t('verifyAndSave') }}</NButton
-        >
-      </form>
-    </NModal>
+    <CredentialEditModal
+      :storage="editStorage"
+      :busy="busy"
+      :error="error"
+      @save="save"
+      @close="closeEdit"
+    />
 
     <ConfirmDialog
       :open="removeStorage !== null"
@@ -328,19 +286,6 @@
       display: flex;
       flex-wrap: wrap;
       gap: var(--tt-space-2);
-    }
-
-    &__form {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-3);
-    }
-
-    &__field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-1);
-      font-size: var(--tt-text-sm);
     }
   }
 </style>
