@@ -37,6 +37,7 @@
   import i18nReplicationActivity from '@/components/tutti/replications/activity/i18nReplicationActivity';
   import ReplicationRenameDialog from '@/components/tutti/replications/ReplicationRenameDialog/ReplicationRenameDialog.vue';
   import ReplicationSummary from '@/components/tutti/replications/ReplicationSummary.vue';
+  import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
   import { useNow } from '@/utils/composables/useNow';
   import { useReplicationActivity } from '@/utils/composables/useReplicationActivity';
@@ -46,6 +47,7 @@
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nReplicationActivity });
+  const { t: tStatus } = useI18n({ messages: i18nReplications });
   const route = useRoute();
   const router = useRouter();
 
@@ -86,7 +88,7 @@
   const status = computed(() => {
     if (!replication.value) return undefined;
 
-    const { tone, label } = getReplicationStatus(replication.value, t);
+    const { tone, label } = getReplicationStatus(replication.value, tStatus);
 
     return { tone, label };
   });
