@@ -44,7 +44,7 @@
             </dd>
           </div>
           <div>
-            <dt>{{ t('accountSource') }}</dt>
+            <dt>{{ t('origin') }}</dt>
             <dd>
               <StatusTag
                 no-dot
@@ -80,13 +80,10 @@
         </p>
       </template>
       <template v-else>
-        <p>
-          <StatusTag variant="warning">{{ t('legacy') }}</StatusTag>
-        </p>
         <Callout
-          v-if="storage.legacyCredentials !== false"
           tone="warning"
-          >{{ t('legacyHint') }}</Callout
+          :title="t('accountMissingTitle')"
+          >{{ t('accountMissingBody') }}</Callout
         >
       </template>
       <div

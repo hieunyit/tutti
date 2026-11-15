@@ -9,9 +9,8 @@
     DetailLayout,
     EmptyBlock,
     useQueryTab,
-    type StatusTone,
   } from '@/components/kit';
-  import StorageHealthTab from '@/components/tutti/storages/StorageHealthTab.vue';
+  import { healthTone } from '@/components/tutti/storages/storageNotes';
   import StorageOverviewTab from '@/components/tutti/storages/StorageOverviewTab.vue';
   import StorageSettings from '@/components/tutti/storages/StorageSettings.vue';
   import StorageUsersTab from '@/components/tutti/storages/StorageUsersTab.vue';
@@ -28,7 +27,7 @@
   const router = useRouter();
   const store = useTuttiStoragesStore();
   const now = useNow();
-  const TABS = ['overview', 'health', 'users', 'settings'];
+  const TABS = ['overview', 'users', 'settings'];
   const queryTab = useQueryTab('tab', 'overview');
   const tab = computed(() =>
     TABS.includes(queryTab.value) ? queryTab.value : 'overview',
@@ -52,7 +51,6 @@
   );
   const tabs = computed(() => [
     { key: 'overview', label: t('overview') },
-    { key: 'health', label: t('healthByProxy') },
     {
       key: 'users',
       label: t('users'),
@@ -62,7 +60,7 @@
     },
     { key: 'settings', label: t('settings') },
   ]);
-  const health = computed(() =>
+  const proxyHealth = computed(() =>
     store.proxies.map((proxy) => ({
       proxy,
       health: proxy.storages?.find((item) => item.name === props.storageName),
@@ -74,14 +72,7 @@
 
     if (!value) return undefined;
 
-    const tone: StatusTone =
-      value === 'available'
-        ? 'success'
-        : value === 'unavailable'
-          ? 'danger'
-          : 'neutral';
-
-    return { tone, label: t(value) };
+    return { tone: healthTone(value), label: t(value) };
   });
   const state = computed(() => {
     if (!store.isLoaded) return store.hasError ? 'error' : 'loading';
@@ -89,11 +80,7 @@
     return storage.value ? 'ready' : 'empty';
   });
   const description = computed(() =>
-    storage.value
-      ? `${storage.value.address} · ${storage.value.provider} · ${
-          storage.value.source === 'managed' ? t('managed') : t('config')
-        }`
-      : '',
+    storage.value ? `${storage.value.address} · ${storage.value.provider}` : '',
   );
 
   const storageUsers = computed(
@@ -137,13 +124,6 @@
         :label="t('backToStorages')"
       />
     </template>
-    <template #actions>
-      <NButton
-        :loading="store.isLoading"
-        @click="store.refresh()"
-        >{{ t('refresh') }}</NButton
-      >
-    </template>
     <template #empty>
       <EmptyBlock :title="t('notFound')">
         <RouterLink :to="{ name: RouteName.TUTTI_STORAGES }">
@@ -157,11 +137,9 @@
         v-if="tab === 'overview' && row"
         :row="row"
         :storage="storage"
-      />
-      <StorageHealthTab
-        v-else-if="tab === 'health'"
-        :rows="health"
+        :proxies="proxyHealth"
         :now="now"
+        @open-settings="queryTab = 'settings'"
       />
       <StorageUsersTab
         v-else-if="tab === 'users'"

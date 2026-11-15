@@ -32,7 +32,7 @@
     },
     { title: t('accessKey'), key: 'accessKeyId' },
     {
-      title: t('source'),
+      title: t('origin'),
       key: 'source',
       render: (row) => (row.source === 'config' ? t('config') : t('managed')),
     },

@@ -5,11 +5,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nStorages from './i18nStorages';
   import { DataTable, EmptyBlock, StatusBadge } from '@/components/kit';
-  import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
-  import {
-    formatDateTime,
-    formatRelative,
-  } from '@/utils/helpers/DateTimeHelper';
+  import { formatRelative } from '@/utils/helpers/DateTimeHelper';
   import type {
     TuttiProxyStatus,
     TuttiStorageHealth,
@@ -23,11 +19,10 @@
 
   const props = defineProps<{ rows: HealthRow[]; now: number }>();
   const { t } = useI18n({ messages: i18nStorages });
-  const number = useNumberFormat();
 
   const columns = computed<DataTableColumns<HealthRow>>(() => [
     {
-      title: t('name'),
+      title: t('proxy'),
       key: 'proxy',
       render: (row) =>
         h('div', [h('div', row.proxy.appId), h('small', row.proxy.address)]),
@@ -53,20 +48,9 @@
       },
     },
     {
-      title: t('failureCount'),
-      key: 'failures',
-      render: (row) =>
-        row.fresh ? number(row.health?.consecutiveFailures ?? 0) : '–',
-    },
-    {
       title: t('lastError'),
       key: 'lastError',
       render: (row) => row.health?.lastError || '–',
-    },
-    {
-      title: t('lastChange'),
-      key: 'lastChange',
-      render: (row) => formatDateTime(row.health?.lastChange),
     },
     {
       title: t('lastReport'),

@@ -152,4 +152,46 @@ describe('TuttiStoragesPage', () => {
     expect(wrapper.text()).toContain('Unknown');
     wrapper.unmount();
   });
+
+  it('has no KPI tiles or refresh button, and flags only what needs attention', async () => {
+    vi.mocked(RuntimeStorageService.listSummary).mockResolvedValue({
+      managedStoragesEnabled: true,
+      mainStorage: 'main',
+      storages: [
+        {
+          name: 'archive',
+          address: 'https://archive.example.com',
+          provider: 'Ceph',
+          defaultRegion: '',
+          isSecure: true,
+          httpTimeout: '30s',
+          healthCheckInterval: '10s',
+          source: 'managed',
+          connectionAccount: { configured: true, accessKeyId: 'k' },
+          lastTest: { ok: true, hasWarnings: true, steps: [] },
+        },
+        {
+          name: 'legacy',
+          address: 'https://legacy.example.com',
+          provider: 'Ceph',
+          defaultRegion: '',
+          isSecure: true,
+          httpTimeout: '30s',
+          healthCheckInterval: '10s',
+          source: 'managed',
+        },
+      ],
+    } as never);
+    const wrapper = mountPage();
+
+    await flushPromises();
+    const text = wrapper.text();
+
+    expect(text).not.toContain('Refresh');
+    expect(text).not.toContain('Circuit breaker');
+    expect(text).not.toContain('Last test: warnings');
+    expect(text.match(/No connection account/g)).toHaveLength(1);
+    expect(wrapper.findAll('.kit-stat').length).toBe(0);
+    wrapper.unmount();
+  });
 });

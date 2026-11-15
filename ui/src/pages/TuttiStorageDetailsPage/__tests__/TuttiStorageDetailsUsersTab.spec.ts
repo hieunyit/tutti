@@ -37,9 +37,6 @@ vi.mock('@/components/tutti/storages/StorageSettings.vue', () => ({
 vi.mock('@/components/tutti/storages/StorageOverviewTab.vue', () => ({
   default: { template: '<i />' },
 }));
-vi.mock('@/components/tutti/storages/StorageHealthTab.vue', () => ({
-  default: { template: '<i />' },
-}));
 vi.mock('@/services/RuntimeStorageService', () => ({
   RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
 }));

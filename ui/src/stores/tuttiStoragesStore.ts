@@ -108,9 +108,6 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
     events: state.events,
   }));
   const rows = computed(() => StoragesPageHelper.rows(sources.value));
-  const summary = computed(() =>
-    StoragesPageHelper.summary(rows.value, sources.value),
-  );
 
   async function loadProxies() {
     const current = generation;
@@ -258,7 +255,6 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
   return {
     ...toRefs(state),
     rows,
-    summary,
     refresh,
     loadSlow,
     loadStorageUsers,
