@@ -41,17 +41,17 @@ export default <I18nMessages>{
     deleteSuccessTitle: 'Deleted!',
     deleteErrorTitle: 'Deletion failed!',
     resumeSelectedSuccessContent:
-      'The following {total} replications were resumed:',
+      'The following replication was resumed: | The following {total} replications were resumed:',
     resumeSelectedErrorContent:
-      'And error occurred while resuming the following {total} replications:',
+      'An error occurred while resuming the following replication: | An error occurred while resuming the following {total} replications:',
     pauseSelectedSuccessContent:
-      'The following {total} replications were paused:',
+      'The following replication was paused: | The following {total} replications were paused:',
     pauseSelectedErrorContent:
-      'And error occurred while pausing the following {total} replications:',
+      'An error occurred while pausing the following replication: | An error occurred while pausing the following {total} replications:',
     deleteSelectedSuccessContent:
-      'The following {total} replications were deleted:',
+      'The following replication was deleted: | The following {total} replications were deleted:',
     deleteSelectedErrorContent:
-      'And error occurred while deleting the following {total} replications:',
+      'An error occurred while deleting the following replication: | An error occurred while deleting the following {total} replications:',
     filterStatusPaused: 'Paused',
     filterStatusActive: 'Active',
     filterStatusInitialDone: 'Initial copy done',
@@ -97,17 +97,17 @@ export default <I18nMessages>{
     deleteSuccessTitle: 'Gelöscht!',
     deleteErrorTitle: 'Löschen fehlgeschlagen!',
     resumeSelectedSuccessContent:
-      'Die folgenden {total} Replikationen wurden fortgesetzt:',
+      'Die folgende Replikation wurde fortgesetzt: | Die folgenden {total} Replikationen wurden fortgesetzt:',
     resumeSelectedErrorContent:
-      'Es ist ein Fehler beim Fortsetzen der folgenden {total} Replikationen aufgetreten:',
+      'Es ist ein Fehler beim Fortsetzen der folgenden Replikation aufgetreten: | Es ist ein Fehler beim Fortsetzen der folgenden {total} Replikationen aufgetreten:',
     pauseSelectedSuccessContent:
-      'Die folgenden {total} Replikationen wurden pausiert:',
+      'Die folgende Replikation wurde pausiert: | Die folgenden {total} Replikationen wurden pausiert:',
     pauseSelectedErrorContent:
-      'Es ist ein Fehler beim Pausieren der folgenden {total} Replikationen aufgetreten:',
+      'Es ist ein Fehler beim Pausieren der folgenden Replikation aufgetreten: | Es ist ein Fehler beim Pausieren der folgenden {total} Replikationen aufgetreten:',
     deleteSelectedSuccessContent:
-      'Die folgenden {total} Replikationen wurden gelöscht:',
+      'Die folgende Replikation wurde gelöscht: | Die folgenden {total} Replikationen wurden gelöscht:',
     deleteSelectedErrorContent:
-      'Es ist ein Fehler beim Löschen der folgenden {total} Replikationen aufgetreten:',
+      'Es ist ein Fehler beim Löschen der folgenden Replikation aufgetreten: | Es ist ein Fehler beim Löschen der folgenden {total} Replikationen aufgetreten:',
     filterStatusPaused: 'Pausiert',
     filterStatusActive: 'Aktiv',
     filterStatusInitialDone: 'Erstkopie abgeschlossen',

@@ -257,7 +257,9 @@
               :title="hasBlockedSelected ? t('deleteBlocked') : undefined"
               @click="bulkDeleteOpen = true"
             >
-              {{ t('deleteMany', { n: selectedRows.length }) }}
+              {{
+                t('deleteMany', { n: selectedRows.length }, selectedRows.length)
+              }}
             </NButton>
           </WriteGate>
         </template>
@@ -266,9 +268,11 @@
 
     <ConfirmDialog
       :open="bulkDeleteOpen"
-      :title="t('deleteMany', { n: selectedRows.length })"
+      :title="t('deleteMany', { n: selectedRows.length }, selectedRows.length)"
       danger
-      :confirm-label="t('deleteMany', { n: selectedRows.length })"
+      :confirm-label="
+        t('deleteMany', { n: selectedRows.length }, selectedRows.length)
+      "
       @confirm="confirmBulkDelete"
       @cancel="bulkDeleteOpen = false"
     >

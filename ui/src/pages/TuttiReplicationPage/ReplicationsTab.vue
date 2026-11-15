@@ -366,7 +366,7 @@
             type="error"
             @click="bulkDeleteOpen = true"
           >
-            {{ t('deleteSelected', { n: keys.length }) }}
+            {{ t('deleteSelected', { n: keys.length }, keys.length) }}
           </NButton>
         </WriteGate>
       </template>
@@ -374,9 +374,13 @@
 
     <ConfirmDialog
       :open="bulkDeleteOpen"
-      :title="t('deleteSelected', { n: selectedRows.length })"
+      :title="
+        t('deleteSelected', { n: selectedRows.length }, selectedRows.length)
+      "
       danger
-      :confirm-label="t('deleteSelected', { n: selectedRows.length })"
+      :confirm-label="
+        t('deleteSelected', { n: selectedRows.length }, selectedRows.length)
+      "
       @confirm="bulkDelete"
       @cancel="bulkDeleteOpen = false"
     >

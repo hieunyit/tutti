@@ -381,7 +381,11 @@ export const useTuttiReplicationsStore = defineStore(
           },
           content: () =>
             h('div', [
-              t('resumeSelectedErrorContent', { total: errorList.length }),
+              t(
+                'resumeSelectedErrorContent',
+                { total: errorList.length },
+                errorList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: errorList,
               }),
@@ -399,7 +403,11 @@ export const useTuttiReplicationsStore = defineStore(
           duration: 4000,
           content: () =>
             h('div', [
-              t('resumeSelectedSuccessContent', { total: successList.length }),
+              t(
+                'resumeSelectedSuccessContent',
+                { total: successList.length },
+                successList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: successList,
               }),
@@ -462,7 +470,11 @@ export const useTuttiReplicationsStore = defineStore(
           },
           content: () =>
             h('div', [
-              t('pauseSelectedErrorContent', { total: errorList.length }),
+              t(
+                'pauseSelectedErrorContent',
+                { total: errorList.length },
+                errorList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: errorList,
               }),
@@ -480,7 +492,11 @@ export const useTuttiReplicationsStore = defineStore(
           duration: 4000,
           content: () =>
             h('div', [
-              t('pauseSelectedSuccessContent', { total: successList.length }),
+              t(
+                'pauseSelectedSuccessContent',
+                { total: successList.length },
+                successList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: successList,
               }),
@@ -520,7 +536,11 @@ export const useTuttiReplicationsStore = defineStore(
           },
           content: () =>
             h('div', [
-              t('deleteSelectedErrorContent', { total: errorList.length }),
+              t(
+                'deleteSelectedErrorContent',
+                { total: errorList.length },
+                errorList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: errorList,
               }),
@@ -550,7 +570,11 @@ export const useTuttiReplicationsStore = defineStore(
           duration: 4000,
           content: () =>
             h('div', [
-              t('deleteSelectedSuccessContent', { total: successList.length }),
+              t(
+                'deleteSelectedSuccessContent',
+                { total: successList.length },
+                successList.length,
+              ),
               h(ReplicationsShortList, {
                 replications: successList,
               }),

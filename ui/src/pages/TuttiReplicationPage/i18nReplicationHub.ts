@@ -47,12 +47,12 @@ export default <Record<string, Record<string, string>>>{
       'The report is generated again from scratch.',
     restartReportsConfirmContent:
       'The selected reports are generated again from scratch.',
-    deleteSelected: 'Delete {n} replications',
+    deleteSelected: 'Delete {n} replication | Delete {n} replications',
     deleteSelectedText: 'These replications stop. Copied objects stay.',
     pauseSelected: 'Pause {n}',
     resumeSelected: 'Resume {n}',
     restartSelected: 'Restart {n}',
-    deleteReports: 'Delete {n} reports',
+    deleteReports: 'Delete {n} report | Delete {n} reports',
     deleteReportsText: 'The reports and their findings are removed.',
     emptyReplicationsTitle: 'No replications yet',
     emptyReplicationsText:
@@ -108,13 +108,13 @@ export default <Record<string, Record<string, string>>>{
     restartDiffReportConfirmContent: 'Der Report wird komplett neu erstellt.',
     restartReportsConfirmContent:
       'Die ausgewählten Reports werden komplett neu erstellt.',
-    deleteSelected: '{n} Replikationen löschen',
+    deleteSelected: '{n} Replikation löschen | {n} Replikationen löschen',
     deleteSelectedText:
       'Diese Replikationen werden gestoppt. Kopierte Objekte bleiben.',
     pauseSelected: '{n} pausieren',
     resumeSelected: '{n} fortsetzen',
     restartSelected: '{n} neu starten',
-    deleteReports: '{n} Berichte löschen',
+    deleteReports: '{n} Bericht löschen | {n} Berichte löschen',
     deleteReportsText: 'Die Berichte und ihre Ergebnisse werden entfernt.',
     emptyReplicationsTitle: 'Noch keine Replikationen',
     emptyReplicationsText:

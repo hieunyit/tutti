@@ -41,7 +41,7 @@ export default <I18nMessages>{
     unblock: 'Allow',
     changeStorage: 'Change storage',
     delete: 'Delete routing rule',
-    deleteMany: 'Delete {n} routing rules',
+    deleteMany: 'Delete {n} routing rule | Delete {n} routing rules',
     deleteText:
       'Requests of this user and bucket are routed by the next matching rule or the default route.',
     deleteManyText: 'Requests fall back to the next matching rule.',
@@ -85,7 +85,7 @@ export default <I18nMessages>{
     unblock: 'Zulassen',
     changeStorage: 'Speicher ändern',
     delete: 'Routing-Regel löschen',
-    deleteMany: '{n} Routing-Regeln löschen',
+    deleteMany: '{n} Routing-Regel löschen | {n} Routing-Regeln löschen',
     deleteText:
       'Anfragen dieses Benutzers und Buckets werden von der nächsten passenden Regel oder der Standardroute geleitet.',
     deleteManyText: 'Anfragen fallen auf die nächste passende Regel zurück.',
