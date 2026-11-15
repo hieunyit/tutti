@@ -112,4 +112,29 @@ describe('tuttiProtectionStore createGroup', () => {
     vi.mocked(ProtectionGroupService.create).mockRejectedValueOnce(rejected);
     expect(await store.createGroup(form)).toBe('bad scope');
   });
+
+  it('prefers the ErrorInfo reason over the bare gRPC code name', async () => {
+    const store = useTuttiProtectionStore();
+    const rejected = new AxiosError('bad');
+
+    rejected.response = {
+      status: 400,
+      data: {
+        code: 9,
+        message: 'FailedPrecondition',
+        details: [
+          { '@type': 'type.googleapis.com/google.rpc.RequestInfo' },
+          {
+            '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+            reason:
+              'FailedPrecondition: unmanaged replication :sta:stb:b:b conflicts; use explicit adoption',
+          },
+        ],
+      },
+    } as AxiosError['response'];
+    vi.mocked(ProtectionGroupService.create).mockRejectedValueOnce(rejected);
+    expect(await store.createGroup(form)).toBe(
+      'unmanaged replication :sta:stb:b:b conflicts; use explicit adoption',
+    );
+  });
 });

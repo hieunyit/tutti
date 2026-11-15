@@ -81,13 +81,28 @@ function getInitialState(): ProtectionState {
   };
 }
 
-/** Backend message (any gRPC code) for inline display. */
+/**
+ * Backend message (any gRPC code) for inline display. `message` is only the
+ * code name ("FailedPrecondition"); the readable text is the ErrorInfo
+ * `reason` ("FailedPrecondition: unmanaged replication ... use adoption"),
+ * shown without the code prefix.
+ */
 export function backendMessage(error: unknown): string | null {
   if (!axios.isAxiosError(error)) return null;
 
-  const data = error.response?.data as { message?: string } | undefined;
+  const data = error.response?.data as
+    | {
+        message?: string;
+        details?: { '@type'?: string; reason?: string }[];
+      }
+    | undefined;
+  const reason = Array.isArray(data?.details)
+    ? data.details.find((d) => d?.['@type']?.endsWith('google.rpc.ErrorInfo'))
+        ?.reason
+    : undefined;
+  const text = reason?.replace(/^[A-Za-z]+:\s+/, '');
 
-  return data?.message ? data.message : null;
+  return text || (data?.message ? data.message : null);
 }
 
 export const useTuttiProtectionStore = defineStore('tuttiProtection', () => {
