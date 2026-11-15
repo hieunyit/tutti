@@ -295,7 +295,7 @@
     action: (targets: Row[]) => Promise<Row[]>,
     targets: Row[],
   ) {
-    const failed = await action(rows);
+    const failed = await action(targets);
 
     table.value?.select(failed.map(rowKey));
   }
