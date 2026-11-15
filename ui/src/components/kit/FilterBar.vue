@@ -19,8 +19,12 @@
    * Search box + filter controls (default slot) + active filters as
    * removable chips + "Clear filters". v-model:search for the text; the page
    * owns the filter state and answers `remove(key)` and `clear`.
+   *
+   * `collapsible` (see TableToolbar) folds the filter controls behind a
+   * "Filters (n)" button, collapsed by default; `hidden` removes the whole bar
+   * (empty and unfiltered list); slot `bulk` holds the bulk actions.
    */
-  import { computed, useId } from 'vue';
+  import { computed, ref, useId } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NInput } from 'naive-ui';
   import i18nKit from './i18nKit';
@@ -34,6 +38,10 @@
       chips?: FilterChip[];
       /** hide the search box (filters only) */
       noSearch?: boolean;
+      /** fold the filter controls behind a "Filters (n)" button */
+      collapsible?: boolean;
+      /** render nothing (list is empty and no filter is active) */
+      hidden?: boolean;
     }>(),
     {
       search: '',
@@ -41,6 +49,8 @@
       searchPlaceholder: undefined,
       chips: () => [],
       noSearch: false,
+      collapsible: false,
+      hidden: false,
     },
   );
 
@@ -51,7 +61,10 @@
   }>();
 
   const { t } = useI18n({ messages: i18nKit });
-  const inputId = `kit-filter-${useId()}`;
+  const uid = useId();
+  const inputId = `kit-filter-${uid}`;
+  const panelId = `kit-filter-panel-${uid}`;
+  const open = ref(false);
   const hasFilters = computed(
     () => props.search.trim() !== '' || props.chips.length > 0,
   );
@@ -65,6 +78,7 @@
 
 <template>
   <div
+    v-if="!hidden"
     class="kit-filter"
     role="search"
   >
@@ -86,7 +100,20 @@
           @update:value="emit('update:search', $event ?? '')"
         />
       </div>
-      <slot />
+      <NButton
+        v-if="collapsible && $slots.default"
+        class="kit-filter__toggle"
+        :aria-expanded="open"
+        :aria-controls="panelId"
+        @click="open = !open"
+      >
+        {{
+          chips.length > 0
+            ? t('filtersWithCount', { n: chips.length })
+            : t('filters')
+        }}
+      </NButton>
+      <slot v-if="!collapsible" />
       <NButton
         v-if="hasFilters"
         quaternary
@@ -95,6 +122,21 @@
       >
         {{ t('clearFilters') }}
       </NButton>
+      <div
+        v-if="$slots.bulk"
+        class="kit-filter__bulk"
+      >
+        <slot name="bulk" />
+      </div>
+    </div>
+    <div
+      v-if="collapsible && open"
+      :id="panelId"
+      class="kit-filter__panel"
+      role="group"
+      :aria-label="t('filters')"
+    >
+      <slot />
     </div>
     <ul
       v-if="chips.length > 0"
@@ -139,6 +181,28 @@
 
     &__clear {
       margin-left: auto;
+    }
+
+    &__controls:has(.kit-filter__bulk) &__clear {
+      margin-left: 0;
+    }
+
+    &__bulk {
+      display: flex;
+      align-items: center;
+      gap: var(--tt-space-2);
+      margin-left: auto;
+    }
+
+    &__panel {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--tt-space-2);
+      padding: var(--tt-space-3);
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-control);
+      background-color: var(--tt-subtle);
     }
 
     &__chips {

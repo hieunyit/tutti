@@ -18,8 +18,10 @@
 // do not write your own table, confirm dialog or loading/empty/error state.
 
 export { default as PageShell } from './PageShell.vue';
+export { default as PageHeader } from './PageHeader.vue';
 export { default as DataTable } from './DataTable.vue';
 export { default as FilterBar } from './FilterBar.vue';
+export { default as TableToolbar } from './TableToolbar.vue';
 export { default as StatTile } from './StatTile.vue';
 export { default as DetailLayout } from './DetailLayout.vue';
 export { default as FormSection } from './FormSection.vue';
@@ -28,7 +30,12 @@ export { default as ConfirmDialog } from './ConfirmDialog.vue';
 export { default as StateBlock } from './StateBlock.vue';
 export { default as StatusBadge } from './StatusBadge.vue';
 export { default as CopyValue } from './CopyValue.vue';
-export { LoadingBlock, EmptyBlock, ErrorBlock } from './stateBlocks';
+export {
+  LoadingBlock,
+  EmptyBlock,
+  EmptyBlock as EmptyState,
+  ErrorBlock,
+} from './stateBlocks';
 
 export {
   useQueryTab,
@@ -42,6 +49,7 @@ export type {
   StatusTone,
   PageState,
   PageShellTab,
+  PageAction,
   WizardStep,
   FilterChip,
   StatTrend,

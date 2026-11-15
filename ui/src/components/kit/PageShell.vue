@@ -16,20 +16,22 @@
 
 <script setup lang="ts">
   /**
-   * Frame of every page: title, description, primary actions on the right,
+   * Frame of every page: PageHeader (title, description, primary and secondary actions),
    * optional tabs (bind activeTab to useQueryTab to keep them in the URL) and
    * the content, which follows `state`: loading skeleton, empty slot,
    * ErrorBlock with retry, or the default slot.
    */
   import { nextTick, ref, useId } from 'vue';
+  import PageHeader from './PageHeader.vue';
   import { EmptyBlock, ErrorBlock, LoadingBlock } from './stateBlocks';
-  import type { PageShellTab } from './types';
+  import type { PageAction, PageShellTab } from './types';
 
   const props = withDefaults(
     defineProps<{
       title: string;
       description?: string;
       state: 'loading' | 'empty' | 'error' | 'ready';
+      secondaryActions?: PageAction[];
       tabs?: PageShellTab[];
       activeTab?: string;
       /** optional text under the error title (e.g. the API message) */
@@ -37,6 +39,7 @@
     }>(),
     {
       description: undefined,
+      secondaryActions: () => [],
       tabs: undefined,
       activeTab: undefined,
       errorText: undefined,
@@ -46,6 +49,7 @@
   const emit = defineEmits<{
     (e: 'update:activeTab', key: string): void;
     (e: 'retry'): void;
+    (e: 'action', key: string): void;
   }>();
 
   const tabList = ref<HTMLElement | null>(null);
@@ -82,32 +86,31 @@
 <template>
   <section class="kit-page">
     <header class="kit-page__header">
-      <div
-        v-if="$slots.back"
-        class="kit-page__back"
+      <PageHeader
+        :title="title"
+        :description="description"
+        :secondary-actions="secondaryActions"
+        @action="emit('action', $event)"
       >
-        <slot name="back" />
-      </div>
-      <div class="kit-page__row">
-        <div class="kit-page__heading">
-          <div class="kit-page__title-row">
-            <h1 class="kit-page__title">{{ title }}</h1>
-            <slot name="meta" />
-          </div>
-          <p
-            v-if="description"
-            class="kit-page__description"
-          >
-            {{ description }}
-          </p>
-        </div>
-        <div
+        <template
+          v-if="$slots.back"
+          #back
+        >
+          <slot name="back" />
+        </template>
+        <template
+          v-if="$slots.meta"
+          #meta
+        >
+          <slot name="meta" />
+        </template>
+        <template
           v-if="$slots.actions"
-          class="kit-page__actions"
+          #actions
         >
           <slot name="actions" />
-        </div>
-      </div>
+        </template>
+      </PageHeader>
 
       <div
         v-if="tabs && tabs.length > 0"
@@ -181,54 +184,6 @@
       display: flex;
       flex-direction: column;
       gap: var(--tt-space-4);
-    }
-
-    &__row {
-      display: flex;
-      align-items: flex-end;
-      flex-wrap: wrap;
-      gap: var(--tt-space-3) var(--tt-space-4);
-    }
-
-    &__heading {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-1);
-      flex: 1 1 320px;
-      min-width: 0;
-    }
-
-    &__title-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--tt-space-2) var(--tt-space-3);
-      min-width: 0;
-    }
-
-    &__title {
-      margin: 0;
-      font-size: var(--tt-text-2xl);
-      line-height: 32px;
-      font-weight: var(--tt-weight-strong);
-      color: var(--tt-text);
-      overflow-wrap: anywhere;
-    }
-
-    &__description {
-      margin: 0;
-      max-width: var(--tt-measure);
-      font-size: var(--tt-text-md);
-      line-height: 20px;
-      color: var(--tt-text-2);
-    }
-
-    &__actions {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--tt-space-2);
-      margin-left: auto;
     }
 
     &__tabs {

@@ -177,6 +177,7 @@
       :draft-key="DRAFT_KEY"
       :finish-label="t('wizFinish')"
       :busy="isSaving"
+      start-over-on-first-step
       @finish="finish"
       @step="onStep"
     >

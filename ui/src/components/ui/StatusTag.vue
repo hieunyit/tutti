@@ -15,10 +15,14 @@
   -->
 
 <script setup lang="ts">
-  import { computed } from 'vue';
+  /**
+   * Deprecated alias of the kit StatusBadge (same look, one implementation).
+   * New code imports StatusBadge from '@/components/kit'.
+   */
   import type { StatusVariant } from './status';
+  import StatusBadge from '@/components/kit/StatusBadge.vue';
 
-  const props = withDefaults(
+  withDefaults(
     defineProps<{
       variant?: StatusVariant;
       /** text; the default slot wins when both are given */
@@ -28,46 +32,14 @@
     }>(),
     { variant: 'neutral', label: undefined, noDot: false },
   );
-
-  const classes = computed(() => `tt-status tt-status--${props.variant}`);
 </script>
 
 <template>
-  <span :class="classes">
-    <span
-      v-if="!noDot"
-      class="tt-status__dot"
-      aria-hidden="true"
-    />
+  <StatusBadge
+    :tone="variant"
+    :label="label"
+    :no-dot="noDot"
+  >
     <slot>{{ label }}</slot>
-  </span>
+  </StatusBadge>
 </template>
-
-<style lang="scss" scoped>
-  .tt-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 8px;
-    border-radius: var(--tt-radius-pill);
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 600;
-    white-space: nowrap;
-
-    &__dot {
-      flex: none;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: currentcolor;
-    }
-
-    @each $name in (success, warning, danger, info, neutral) {
-      &--#{$name} {
-        color: var(--tt-#{$name});
-        background-color: var(--tt-#{$name}-bg);
-      }
-    }
-  }
-</style>

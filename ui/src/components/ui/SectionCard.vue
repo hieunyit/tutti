@@ -27,8 +27,15 @@
       linkTo?: RouteLocationRaw;
       /** small grey text next to the title */
       meta?: string;
+      /**
+       * `card` (default): bordered surface, for content that adds information
+       * beyond its title (tables, lists, KPIs). `section`: no border or fill,
+       * for simple groupings; never repeat the page or tab title as the title.
+       */
+      variant?: 'card' | 'section';
     }>(),
     {
+      variant: 'card',
       flush: false,
       linkLabel: undefined,
       linkTo: undefined,
@@ -38,7 +45,10 @@
 </script>
 
 <template>
-  <section class="tt-section">
+  <section
+    class="tt-section"
+    :class="`tt-section--${variant}`"
+  >
     <header class="tt-section__header">
       <h2 class="tt-section__title">{{ title }}</h2>
       <span
@@ -78,6 +88,23 @@
     background-color: var(--tt-surface);
     border: 1px solid var(--tt-border);
     border-radius: var(--tt-radius-card);
+
+    &--section {
+      overflow: visible;
+      background-color: transparent;
+      border: 0;
+      border-radius: 0;
+
+      .tt-section__header {
+        min-height: 0;
+        padding: 0 0 var(--tt-space-2);
+        border-bottom: 0;
+      }
+
+      .tt-section__body {
+        padding: 0;
+      }
+    }
 
     &__header {
       display: flex;

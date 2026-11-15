@@ -42,3 +42,11 @@ export interface StatTrend {
   /** e.g. "+3 since yesterday" */
   label: string;
 }
+
+/** An entry of the PageHeader secondary actions menu. */
+export interface PageAction {
+  key: string;
+  label: string;
+  disabled?: boolean;
+  danger?: boolean;
+}

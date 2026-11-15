@@ -19,12 +19,17 @@
    * Loading / empty / error placeholder of a page or a table. Use the
    * LoadingBlock, EmptyBlock and ErrorBlock wrappers from '@/components/kit'.
    * The skeleton fades in after 100ms so fast loads never flash a loader.
+   *
+   * Empty pattern (exported as EmptyState too): a title, ONE body sentence, ONE
+   * primary action (default slot) and an optional `icon` slot. A body that only
+   * repeats the title is dropped, so the two never stutter.
    */
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NSkeleton } from 'naive-ui';
   import i18nKit from './i18nKit';
 
-  withDefaults(
+  const props = withDefaults(
     defineProps<{
       kind: 'loading' | 'empty' | 'error';
       title?: string;
@@ -47,6 +52,14 @@
   }>();
 
   const { t } = useI18n({ messages: i18nKit });
+  const emptyText = computed(() => {
+    const body = props.description?.trim();
+    const head = props.title?.trim().toLowerCase();
+
+    if (!body) return undefined;
+
+    return head && body.toLowerCase().startsWith(head) ? undefined : body;
+  });
 </script>
 
 <template>
@@ -93,12 +106,19 @@
     class="kit-state kit-state--empty"
     data-kit-state="empty"
   >
+    <span
+      v-if="$slots.icon"
+      class="kit-state__icon"
+      aria-hidden="true"
+    >
+      <slot name="icon" />
+    </span>
     <strong class="kit-state__title">{{ title ?? t('emptyTitle') }}</strong>
     <p
-      v-if="description"
+      v-if="emptyText"
       class="kit-state__text"
     >
-      {{ description }}
+      {{ emptyText }}
     </p>
     <div
       v-if="$slots.default"
@@ -140,6 +160,10 @@
       border-radius: 50%;
       font-weight: var(--tt-weight-strong);
       font-size: var(--tt-text-lg);
+
+      color: var(--tt-text-3);
+      background-color: var(--tt-subtle);
+      border: 1px solid var(--tt-border);
 
       &--error {
         color: var(--tt-danger);

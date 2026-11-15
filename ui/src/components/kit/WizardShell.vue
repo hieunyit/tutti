@@ -20,7 +20,11 @@
    * stays disabled until the step is `valid`; Back/Next/Finish sit in a sticky
    * footer. The current step is kept per `draftKey` in sessionStorage, and the
    * form data should live in `useWizardDraft(draftKey, ...)`, so leaving and
-   * coming back restores both. "Start over" clears them and emits `reset`.
+   * coming back restores both. "Start over" clears them and emits `reset`; it
+   * only shows after the first step (nothing to start over on step 1).
+   * Shows "Step n of m" with a progress bar, and an optional `summary` slot
+   * (an aside next to the step, stacked below it on narrow screens) that
+   * phase 2 wizards use for the running summary.
    */
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -41,8 +45,10 @@
       finishLabel?: string;
       /** finish in progress */
       busy?: boolean;
+      /** keep "Start over" on step 1 too (default: only after step 1) */
+      startOverOnFirstStep?: boolean;
     }>(),
-    { finishLabel: undefined, busy: false },
+    { finishLabel: undefined, busy: false, startOverOnFirstStep: false },
   );
 
   const emit = defineEmits<{
@@ -56,6 +62,9 @@
 
   const step = computed(() => props.steps[current.value]);
   const isLast = computed(() => current.value === props.steps.length - 1);
+  const progressText = computed(() =>
+    t('stepOf', { current: current.value + 1, total: props.steps.length }),
+  );
 
   /** never past the first invalid step (e.g. a restored, now stale draft) */
   function clampStep(index: number) {
@@ -140,18 +149,45 @@
       </li>
     </ol>
 
-    <p class="tt-sr-only">
-      {{ t('stepOf', { current: current + 1, total: steps.length }) }}
-    </p>
+    <div
+      class="kit-wizard__progress"
+      role="progressbar"
+      aria-valuemin="1"
+      :aria-valuemax="steps.length"
+      :aria-valuenow="current + 1"
+      :aria-valuetext="progressText"
+    >
+      <span
+        class="kit-wizard__progress-fill"
+        :style="{ width: `${((current + 1) / steps.length) * 100}%` }"
+      />
+    </div>
+    <p class="kit-wizard__progress-text">{{ progressText }}</p>
 
-    <div class="kit-wizard__body">
-      <template v-if="step">
-        <slot :name="step.key" />
-      </template>
+    <div
+      class="kit-wizard__content"
+      :class="{ 'kit-wizard__content--aside': $slots.summary }"
+    >
+      <div class="kit-wizard__body">
+        <template v-if="step">
+          <slot :name="step.key" />
+        </template>
+      </div>
+      <aside
+        v-if="$slots.summary"
+        class="kit-wizard__summary"
+        :aria-label="t('summary')"
+      >
+        <slot
+          name="summary"
+          :step="step?.key"
+        />
+      </aside>
     </div>
 
     <footer class="kit-wizard__footer">
       <NButton
+        v-if="current > 0 || startOverOnFirstStep"
         quaternary
         :disabled="busy"
         @click="startOver"
@@ -244,6 +280,48 @@
       font-size: var(--tt-text-xs);
     }
 
+    &__progress {
+      height: 4px;
+      margin-top: calc(var(--tt-space-3) * -1);
+      border-radius: var(--tt-radius-pill);
+      background-color: var(--tt-border);
+      overflow: hidden;
+    }
+
+    &__progress-fill {
+      display: block;
+      height: 100%;
+      background-color: var(--tt-accent);
+      transition: width var(--tt-duration) var(--tt-ease);
+    }
+
+    &__progress-text {
+      margin: calc(var(--tt-space-3) * -1) 0 0;
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-2);
+    }
+
+    &__content {
+      display: grid;
+      gap: var(--tt-space-5);
+
+      &--aside {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+        align-items: start;
+
+        @media screen and (max-width: 1023px) {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+    }
+
+    &__summary {
+      padding: var(--tt-space-4);
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-card);
+      background-color: var(--tt-subtle);
+    }
+
     &__body {
       min-width: 0;
     }
@@ -264,6 +342,12 @@
       display: flex;
       gap: var(--tt-space-2);
       margin-left: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kit-wizard__progress-fill {
+      transition: none;
     }
   }
 </style>

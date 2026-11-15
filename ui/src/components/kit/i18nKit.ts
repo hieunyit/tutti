@@ -19,6 +19,10 @@
 // @clyso/clyso-ui-kit bundle, so kit components mount in unit tests as is.
 export default <Record<string, Record<string, string>>>{
   en: {
+    moreActions: 'More',
+    filters: 'Filters',
+    filtersWithCount: 'Filters ({n})',
+    summary: 'Summary',
     loading: 'Loading',
     retry: 'Try again',
     errorTitle: 'Could not load this page',
@@ -48,6 +52,10 @@ export default <Record<string, Record<string, string>>>{
     trendFlat: 'unchanged',
   },
   de: {
+    moreActions: 'Mehr',
+    filters: 'Filter',
+    filtersWithCount: 'Filter ({n})',
+    summary: 'Zusammenfassung',
     loading: 'Wird geladen',
     retry: 'Erneut versuchen',
     errorTitle: 'Diese Seite konnte nicht geladen werden',
@@ -78,6 +86,10 @@ export default <Record<string, Record<string, string>>>{
     trendFlat: 'unverändert',
   },
   vi: {
+    moreActions: 'Thêm',
+    filters: 'Bộ lọc',
+    filtersWithCount: 'Bộ lọc ({n})',
+    summary: 'Tóm tắt',
     loading: 'Đang tải',
     retry: 'Thử lại',
     errorTitle: 'Không tải được trang này',

@@ -74,8 +74,8 @@ describe('StatusTag', () => {
       props: { variant: 'danger', label: 'Unavailable' },
     });
 
-    expect(wrapper.classes()).toContain('tt-status--danger');
-    expect(wrapper.find('.tt-status__dot').exists()).toBe(true);
+    expect(wrapper.classes()).toContain('kit-status--danger');
+    expect(wrapper.find('.kit-status__dot').exists()).toBe(true);
     expect(wrapper.text()).toBe('Unavailable');
   });
 
@@ -85,8 +85,8 @@ describe('StatusTag', () => {
       slots: { default: 'Disabled' },
     });
 
-    expect(wrapper.classes()).toContain('tt-status--neutral');
-    expect(wrapper.find('.tt-status__dot').exists()).toBe(false);
+    expect(wrapper.classes()).toContain('kit-status--neutral');
+    expect(wrapper.find('.kit-status__dot').exists()).toBe(false);
     expect(wrapper.text()).toBe('Disabled');
   });
 });

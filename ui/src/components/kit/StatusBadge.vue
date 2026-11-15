@@ -15,26 +15,44 @@
   -->
 
 <script setup lang="ts">
-  /** Colored dot plus text: the label carries the meaning, not the color. */
+  /**
+   * The one status badge: colored dot plus text, the label carries the meaning,
+   * not the color. Give a `tone`, or a domain `status` word ("healthy", "paused")
+   * that is mapped to a tone; the default slot overrides `label`. `noDot` hides
+   * the dot. Colors come only from the --tt-* semantic tokens.
+   */
+  import { computed } from 'vue';
   import type { StatusTone } from './types';
+  import { mapStatusToVariant } from '@/components/ui/status';
 
-  defineProps<{
-    tone: StatusTone;
-    label: string;
-  }>();
+  const props = withDefaults(
+    defineProps<{
+      tone?: StatusTone;
+      /** domain status word, mapped with mapStatusToVariant when no tone is given */
+      status?: string | null;
+      label?: string;
+      noDot?: boolean;
+    }>(),
+    { tone: undefined, status: undefined, label: undefined, noDot: false },
+  );
+
+  const resolved = computed<StatusTone>(
+    () => props.tone ?? mapStatusToVariant(props.status),
+  );
 </script>
 
 <template>
   <span
     class="kit-status"
-    :class="`kit-status--${tone}`"
-    :data-tone="tone"
+    :class="`kit-status--${resolved}`"
+    :data-tone="resolved"
   >
     <span
+      v-if="!noDot"
       class="kit-status__dot"
       aria-hidden="true"
     />
-    {{ label }}
+    <slot>{{ label }}</slot>
   </span>
 </template>
 
