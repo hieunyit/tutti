@@ -51,7 +51,9 @@
   const objects = computed(() =>
     t('initObjectsCount', {
       done: Number(props.replication.initObjDone).toLocaleString(locale.value),
-      total: Number(props.replication.initObjListed).toLocaleString(locale.value),
+      total: Number(props.replication.initObjListed).toLocaleString(
+        locale.value,
+      ),
     }),
   );
   const lag = computed(() =>

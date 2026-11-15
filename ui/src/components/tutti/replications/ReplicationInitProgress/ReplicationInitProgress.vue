@@ -41,7 +41,9 @@
   const objectsText = computed<string>(() =>
     t('initObjectsCount', {
       done: Number(props.replication.initObjDone).toLocaleString(locale.value),
-      total: Number(props.replication.initObjListed).toLocaleString(locale.value),
+      total: Number(props.replication.initObjListed).toLocaleString(
+        locale.value,
+      ),
     }),
   );
 </script>
