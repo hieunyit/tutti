@@ -135,26 +135,31 @@
     :title="t('changePassword')"
     style="width: 480px; max-width: 94vw"
   >
-    <div style="display: flex; flex-direction: column; gap: 14px">
-      <p style="margin: 0; line-height: 1.5">
-        Account <strong>{{ username }}</strong> is defined in the static server configuration file (<code>worker config.yaml</code>).
-      </p>
-      <p style="margin: 0; font-size: 13px; color: var(--tt-text-3)">
-        Passwords for static configuration accounts cannot be modified via the web UI. To change this password, update the bcrypt password hash directly in the server configuration file and restart the worker.
-      </p>
-      <div style="display: flex; justify-content: flex-end; margin-top: 6px">
-        <NButton
-          type="primary"
-          @click="showConfigNotice = false"
-        >
-          {{ t('close') || 'Close' }}
-        </NButton>
-      </div>
+    <div class="auth-user-menu__notice">
+      <p>{{ t('configAccountText', { name: username ?? '' }) }}</p>
+      <NButton
+        type="primary"
+        @click="showConfigNotice = false"
+      >
+        {{ t('close') }}
+      </NButton>
     </div>
   </NModal>
 </template>
 
 <style lang="scss" scoped>
+  .auth-user-menu__notice {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--tt-space-4);
+
+    p {
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+
   .auth-user-menu {
     display: flex;
     align-items: center;

@@ -17,9 +17,9 @@
 <script setup lang="ts">
   import { computed, defineAsyncComponent } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRoute } from 'vue-router';
   import { PageShell } from '@/components/kit';
-  import DocsGuides from '@/components/tutti/docs/DocsGuides.vue';
+  import DocsGettingStarted from '@/components/tutti/docs/DocsGettingStarted.vue';
   import i18nDocs from '@/components/tutti/docs/i18nDocs';
   import { RouteName } from '@/utils/types/router';
 
@@ -30,41 +30,16 @@
 
   const { t } = useI18n({ messages: i18nDocs });
   const route = useRoute();
-  const router = useRouter();
   const isApi = computed(() => route.name === RouteName.TUTTI_API_REFERENCE);
-  const activeTab = computed(() => (isApi.value ? 'api' : 'guides'));
-  const tabs = computed(() => [
-    { key: 'guides', label: t('tabGuides') },
-    { key: 'api', label: t('tabApi') },
-  ]);
-  const slug = computed(() =>
-    typeof route.params.slug === 'string' && route.params.slug.trim() !== ''
-      ? route.params.slug
-      : undefined,
-  );
-
-  function selectTab(key: string) {
-    router.push({
-      name:
-        key === 'api' ? RouteName.TUTTI_API_REFERENCE : RouteName.TUTTI_DOCS,
-    });
-  }
 </script>
 
 <template>
   <PageShell
     class="docs-page"
-    :title="t('title')"
-    :description="isApi ? t('apiDescription') : t('description')"
+    :title="isApi ? t('apiTitle') : t('title')"
     state="ready"
-    :tabs="tabs"
-    :active-tab="activeTab"
-    @update:active-tab="selectTab"
   >
     <DocsApiReference v-if="isApi" />
-    <DocsGuides
-      v-else
-      :slug="slug"
-    />
+    <DocsGettingStarted v-else />
   </PageShell>
 </template>

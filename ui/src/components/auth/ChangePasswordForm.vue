@@ -5,7 +5,7 @@
   import { NButton, NInput } from 'naive-ui';
   import { useNotification } from '@clyso/clyso-ui-kit';
   import i18nAuth from './i18nAuth';
-  import { Callout, FormSection } from '@/components/kit';
+  import { Callout } from '@/components/kit';
   import { useAuthStore } from '@/stores/authStore';
   import { ConsoleUserHelper } from '@/utils/helpers/ConsoleUserHelper';
   import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
@@ -42,11 +42,6 @@
       ok: !ConsoleUserHelper.validatePassword(password.value, ''),
     },
     {
-      key: 'different',
-      label: t('ruleDifferent'),
-      ok: password.value !== '' && password.value !== (auth.username ?? ''),
-    },
-    {
       key: 'match',
       label: t('ruleMatch'),
       ok: password.value !== '' && password.value === repeat.value,
@@ -80,7 +75,6 @@
       createNotification({
         type: 'success',
         title: t('passwordChanged'),
-        content: t('passwordChanged'),
         isClosable: true,
       });
       emit('changed');
@@ -110,10 +104,7 @@
       >{{ error }}</Callout
     >
 
-    <FormSection
-      :title="t('changePassword')"
-      :description="t('passwordHint')"
-    >
+    <div class="change-password__fields">
       <label class="change-password__field">
         <span>{{ t('currentPassword') }}</span>
         <NInput
@@ -177,8 +168,9 @@
           {{ rule.label }}
         </li>
       </ul>
-    </FormSection>
+    </div>
 
+    <p class="change-password__note">{{ t('passwordHint') }}</p>
     <NButton
       type="primary"
       attr-type="submit"
@@ -195,6 +187,17 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-4);
+
+    &__fields {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &__note {
+      margin: 0;
+      font-size: var(--tt-text-sm);
+      color: var(--tt-text-2);
+    }
 
     &__field {
       display: flex;

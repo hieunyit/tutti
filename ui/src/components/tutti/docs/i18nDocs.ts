@@ -14,34 +14,30 @@
  *  limitations under the License.
  */
 
-import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
-
-export default <I18nMessages>{
-  [I18nLocale.EN]: {
+// Plain locale codes keep this file free of the @clyso/clyso-ui-kit bundle.
+export default <Record<string, Record<string, string>>>{
+  en: {
     title: 'Documentation',
-    description:
-      'Guides shipped with this release, and the management API reference generated from its OpenAPI spec.',
-    sections: 'Documentation sections',
-    tabGuides: 'Guides',
-    tabApi: 'API reference',
-    guidesNav: 'Guides',
-    search: 'Search docs',
-    searchPlaceholder: 'Search docs',
-    searchEmpty: 'No guide matches "{query}".',
-    searchLoading: 'Searching…',
-    breadcrumb: 'Guides',
-    viewSource: 'View on GitHub',
-    loading: 'Loading guide…',
-    notFoundTitle: 'Guide not found',
-    notFoundText: 'There is no guide called "{slug}".',
-    notBundledTitle: 'Guides are not part of this build',
-    notBundledText:
-      'This UI was built without the repository docs. Read them on GitHub instead.',
-    loadFailed: 'The guide could not be loaded.',
-    retry: 'Retry',
-    openFirst: 'Open the first guide',
-    openOnGithub: 'Open on GitHub',
-    'guide_deployment-guide': 'Deployment Guide (Docker, K8s, VM)',
+    intro:
+      'Tutti puts one S3 endpoint in front of your storages and copies buckets between them.',
+    stepsTitle: 'Get started',
+    step1Title: 'Add two storages',
+    step1Text:
+      'Add the storages to keep in sync. Each one needs a connection account that can list, read and write its buckets.',
+    step1Link: 'Open Storages',
+    step2Title: 'Create a replication',
+    step2Text:
+      'Choose a source and a destination, then the user and buckets. The initial copy starts right away.',
+    step2Link: 'Create replication',
+    step3Title: 'Watch progress',
+    step3Text:
+      'Replication shows the initial copy, lag and errors for every pair of storages.',
+    step3Link: 'Open Replication',
+    helpTitle: 'Deployment and operations',
+    helpText:
+      'Guides for Docker Compose, Helm, configuration and upgrades live in the repository.',
+    apiLink: 'Browse the API reference',
+    'guide_deployment-guide': 'Deployment (Docker Compose, Helm, VM)',
     guide_operations: 'Operations',
     guide_configuration: 'Configuration',
     'guide_storage-accounts': 'Storage accounts',
@@ -50,8 +46,6 @@ export default <I18nMessages>{
     'guide_enterprise-ui': 'Enterprise UI',
     guide_failover: 'Failover',
     apiTitle: 'API reference',
-    apiDescription:
-      'Endpoints of the Tutti management API, generated from the bundled OpenAPI spec.',
     apiSpecMeta: 'OpenAPI 2.0 · {prefix}',
     downloadSpec: 'Download spec',
     apiHint:
@@ -61,46 +55,41 @@ export default <I18nMessages>{
     apiNotBundledTitle: 'The API spec is not part of this build',
     apiNotBundledText:
       'This UI was built without the OpenAPI spec (proto/gen/openapi/tutti/tutti.swagger.json).',
+    retry: 'Retry',
     roleAdmin: 'admin only',
     roleViewer: 'viewer',
     rolePublic: 'public',
-    roleLegend: 'Who may call an operation',
   },
-  [I18nLocale.DE]: {
+  de: {
     title: 'Dokumentation',
-    description:
-      'Anleitungen dieser Version und die Referenz der Management-API, erzeugt aus der OpenAPI-Spezifikation.',
-    sections: 'Dokumentationsbereiche',
-    tabGuides: 'Anleitungen',
-    tabApi: 'API-Referenz',
-    guidesNav: 'Anleitungen',
-    search: 'Dokumentation durchsuchen',
-    searchPlaceholder: 'Dokumentation durchsuchen',
-    searchEmpty: 'Keine Anleitung passt zu "{query}".',
-    searchLoading: 'Suche läuft…',
-    breadcrumb: 'Anleitungen',
-    viewSource: 'Auf GitHub ansehen',
-    loading: 'Anleitung wird geladen…',
-    notFoundTitle: 'Anleitung nicht gefunden',
-    notFoundText: 'Es gibt keine Anleitung "{slug}".',
-    notBundledTitle: 'Anleitungen sind nicht Teil dieses Builds',
-    notBundledText:
-      'Diese Oberfläche wurde ohne die Repository-Dokumentation gebaut. Lesen Sie sie stattdessen auf GitHub.',
-    loadFailed: 'Die Anleitung konnte nicht geladen werden.',
-    retry: 'Erneut versuchen',
-    openFirst: 'Erste Anleitung öffnen',
-    openOnGithub: 'Auf GitHub öffnen',
-    'guide_deployment-guide': 'Bereitstellungshandbuch (Docker, K8s, VM)',
+    intro:
+      'Tutti stellt einen S3-Endpunkt vor Ihre Speicher und kopiert Buckets zwischen ihnen.',
+    stepsTitle: 'Erste Schritte',
+    step1Title: 'Zwei Speicher hinzufügen',
+    step1Text:
+      'Fügen Sie die Speicher hinzu, die synchron bleiben sollen. Jeder braucht ein Verbindungskonto, das Buckets auflisten, lesen und schreiben darf.',
+    step1Link: 'Speicher öffnen',
+    step2Title: 'Replikation anlegen',
+    step2Text:
+      'Wählen Sie Quelle und Ziel, dann Benutzer und Buckets. Die Erstkopie startet sofort.',
+    step2Link: 'Replikation anlegen',
+    step3Title: 'Fortschritt verfolgen',
+    step3Text:
+      'Replikation zeigt Erstkopie, Verzug und Fehler für jedes Speicherpaar.',
+    step3Link: 'Replikation öffnen',
+    helpTitle: 'Betrieb und Bereitstellung',
+    helpText:
+      'Anleitungen für Docker Compose, Helm, Konfiguration und Upgrades liegen im Repository.',
+    apiLink: 'API-Referenz ansehen',
+    'guide_deployment-guide': 'Bereitstellung (Docker Compose, Helm, VM)',
     guide_operations: 'Betrieb',
     guide_configuration: 'Konfiguration',
     'guide_storage-accounts': 'Speicherkonten',
     'guide_resilience-api': 'Resilience-API und CLI',
-    'guide_upgrading-from-chorus': 'Umstieg von Chorus',
+    'guide_upgrading-from-chorus': 'Upgrade von Chorus',
     'guide_enterprise-ui': 'Enterprise-Oberfläche',
     guide_failover: 'Failover',
     apiTitle: 'API-Referenz',
-    apiDescription:
-      'Endpunkte der Tutti-Management-API, erzeugt aus der mitgelieferten OpenAPI-Spezifikation.',
     apiSpecMeta: 'OpenAPI 2.0 · {prefix}',
     downloadSpec: 'Spezifikation herunterladen',
     apiHint:
@@ -110,58 +99,53 @@ export default <I18nMessages>{
     apiNotBundledTitle: 'Die API-Spezifikation ist nicht Teil dieses Builds',
     apiNotBundledText:
       'Diese Oberfläche wurde ohne die OpenAPI-Spezifikation gebaut (proto/gen/openapi/tutti/tutti.swagger.json).',
+    retry: 'Erneut versuchen',
     roleAdmin: 'nur Admin',
     roleViewer: 'Viewer',
     rolePublic: 'öffentlich',
-    roleLegend: 'Wer eine Operation aufrufen darf',
   },
   vi: {
-    title: 'Tài liệu hướng dẫn',
-    description:
-      'Các hướng dẫn đi kèm phiên bản này và tài liệu API quản trị được tạo từ OpenAPI spec.',
-    sections: 'Mục tài liệu',
-    tabGuides: 'Hướng dẫn',
-    tabApi: 'Tài liệu API (Swagger)',
-    guidesNav: 'Hướng dẫn',
-    search: 'Tìm kiếm tài liệu',
-    searchPlaceholder: 'Tìm kiếm hướng dẫn...',
-    searchEmpty: 'Không tìm thấy hướng dẫn nào khớp với "{query}".',
-    searchLoading: 'Đang tìm kiếm…',
-    breadcrumb: 'Hướng dẫn',
-    viewSource: 'Xem trên GitHub',
-    loading: 'Đang tải tài liệu…',
-    notFoundTitle: 'Không tìm thấy tài liệu',
-    notFoundText: 'Không tồn tại tài liệu mang tên "{slug}".',
-    notBundledTitle: 'Tài liệu không được đóng gói trong bản build này',
-    notBundledText:
-      'Giao diện này được dựng mà không đính kèm tài liệu kho mã nguồn. Bạn có thể đọc trực tiếp trên GitHub.',
-    loadFailed: 'Không thể tải tài liệu.',
-    retry: 'Thử lại',
-    openFirst: 'Mở tài liệu đầu tiên',
-    openOnGithub: 'Mở trên GitHub',
-    'guide_deployment-guide': 'Hướng dẫn triển khai (Docker, K8s, VM)',
-    guide_operations: 'Vận hành hệ thống',
-    guide_configuration: 'Cấu hình tham số',
-    'guide_storage-accounts': 'Tài khoản lưu trữ (Storage accounts)',
+    title: 'Tài liệu',
+    intro:
+      'Tutti đặt một endpoint S3 phía trước các Storage của bạn và sao chép bucket giữa chúng.',
+    stepsTitle: 'Bắt đầu',
+    step1Title: 'Thêm hai Storage',
+    step1Text:
+      'Thêm các Storage cần giữ đồng bộ. Mỗi Storage cần một tài khoản kết nối có quyền liệt kê, đọc và ghi bucket.',
+    step1Link: 'Mở Storages',
+    step2Title: 'Tạo Replication',
+    step2Text:
+      'Chọn Nguồn và Đích, sau đó chọn User và bucket. Sao chép ban đầu bắt đầu ngay.',
+    step2Link: 'Tạo Replication',
+    step3Title: 'Theo dõi tiến độ',
+    step3Text:
+      'Replication hiển thị sao chép ban đầu, độ trễ và lỗi của từng cặp Storage.',
+    step3Link: 'Mở Replication',
+    helpTitle: 'Triển khai và vận hành',
+    helpText:
+      'Hướng dẫn Docker Compose, Helm, cấu hình và nâng cấp nằm trong repository.',
+    apiLink: 'Xem tài liệu API',
+    'guide_deployment-guide': 'Triển khai (Docker Compose, Helm, VM)',
+    guide_operations: 'Vận hành',
+    guide_configuration: 'Cấu hình',
+    'guide_storage-accounts': 'Tài khoản Storage',
     'guide_resilience-api': 'Resilience API và CLI',
     'guide_upgrading-from-chorus': 'Nâng cấp từ Chorus',
-    'guide_enterprise-ui': 'Giao diện Quản trị Enterprise',
-    guide_failover: 'Cơ chế dự phòng (Failover)',
-    apiTitle: 'Tài liệu API (OpenAPI / Swagger)',
-    apiDescription:
-      'Các điểm cuối (endpoints) của API quản trị Tutti, được tạo từ OpenAPI spec.',
+    'guide_enterprise-ui': 'Enterprise UI',
+    guide_failover: 'Failover',
+    apiTitle: 'Tài liệu API',
     apiSpecMeta: 'OpenAPI 2.0 · {prefix}',
-    downloadSpec: 'Tải OpenAPI Spec',
+    downloadSpec: 'Tải OpenAPI spec',
     apiHint:
-      'Thử nghiệm trực tiếp các lệnh gọi API với phiên đăng nhập hiện tại. Các API chỉ dành cho Quản trị viên được gắn nhãn rõ.',
+      'Thử gọi API ngay với phiên đăng nhập hiện tại. API chỉ dành cho quản trị viên được gắn nhãn.',
     apiLoading: 'Đang tải tài liệu API…',
     apiFailed: 'Không thể tải tài liệu API.',
     apiNotBundledTitle: 'OpenAPI spec không có trong bản build này',
     apiNotBundledText:
-      'Giao diện này được dựng mà không đính kèm file OpenAPI spec (proto/gen/openapi/tutti/tutti.swagger.json).',
+      'Giao diện này được dựng mà không đính kèm OpenAPI spec (proto/gen/openapi/tutti/tutti.swagger.json).',
+    retry: 'Thử lại',
     roleAdmin: 'Chỉ Admin',
-    roleViewer: 'Người xem (Viewer)',
-    rolePublic: 'Công khai (Public)',
-    roleLegend: 'Quyền gọi API',
+    roleViewer: 'Người xem',
+    rolePublic: 'Công khai',
   },
 };

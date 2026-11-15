@@ -14,27 +14,15 @@
  *  limitations under the License.
  */
 
-// The guides and the OpenAPI spec are repository files outside ui/. They are
-// bundled at build time, one lazy chunk each. When the UI is built from a
-// context that only contains ui/ (the ui/Dockerfile), the globs match nothing
-// and the pages show a "not bundled" message instead of failing the build.
-
-const guideModules = import.meta.glob(
-  ['../../../../../docs/tutti/*.md', '../../../../../docs/failover.md'],
-  { query: '?raw', import: 'default' },
-) as Record<string, () => Promise<string>>;
+// The OpenAPI spec is a repository file outside ui/. It is bundled at build
+// time as one lazy chunk. When the UI is built from a context that only
+// contains ui/ (the ui/Dockerfile), the glob matches nothing and the API
+// reference shows a "not bundled" message instead of failing the build.
 
 const specModules = import.meta.glob(
   '../../../../../proto/gen/openapi/tutti/tutti.swagger.json',
   { import: 'default' },
 ) as Record<string, () => Promise<unknown>>;
-
-/** Markdown source of a guide by its repository path, null when not bundled. */
-export function loadGuide(path: string): Promise<string> | null {
-  const key = Object.keys(guideModules).find((k) => k.endsWith(`/${path}`));
-
-  return key ? (guideModules[key]?.() ?? null) : null;
-}
 
 /** The bundled OpenAPI document, null when not bundled. */
 export function loadSpec(): Promise<Record<string, unknown>> | null {

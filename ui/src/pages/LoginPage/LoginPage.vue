@@ -71,10 +71,7 @@
         novalidate
         @submit.prevent="submit"
       >
-        <div class="login-page__heading">
-          <h1 class="login-page__title">{{ t('loginTitle') }}</h1>
-          <p class="login-page__subtitle">{{ t('loginDescription') }}</p>
-        </div>
+        <h1 class="login-page__title">{{ t('loginTitle') }}</h1>
 
         <SessionEndedNotice />
 
@@ -101,7 +98,6 @@
               autocapitalize: 'none',
               spellcheck: false,
             }"
-            :placeholder="t('usernamePlaceholder')"
             :disabled="isLoggingIn"
             :status="usernameError ? 'error' : undefined"
           />
@@ -128,7 +124,6 @@
               name: 'password',
               autocomplete: 'current-password',
             }"
-            :placeholder="t('passwordPlaceholder')"
             :disabled="isLoggingIn"
             :status="passwordError ? 'error' : undefined"
           />
@@ -146,7 +141,6 @@
         >
           {{ t('keepSignedIn') }}
         </NCheckbox>
-        <span class="login-page__hint">{{ t('keepSignedInHint') }}</span>
 
         <NButton
           type="primary"
@@ -158,8 +152,8 @@
           {{ isLoggingIn ? t('signingIn') : t('signIn') }}
         </NButton>
 
-        <p class="login-page__help">{{ t('loginHelp') }}</p>
         <p class="login-page__help">
+          {{ t('loginHelp') }}
           <a
             class="login-page__link"
             data-test="first-run-hint"
@@ -233,22 +227,10 @@
       gap: var(--tt-space-4);
     }
 
-    &__heading {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-1);
-    }
-
     &__title {
       margin: 0;
       font-size: var(--tt-text-xl);
       font-weight: var(--tt-weight-strong);
-    }
-
-    &__subtitle {
-      margin: 0;
-      font-size: var(--tt-text-md);
-      color: var(--tt-text-2);
     }
 
     &__field {
@@ -265,12 +247,6 @@
     &__error {
       font-size: var(--tt-text-xs);
       color: var(--tt-danger);
-    }
-
-    &__hint {
-      margin-top: calc(var(--tt-space-2) * -1);
-      font-size: var(--tt-text-xs);
-      color: var(--tt-text-3);
     }
 
     &__help {

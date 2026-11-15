@@ -160,7 +160,6 @@
     :aria-label="t('apiTitle')"
   >
     <header class="docs-api__header">
-      <h2 class="docs-api__title">{{ t('apiTitle') }}</h2>
       <span class="docs-api__meta">
         {{ t('apiSpecMeta', { prefix: API_PREFIX || '/' }) }}
       </span>
@@ -216,13 +215,6 @@
       align-items: center;
       padding: 14px var(--tt-card-padding);
       border-bottom: 1px solid var(--tt-border-subtle);
-    }
-
-    &__title {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--tt-text);
     }
 
     &__meta {

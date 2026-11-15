@@ -84,4 +84,11 @@ describe('LoginPage', () => {
       'https://github.com/hieunyit/tutti/blob/main/docs/tutti/operations.md#first-login-and-password-recovery',
     );
   });
+
+  it('keeps one help line and no placeholder stutter', () => {
+    const { wrapper } = mountPage();
+
+    expect(wrapper.findAll('.login-page__help')).toHaveLength(1);
+    expect(wrapper.html()).not.toContain('Enter your');
+  });
 });

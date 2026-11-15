@@ -8,7 +8,8 @@ export default <Record<string, Record<string, string>>>{
     signOut: 'Sign out',
     maxText:
       'Your session ends at {time}. Save your work, then sign in again to continue.',
-    endedIdle: 'You were signed out after a period of inactivity.',
+    endedIdle:
+      'You were signed out after a period of inactivity. Sign in to continue.',
     endedMax:
       'Your session reached its maximum length. Sign in again to continue.',
   },
@@ -20,7 +21,8 @@ export default <Record<string, Record<string, string>>>{
     signOut: 'Abmelden',
     maxText:
       'Ihre Sitzung endet um {time}. Speichern Sie Ihre Arbeit und melden Sie sich danach erneut an.',
-    endedIdle: 'Sie wurden nach einer Zeit der Inaktivität abgemeldet.',
+    endedIdle:
+      'Sie wurden nach einer Zeit der Inaktivität abgemeldet. Melden Sie sich an, um fortzufahren.',
     endedMax:
       'Ihre Sitzung hat die maximale Dauer erreicht. Melden Sie sich erneut an, um fortzufahren.',
   },
@@ -32,7 +34,8 @@ export default <Record<string, Record<string, string>>>{
     signOut: 'Đăng xuất',
     maxText:
       'Phiên của bạn kết thúc lúc {time}. Hãy lưu công việc, sau đó đăng nhập lại để tiếp tục.',
-    endedIdle: 'Bạn đã bị đăng xuất do không hoạt động một thời gian.',
+    endedIdle:
+      'Bạn đã được đăng xuất sau một thời gian không hoạt động. Đăng nhập để tiếp tục.',
     endedMax:
       'Phiên đăng nhập đã đạt thời lượng tối đa. Hãy đăng nhập lại để tiếp tục.',
   },

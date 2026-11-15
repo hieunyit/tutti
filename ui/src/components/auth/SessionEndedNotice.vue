@@ -22,7 +22,7 @@
 <template>
   <Callout
     v-if="message"
-    tone="warning"
+    tone="info"
     data-session-ended
   >
     {{ message }}
