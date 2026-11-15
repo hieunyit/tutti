@@ -156,7 +156,11 @@ describe('tuttiAddReplicationStore', () => {
       replicatedBuckets: [],
       coveredBuckets: [
         { bucket: 'b2', ownerKind: 'group', ownerId: 'g1' },
-        { bucket: 'b3', ownerKind: 'replication', ownerId: 'main:backup' },
+        {
+          bucket: 'b3',
+          ownerKind: 'replication',
+          ownerId: ':main:backup:b3:b3',
+        },
       ],
     });
     const store = useTuttiAddReplicationStore();
@@ -169,6 +173,7 @@ describe('tuttiAddReplicationStore', () => {
     expect(store.coveredRows[0]!.reason).toContain('coveredByGroup');
     expect(store.coveredRows[0]!.reason).toContain('g1');
     expect(store.coveredRows[1]!.reason).toContain('coveredByReplication');
+    expect(store.coveredRows[1]!.reason).toContain('main → backup · b3');
     expect(store.isAllBucketsDisabled).toBe(true);
     expect(store.allBucketsDisabledReason).toContain('g1');
   });
@@ -243,6 +248,8 @@ describe('tuttiAddReplicationStore', () => {
     expect(created).toBe(false);
     expect(push).not.toHaveBeenCalled();
     expect(store.createError).toContain(reason);
+    // the reason already names the bucket: not repeated as a prefix
+    expect(store.createError).toBe(reason);
     expect(store.selectedBuckets).toEqual(['b1']);
     expect(store.selectedFromStorage?.name).toBe('main');
     expect(store.isSubmitting).toBe(false);

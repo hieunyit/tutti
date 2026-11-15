@@ -97,3 +97,20 @@ describe('ReplicationNameHelper.getProblem', () => {
     expect(H.getProblem('a\u0000b')).toBe('controlChars');
   });
 });
+
+describe('ReplicationNameHelper.labelFromIdString', () => {
+  it('turns a backend replication id into the auto label', () => {
+    expect(H.labelFromIdString(':sta:stb:src-data:src-data', ALL)).toBe(
+      'sta → stb · src-data',
+    );
+    expect(H.labelFromIdString(':sta:stb:a:b', ALL)).toBe('sta → stb · a → b');
+    expect(H.labelFromIdString('alice:sta:stb', ALL)).toBe(
+      'sta → stb · all buckets',
+    );
+  });
+
+  it('keeps anything it cannot parse', () => {
+    expect(H.labelFromIdString('main:backup', ALL)).toBe('main:backup');
+    expect(H.labelFromIdString('', ALL)).toBe('');
+  });
+});

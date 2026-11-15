@@ -61,6 +61,38 @@ export abstract class ReplicationNameHelper {
     return `${fromStorage} → ${toStorage} · ${scope}`;
   }
 
+  /**
+   * Readable label for a replication id string as the backend prints it in
+   * conflict reasons: `<user>:<from>:<to>:<fromBucket>:<toBucket>` (bucket
+   * scope) or `<user>:<from>:<to>` (all buckets). Anything else stays as is.
+   */
+  static labelFromIdString(id: string, allBucketsText: string): string {
+    const parts = id.split(':');
+    const n = parts.length;
+
+    if (n === 3 || n === 5) {
+      const [fromStorage = '', toStorage = ''] = parts.slice(1, 3);
+      const [fromBucket = '', toBucket = ''] = parts.slice(3);
+
+      if (fromStorage && toStorage) {
+        return this.getAutoLabel(
+          {
+            id: {
+              user: parts[0] ?? '',
+              fromStorage,
+              toStorage,
+              fromBucket,
+              toBucket,
+            },
+          },
+          allBucketsText,
+        );
+      }
+    }
+
+    return id;
+  }
+
   /** the name, or the auto label for an unnamed replication */
   static getDisplayName(
     replication: Pick<TuttiReplication, 'id' | 'name'>,

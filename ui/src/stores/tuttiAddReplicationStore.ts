@@ -149,7 +149,15 @@ export const useTuttiAddReplicationStore = defineStore(
         covered.ownerKind === 'group'
           ? 'coveredByGroup'
           : 'coveredByReplication',
-        { id: covered.ownerId },
+        {
+          id:
+            covered.ownerKind === 'group'
+              ? covered.ownerId
+              : ReplicationNameHelper.labelFromIdString(
+                  covered.ownerId,
+                  t('coveredAllBuckets'),
+                ),
+        },
       );
     }
 
@@ -268,7 +276,10 @@ export const useTuttiAddReplicationStore = defineStore(
         }
 
         const content = errorList.map(([id, reason]) =>
-          id.fromBucket ? `${id.fromBucket}: ${reason}` : reason,
+          // the backend often names the bucket itself ('bucket "b" on x->y ...')
+          id.fromBucket && !reason.includes(`"${id.fromBucket}"`)
+            ? `${id.fromBucket}: ${reason}`
+            : reason,
         );
 
         state.createError = content.join('; ');
