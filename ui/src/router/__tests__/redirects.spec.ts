@@ -70,14 +70,15 @@ async function land(
 describe('old URLs redirect to the new routes (spec section 2)', () => {
   it.each([
     ['/home', '/dashboard', {}],
-    ['/monitoring', '/dashboard', { tab: 'metrics' }],
+    ['/monitoring', '/dashboard', { tab: 'traffic' }],
     ['/health', '/proxies', {}],
-    ['/routing-policies', '/replication', { tab: 'routing' }],
-    ['/routing-policies/add', '/replication/routing/add', {}],
+    ['/routing-policies', '/routing', {}],
+    ['/routing-policies/add', '/routing/add', {}],
+    ['/replication/routing/add', '/routing/add', {}],
     ['/diff-reports', '/replication', { tab: 'diff' }],
     ['/diff-reports/add', '/replication/diff/add', {}],
     ['/failover', '/protection-groups', {}],
-    ['/access-keys', '/proxy-accounts', {}],
+    ['/proxy-accounts', '/access-keys', {}],
     ['/', '/dashboard', {}],
   ])('%s -> %s keeps the query', async (from, to, extra) => {
     const route = await land(`${from}?keep=1&other=x`);
@@ -102,6 +103,30 @@ describe('old URLs redirect to the new routes (spec section 2)', () => {
     expect(route.query).toEqual({ from: 's1:b', to: 's2:b' });
   });
 
+  it('moved tabs keep their deep links: ?tab=routing and ?tab=config', async () => {
+    const routing = await land('/replication?tab=routing&x=1');
+
+    expect(routing.name).toBe(RouteName.TUTTI_ROUTING_RULES);
+    expect(routing.path).toBe('/routing');
+    expect(routing.query).toEqual({ x: '1' });
+
+    const config = await land('/proxies?tab=config&x=1');
+
+    expect(config.name).toBe(RouteName.TUTTI_SYSTEM_SETTINGS);
+    expect(config.query).toEqual({ tab: 'proxies', x: '1' });
+    expect((await land('/proxies')).name).toBe(RouteName.TUTTI_PROXIES);
+    expect((await land('/replication?tab=diff')).name).toBe(
+      RouteName.TUTTI_REPLICATION,
+    );
+  });
+
+  it('the replication detail deep link is unchanged', async () => {
+    const route = await land('/replication/detail?from=s1:b&to=s2:b');
+
+    expect(route.name).toBe(RouteName.TUTTI_REPLICATION_DETAIL);
+    expect(route.query).toEqual({ from: 's1:b', to: 's2:b' });
+  });
+
   it('unknown paths land on the dashboard', async () => {
     const route = await land('/no/such/page');
 
@@ -112,10 +137,11 @@ describe('old URLs redirect to the new routes (spec section 2)', () => {
 describe('old route names still resolve (names are never removed)', () => {
   it.each([
     [RouteName.TUTTI_HOME, '/dashboard', {}],
-    [RouteName.TUTTI_MONITORING, '/dashboard', { tab: 'metrics' }],
-    [RouteName.TUTTI_ROUTING_POLICIES, '/replication', { tab: 'routing' }],
+    [RouteName.TUTTI_MONITORING, '/dashboard', { tab: 'traffic' }],
+    [RouteName.TUTTI_PROXY_ACCOUNTS, '/access-keys', {}],
+    [RouteName.TUTTI_ROUTING_POLICIES, '/routing', {}],
     [RouteName.TUTTI_DIFF_REPORTS, '/replication', { tab: 'diff' }],
-    [RouteName.TUTTI_ADD_ROUTING_POLICY, '/replication/routing/add', {}],
+    [RouteName.TUTTI_ADD_ROUTING_POLICY, '/routing/add', {}],
     [RouteName.TUTTI_ADD_DIFF_REPORT, '/replication/diff/add', {}],
   ])('%s -> %s', async (name, path, query) => {
     const route = await land({ name });
@@ -212,6 +238,36 @@ describe('viewer cannot reach admin pages by URL', () => {
       const route = await landAs(AuthRole.ADMIN, path);
 
       expect(route.path).toBe(path);
+    },
+  );
+
+  it('strips the Traffic tab (and its old names) for viewers, keeps it for admins', async () => {
+    for (const path of [
+      '/dashboard?tab=traffic',
+      '/dashboard?tab=metrics',
+      '/monitoring',
+    ]) {
+      const viewer = await landAs(AuthRole.VIEWER, path);
+
+      expect(viewer.path).toBe('/dashboard');
+      expect(viewer.query.tab).toBeUndefined();
+    }
+
+    const admin = await landAs(AuthRole.ADMIN, '/monitoring');
+
+    expect(admin.query.tab).toBe('traffic');
+  });
+
+  it('a viewer following the old Proxies config link ends on the dashboard', async () => {
+    const route = await landAs(AuthRole.VIEWER, '/proxies?tab=config');
+
+    expect(route.path).toBe('/dashboard');
+  });
+
+  it.each(['/dashboard', '/storages', '/replication', '/routing'])(
+    'lets a viewer read %s',
+    async (path) => {
+      expect((await landAs(AuthRole.VIEWER, path)).path).toBe(path);
     },
   );
 });

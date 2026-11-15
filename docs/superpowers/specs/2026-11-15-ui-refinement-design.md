@@ -6,7 +6,7 @@ one agent per work package (WP) below. Earlier design: `2026-11-13-ui-redesign-d
 
 ## 1. Information architecture
 
-Sidebar, 9 items in 4 groups plus the lone Dashboard. Definition lives in one file:
+Sidebar, 11 items: the lone Dashboard plus 4 groups (the brief said "9 items"; the agreed list has 11). Definition lives in one file:
 `ui/src/utils/constants/navigation.ts` (groups, items, icons, route, roles, badge).
 
 ```

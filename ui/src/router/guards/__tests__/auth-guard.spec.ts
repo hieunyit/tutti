@@ -32,8 +32,25 @@ function route(
   name: RouteName,
   fullPath: string,
   requiresWrite = false,
+  extra: {
+    meta?: Record<string, unknown>;
+    query?: Record<string, string>;
+  } = {},
 ): RouteLocationNormalized {
-  return { name, fullPath, meta: { requiresWrite } } as never;
+  return {
+    name,
+    fullPath,
+    params: {},
+    query: extra.query ?? {},
+    hash: '',
+    meta: { requiresWrite, ...extra.meta },
+  } as never;
+}
+
+async function signInAs(role: AuthRole) {
+  window.sessionStorage.setItem('tutti.auth.token', 't');
+  setActivePinia(createPinia());
+  me.mockResolvedValue({ authEnabled: true, username: 'u', role });
 }
 
 const run = (to: RouteLocationNormalized) =>
@@ -86,5 +103,40 @@ describe('auth guard', () => {
     expect(await run(route(RouteName.TUTTI_REPLICATION, '/replication'))).toBe(
       true,
     );
+  });
+
+  it('sends viewers away from admin-only routes and lets admins in', async () => {
+    const adminRoute = route(RouteName.TUTTI_AUDIT_LOG, '/audit-log', false, {
+      meta: { requiresAdmin: true },
+    });
+
+    await signInAs(AuthRole.VIEWER);
+    expect(await run(adminRoute)).toEqual({ name: RouteName.TUTTI_HOME });
+
+    await signInAs(AuthRole.ADMIN);
+    expect(await run(adminRoute)).toBe(true);
+  });
+
+  it('strips an admin-only tab (Dashboard Traffic) from the URL for viewers', async () => {
+    const dashboard = (tab: string) =>
+      route(RouteName.TUTTI_DASHBOARD, `/dashboard?tab=${tab}&x=1`, false, {
+        meta: { adminTabs: ['traffic', 'metrics'] },
+        query: { tab, x: '1' },
+      });
+
+    await signInAs(AuthRole.VIEWER);
+    expect(await run(dashboard('traffic'))).toEqual({
+      name: RouteName.TUTTI_DASHBOARD,
+      params: {},
+      query: { x: '1' },
+      hash: '',
+    });
+    expect(await run(dashboard('metrics'))).toMatchObject({
+      query: { x: '1' },
+    });
+    expect(await run(dashboard('overview'))).toBe(true);
+
+    await signInAs(AuthRole.ADMIN);
+    expect(await run(dashboard('traffic'))).toBe(true);
   });
 });
