@@ -165,7 +165,6 @@
     /></NFormItem>
     <NFormItem
       v-if="shows('limits')"
-      :label="t('rate')"
       :feedback="rateChanged()"
       ><div class="storage-form__rate">
         <NCheckbox
@@ -197,7 +196,7 @@
   .storage-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 16px;
+    gap: 4px 16px;
 
     &__wide {
       grid-column: 1 / -1;
