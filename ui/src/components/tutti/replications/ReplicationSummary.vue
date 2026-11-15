@@ -67,7 +67,7 @@
   <dl class="replication-summary">
     <template v-if="!replication.isInitDone">
       <div class="replication-summary__row replication-summary__row--wide">
-        <dt>{{ t('initialCopy') }}</dt>
+        <dt>{{ t('copyProgress') }}</dt>
         <dd>
           <NProgress
             v-if="progress.tracked"
@@ -75,7 +75,7 @@
             :percentage="progress.percent ?? 0"
             :show-indicator="false"
             :height="8"
-            :aria-label="t('initialCopy')"
+            :aria-label="t('copyProgress')"
           />
           <span v-if="progress.tracked">{{ copied }}</span>
           <span>{{ objects }}</span>

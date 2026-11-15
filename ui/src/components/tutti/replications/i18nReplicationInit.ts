@@ -20,13 +20,16 @@ export default <I18nMessages>{
   [I18nLocale.EN]: {
     initCopied: 'Copied {size} (incl. in progress)',
     initObjectsCount: '{done} / {total} objects',
+    copyProgress: 'Progress',
   },
   [I18nLocale.DE]: {
     initCopied: '{size} kopiert (inkl. laufender)',
     initObjectsCount: '{done} / {total} Objekte',
+    copyProgress: 'Fortschritt',
   },
   vi: {
     initCopied: 'Đã sao chép {size} (gồm đang chạy)',
     initObjectsCount: '{done} / {total} object',
+    copyProgress: 'Tiến độ',
   },
 };
