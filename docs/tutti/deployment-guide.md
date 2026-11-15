@@ -86,7 +86,7 @@ storage:
       provider: Minio
       isSecure: false
       connectionAccount:
-        accessKeyId: "minioadmin"
+        accessKeyID: "minioadmin"
         secretAccessKey: "minioadmin"
     minio2:
       type: S3
@@ -94,7 +94,7 @@ storage:
       provider: Minio
       isSecure: false
       connectionAccount:
-        accessKeyId: "minioadmin"
+        accessKeyID: "minioadmin"
         secretAccessKey: "minioadmin"
   dynamicCredentials:
     enabled: true
