@@ -4,11 +4,15 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/metrics"
 )
 
 func TestStartPprofDisabledByDefault(t *testing.T) {
@@ -35,4 +39,22 @@ func TestStartPprofServes(t *testing.T) {
 		_, err := http.Get("http://" + addr + "/debug/pprof/")
 		return err != nil
 	}, 3*time.Second, 50*time.Millisecond)
+}
+
+func TestMetricsServerDoesNotExposePprofButOptInServerDoes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rec := httptest.NewRecorder()
+	metrics.Handler(ctx, dom.AppInfo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/debug/pprof/", nil))
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	rec = httptest.NewRecorder()
+	metrics.Handler(ctx, dom.AppInfo{}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	addr, err := startPprof(ctx, "127.0.0.1:0", zerolog.Nop())
+	require.NoError(t, err)
+	resp, err := http.Get("http://" + addr + "/debug/pprof/")
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }

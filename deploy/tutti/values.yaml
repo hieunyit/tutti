@@ -319,7 +319,8 @@ worker:
   config:
     concurrency: 0 # 0 = auto (hardware-derived); any positive value is an explicit override
     largeObjectStreams: 0 # 0 = auto (2 per CPU, 4..16): max concurrent copies of objects >= 128 MiB per destination storage
-    # Diagnostics, off by default. pprofAddr starts an UNAUTHENTICATED pprof server: use 127.0.0.1:6060 and
+    # Diagnostics, off by default. Profiling is ONLY served here (the metrics port no longer exposes pprof).
+    # pprofAddr starts an UNAUTHENTICATED pprof server: use 127.0.0.1:6060 and
     # `kubectl port-forward` / `kubectl exec`; do not add a Service or containerPort for it.
     debug:
       pprofAddr: ""

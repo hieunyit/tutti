@@ -422,7 +422,7 @@ kubectl port-forward deploy/<release>-worker 6060:6060   # then: go tool pprof '
 # heap: /debug/pprof/heap, goroutines: /debug/pprof/goroutine?debug=1
 ```
 
-Take the profile while copies are running. Do not publish the port (no `ports:` entry, no Service). Separately, when `metrics.enabled` is true, the metrics server (`metrics.port`) also exposes `/debug/pprof/`; keep that port internal as well.
+Take the profile while copies are running. Do not publish the port (no `ports:` entry, no Service). The metrics server (`metrics.port`) does **not** serve `/debug/pprof/` (removed for security); profiling is only available through `debug.pprofAddr`, bound to `127.0.0.1` or a pod-local address.
 
 ## Replication throughput tuning
 

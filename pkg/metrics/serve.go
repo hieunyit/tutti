@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -29,7 +28,8 @@ import (
 	"github.com/hieunyit/tutti/pkg/dom"
 )
 
-func Server(ctx context.Context, port int, version dom.AppInfo) (start func(context.Context) error, stop func(context.Context) error) {
+// Handler returns the metrics server mux (/metrics, /health, /ready, /version). It never serves pprof.
+func Handler(ctx context.Context, version dom.AppInfo) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
@@ -54,22 +54,14 @@ func Server(ctx context.Context, port int, version dom.AppInfo) (start func(cont
 		_, _ = w.Write(jsonInfo)
 	})
 
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	// Profiling is intentionally NOT served here: use the opt-in debug.pprofAddr server.
+	return mux
+}
 
-	mux.HandleFunc("/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
-	mux.HandleFunc("/debug/pprof/heap", pprof.Handler("heap").ServeHTTP)
-	mux.HandleFunc("/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
-	mux.HandleFunc("/debug/pprof/block", pprof.Handler("block").ServeHTTP)
-	mux.HandleFunc("/debug/pprof/allocs", pprof.Handler("allocs").ServeHTTP)
-	mux.HandleFunc("/debug/pprof/mutex", pprof.Handler("mutex").ServeHTTP)
-
+func Server(ctx context.Context, port int, version dom.AppInfo) (start func(context.Context) error, stop func(context.Context) error) {
 	server := http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           mux,
+		Handler:           Handler(ctx, version),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
