@@ -15,53 +15,44 @@
   -->
 
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia';
-  import { CSkeleton } from '@clyso/clyso-ui-kit';
-  import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
-  import DiffReportsFilterByDirection from '@/components/tutti/diff-reports/DiffReportsFilterByDirection/DiffReportsFilterByDirection.vue';
+  import { NFormItem } from 'naive-ui';
+  import { useI18n } from 'vue-i18n';
   import DiffReportsFilterByBucket from '@/components/tutti/diff-reports/DiffReportsFilterByBucket/DiffReportsFilterByBucket.vue';
+  import DiffReportsFilterByDirection from '@/components/tutti/diff-reports/DiffReportsFilterByDirection/DiffReportsFilterByDirection.vue';
   import DiffReportsFilterByStatus from '@/components/tutti/diff-reports/DiffReportsFilterByStatus/DiffReportsFilterByStatus.vue';
+  import i18nDiffReports from '@/components/tutti/diff-reports/i18nDiffReports';
 
-  const { isLoading } = storeToRefs(useTuttiDiffReportsStore());
+  const { t } = useI18n({ messages: i18nDiffReports });
 </script>
 
 <template>
   <div class="diff-reports-filters">
-    <div
-      v-if="isLoading"
-      key="loading"
-      class="diff-reports-filters__list"
+    <NFormItem
+      :label="t('filterLabelStatus')"
+      :show-feedback="false"
     >
-      <CSkeleton
-        v-for="(_, index) in 3"
-        :key="index"
-        :height="34"
-        :border-radius="4"
-      />
-    </div>
-    <div
-      v-else
-      key="filters"
-      class="diff-reports-filters__list"
+      <DiffReportsFilterByStatus />
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelStorage')"
+      :show-feedback="false"
     >
       <DiffReportsFilterByDirection />
-
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelBucket')"
+      :show-feedback="false"
+    >
       <DiffReportsFilterByBucket />
-
-      <DiffReportsFilterByStatus />
-    </div>
+    </NFormItem>
   </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .diff-reports-filters {
-    &__list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: utils.unit(2) utils.unit(3);
-      align-items: start;
-    }
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: var(--tt-space-2) var(--tt-space-3);
+    width: 100%;
   }
 </style>

@@ -29,7 +29,6 @@ export default <I18nMessages>{
     renameAction: 'Rename',
     renameLabel: 'Replication name',
     renameSave: 'Save name',
-    renameCancel: 'Cancel',
     renameFailed: 'Could not rename the replication. Try again.',
     renameHint: 'Enter saves, Escape cancels. Leave empty to remove the name.',
   },
@@ -45,7 +44,6 @@ export default <I18nMessages>{
     renameAction: 'Umbenennen',
     renameLabel: 'Name der Replikation',
     renameSave: 'Namen speichern',
-    renameCancel: 'Abbrechen',
     renameFailed:
       'Die Replikation konnte nicht umbenannt werden. Bitte erneut versuchen.',
     renameHint:
@@ -63,7 +61,6 @@ export default <I18nMessages>{
     renameAction: 'Đổi tên',
     renameLabel: 'Tên replication',
     renameSave: 'Lưu tên',
-    renameCancel: 'Hủy',
     renameFailed: 'Không thể đổi tên replication. Hãy thử lại.',
     renameHint: 'Enter để lưu, Escape để hủy. Để trống để xóa tên.',
   },

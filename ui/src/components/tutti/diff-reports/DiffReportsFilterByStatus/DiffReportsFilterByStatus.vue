@@ -55,7 +55,7 @@
     v-model:value="filterStatuses"
     clearable
     multiple
-    :placeholder="t('filterByStatusPlaceholder')"
+    :placeholder="t('filterAny')"
     :options="statusOptions"
     :max-tag-count="1"
     @update:value="page = 1"

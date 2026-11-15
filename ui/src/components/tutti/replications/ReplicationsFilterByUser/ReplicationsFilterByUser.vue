@@ -41,7 +41,7 @@
   <TuttiUserFilter
     v-model:filterValue="filterUsers"
     :users="users"
-    :placeholder="t('filterByUserPlaceholder')"
+    :placeholder="t('filterAny')"
     @update:filter-value="page = 1"
   />
 </template>

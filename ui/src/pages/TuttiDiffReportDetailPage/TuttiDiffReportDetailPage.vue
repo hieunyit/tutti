@@ -29,14 +29,12 @@
     ConfirmDialog,
     DetailLayout,
     EmptyBlock,
-    useQueryTab,
-    type PageShellTab,
+    SectionCard,
     type StatusTone,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import DiffReportDetailEntries from '@/components/tutti/diff-report-detail/DiffReportDetailEntries/DiffReportDetailEntries.vue';
-  import DiffReportDetailOverview from '@/components/tutti/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue';
-  import DiffReportDetailProgress from '@/components/tutti/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue';
+  import DiffReportDetailSummary from '@/components/tutti/diff-report-detail/DiffReportDetailSummary/DiffReportDetailSummary.vue';
   import { parseDiffId } from '@/pages/TuttiReplicationPage/diffRoutes';
   import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiDiffReportDetailStore } from '@/stores/tuttiDiffReportDetailStore';
@@ -50,24 +48,17 @@
   const router = useRouter();
   const store = useTuttiDiffReportDetailStore();
   const entriesStore = useTuttiDiffReportEntriesStore();
+  const { isRestartLoading, hasError, isNotFound, locations, report } =
+    storeToRefs(store);
   const {
-    isRestartLoading,
-    hasError,
-    isNotFound,
-    locations,
-    report,
-    hasFixActivity,
-  } = storeToRefs(store);
+    inconsistentObjectsCount,
+    hasError: entriesError,
+    isLoading,
+  } = storeToRefs(entriesStore);
   const { createNotification } = useTuttiNotification();
 
-  const activeTab = useQueryTab('tab', 'overview');
   const confirmRestart = ref(false);
   const missingLocations = ref(false);
-
-  const tabs = computed<PageShellTab[]>(() => [
-    { key: 'overview', label: t('tabOverview') },
-    { key: 'entries', label: t('tabEntries') },
-  ]);
 
   const state = computed(() => {
     if (missingLocations.value || isNotFound.value) return 'empty';
@@ -155,13 +146,9 @@
 <template>
   <DetailLayout
     :title="title"
-    :description="t('detailTitle')"
     :state="state"
     :status="status"
-    :tabs="tabs"
-    :active-tab="activeTab"
     :error-text="t('detailLoadError')"
-    @update:active-tab="activeTab = $event"
     @retry="load"
   >
     <template #back>
@@ -190,32 +177,26 @@
       />
     </template>
 
-    <div
-      v-if="activeTab === 'entries'"
-      class="diff-detail__tab"
-    >
-      <DiffReportDetailEntries />
+    <div class="diff-detail__tab">
+      <DiffReportDetailSummary />
+      <SectionCard
+        :title="t('entriesTitle')"
+        :meta="
+          String(entriesError || isLoading ? '-' : inconsistentObjectsCount)
+        "
+      >
+        <DiffReportDetailEntries />
+      </SectionCard>
     </div>
-    <div
-      v-else
-      class="diff-detail__tab"
-    >
-      <DiffReportDetailOverview />
-      <DiffReportDetailProgress type="diff" />
-      <DiffReportDetailProgress
-        v-if="hasFixActivity"
-        type="fix"
-      />
-    </div>
-
     <ConfirmDialog
       :open="confirmRestart"
       :title="t('confirmTitle', { action: t('restartReport') })"
+      :target-name="title"
       :confirm-label="t('restartReport')"
       @confirm="restart"
       @cancel="confirmRestart = false"
     >
-      <p>{{ title }}</p>
+      <p>{{ t('restartDiffReportConfirmContent') }}</p>
     </ConfirmDialog>
   </DetailLayout>
 </template>

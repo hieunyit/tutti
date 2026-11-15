@@ -17,11 +17,11 @@
 <script setup lang="ts">
   /**
    * Replication detail (/replication/detail?from=..&to=..[&user=..&fromBucket=..&toBucket=..]):
-   * name with inline rename, status and initial replication progress, the
-   * copies running now and a console style activity log.
+   * header (name, source to destination, status, rename and pause or resume),
+   * progress summary, the copies running now and a console style activity log.
    */
   import { NButton } from 'naive-ui';
-  import { computed } from 'vue';
+  import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -35,10 +35,9 @@
   import ActivityConsole from '@/components/tutti/replications/activity/ActivityConsole.vue';
   import ActivityInFlightTable from '@/components/tutti/replications/activity/ActivityInFlightTable.vue';
   import i18nReplicationActivity from '@/components/tutti/replications/activity/i18nReplicationActivity';
-  import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
-  import ReplicationDirectionCell from '@/components/tutti/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
-  import ReplicationNameCell from '@/components/tutti/replications/ReplicationNameCell/ReplicationNameCell.vue';
-  import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
+  import ReplicationRenameDialog from '@/components/tutti/replications/ReplicationRenameDialog/ReplicationRenameDialog.vue';
+  import ReplicationSummary from '@/components/tutti/replications/ReplicationSummary.vue';
+  import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
   import { useNow } from '@/utils/composables/useNow';
   import { useReplicationActivity } from '@/utils/composables/useReplicationActivity';
   import { useReplicationDetail } from '@/utils/composables/useReplicationDetail';
@@ -54,15 +53,28 @@
   const detail = useReplicationDetail(id);
   const activity = useReplicationActivity(id);
   const now = useNow(1000);
+  const renaming = ref(false);
 
   void activity.start();
 
   const replication = detail.replication;
+
   const title = computed(() =>
     replication.value
-      ? ReplicationNameHelper.getDisplayName(replication.value, '*')
+      ? ReplicationNameHelper.getDisplayName(replication.value, t('allBuckets'))
       : (id.value?.fromStorage ?? ''),
   );
+
+  // "source → destination · bucket" under a custom name; the auto name already says it
+  const description = computed(() =>
+    replication.value
+      ? ReplicationNameHelper.getSecondaryLabel(
+          replication.value,
+          t('allBuckets'),
+        ) || undefined
+      : undefined,
+  );
+
   const state = computed<PageState>(() => {
     if (!id.value || detail.missing.value) return 'empty';
 
@@ -70,11 +82,14 @@
 
     return detail.error.value ? 'error' : 'loading';
   });
-  const status = computed(() =>
-    replication.value?.isPaused
-      ? ({ tone: 'warning', label: t('statusPaused') } as const)
-      : undefined,
-  );
+
+  const status = computed(() => {
+    if (!replication.value) return undefined;
+
+    const { tone, label } = getReplicationStatus(replication.value, t);
+
+    return { tone, label };
+  });
 
   function backToList() {
     router.push({ name: RouteName.TUTTI_REPLICATION });
@@ -84,6 +99,7 @@
 <template>
   <DetailLayout
     :title="title"
+    :description="description"
     :state="state"
     :status="status"
     :error-text="t('errorText')"
@@ -95,17 +111,14 @@
         :label="t('back')"
       />
     </template>
-
     <template #actions>
-      <template v-if="replication">
-        <WriteGate>
-          <NButton @click="detail.setPaused(!replication.isPaused)">{{
-            replication.isPaused ? t('resume') : t('pause')
-          }}</NButton>
-        </WriteGate>
-      </template>
+      <WriteGate v-if="replication">
+        <NButton @click="renaming = true">{{ t('rename') }}</NButton>
+        <NButton @click="detail.setPaused(!replication.isPaused)">{{
+          replication.isPaused ? t('resume') : t('pause')
+        }}</NButton>
+      </WriteGate>
     </template>
-
     <template #empty>
       <EmptyBlock
         :title="t('notFound')"
@@ -118,20 +131,8 @@
         >
       </EmptyBlock>
     </template>
-
     <template v-if="replication">
-      <SectionCard :title="t('overview')">
-        <div class="replication-detail__overview">
-          <ReplicationNameCell
-            :replication="replication"
-            :rename="detail.rename"
-          />
-          <ReplicationDirectionCell :replication="replication" />
-          <ReplicationBucketCell :replication="replication" />
-          <ReplicationStatusCell :replication="replication" />
-        </div>
-      </SectionCard>
-
+      <ReplicationSummary :replication="replication" />
       <SectionCard
         :title="t('inProgressTitle')"
         :meta="t('inProgressCount', { n: activity.inFlight.value.length })"
@@ -141,7 +142,6 @@
           :now="now"
         />
       </SectionCard>
-
       <SectionCard :title="t('consoleTitle')">
         <ActivityConsole
           v-model:live="activity.live.value"
@@ -152,15 +152,12 @@
           @retry="activity.retry()"
         />
       </SectionCard>
+      <ReplicationRenameDialog
+        :open="renaming"
+        :name="replication.name"
+        :save="detail.rename"
+        @close="renaming = false"
+      />
     </template>
   </DetailLayout>
 </template>
-
-<style lang="scss" scoped>
-  .replication-detail__overview {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--tt-space-4);
-    align-items: start;
-  }
-</style>

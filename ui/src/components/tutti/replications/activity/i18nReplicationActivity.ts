@@ -68,6 +68,8 @@ export default <I18nMessages>{
     loadErrorTitle: 'Unable to load the activity log',
     loadErrorText: 'Showing what was loaded before. Updates are paused.',
     retry: 'Try again',
+    rename: 'Rename',
+    allBuckets: 'all buckets',
   },
   [I18nLocale.DE]: {
     back: 'Replikationen',
@@ -124,6 +126,8 @@ export default <I18nMessages>{
     loadErrorText:
       'Angezeigt wird der zuletzt geladene Stand. Aktualisierung pausiert.',
     retry: 'Erneut versuchen',
+    rename: 'Umbenennen',
+    allBuckets: 'alle Buckets',
   },
   vi: {
     back: 'Replication',
@@ -176,5 +180,7 @@ export default <I18nMessages>{
     loadErrorTitle: 'Không tải được nhật ký hoạt động',
     loadErrorText: 'Đang hiển thị dữ liệu đã tải trước đó. Cập nhật tạm dừng.',
     retry: 'Thử lại',
+    rename: 'Đổi tên',
+    allBuckets: 'tất cả bucket',
   },
 };

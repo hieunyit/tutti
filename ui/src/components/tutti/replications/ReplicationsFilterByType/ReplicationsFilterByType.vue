@@ -51,7 +51,7 @@
     v-model:value="filterType"
     class="replications-filter-by-type"
     clearable
-    :placeholder="t('filterByTypePlaceholder')"
+    :placeholder="t('filterAny')"
     :options="typeOptions"
     :max-tag-count="1"
     @update:value="page = 1"

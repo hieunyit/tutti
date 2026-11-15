@@ -16,61 +16,63 @@
 
 <script setup lang="ts">
   import { storeToRefs } from 'pinia';
-  import { CSkeleton } from '@clyso/clyso-ui-kit';
-  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
+  import { NFormItem } from 'naive-ui';
+  import { useI18n } from 'vue-i18n';
+  import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import ReplicationsFilterByUser from '@/components/tutti/replications/ReplicationsFilterByUser/ReplicationsFilterByUser.vue';
   import ReplicationsFilterByBucket from '@/components/tutti/replications/ReplicationsFilterByBucket/ReplicationsFilterByBucket.vue';
   import ReplicationsFilterByStatus from '@/components/tutti/replications/ReplicationsFilterByStatus/ReplicationsFilterByStatus.vue';
-  import ReplicationsFilterByCreatedAt from '@/components/tutti/replications/ReplicationsFilterByCreatedAt/ReplicationsFilterByCreatedAt.vue';
   import ReplicationsFilterByType from '@/components/tutti/replications/ReplicationsFilterByType/ReplicationsFilterByType.vue';
   import ReplicationsFilterByDirection from '@/components/tutti/replications/ReplicationsFilterByDirection/ReplicationsFilterByDirection.vue';
+  import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
 
+  const { t } = useI18n({ messages: i18nReplications });
   const { isLoading } = storeToRefs(useTuttiReplicationsStore());
 </script>
 
 <template>
-  <div class="replications-filters">
-    <div
-      v-if="isLoading"
-      key="loading"
-      class="replications-filters__list"
+  <div
+    class="replications-filters"
+    :aria-busy="isLoading"
+  >
+    <NFormItem
+      :label="t('filterLabelStatus')"
+      :show-feedback="false"
     >
-      <CSkeleton
-        v-for="(_, index) in Array(6)"
-        :key="index"
-        :height="34"
-        :border-radius="4"
-      />
-    </div>
-    <div
-      v-else
-      key="filters"
-      class="replications-filters__list"
+      <ReplicationsFilterByStatus />
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelType')"
+      :show-feedback="false"
     >
-      <ReplicationsFilterByType class="replications-filters__type" />
-
-      <ReplicationsFilterByUser class="replications-filters__user" />
-
-      <ReplicationsFilterByBucket class="replications-filters__bucket" />
-
-      <ReplicationsFilterByCreatedAt class="replications-filters__created-at" />
-
-      <ReplicationsFilterByDirection class="replications-filters__direction" />
-
-      <ReplicationsFilterByStatus class="replications-filters__status" />
-    </div>
+      <ReplicationsFilterByType />
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelUser')"
+      :show-feedback="false"
+    >
+      <ReplicationsFilterByUser />
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelBucket')"
+      :show-feedback="false"
+    >
+      <ReplicationsFilterByBucket />
+    </NFormItem>
+    <NFormItem
+      :label="t('filterLabelDirection')"
+      :show-feedback="false"
+    >
+      <ReplicationsFilterByDirection />
+    </NFormItem>
   </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .replications-filters {
-    &__list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: utils.unit(2) utils.unit(3);
-      align-items: start;
-    }
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: var(--tt-space-2) var(--tt-space-3);
+    width: 100%;
   }
 </style>

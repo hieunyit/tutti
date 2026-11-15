@@ -14,7 +14,7 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
-  import { computed, h, onBeforeMount, onUnmounted, ref } from 'vue';
+  import { computed, h, onBeforeMount, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import { NButton, type DataTableColumns } from 'naive-ui';
@@ -23,51 +23,63 @@
     ConfirmDialog,
     DataTable,
     EmptyBlock,
-    FilterBar,
+    TableToolbar,
     type FilterChip,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
   import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
-  import { ReplicationDetailHelper } from '@/utils/helpers/ReplicationDetailHelper';
+  import ReplicationCardList from '@/components/tutti/replications/ReplicationCardList/ReplicationCardList.vue';
   import ReplicationNameCell from '@/components/tutti/replications/ReplicationNameCell/ReplicationNameCell.vue';
-  import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
-  import { mergeMessages } from '@/utils/helpers/mergeMessages';
-  import ReplicationBucketCell from '@/components/tutti/replications/ReplicationBucketCell/ReplicationBucketCell.vue';
-  import ReplicationDirectionCell from '@/components/tutti/replications/ReplicationDirectionCell/ReplicationDirectionCell.vue';
+  import ReplicationRowMenu from '@/components/tutti/replications/ReplicationRowMenu/ReplicationRowMenu.vue';
   import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
   import ReplicationsFilters from '@/components/tutti/replications/ReplicationsFilters/ReplicationsFilters.vue';
+  import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
+  import i18nReplications from '@/components/tutti/replications/i18nReplications';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import { useTuttiReplicationsStore } from '@/stores/tuttiReplicationsStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
-  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
+  import { ReplicationDetailHelper } from '@/utils/helpers/ReplicationDetailHelper';
+  import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
+  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
+  import type { AddId } from '@/utils/types/helper';
+  import { RouteName } from '@/utils/types/router';
   import {
+    ReplicationStatusFilter,
     ReplicationType,
     type TuttiReplication,
   } from '@/utils/types/tuttiCore';
-  import type { AddId } from '@/utils/types/helper';
-  import { RouteName } from '@/utils/types/router';
 
   type Row = AddId<TuttiReplication>;
+
+  const emit = defineEmits<{
+    /** the list has no replications at all (no filter, no search) */
+    (e: 'empty', value: boolean): void;
+  }>();
 
   // One local composer only: a second useI18n({ messages }) in the same component returns the first composer and
   // silently drops its messages (the name column title rendered as its raw key).
   const { t } = useI18n({
-    messages: mergeMessages(i18nReplicationHub, i18nReplicationName),
+    messages: mergeMessages(
+      i18nReplications,
+      i18nReplicationName,
+      i18nReplicationHub,
+    ),
   });
-  const tn = t;
+  const narrow = useNarrowScreen();
   const store = useTuttiReplicationsStore();
   const {
     isLoading,
     hasError,
+    replications,
     computedReplications,
     isFiltered,
     filterUsers,
     filterBuckets,
     filterDirections,
     filterStatuses,
-    filterCreatedAtRange,
     filterType,
     pageSize,
     page,
@@ -105,8 +117,22 @@
     );
   });
 
+  // empty and unfiltered: the empty state is the page, no toolbar, no header action
+  const isEmptyList = computed(
+    () =>
+      !isLoading.value &&
+      !hasError.value &&
+      replications.value.length === 0 &&
+      !isFiltered.value &&
+      search.value === '',
+  );
+
+  watch(isEmptyList, (value) => emit('empty', value), { immediate: true });
+
   const rowKey = (row: Row) => row.idStr;
-  const targetOf = (row: Row) => ReplicationsHelper.getSubjectLabel(row);
+  const nameOf = (row: Row) =>
+    ReplicationNameHelper.getDisplayName(row, t('allBuckets'));
+  const rename = (row: Row, name: string) => store.renameReplication(row, name);
 
   const { actionsFor, pending, confirmPending, cancelPending } =
     useRowActions<Row>(
@@ -115,11 +141,13 @@
           key: 'pause',
           label: t('pause'),
           run: (row) => store.pauseReplications([row]),
+          disabled: (row) => row.isPaused,
         },
         {
           key: 'resume',
           label: t('resume'),
           run: (row) => store.resumeReplications([row]),
+          disabled: (row) => !row.isPaused,
         },
         {
           key: 'delete',
@@ -135,32 +163,26 @@
       rowKey,
     );
 
+  // pause only while running, resume only while paused
+  const menuActions = (row: Row) =>
+    actionsFor(row).filter(
+      (action) => action.key !== (row.isPaused ? 'pause' : 'resume'),
+    );
+
   const columns = computed<DataTableColumns<Row>>(() => [
     {
-      title: tn('nameColumn'),
+      title: t('nameColumn'),
       key: 'name',
-      minWidth: 240,
+      minWidth: 260,
       render: (row) =>
         h(ReplicationNameCell, {
           replication: row,
-          rename: (name: string) => store.renameReplication(row, name),
+          rename: (name: string) => rename(row, name),
           detailTo: {
             name: RouteName.TUTTI_REPLICATION_DETAIL,
             query: ReplicationDetailHelper.toQuery(row.id),
           },
         }),
-    },
-    {
-      title: t('colBucket'),
-      key: 'bucket',
-      minWidth: 220,
-      render: (row) => h(ReplicationBucketCell, { replication: row }),
-    },
-    {
-      title: t('colDirection'),
-      key: 'direction',
-      minWidth: 190,
-      render: (row) => h(ReplicationDirectionCell, { replication: row }),
     },
     {
       title: t('colStatus'),
@@ -177,18 +199,47 @@
     {
       title: t('colActions'),
       key: 'actions',
-      width: 260,
+      width: 80,
       render: (row) =>
-        h(TuttiRowActions, {
-          actions: actionsFor(row).filter(
-            (action) => action.key !== (row.isPaused ? 'pause' : 'resume'),
-          ),
+        h(ReplicationRowMenu, {
+          actions: menuActions(row),
+          label: nameOf(row),
         }),
     },
   ]);
 
+  const statusLabels: Record<ReplicationStatusFilter, string> = {
+    [ReplicationStatusFilter.ACTIVE]: 'filterStatusActive',
+    [ReplicationStatusFilter.PAUSED]: 'filterStatusPaused',
+    [ReplicationStatusFilter.INITIAL_IN_PROGRESS]:
+      'filterStatusInitialInProgress',
+    [ReplicationStatusFilter.INITIAL_DONE]: 'filterStatusInitialDone',
+    [ReplicationStatusFilter.LIVE_BEHIND]: 'filterStatusLiveBehind',
+    [ReplicationStatusFilter.LIVE_UP_TO_DATE]: 'filterStatusLiveUpToDate',
+  };
+
   const chips = computed<FilterChip[]>(() => {
     const list: FilterChip[] = [];
+
+    if (filterStatuses.value.length)
+      list.push({
+        key: 'statuses',
+        label: t('chipStatuses', {
+          value: filterStatuses.value.map((s) => t(statusLabels[s])).join(', '),
+        }),
+      });
+
+    if (filterType.value)
+      list.push({
+        key: 'type',
+        label: t('chipType', {
+          value: t(
+            filterType.value === ReplicationType.USER
+              ? 'filterTypeUser'
+              : 'filterTypeBucket',
+          ),
+        }),
+      });
 
     if (filterUsers.value.length)
       list.push({
@@ -205,25 +256,10 @@
     if (filterDirections.value.length)
       list.push({
         key: 'directions',
-        label: t('chipDirections', {
+        label: t('chipStorages', {
           value: filterDirections.value.join(', '),
         }),
       });
-
-    if (filterStatuses.value.length)
-      list.push({
-        key: 'statuses',
-        label: t('chipStatuses', { value: filterStatuses.value.join(', ') }),
-      });
-
-    if (filterType.value)
-      list.push({
-        key: 'type',
-        label: t('chipType', { value: filterType.value }),
-      });
-
-    if (filterCreatedAtRange.value)
-      list.push({ key: 'createdAt', label: t('chipCreatedAt') });
 
     return list;
   });
@@ -234,7 +270,6 @@
     else if (key === 'directions') filterDirections.value = [];
     else if (key === 'statuses') filterStatuses.value = [];
     else if (key === 'type') filterType.value = null;
-    else if (key === 'createdAt') filterCreatedAtRange.value = null;
   }
 
   function clearAll() {
@@ -250,22 +285,33 @@
     bulkDeleteOpen.value = false;
     await store.deleteReplications(selectedRows.value);
   }
+
+  const targetOf = (row: Row) => ReplicationsHelper.getSubjectLabel(row);
 </script>
 
 <template>
   <div class="replications-tab">
-    <FilterBar
+    <TableToolbar
       v-model:search="search"
       :search-label="t('search')"
       :search-placeholder="t('searchPlaceholder')"
       :chips="chips"
+      :hidden="isEmptyList"
       @remove="removeChip"
       @clear="clearAll"
     >
       <ReplicationsFilters />
-    </FilterBar>
+    </TableToolbar>
 
+    <ReplicationCardList
+      v-if="narrow && rows.length > 0"
+      :rows="rows"
+      :rename="rename"
+      :actions-for="menuActions"
+      :all-buckets-text="t('allBuckets')"
+    />
     <DataTable
+      v-else
       :columns="columns"
       :rows="rows"
       :loading="isLoading"
@@ -278,17 +324,11 @@
       <template #empty>
         <EmptyBlock
           :title="
-            isFiltered || search
-              ? t('emptyFilteredTitle')
-              : t('emptyReplicationsTitle')
+            isEmptyList ? t('emptyReplicationsTitle') : t('emptyFilteredTitle')
           "
-          :description="
-            isFiltered || search
-              ? t('emptyFilteredText')
-              : t('emptyReplicationsText')
-          "
+          :description="isEmptyList ? t('emptyReplicationsText') : undefined"
         >
-          <WriteGate v-if="!isFiltered && !search">
+          <WriteGate v-if="isEmptyList">
             <RouterLink :to="{ name: RouteName.TUTTI_ADD_REPLICATION }">
               <NButton
                 type="primary"

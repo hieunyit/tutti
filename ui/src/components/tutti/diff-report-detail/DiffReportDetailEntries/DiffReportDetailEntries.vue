@@ -15,45 +15,21 @@
   -->
 
 <script setup lang="ts">
-  import { storeToRefs } from 'pinia';
-  import { useI18n } from 'vue-i18n';
-  import { useTuttiDiffReportEntriesStore } from '@/stores/tuttiDiffReportEntriesStore';
-  import i18nDiffReportDetail from '@/components/tutti/diff-report-detail/i18nDiffReportDetail';
   import DiffReportDetailEntriesList from '@/components/tutti/diff-report-detail/DiffReportDetailEntriesList/DiffReportDetailEntriesList.vue';
   import DiffReportDetailEntriesFilters from '@/components/tutti/diff-report-detail/DiffReportDetailEntriesFilters/DiffReportDetailEntriesFilters.vue';
-
-  const { t } = useI18n({ messages: i18nDiffReportDetail });
-  const entriesStore = useTuttiDiffReportEntriesStore();
-  const { inconsistentObjectsCount, hasError, isLoading } =
-    storeToRefs(entriesStore);
 </script>
 
 <template>
   <div class="diff-report-detail-entries">
-    <h5>
-      {{ t('entriesTitle') }} ({{
-        hasError || isLoading ? '-' : inconsistentObjectsCount
-      }})
-    </h5>
-
-    <DiffReportDetailEntriesFilters
-      class="diff-report-detail-entries__filters"
-    />
-
-    <DiffReportDetailEntriesList class="diff-report-detail-entries__entries" />
+    <DiffReportDetailEntriesFilters />
+    <DiffReportDetailEntriesList />
   </div>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .diff-report-detail-entries {
-    h5 {
-      margin-bottom: utils.unit(3);
-    }
-
-    &__filters {
-      margin-bottom: utils.unit(6);
-    }
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-4);
   }
 </style>

@@ -14,44 +14,52 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
-  import { computed, h, onBeforeMount, onUnmounted, ref } from 'vue';
+  import { computed, h, onBeforeMount, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
-  import { RouterLink } from 'vue-router';
   import { NButton, type DataTableColumns } from 'naive-ui';
-  import { diffDetailRoute } from './diffRoutes';
   import i18nReplicationHub from './i18nReplicationHub';
   import {
     ConfirmDialog,
     DataTable,
     EmptyBlock,
-    FilterBar,
+    TableToolbar,
     type FilterChip,
   } from '@/components/kit';
   import WriteGate from '@/components/auth/WriteGate.vue';
-  import TuttiRowActions from '@/components/tutti/common/TuttiRowActions/TuttiRowActions.vue';
   import RowActionsConfirm from '@/components/tutti/common/TuttiRowActions/RowActionsConfirm.vue';
-  import TuttiDiffReportsProgress from '@/components/tutti/common/TuttiDiffReportProgress/TuttiDiffReportsProgress.vue';
-  import DiffReportsBucketCell from '@/components/tutti/diff-reports/DiffReportsBucketCell/DiffReportsBucketCell.vue';
-  import DiffReportsDirectionCell from '@/components/tutti/diff-reports/DiffReportsDirectionCell/DiffReportsDirectionCell.vue';
+  import DiffReportsCardList from '@/components/tutti/diff-reports/DiffReportsCardList/DiffReportsCardList.vue';
   import DiffReportsFilters from '@/components/tutti/diff-reports/DiffReportsFilters/DiffReportsFilters.vue';
+  import DiffReportsNameCell from '@/components/tutti/diff-reports/DiffReportsNameCell/DiffReportsNameCell.vue';
   import DiffReportsStatusCell from '@/components/tutti/diff-reports/DiffReportsStatusCell/DiffReportsStatusCell.vue';
+  import ReplicationRowMenu from '@/components/tutti/replications/ReplicationRowMenu/ReplicationRowMenu.vue';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import { useTuttiDiffReportsStore } from '@/stores/tuttiDiffReportsStore';
   import { useDebouncedSearch } from '@/utils/composables/useDebouncedSearch';
   import { useRowActions } from '@/utils/composables/useRowActions';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
   import { DiffReportsHelper } from '@/utils/helpers/DiffReportsHelper';
-  import type { DiffReport, DiffReportLocation } from '@/utils/types/tuttiCore';
+  import {
+    DiffReportStatusFilter,
+    type DiffReport,
+  } from '@/utils/types/tuttiCore';
   import type { AddId } from '@/utils/types/helper';
   import { RouteName } from '@/utils/types/router';
 
   type Row = AddId<DiffReport>;
 
+  const emit = defineEmits<{
+    /** the list has no reports at all (no filter, no search) */
+    (e: 'empty', value: boolean): void;
+  }>();
+
   const { t } = useI18n({ messages: i18nReplicationHub });
+  const narrow = useNarrowScreen();
   const store = useTuttiDiffReportsStore();
   const {
     isLoading,
     hasError,
+    reports,
     computedReports,
     isFiltered,
     filterDirections,
@@ -78,10 +86,10 @@
     store.$reset();
   });
 
+  // reports created via CLI (not two locations) stay listed so they can be
+  // seen and deleted; they just have no status to show
   const rows = computed<Row[]>(() => {
     const needle = debouncedSearch.value.trim().toLowerCase();
-    // reports created via CLI (not two locations) stay listed so they can be
-    // seen and deleted; they just have no direction/bucket to show
     const all = computedReports.value;
 
     if (!needle) return all;
@@ -95,10 +103,23 @@
     );
   });
 
+  const isEmptyList = computed(
+    () =>
+      !isLoading.value &&
+      !hasError.value &&
+      reports.value.length === 0 &&
+      !isFiltered.value &&
+      search.value === '',
+  );
+
+  watch(isEmptyList, (value) => emit('empty', value), { immediate: true });
+
   const rowKey = (row: Row) => String(row.idStr);
   const isTwo = (row: Row) => DiffReportsHelper.isTwoLocationReport(row);
-  const locationsOf = (row: Row) =>
-    row.locations as [DiffReportLocation, DiffReportLocation];
+  const labelOf = (row: Row) =>
+    row.locations
+      .map((location) => `${location.storage}/${location.bucket}`)
+      .join(' → ');
 
   function report(result: { errorList: unknown[] }) {
     if (result.errorList.length) {
@@ -133,89 +154,57 @@
       rowKey,
     );
 
+  // CLI reports can only be deleted
+  const menuActions = (row: Row) =>
+    actionsFor(row).filter((action) => isTwo(row) || action.key === 'delete');
+
   const columns = computed<DataTableColumns<Row>>(() => [
+    {
+      title: t('colReport'),
+      key: 'report',
+      minWidth: 280,
+      render: (row) => h(DiffReportsNameCell, { report: row }),
+    },
     {
       title: t('colStatus'),
       key: 'status',
-      minWidth: 150,
+      minWidth: 160,
       render: (row) =>
         isTwo(row) ? h(DiffReportsStatusCell, { report: row }) : null,
     },
     {
-      title: t('colProgress'),
-      key: 'progress',
-      minWidth: 140,
-      render: (row) =>
-        isTwo(row) ? h(TuttiDiffReportsProgress, { report: row }) : null,
-    },
-    {
-      title: t('colDirection'),
-      key: 'direction',
-      minWidth: 180,
-      render: (row) =>
-        isTwo(row)
-          ? h(DiffReportsDirectionCell, { locations: locationsOf(row) })
-          : h('span', { class: 'diff-tab__cli-warning' }, t('cliCheckWarning')),
-    },
-    {
-      title: t('colBucket'),
-      key: 'bucket',
-      minWidth: 220,
-      render: (row) =>
-        isTwo(row)
-          ? h(DiffReportsBucketCell, { locations: locationsOf(row) })
-          : null,
-    },
-    {
       title: t('colActions'),
       key: 'actions',
-      width: 300,
-      render: (row) => {
-        if (!isTwo(row))
-          return h(TuttiRowActions, {
-            actions: actionsFor(row).filter((a) => a.key === 'delete'),
-          });
-
-        const [from, to] = locationsOf(row);
-
-        return h(
-          'div',
-          {
-            style:
-              'display:flex;flex-wrap:wrap;align-items:center;gap:var(--tt-space-2)',
-          },
-          [
-            h(
-              RouterLink,
-              { to: diffDetailRoute(from, to) },
-              {
-                default: () =>
-                  h(
-                    NButton,
-                    {
-                      size: 'tiny',
-                      secondary: true,
-                      type: 'info',
-                      tag: 'span',
-                    },
-                    () => t('open'),
-                  ),
-              },
-            ),
-            h(TuttiRowActions, { actions: actionsFor(row) }),
-          ],
-        );
-      },
+      width: 80,
+      render: (row) =>
+        h(ReplicationRowMenu, {
+          actions: menuActions(row),
+          label: labelOf(row),
+        }),
     },
   ]);
+
+  const statusLabels: Record<DiffReportStatusFilter, string> = {
+    [DiffReportStatusFilter.CHECKING]: 'statusChecking',
+    [DiffReportStatusFilter.CONSISTENT]: 'statusConsistent',
+    [DiffReportStatusFilter.INCONSISTENT]: 'statusInconsistent',
+  };
 
   const chips = computed<FilterChip[]>(() => {
     const list: FilterChip[] = [];
 
+    if (filterStatuses.value.length)
+      list.push({
+        key: 'statuses',
+        label: t('chipStatuses', {
+          value: filterStatuses.value.map((s) => t(statusLabels[s])).join(', '),
+        }),
+      });
+
     if (filterDirections.value.length)
       list.push({
         key: 'directions',
-        label: t('chipDirections', {
+        label: t('chipStorages', {
           value: filterDirections.value.join(', '),
         }),
       });
@@ -224,12 +213,6 @@
       list.push({
         key: 'buckets',
         label: t('chipBuckets', { value: filterBuckets.value.join(', ') }),
-      });
-
-    if (filterStatuses.value.length)
-      list.push({
-        key: 'statuses',
-        label: t('chipStatuses', { value: filterStatuses.value.join(', ') }),
       });
 
     return list;
@@ -263,18 +246,26 @@
 
 <template>
   <div class="diff-tab">
-    <FilterBar
+    <TableToolbar
       v-model:search="search"
       :search-label="t('search')"
-      :search-placeholder="t('searchPlaceholder')"
+      :search-placeholder="t('searchDiffPlaceholder')"
       :chips="chips"
+      :hidden="isEmptyList"
       @remove="removeChip"
       @clear="clearAll"
     >
       <DiffReportsFilters />
-    </FilterBar>
+    </TableToolbar>
 
+    <DiffReportsCardList
+      v-if="narrow && rows.length > 0"
+      :rows="rows"
+      :actions-for="menuActions"
+      :label-of="labelOf"
+    />
     <DataTable
+      v-else
       :columns="columns"
       :rows="rows"
       :loading="isLoading"
@@ -286,14 +277,10 @@
     >
       <template #empty>
         <EmptyBlock
-          :title="
-            isFiltered || search ? t('emptyFilteredTitle') : t('emptyDiffTitle')
-          "
-          :description="
-            isFiltered || search ? t('emptyFilteredText') : t('emptyDiffText')
-          "
+          :title="isEmptyList ? t('emptyDiffTitle') : t('emptyFilteredTitle')"
+          :description="isEmptyList ? t('emptyDiffText') : undefined"
         >
-          <WriteGate v-if="!isFiltered && !search">
+          <WriteGate v-if="isEmptyList">
             <RouterLink :to="{ name: RouteName.TUTTI_ADD_DIFF_REPORT }">
               <NButton
                 type="primary"
@@ -355,10 +342,7 @@
 
     <RowActionsConfirm
       :pending="pending"
-      :target="
-        (row: Row) =>
-          row.locations.map((l) => `${l.storage}/${l.bucket}`).join(' → ')
-      "
+      :target="labelOf"
       @confirm="confirmPending"
       @cancel="cancelPending"
     />
@@ -370,9 +354,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-4);
-  }
-
-  .diff-tab__cli-warning {
-    color: var(--tt-warning, inherit);
   }
 </style>

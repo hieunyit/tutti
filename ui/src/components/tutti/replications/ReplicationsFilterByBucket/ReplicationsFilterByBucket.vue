@@ -47,7 +47,7 @@
   <TuttiBucketFilter
     v-model:filterValue="filterBuckets"
     :buckets="bucketOptions"
-    :placeholder="t('filterByBucketPlaceholder')"
+    :placeholder="t('filterAny')"
     @update:value="page = 1"
   />
 </template>

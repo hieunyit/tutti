@@ -20,7 +20,7 @@
    * error states. Routing rules have their own page (/routing); the old
    * ?tab=routing deep link is redirected by the router.
    */
-  import { computed } from 'vue';
+  import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton } from 'naive-ui';
   import DiffTab from './DiffTab.vue';
@@ -50,6 +50,13 @@
     { key: 'diff', label: t('tabDiff') },
   ]);
 
+  // an empty tab shows its own add button; the header one would repeat it
+  const listEmpty = ref(false);
+
+  watch(activeTab, () => {
+    listEmpty.value = false;
+  });
+
   const addAction = computed(() => {
     if (activeTab.value === 'diff')
       return {
@@ -64,13 +71,15 @@
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('description')"
     state="ready"
     :tabs="tabs"
     :active-tab="activeTab"
     @update:active-tab="activeTab = $event"
   >
-    <template #actions>
+    <template
+      v-if="!listEmpty"
+      #actions
+    >
       <WriteGate>
         <RouterLink :to="{ name: addAction.to }">
           <NButton
@@ -83,7 +92,13 @@
       </WriteGate>
     </template>
 
-    <DiffTab v-if="activeTab === 'diff'" />
-    <ReplicationsTab v-else />
+    <DiffTab
+      v-if="activeTab === 'diff'"
+      @empty="listEmpty = $event"
+    />
+    <ReplicationsTab
+      v-else
+      @empty="listEmpty = $event"
+    />
   </PageShell>
 </template>

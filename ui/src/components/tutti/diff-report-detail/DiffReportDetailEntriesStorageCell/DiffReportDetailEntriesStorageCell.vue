@@ -15,7 +15,6 @@
   -->
 
 <script setup lang="ts">
-  import { CTag } from '@clyso/clyso-ui-kit';
   import type { DiffReportStorageEntry } from '@/utils/types/tuttiCore';
 
   defineProps<{
@@ -24,26 +23,23 @@
 </script>
 
 <template>
-  <div class="diff-report-detail-entries-storage-cell">
-    <CTag
+  <ul class="diff-report-detail-entries-storage-cell">
+    <li
       v-for="(entry, index) in storageEntries"
       :key="index"
-      :bordered="false"
-      round
-      size="small"
-      type="success"
     >
-      {{ entry.storage }} · {{ entry.bucket }}
-    </CTag>
-  </div>
+      {{ entry.storage }}/{{ entry.bucket }}
+    </li>
+  </ul>
 </template>
 
 <style lang="scss" scoped>
-  @use '@/styles/utils' as utils;
-
   .diff-report-detail-entries-storage-cell {
     display: flex;
-    flex-wrap: wrap;
-    gap: utils.unit(1);
+    flex-direction: column;
+    gap: var(--tt-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 </style>

@@ -45,7 +45,12 @@ vi.mock('@/stores/tuttiDiffReportDetailStore', () => ({
   }),
 }));
 vi.mock('@/stores/tuttiDiffReportEntriesStore', () => ({
-  useTuttiDiffReportEntriesStore: () => ({ $reset: vi.fn() }),
+  useTuttiDiffReportEntriesStore: () => ({
+    inconsistentObjectsCount: ref(0),
+    hasError: ref(false),
+    isLoading: ref(false),
+    $reset: vi.fn(),
+  }),
 }));
 vi.mock('@/components/auth/WriteGate.vue', () => ({
   default: { template: '<div><slot /></div>' },
@@ -58,11 +63,7 @@ vi.mock(
   () => ({ default: { template: '<div />' } }),
 );
 vi.mock(
-  '@/components/tutti/diff-report-detail/DiffReportDetailOverview/DiffReportDetailOverview.vue',
-  () => ({ default: { template: '<div />' } }),
-);
-vi.mock(
-  '@/components/tutti/diff-report-detail/DiffReportDetailProgress/DiffReportDetailProgress.vue',
+  '@/components/tutti/diff-report-detail/DiffReportDetailSummary/DiffReportDetailSummary.vue',
   () => ({ default: { template: '<div />' } }),
 );
 

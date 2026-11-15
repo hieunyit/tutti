@@ -50,69 +50,81 @@
     return `${row.key}|${row.versionId ?? ''}`;
   }
 
-  const columns = computed<DataTableColumns<ReplicationInFlight>>(() => [
-    {
-      title: t('colObject'),
-      key: 'key',
-      ellipsis: { tooltip: true },
-      render: (row) =>
-        row.versionId ? `${row.key} (${row.versionId})` : row.key,
-    },
-    {
-      title: t('colSize'),
-      key: 'size',
-      width: 110,
-      render: (row) => {
-        const size = InitProgressHelper.toNumber(row.size);
+  // the attempt number only matters once a copy was retried
+  const retried = computed(() =>
+    props.items.some((item) => (item.attempt ?? 1) > 1),
+  );
 
-        return size > 0 ? InitProgressHelper.formatSize(size) : '-';
+  const columns = computed<DataTableColumns<ReplicationInFlight>>(() => {
+    const all: DataTableColumns<ReplicationInFlight> = [
+      {
+        title: t('colObject'),
+        key: 'key',
+        ellipsis: { tooltip: true },
+        render: (row) =>
+          row.versionId ? `${row.key} (${row.versionId})` : row.key,
       },
-    },
-    {
-      title: t('colProgress'),
-      key: 'progress',
-      width: 200,
-      render: (row) => {
-        const p = InitProgressHelper.copyProgress(row.size, row.bytesDone);
+      {
+        title: t('colSize'),
+        key: 'size',
+        width: 110,
+        render: (row) => {
+          const size = InitProgressHelper.toNumber(row.size);
 
-        if (!p) return '-';
+          return size > 0 ? InitProgressHelper.formatSize(size) : '-';
+        },
+      },
+      {
+        title: t('colProgress'),
+        key: 'progress',
+        width: 200,
+        render: (row) => {
+          const p = InitProgressHelper.copyProgress(row.size, row.bytesDone);
 
-        return h('div', { class: 'activity-inflight__progress' }, [
-          h(
-            'span',
-            `${InitProgressHelper.formatSize(p.done)} / ${InitProgressHelper.formatSize(p.size)} (${p.percent}%)`,
+          if (!p) return '-';
+
+          return h('div', { class: 'activity-inflight__progress' }, [
+            h(
+              'span',
+              `${InitProgressHelper.formatSize(p.done)} / ${InitProgressHelper.formatSize(p.size)} (${p.percent}%)`,
+            ),
+            h('div', { class: 'activity-inflight__bar' }, [
+              h('div', {
+                class: 'activity-inflight__bar-fill',
+                style: { width: `${p.percent}%` },
+              }),
+            ]),
+          ]);
+        },
+      },
+      {
+        title: t('colElapsed'),
+        key: 'elapsed',
+        width: 110,
+        render: (row) =>
+          ActivityLogHelper.formatDuration(
+            Math.max(0, props.now - Date.parse(row.startedAt)),
           ),
-          h('div', { class: 'activity-inflight__bar' }, [
-            h('div', {
-              class: 'activity-inflight__bar-fill',
-              style: { width: `${p.percent}%` },
-            }),
-          ]),
-        ]);
       },
-    },
-    {
-      title: t('colElapsed'),
-      key: 'elapsed',
-      width: 110,
-      render: (row) =>
-        ActivityLogHelper.formatDuration(
-          Math.max(0, props.now - Date.parse(row.startedAt)),
-        ),
-    },
-    {
-      title: t('colAttempt'),
-      key: 'attempt',
-      width: 90,
-      render: (row) => String(row.attempt ?? 1),
-    },
-    {
-      title: t('colFlow'),
-      key: 'flow',
-      width: 100,
-      render: (row) => (row.flow === 'live' ? t('flowLive') : t('flowInit')),
-    },
-  ]);
+      {
+        title: t('colAttempt'),
+        key: 'attempt',
+        width: 90,
+        render: (row) => String(row.attempt ?? 1),
+      },
+      {
+        title: t('colFlow'),
+        key: 'flow',
+        width: 100,
+        render: (row) => (row.flow === 'live' ? t('flowLive') : t('flowInit')),
+      },
+    ];
+
+    return all.filter(
+      (column) =>
+        !('key' in column) || column.key !== 'attempt' || retried.value,
+    );
+  });
 </script>
 
 <template>

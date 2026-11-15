@@ -15,78 +15,55 @@
   -->
 
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n';
+  /**
+   * One status badge (paused beats initial copy beats lag) with detail only
+   * when it matters: copied bytes and objects while the initial copy runs,
+   * the backlog only when events are behind.
+   */
   import { computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import { StatusBadge } from '@/components/kit';
+  import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import ReplicationInitProgress from '@/components/tutti/replications/ReplicationInitProgress/ReplicationInitProgress.vue';
-  import StatusTag from '@/components/ui/StatusTag.vue';
-  import type { StatusVariant } from '@/components/ui/status';
-  import type { TuttiReplication } from '@/utils/types/tuttiCore';
-  import type { AddId } from '@/utils/types/helper';
   import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
-  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
+  import type { AddId } from '@/utils/types/helper';
+  import type { TuttiReplication } from '@/utils/types/tuttiCore';
 
-  const { t } = useI18n({
-    messages: i18nReplications,
-  });
+  const { t } = useI18n({ messages: i18nReplications });
 
   const props = defineProps<{
     replication: AddId<TuttiReplication>;
   }>();
 
-  const behind = computed<number>(() =>
-    ReplicationsHelper.getLiveReplicationEventsDifference(props.replication),
-  );
+  const primary = computed(() => getReplicationStatus(props.replication, t));
 
-  /** one primary status: paused beats initial sync beats lag */
-  const primary = computed<{ variant: StatusVariant; label: string }>(() => {
-    const { isPaused, isInitDone } = props.replication;
+  const backlog = computed<string | null>(() => {
+    if (primary.value.behind <= 0) return null;
 
-    if (isPaused) return { variant: 'warning', label: t('statusPaused') };
+    const lag = props.replication.eventLag
+      ? GeneralHelper.formatDurationSeconds(props.replication.eventLag)
+      : null;
+    const events = t('eventsBehind', { n: primary.value.behind });
 
-    if (!isInitDone) return { variant: 'info', label: t('statusInitial') };
-
-    return behind.value > 0
-      ? { variant: 'warning', label: t('statusLagging') }
-      : { variant: 'success', label: t('statusUptodate') };
-  });
-
-  const initialText = computed<string>(() => {
-    return props.replication.isInitDone
-      ? `${t('initialReplication')}: ${t('statusDone')}`
-      : t('initialReplication');
-  });
-
-  const liveText = computed<string | null>(() => {
-    const { isInitDone, eventLag } = props.replication;
-
-    if (!isInitDone) return null;
-
-    const lag = eventLag ? GeneralHelper.formatDurationSeconds(eventLag) : null;
-    const base =
-      behind.value > 0
-        ? `${behind.value} ${t('statusBehind').toLowerCase()}`
-        : t('statusUptodate').toLowerCase();
-
-    return `${t('liveReplication')}: ${base}${lag ? ` · ${t('labelReplicationLatency').toLowerCase()} ${lag}` : ''}`;
+    return lag ? `${events} · ${lag}` : events;
   });
 </script>
 
 <template>
   <div class="replication-status-cell">
-    <StatusTag
-      :variant="primary.variant"
+    <StatusBadge
+      :tone="primary.tone"
       :label="primary.label"
     />
-    <span class="replication-status-cell__secondary">{{ initialText }}</span>
     <ReplicationInitProgress
       v-if="!replication.isInitDone"
       :replication="replication"
     />
     <span
-      v-if="liveText"
+      v-if="backlog"
       class="replication-status-cell__secondary"
-      >{{ liveText }}</span
+      >{{ backlog }}</span
     >
   </div>
 </template>
@@ -100,9 +77,8 @@
     min-width: 0;
 
     &__secondary {
-      font-size: 12px;
+      font-size: var(--tt-text-xs);
       color: var(--tt-text-3);
-      white-space: normal;
       overflow-wrap: anywhere;
     }
   }

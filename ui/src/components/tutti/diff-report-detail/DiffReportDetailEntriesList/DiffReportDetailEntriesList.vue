@@ -17,7 +17,6 @@
 <script setup lang="ts">
   import {
     CDataTable,
-    CTag,
     type DataTableBaseColumn,
     type DataTableSortState,
   } from '@clyso/clyso-ui-kit';
@@ -119,14 +118,7 @@
         </template>
 
         <template #etag="{ rowData }: { rowData: DiffReportEntry }">
-          <CTag
-            :bordered="false"
-            round
-            size="small"
-            type="primary"
-          >
-            {{ rowData.etag }}
-          </CTag>
+          <code class="diff-report-entries-list__etag">{{ rowData.etag }}</code>
         </template>
 
         <template #objectPlacement="{ rowData }: { rowData: DiffReportEntry }">
@@ -154,6 +146,11 @@
       :deep(td) {
         overflow-wrap: anywhere;
       }
+    }
+
+    &__etag {
+      font-size: var(--tt-text-xs);
+      overflow-wrap: anywhere;
     }
 
     &__version {

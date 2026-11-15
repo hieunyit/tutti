@@ -13,38 +13,66 @@
   -  See the License for the specific language governing permissions and
   -  limitations under the License.
   -->
-
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n';
+  /**
+   * One status badge; the check progress shows only while the report is
+   * still being checked.
+   */
   import { computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import { StatusBadge, type StatusTone } from '@/components/kit';
   import i18nDiffReports from '@/components/tutti/diff-reports/i18nDiffReports';
-  import StatusTag from '@/components/ui/StatusTag.vue';
   import type { DiffReport } from '@/utils/types/tuttiCore';
 
-  const props = defineProps<{
-    report: DiffReport;
-  }>();
+  const props = defineProps<{ report: DiffReport }>();
 
-  const { t } = useI18n({
-    messages: i18nDiffReports,
-  });
+  const { t } = useI18n({ messages: i18nDiffReports });
 
-  const status = computed(() => {
-    if (!props.report.ready) {
-      return { variant: 'warning' as const, label: t('statusChecking') };
-    }
+  const status = computed<{ tone: StatusTone; label: string }>(() => {
+    if (!props.report.ready)
+      return { tone: 'info', label: t('statusChecking') };
 
     return props.report.consistent
-      ? { variant: 'success' as const, label: t('statusConsistent') }
-      : { variant: 'danger' as const, label: t('statusInconsistent') };
+      ? { tone: 'success', label: t('statusConsistent') }
+      : { tone: 'danger', label: t('statusInconsistent') };
+  });
+
+  const percent = computed<number | null>(() => {
+    const queued = Number(props.report.queued);
+
+    if (props.report.ready || queued <= 0) return null;
+
+    return Math.min(
+      99,
+      Math.floor((Number(props.report.completed) / queued) * 100),
+    );
   });
 </script>
 
 <template>
-  <div class="diff-reports-status-cell">
-    <StatusTag
-      :variant="status.variant"
+  <div class="diff-reports-status">
+    <StatusBadge
+      :tone="status.tone"
       :label="status.label"
     />
+    <span
+      v-if="percent !== null"
+      class="diff-reports-status__progress"
+      >{{ t('checkedPercent', { n: percent }) }}</span
+    >
   </div>
 </template>
+
+<style lang="scss" scoped>
+  .diff-reports-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+
+    &__progress {
+      color: var(--tt-text-3);
+      font-size: var(--tt-text-xs);
+    }
+  }
+</style>

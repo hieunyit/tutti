@@ -29,8 +29,16 @@ tolerateNaiveStyles();
 vi.mock('@/components/auth/WriteGate.vue', () => ({
   default: { template: '<div><slot /></div>' },
 }));
+const tabState = vi.hoisted(() => ({ empty: false }));
+
 vi.mock('../ReplicationsTab.vue', () => ({
-  default: { template: '<div class="tab-replications" />' },
+  default: {
+    emits: ['empty'],
+    mounted(this: { $emit: (e: string, v: boolean) => void }) {
+      this.$emit('empty', tabState.empty);
+    },
+    template: '<div class="tab-replications" />',
+  },
 }));
 vi.mock('../DiffTab.vue', () => ({
   default: { template: '<div class="tab-diff" />' },
@@ -83,5 +91,23 @@ describe('ReplicationHub', () => {
     const wrapper = await mountHub('/replication?tab=nope');
 
     expect(wrapper.find('.tab-replications').exists()).toBe(true);
+  });
+
+  it('shows the add action in the header while the list has replications', async () => {
+    tabState.empty = false;
+
+    const wrapper = await mountHub('/replication');
+
+    expect(wrapper.text()).toContain('Add replication');
+  });
+
+  it('hides the header add action while the empty state offers it', async () => {
+    tabState.empty = true;
+
+    const wrapper = await mountHub('/replication');
+
+    tabState.empty = false;
+
+    expect(wrapper.text()).not.toContain('Add replication');
   });
 });

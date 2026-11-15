@@ -40,7 +40,7 @@
   <TuttiStorageFilter
     v-model:filterValue="filterDirections"
     :storages="storagePairOptions"
-    :placeholder="t('filterByDirectionPlaceholder')"
+    :placeholder="t('filterAny')"
     @update:value="page = 1"
   />
 </template>
