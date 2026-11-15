@@ -280,12 +280,14 @@
       font-size: var(--tt-text-xs);
     }
 
+    /* the step header already shows the progress: keep the bar for screen readers only */
     &__progress {
-      height: 4px;
-      margin-top: calc(var(--tt-space-3) * -1);
-      border-radius: var(--tt-radius-pill);
-      background-color: var(--tt-border);
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
       overflow: hidden;
+      clip: rect(0 0 0 0);
     }
 
     &__progress-fill {
@@ -296,7 +298,7 @@
     }
 
     &__progress-text {
-      margin: calc(var(--tt-space-3) * -1) 0 0;
+      margin: 0;
       font-size: var(--tt-text-sm);
       color: var(--tt-text-2);
     }
