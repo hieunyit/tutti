@@ -25,15 +25,15 @@ describe('create failure dialog copy', () => {
     ['de', de],
     ['vi', vi],
   ])('says different things in title and body (%s)', (_l, m) => {
-    const body = m.createFailedBody.replace('{message}', 'reason');
+    const body = (m.createFailedBody ?? '').replace('{message}', 'reason');
 
     expect(m.wizSaveFailed).not.toBe(body);
     expect(body).toContain('reason');
-    expect(body).not.toContain(m.wizSaveFailed);
+    expect(body).not.toContain(m.wizSaveFailed ?? '');
   });
 
   it('no longer says "not created" and "not saved" together', () => {
-    expect(en.wizSaveFailed + en.createFailedBody).not.toMatch(
+    expect(`${en.wizSaveFailed}${en.createFailedBody}`).not.toMatch(
       /not created.*not saved|not saved.*not created/i,
     );
   });

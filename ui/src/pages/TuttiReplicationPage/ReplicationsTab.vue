@@ -140,20 +140,26 @@
         {
           key: 'pause',
           label: t('pause'),
-          run: (row) => store.pauseReplications([row]),
+          run: async (row) => {
+            await store.pauseReplications([row]);
+          },
           disabled: (row) => row.isPaused,
         },
         {
           key: 'resume',
           label: t('resume'),
-          run: (row) => store.resumeReplications([row]),
+          run: async (row) => {
+            await store.resumeReplications([row]);
+          },
           disabled: (row) => !row.isPaused,
         },
         {
           key: 'delete',
           label: t('deleteReplication'),
           danger: true,
-          run: (row) => store.deleteReplications([row]),
+          run: async (row) => {
+            await store.deleteReplications([row]);
+          },
           confirm: (row) =>
             row.replicationType === ReplicationType.USER
               ? t('deleteUserReplicationText')
