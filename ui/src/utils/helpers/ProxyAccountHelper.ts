@@ -15,6 +15,7 @@
  */
 
 import axios from 'axios';
+import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import type {
   TuttiAccessKey,
   TuttiDynamicKey,
@@ -87,7 +88,7 @@ export abstract class ProxyAccountHelper {
           detail.reason,
       )?.reason ?? data?.message;
 
-    return message ? message : null;
+    return message ? ErrorHelper.stripCode(message) : null;
   }
 
   /** Static (config) keys only: dynamic ones are rendered separately. */

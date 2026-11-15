@@ -22,6 +22,7 @@ import { ProtectionGroupService } from '@/services/ProtectionGroupService';
 import { TuttiService } from '@/services/TuttiService';
 import { usePolling } from '@/utils/composables/usePolling';
 import { createChangeDetector } from '@/utils/helpers/changeDetector';
+import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import { ProtectionGroupHelper } from '@/utils/helpers/ProtectionGroupHelper';
 import type {
   ProtectionGroup,
@@ -100,7 +101,7 @@ export function backendMessage(error: unknown): string | null {
     ? data.details.find((d) => d?.['@type']?.endsWith('google.rpc.ErrorInfo'))
         ?.reason
     : undefined;
-  const text = reason?.replace(/^[A-Za-z]+:\s+/, '');
+  const text = ErrorHelper.stripCode(reason);
 
   return text || (data?.message ? data.message : null);
 }
