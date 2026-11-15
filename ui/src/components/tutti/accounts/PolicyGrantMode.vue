@@ -36,3 +36,17 @@
     </NRadio>
   </NRadioGroup>
 </template>
+
+<style lang="scss">
+  .policy-radios {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-2);
+
+    &__hint {
+      display: block;
+      font-size: var(--tt-text-xs);
+      color: var(--tt-text-3);
+    }
+  }
+</style>
