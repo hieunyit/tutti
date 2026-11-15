@@ -24,6 +24,7 @@
   import { useI18n } from 'vue-i18n';
   import i18nReplicationActivity from './i18nReplicationActivity';
   import { EmptyBlock } from '@/components/kit';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import {
     ACTIVITY_INFLIGHT_ROW_CAP,
     ActivityLogHelper,
@@ -38,6 +39,8 @@
   }>();
 
   const { t } = useI18n({ messages: i18nReplicationActivity });
+  // <= 640px the wide table would scroll sideways: one compact card per object instead
+  const narrow = useNarrowScreen();
 
   const sorted = computed(() =>
     [...props.items].sort(
@@ -49,6 +52,20 @@
   function rowKey(row: ReplicationInFlight): string {
     return `${row.key}|${row.versionId ?? ''}`;
   }
+
+  const objectName = (row: ReplicationInFlight) =>
+    row.versionId ? `${row.key} (${row.versionId})` : row.key;
+  const sizeText = (row: ReplicationInFlight) => {
+    const size = InitProgressHelper.toNumber(row.size);
+
+    return size > 0 ? InitProgressHelper.formatSize(size) : '-';
+  };
+  const progressOf = (row: ReplicationInFlight) =>
+    InitProgressHelper.copyProgress(row.size, row.bytesDone);
+  const elapsedText = (row: ReplicationInFlight) =>
+    ActivityLogHelper.formatDuration(
+      Math.max(0, props.now - Date.parse(row.startedAt)),
+    );
 
   // the attempt number only matters once a copy was retried
   const retried = computed(() =>
@@ -134,7 +151,45 @@
       :title="t('inProgressEmpty')"
     />
     <template v-else>
+      <ul
+        v-if="narrow"
+        class="activity-inflight__list"
+      >
+        <li
+          v-for="row in rows"
+          :key="rowKey(row)"
+          class="activity-inflight__card"
+        >
+          <span
+            class="activity-inflight__name"
+            :title="objectName(row)"
+            >{{ objectName(row) }}</span
+          >
+          <span class="activity-inflight__meta">
+            <span>{{ sizeText(row) }}</span>
+            <span>{{ elapsedText(row) }}</span>
+          </span>
+          <span
+            v-if="progressOf(row)"
+            class="activity-inflight__progress"
+          >
+            <span
+              >{{ InitProgressHelper.formatSize(progressOf(row)!.done) }} /
+              {{ InitProgressHelper.formatSize(progressOf(row)!.size) }} ({{
+                progressOf(row)!.percent
+              }}%)</span
+            >
+            <span class="activity-inflight__bar">
+              <span
+                class="activity-inflight__bar-fill"
+                :style="{ width: `${progressOf(row)!.percent}%` }"
+              />
+            </span>
+          </span>
+        </li>
+      </ul>
       <NDataTable
+        v-else
         size="small"
         :columns="columns"
         :data="rows"
@@ -173,6 +228,47 @@
     :deep(.activity-inflight__bar-fill) {
       height: 100%;
       background: var(--tt-accent);
+    }
+
+    &__list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--tt-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    &__card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--tt-space-1);
+      min-width: 0;
+      padding: var(--tt-space-2) var(--tt-space-3);
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-md, 6px);
+      font-size: 13px;
+    }
+
+    &__name {
+      overflow-wrap: anywhere;
+      font-weight: 500;
+    }
+
+    &__meta {
+      display: flex;
+      gap: var(--tt-space-3);
+      color: var(--tt-text-3);
+    }
+
+    &__card &__progress {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    &__card &__bar {
+      display: block;
     }
 
     &__note {
