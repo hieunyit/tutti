@@ -2,7 +2,16 @@
 <script setup lang="ts">
   import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { NButton, type DataTableColumns } from 'naive-ui';
+  import {
+    NButton,
+    NDropdown,
+    type DataTableColumns,
+    type DropdownOption,
+  } from 'naive-ui';
+  import ConsoleUserDialog from './ConsoleUserDialog.vue';
+  import messages from './i18nConsoleUsers';
+  import { consoleUserMenu, type ConsoleUserAction } from './consoleUserMenu';
+  import { useConsoleUserFlows } from './useConsoleUserFlows';
   import {
     Callout,
     ConfirmDialog,
@@ -10,38 +19,24 @@
     EmptyBlock,
     PageShell,
     StatusBadge,
+    TableToolbar,
+    TagChip,
     type StatusTone,
   } from '@/components/kit';
-  import ConsoleUserFormModal, {
-    type ConsoleUserFormValue,
-  } from '@/components/tutti/users/ConsoleUserFormModal.vue';
   import OneTimeSecretModal from '@/components/tutti/users/OneTimeSecretModal.vue';
-  import messages from '@/components/tutti/users/i18nAccess';
   import { useTuttiConsoleUsersStore } from '@/stores/tuttiConsoleUsersStore';
   import { useAuthStore } from '@/stores/authStore';
-  import { TuttiService } from '@/services/TuttiService';
   import { ConsoleUserHelper } from '@/utils/helpers/ConsoleUserHelper';
-  import { ProxyAccountHelper } from '@/utils/helpers/ProxyAccountHelper';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import type { ConsoleUser } from '@/utils/types/users';
-
-  type Kind = 'reset' | 'toggle' | 'delete';
 
   const { t } = useI18n({ messages });
   const store = useTuttiConsoleUsersStore();
   const auth = useAuthStore();
-  const formOpen = ref(false);
-  const edited = ref<ConsoleUser | null>(null);
-  const pending = ref<{ user: ConsoleUser; kind: Kind } | null>(null);
-  /** generated password, shown once, kept in memory only */
-  const oneTime = ref<string | null>(null);
-  const error = ref('');
-  const busy = ref(false);
+  const flows = useConsoleUserFlows(t);
   const loaded = ref(false);
+  const search = ref('');
 
-  const enabledAdmins = computed(
-    () => store.users.filter((u) => u.role === 'admin' && !u.disabled).length,
-  );
   const state = computed(() => {
     if (!auth.isAdmin) return 'ready' as const;
 
@@ -49,139 +44,39 @@
 
     return loaded.value ? ('ready' as const) : ('loading' as const);
   });
+  const rows = computed(() => {
+    const q = search.value.trim().toLowerCase();
 
-  function protectedAdmin(user: ConsoleUser) {
-    return user.role === 'admin' && !user.disabled && enabledAdmins.value <= 1;
-  }
+    return q
+      ? store.users.filter((u) => u.username.toLowerCase().includes(q))
+      : store.users;
+  });
+  const isEmpty = computed(() => loaded.value && store.users.length === 0);
 
-  function actions(user: ConsoleUser) {
-    return ConsoleUserHelper.actions(user, auth.username);
-  }
+  const TONES: Record<string, StatusTone> = {
+    active: 'success',
+    invited: 'info',
+    disabled: 'neutral',
+  };
 
-  function statusTone(user: ConsoleUser): StatusTone {
-    const status = ConsoleUserHelper.status(user);
+  function menuOptions(user: ConsoleUser): DropdownOption[] {
+    const { enabled } = consoleUserMenu(user, store.users, auth.username);
 
-    return status === 'disabled'
-      ? 'neutral'
-      : status === 'invited'
-        ? 'info'
-        : 'success';
-  }
-
-  function openForm(user: ConsoleUser | null) {
-    edited.value = user;
-    error.value = '';
-    formOpen.value = true;
-  }
-
-  async function run(task: () => Promise<void>) {
-    error.value = '';
-    busy.value = true;
-
-    try {
-      await task();
-      await store.load(false);
-
-      return true;
-    } catch (e) {
-      error.value = ProxyAccountHelper.getMessage(e) ?? t('error');
-
-      return false;
-    } finally {
-      busy.value = false;
-    }
-  }
-
-  async function save(value: ConsoleUserFormValue) {
-    const user = edited.value;
-    const ok = await run(async () => {
-      if (user) {
-        await TuttiService.updateConsoleUser({
-          username: user.username,
-          role: value.role,
-        });
-
-        return;
-      }
-
-      const result = await TuttiService.createConsoleUser({
-        username: value.username,
-        role: value.role,
-        generatePassword: value.generate,
-        ...(!value.generate ? { password: value.password } : {}),
-      });
-
-      if (result.generatedPassword) oneTime.value = result.generatedPassword;
-    });
-
-    if (ok) formOpen.value = false;
-  }
-
-  async function confirm() {
-    const action = pending.value;
-
-    if (!action) return;
-
-    await run(async () => {
-      const { user, kind } = action;
-
-      if (kind === 'reset') {
-        const result = await TuttiService.resetConsoleUserPassword({
-          username: user.username,
-          generatePassword: true,
-        });
-
-        if (result.generatedPassword) oneTime.value = result.generatedPassword;
-      } else if (kind === 'toggle') {
-        await TuttiService.updateConsoleUser({
-          username: user.username,
-          disabled: !user.disabled,
-        });
-      } else {
-        await TuttiService.deleteConsoleUser(user.username);
-      }
-    });
-    pending.value = null;
-  }
-
-  function confirmText(action: { user: ConsoleUser; kind: Kind }) {
-    const params = { name: action.user.username };
-
-    if (action.kind === 'reset') return t('resetPasswordConfirm', params);
-
-    if (action.kind === 'delete') return t('deleteConsoleConfirm', params);
-
-    return t(action.user.disabled ? 'enableConfirm' : 'disableConfirm', params);
-  }
-
-  function confirmLabel(action: { user: ConsoleUser; kind: Kind }) {
-    if (action.kind === 'reset') return t('resetPassword');
-
-    if (action.kind === 'delete') return t('deleteLabel');
-
-    return t(action.user.disabled ? 'enable' : 'disable');
-  }
-
-  function actionButton(
-    user: ConsoleUser,
-    id: string,
-    label: string,
-    disabled: boolean,
-    onClick: () => void,
-    danger = false,
-  ) {
-    return h(
-      NButton,
+    return [
+      { key: 'role', label: t('changeRole'), disabled: !enabled.role },
+      { key: 'reset', label: t('resetPassword'), disabled: !enabled.reset },
       {
-        size: 'small',
-        secondary: danger,
-        type: danger ? 'error' : 'default',
-        disabled: busy.value || disabled,
-        'data-testid': `console-${id}-${user.username}`,
-        onClick,
+        key: 'toggle',
+        label: t(user.disabled ? 'enable' : 'disable'),
+        disabled: !enabled.toggle,
       },
-      () => label,
-    );
+      { key: 'delete', label: t('delete'), disabled: !enabled.delete },
+    ];
+  }
+
+  function onMenu(user: ConsoleUser, key: ConsoleUserAction) {
+    if (key === 'role') flows.openForm(user);
+    else flows.pending.value = { user, kind: key };
   }
 
   const columns = computed<DataTableColumns<ConsoleUser>>(() => [
@@ -189,11 +84,21 @@
       title: t('username'),
       key: 'username',
       sorter: 'default',
-      render: (user) =>
-        h('span', [
+      render: (user) => {
+        const { isSelf, isConfig } = consoleUserMenu(
+          user,
+          store.users,
+          auth.username,
+        );
+
+        return h('span', { class: 'console-name' }, [
           h('strong', user.username),
-          actions(user).isSelf ? ` ${t('self')}` : '',
-        ]),
+          isSelf ? h(TagChip, { label: t('you') }) : null,
+          isConfig
+            ? h(TagChip, { label: t('config'), title: t('configHint') })
+            : null,
+        ]);
+      },
     },
     {
       title: t('role'),
@@ -203,16 +108,11 @@
     {
       title: t('status'),
       key: 'status',
-      render: (user) =>
-        h(StatusBadge, {
-          tone: statusTone(user),
-          label: t(ConsoleUserHelper.status(user)),
-        }),
-    },
-    {
-      title: t('source'),
-      key: 'source',
-      render: (user) => t(user.source === 'config' ? 'config' : 'managed'),
+      render: (user) => {
+        const status = ConsoleUserHelper.status(user);
+
+        return h(StatusBadge, { tone: TONES[status], label: t(status) });
+      },
     },
     {
       title: t('lastLogin'),
@@ -220,46 +120,35 @@
       render: (user) => formatDateTime(user.lastLoginAt ?? undefined),
     },
     {
-      title: t('actions'),
+      title: '',
       key: 'actions',
+      width: 56,
+      align: 'right',
       render: (user) => {
-        const can = actions(user);
+        if (!consoleUserMenu(user, store.users, auth.username).hasMenu)
+          return null;
 
-        if (can.isConfig) return h('span', t('editConfig'));
-
-        const guarded = protectedAdmin(user);
-
-        return h('div', { class: 'console-actions' }, [
-          actionButton(
-            user,
-            'role',
-            t('changeRole'),
-            !can.canEdit || guarded,
-            () => openForm(user),
-          ),
-          actionButton(
-            user,
-            'reset',
-            t('resetPassword'),
-            !can.canResetPassword,
-            () => (pending.value = { user, kind: 'reset' }),
-          ),
-          actionButton(
-            user,
-            'toggle',
-            t(user.disabled ? 'enable' : 'disable'),
-            !can.canToggleDisabled || guarded,
-            () => (pending.value = { user, kind: 'toggle' }),
-          ),
-          actionButton(
-            user,
-            'delete',
-            t('delete'),
-            !can.canDelete || guarded,
-            () => (pending.value = { user, kind: 'delete' }),
-            true,
-          ),
-        ]);
+        return h(
+          NDropdown,
+          {
+            trigger: 'click',
+            placement: 'bottom-end',
+            options: menuOptions(user),
+            onSelect: (key: ConsoleUserAction) => onMenu(user, key),
+          },
+          () =>
+            h(
+              NButton,
+              {
+                size: 'small',
+                quaternary: true,
+                disabled: flows.busy.value,
+                'aria-label': t('rowActions', { name: user.username }),
+                'data-testid': `console-menu-${user.username}`,
+              },
+              () => '⋯',
+            ),
+        );
       },
     },
   ]);
@@ -271,31 +160,24 @@
     loaded.value = true;
   });
   onBeforeUnmount(() => {
-    oneTime.value = null;
+    flows.oneTime.value = null;
   });
 </script>
 
 <template>
   <PageShell
-    :title="t('consoleUsers')"
-    :description="t('consoleHint')"
+    :title="t('title')"
     :state="state"
     @retry="store.load()"
   >
     <template #actions>
-      <template v-if="auth.isAdmin">
-        <NButton
-          :loading="store.isLoading"
-          @click="store.load()"
-          >{{ t('refresh') }}</NButton
-        >
-        <NButton
-          type="primary"
-          :disabled="store.authDisabled || store.hasError"
-          @click="openForm(null)"
-          >{{ t('createConsoleUser') }}</NButton
-        >
-      </template>
+      <NButton
+        v-if="auth.isAdmin && !isEmpty"
+        type="primary"
+        :disabled="store.authDisabled || store.hasError"
+        @click="flows.openForm(null)"
+        >{{ t('create') }}</NButton
+      >
     </template>
 
     <EmptyBlock
@@ -310,65 +192,85 @@
         >{{ t('authDisabled') }}</Callout
       >
       <Callout
-        v-if="error && !formOpen"
+        v-if="flows.error.value && !flows.formOpen.value"
         tone="danger"
-        >{{ error }}</Callout
+        >{{ flows.error.value }}</Callout
       >
+      <TableToolbar
+        v-model:search="search"
+        :search-label="t('searchLabel')"
+        :hidden="isEmpty"
+        @clear="search = ''"
+      />
       <DataTable
         :columns="columns"
-        :rows="store.users"
+        :rows="rows"
         :loading="store.isLoading"
         :row-key="(user: ConsoleUser) => user.username"
         @retry="store.load()"
       >
         <template #empty>
-          <EmptyBlock :title="t('emptyConsoleTitle')">
+          <EmptyBlock
+            v-if="search.trim()"
+            :title="t('noMatchTitle')"
+          >
+            <NButton @click="search = ''">{{ t('clearSearch') }}</NButton>
+          </EmptyBlock>
+          <EmptyBlock
+            v-else
+            :title="t('emptyTitle')"
+          >
             <NButton
               type="primary"
               :disabled="store.authDisabled"
-              @click="openForm(null)"
-              >{{ t('createConsoleUser') }}</NButton
+              @click="flows.openForm(null)"
+              >{{ t('create') }}</NButton
             >
           </EmptyBlock>
         </template>
       </DataTable>
     </template>
 
-    <ConsoleUserFormModal
-      :show="formOpen"
-      :user="edited"
-      :busy="busy"
-      :error="error"
-      :protected-admin="!!edited && protectedAdmin(edited)"
-      @save="save"
-      @close="formOpen = false"
+    <ConsoleUserDialog
+      :show="flows.formOpen.value"
+      :user="flows.edited.value"
+      :busy="flows.busy.value"
+      :error="flows.error.value"
+      :protected-admin="flows.editedProtected.value"
+      @save="flows.save"
+      @close="flows.formOpen.value = false"
     />
     <ConfirmDialog
-      :open="pending !== null"
-      :title="pending ? confirmLabel(pending) : ''"
-      :target-name="pending?.user.username"
-      :confirm-label="pending ? confirmLabel(pending) : ''"
-      :danger="pending?.kind === 'delete'"
-      :loading="busy"
-      @confirm="confirm"
-      @cancel="pending = null"
+      :open="flows.pending.value !== null"
+      :title="
+        flows.pending.value ? flows.confirmLabel(flows.pending.value) : ''
+      "
+      :target-name="flows.pending.value?.user.username"
+      :confirm-label="
+        flows.pending.value ? flows.confirmLabel(flows.pending.value) : ''
+      "
+      :danger="flows.pending.value?.kind === 'delete'"
+      :loading="flows.busy.value"
+      @confirm="flows.confirm"
+      @cancel="flows.pending.value = null"
     >
-      {{ pending ? confirmText(pending) : '' }}
+      {{ flows.pending.value ? flows.confirmText(flows.pending.value) : '' }}
     </ConfirmDialog>
     <OneTimeSecretModal
-      :value="oneTime"
+      :value="flows.oneTime.value"
       :title="t('newPasswordTitle')"
-      :label="t('password')"
-      :close-label="t('closeAfterSaving')"
-      @close="oneTime = null"
+      :label="t('passwordLabel')"
+      :close-label="t('close')"
+      @close="flows.oneTime.value = null"
     />
   </PageShell>
 </template>
 
 <style lang="scss">
-  .console-actions {
-    display: flex;
+  .console-name {
+    display: inline-flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--tt-space-2);
   }
 </style>

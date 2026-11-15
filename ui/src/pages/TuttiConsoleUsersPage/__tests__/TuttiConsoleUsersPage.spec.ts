@@ -61,8 +61,8 @@ async function mountPage(role: 'admin' | 'viewer' = 'admin') {
   return wrapper;
 }
 
-const disabled = (wrapper: Awaited<ReturnType<typeof mountPage>>, id: string) =>
-  wrapper.get(`[data-testid="${id}"]`).attributes('disabled') !== undefined;
+const exists = (wrapper: Awaited<ReturnType<typeof mountPage>>, id: string) =>
+  wrapper.find(`[data-testid="${id}"]`).exists();
 
 describe('TuttiConsoleUsersPage', () => {
   beforeEach(() => {
@@ -71,23 +71,54 @@ describe('TuttiConsoleUsersPage', () => {
       .mockResolvedValue({ users } as never);
   });
 
-  it('disables role change and delete on the current user row', async () => {
+  it('offers one actions menu per other managed user and none for you', async () => {
     const wrapper = await mountPage();
 
-    expect(disabled(wrapper, 'console-role-me')).toBe(true);
-    expect(disabled(wrapper, 'console-delete-me')).toBe(true);
-    expect(disabled(wrapper, 'console-toggle-me')).toBe(true);
-    expect(disabled(wrapper, 'console-role-other')).toBe(false);
-    expect(disabled(wrapper, 'console-delete-other')).toBe(false);
+    expect(exists(wrapper, 'console-menu-me')).toBe(false);
+    expect(exists(wrapper, 'console-menu-other')).toBe(true);
+    expect(exists(wrapper, 'console-menu-viewer1')).toBe(true);
+    expect(wrapper.text()).toContain('You');
+  });
+
+  it('shows the create button once in the header when users exist', async () => {
+    const wrapper = await mountPage();
+
+    expect(
+      wrapper
+        .findAll('button')
+        .filter((b) => b.text() === 'Create console user'),
+    ).toHaveLength(1);
+  });
+
+  it('shows the create action only in the empty state when there are no users', async () => {
+    vi.mocked(TuttiService.getConsoleUsers).mockResolvedValue({
+      users: [],
+    } as never);
+
+    const wrapper = await mountPage();
+
+    expect(wrapper.text()).toContain('No console users');
+    expect(
+      wrapper
+        .findAll('button')
+        .filter((b) => b.text() === 'Create console user'),
+    ).toHaveLength(1);
+    expect(wrapper.find('[role="search"]').exists()).toBe(false);
+  });
+
+  it('filters by username and offers to clear the search', async () => {
+    const wrapper = await mountPage();
+
+    await wrapper.get('input[type="search"]').setValue('zzz');
+    expect(wrapper.text()).toContain('No console users match');
+    expect(exists(wrapper, 'console-menu-other')).toBe(false);
   });
 
   it('does not load or list console users for a viewer', async () => {
     const wrapper = await mountPage('viewer');
 
     expect(TuttiService.getConsoleUsers).not.toHaveBeenCalled();
-    expect(wrapper.find('[data-testid="console-delete-other"]').exists()).toBe(
-      false,
-    );
+    expect(exists(wrapper, 'console-menu-other')).toBe(false);
     expect(wrapper.text()).toContain('Administrators only');
   });
 
