@@ -21,18 +21,15 @@
   import { StatTile, type StatusTone } from '@/components/kit';
   import { useNumberFormat } from '@/components/tutti/monitoring/useNumberFormat';
   import type {
-    ProxyReporting,
     ReplicationBreakdown,
     StorageHealthRow,
     TrafficSummary,
   } from '@/utils/helpers/DashboardHelper';
-  import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
   import { RouteName } from '@/utils/types/router';
 
   const props = defineProps<{
     storages: StorageHealthRow[] | null;
     replications: ReplicationBreakdown | null;
-    proxies: ProxyReporting | null;
     traffic: TrafficSummary | null;
   }>();
 
@@ -46,6 +43,8 @@
       minimumFractionDigits: v < 10 ? 2 : 1,
       maximumFractionDigits: v < 10 ? 2 : 1,
     }).format(v / 100);
+
+  const hasReplications = computed(() => (props.replications?.total ?? 0) > 0);
 
   const storagesCard = computed(() => {
     const rows = props.storages;
@@ -69,7 +68,7 @@
             })
           : unknown > 0
             ? t('kpiStoragesHint', { n: number(unknown) })
-            : t('kpiStoragesAllKnown'),
+            : '',
       tone,
     };
   });
@@ -81,7 +80,10 @@
 
     return {
       value: `${number(r.active)} ${t('kpiReplicationsActive')}`,
-      hint: t('kpiReplicationsPausedHint', { n: number(r.paused) }),
+      hint:
+        r.paused > 0
+          ? t('kpiReplicationsPausedHint', { n: number(r.paused) })
+          : '',
       tone: (r.paused > 0 ? 'warning' : undefined) as StatusTone | undefined,
     };
   });
@@ -93,19 +95,8 @@
 
     return {
       value: number(r.totalLag),
-      hint: r.totalLag > 0 ? t('kpiLagHint') : t('kpiLagNone'),
+      hint: '',
       tone: (r.totalLag > 0 ? 'warning' : undefined) as StatusTone | undefined,
-    };
-  });
-
-  const requestsCard = computed(() => {
-    const tr = props.traffic;
-
-    if (!tr) return { value: none.value, hint: '' };
-
-    return {
-      value: TrafficStatsHelper.formatRate(tr.requestsPerSecond),
-      hint: t('kpiRequestsHint'),
     };
   });
 
@@ -116,26 +107,12 @@
 
     return {
       value: percent(tr.errorPercent5xx),
-      hint: t('kpiErrorsCurrent'),
+      hint: '',
       tone: (tr.errorPercent5xx >= 5
         ? 'danger'
         : tr.errorPercent5xx >= 1
           ? 'warning'
           : undefined) as StatusTone | undefined,
-    };
-  });
-
-  const proxiesCard = computed(() => {
-    const p = props.proxies;
-
-    if (!p) return { value: none.value, hint: '', tone: undefined };
-
-    return {
-      value: `${number(p.reporting)} / ${number(p.total)}`,
-      hint: t('kpiProxiesHint'),
-      tone: (p.reporting < p.total ? 'warning' : undefined) as
-        | StatusTone
-        | undefined,
     };
   });
 </script>
@@ -153,6 +130,7 @@
       :to="{ name: RouteName.TUTTI_STORAGES }"
     />
     <StatTile
+      v-if="hasReplications"
       :label="t('kpiReplications')"
       :value="replicationsCard.value"
       :hint="replicationsCard.hint"
@@ -160,6 +138,7 @@
       :to="{ name: RouteName.TUTTI_REPLICATION }"
     />
     <StatTile
+      v-if="hasReplications"
       :label="t('kpiLag')"
       :value="lagCard.value"
       :hint="lagCard.hint"
@@ -167,24 +146,11 @@
       :to="{ name: RouteName.TUTTI_REPLICATION }"
     />
     <StatTile
-      :label="t('kpiRequests')"
-      :value="requestsCard.value"
-      :hint="requestsCard.hint"
-      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'metrics' } }"
-    />
-    <StatTile
       :label="t('kpiErrors')"
       :value="errorsCard.value"
       :hint="errorsCard.hint"
       :tone="errorsCard.tone"
-      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'metrics' } }"
-    />
-    <StatTile
-      :label="t('kpiProxies')"
-      :value="proxiesCard.value"
-      :hint="proxiesCard.hint"
-      :tone="proxiesCard.tone"
-      :to="{ name: RouteName.TUTTI_STORAGES }"
+      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'traffic' } }"
     />
   </section>
 </template>

@@ -19,7 +19,6 @@
   import { useI18n } from 'vue-i18n';
   import i18nDashboard from './i18nDashboard';
   import DashboardAttention from '@/components/tutti/dashboard/DashboardAttention.vue';
-  import DashboardEndpoint from '@/components/tutti/dashboard/DashboardEndpoint.vue';
   import DashboardKpis from '@/components/tutti/dashboard/DashboardKpis.vue';
   import DashboardReplications from '@/components/tutti/dashboard/DashboardReplications.vue';
   import DashboardStorages from '@/components/tutti/dashboard/DashboardStorages.vue';
@@ -71,11 +70,6 @@
       ? DashboardHelper.getReplicationBreakdown(replications.value)
       : null,
   );
-  const reporting = computed(() =>
-    proxies.value
-      ? DashboardHelper.getProxyReporting(proxies.value, now.value)
-      : null,
-  );
   const traffic = computed(() =>
     DashboardHelper.getTrafficSummary(totalRates.value),
   );
@@ -104,14 +98,6 @@
         .join(', '),
     }),
   );
-  const hasAllData = computed(
-    () =>
-      failedSources.value.length === 0 &&
-      !!replications.value &&
-      (storageRows.value?.length ?? 0) > 0 &&
-      storageRows.value?.every((storage) => storage.state === 'healthy') &&
-      (reporting.value?.reporting ?? 0) > 0,
-  );
 </script>
 
 <template>
@@ -127,22 +113,10 @@
       v-if="attention.length > 0"
       :items="attention"
     />
-    <div
-      v-else-if="hasAllData"
-      class="dashboard-overview__ok"
-      role="status"
-    >
-      <span
-        class="dashboard-overview__ok-dot"
-        aria-hidden="true"
-      />
-      {{ t('allGood') }}
-    </div>
 
     <DashboardKpis
       :storages="storageRows"
       :replications="breakdown"
-      :proxies="reporting"
       :traffic="traffic"
     />
 
@@ -158,8 +132,6 @@
         :replications="replications"
       />
     </div>
-
-    <DashboardEndpoint />
 
     <div
       v-if="HAS_PROMETHEUS"
@@ -184,25 +156,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-5);
-
-    &__ok {
-      display: flex;
-      align-items: center;
-      gap: var(--tt-space-2);
-      padding: var(--tt-space-3) var(--tt-card-padding);
-      border: 1px solid var(--tt-border);
-      border-radius: var(--tt-radius-card);
-      background-color: var(--tt-surface);
-      font-size: var(--tt-text-md);
-      color: var(--tt-text);
-    }
-
-    &__ok-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--tt-success-solid);
-    }
 
     &__columns {
       display: grid;

@@ -67,19 +67,11 @@ permissions and * limitations under the License. */
 <template>
   <div class="monitoring-breakdown">
     <SectionCard
+      v-if="storageRows.length > 0"
       :title="t('storagesTitle')"
       flush
     >
-      <p
-        v-if="storageRows.length === 0"
-        class="monitoring-breakdown__empty"
-      >
-        {{ t('noStorageRows') }}
-      </p>
-      <table
-        v-else
-        class="tt-table"
-      >
+      <table class="tt-table">
         <caption class="tt-sr-only">
           {{
             t('storagesTitle')
@@ -125,19 +117,11 @@ permissions and * limitations under the License. */
     </SectionCard>
 
     <SectionCard
+      v-if="proxyRows.length > 0"
       :title="t('proxiesTitle')"
       flush
     >
-      <p
-        v-if="proxyRows.length === 0"
-        class="monitoring-breakdown__empty"
-      >
-        {{ t('noProxyRows') }}
-      </p>
-      <table
-        v-else
-        class="tt-table"
-      >
+      <table class="tt-table">
         <caption class="tt-sr-only">
           {{
             t('proxiesTitle')
@@ -207,13 +191,6 @@ permissions and * limitations under the License. */
   .monitoring-breakdown {
     display: grid;
     gap: 16px;
-
-    &__empty {
-      margin: 0;
-      padding: 24px 16px;
-      font-size: 14px;
-      color: var(--tt-text-3);
-    }
 
     &__name a {
       font-weight: 600;

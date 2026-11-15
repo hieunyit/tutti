@@ -48,7 +48,14 @@ const stats = {
 async function mountPanel() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/', component: { template: '<div/>' } }],
+    routes: [
+      { path: '/', component: { template: '<div/>' } },
+      {
+        path: '/system-settings',
+        name: 'TUTTI_SYSTEM_SETTINGS',
+        component: { template: '<div/>' },
+      },
+    ],
   });
 
   await router.push('/');

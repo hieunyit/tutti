@@ -16,8 +16,8 @@
 
 <script setup lang="ts">
   /**
-   * Live replication throughput: rate/buffer tiles, plain-language hints and a
-   * per-worker table. Hidden when the backend has no worker-stats route.
+   * Replication workers: rate/buffer tiles, plain-language hints (only when
+   * there is something to tune) and a per-worker table. Hidden when the backend has no worker-stats route.
    */
   import { storeToRefs } from 'pinia';
   import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
@@ -25,6 +25,7 @@
   import messages from './i18nThroughput';
   import { ErrorBlock, LoadingBlock, StatTile } from '@/components/kit';
   import { useTuttiWorkerStatsStore } from '@/stores/tuttiWorkerStatsStore';
+  import { RouteName } from '@/utils/types/router';
   import { TrafficStatsHelper } from '@/utils/helpers/TrafficStatsHelper';
   import {
     bufferPercent,
@@ -84,14 +85,14 @@
     :aria-label="t('title')"
   >
     <header class="throughput__head">
-      <div>
-        <h3 class="throughput__title">{{ t('title') }}</h3>
-        <p class="throughput__desc">{{ t('description') }}</p>
-      </div>
+      <h2 class="throughput__title">{{ t('title') }}</h2>
       <RouterLink
         v-if="showSettingsLink"
         class="throughput__link"
-        to="/system-settings?tab=worker"
+        :to="{
+          name: RouteName.TUTTI_SYSTEM_SETTINGS,
+          query: { tab: 'worker' },
+        }"
         >{{ t('settingsLink') }}</RouterLink
       >
     </header>
@@ -116,21 +117,12 @@
           :value="formatObjectsPerSec(totals.objectsPerSec1m)"
         />
         <StatTile
-          :label="t('objects5m')"
-          :value="formatObjectsPerSec(totals.objectsPerSec5m)"
-        />
-        <StatTile
           :label="t('bytes1m')"
           :value="formatBytesPerSec(totals.bytesPerSec1m)"
         />
         <StatTile
-          :label="t('bytes5m')"
-          :value="formatBytesPerSec(totals.bytesPerSec5m)"
-        />
-        <StatTile
           :label="t('inFlight')"
           :value="`${totals.inFlight} / ${totals.concurrency}`"
-          :hint="t('inFlightHint')"
         />
         <StatTile
           :label="t('buffer')"
@@ -139,45 +131,35 @@
           :tone="bufferTone"
         />
         <StatTile
+          v-if="totals.bufferWaiters > 0"
           :label="t('waiters')"
           :value="totals.bufferWaiters"
           :hint="t('waitersHint')"
-          :tone="totals.bufferWaiters > 0 ? 'warning' : 'neutral'"
+          tone="warning"
         />
         <StatTile
+          v-if="totals.failedTotal > 0"
           :label="t('failed')"
           :value="totals.failedTotal"
-          :tone="totals.failedTotal > 0 ? 'warning' : 'neutral'"
+          tone="warning"
         />
       </div>
 
-      <div
-        class="throughput__diagnostics"
+      <ul
+        v-if="hints.length"
+        class="throughput__hints"
         data-test="throughput-diagnostics"
         role="status"
       >
-        <h4 class="throughput__subtitle">{{ t('diagnosticsTitle') }}</h4>
-        <ul
-          v-if="hints.length"
-          class="throughput__hints"
+        <li
+          v-for="hint in hints"
+          :key="hint"
+          :data-hint="hint"
         >
-          <li
-            v-for="hint in hints"
-            :key="hint"
-            :data-hint="hint"
-          >
-            {{ t(`hint_${hint}`) }}
-          </li>
-        </ul>
-        <p
-          v-else
-          class="throughput__desc"
-        >
-          {{ t('diagnosticsOk') }}
-        </p>
-      </div>
+          {{ t(`hint_${hint}`) }}
+        </li>
+      </ul>
 
-      <h4 class="throughput__subtitle">{{ t('workersTitle') }}</h4>
       <p
         v-if="!workers.length"
         class="throughput__desc"
@@ -243,12 +225,6 @@
       font-weight: var(--tt-weight-semibold);
     }
 
-    &__subtitle {
-      margin: 0;
-      font-size: var(--tt-text-sm);
-      font-weight: var(--tt-weight-medium);
-    }
-
     &__desc {
       margin: 0;
       font-size: var(--tt-text-sm);
@@ -263,12 +239,6 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: var(--tt-space-3);
-    }
-
-    &__diagnostics {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-2);
     }
 
     &__hints {

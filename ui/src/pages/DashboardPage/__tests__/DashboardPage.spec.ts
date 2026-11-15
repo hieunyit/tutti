@@ -26,6 +26,13 @@ import { AuthRole } from '@/utils/types/auth';
 
 tolerateNaiveStyles();
 
+vi.mock('@clyso/clyso-ui-kit', () => ({
+  I18nLocale: { EN: 'en', DE: 'de', VI: 'vi' },
+}));
+vi.mock('@/components/tutti/dashboard/DashboardEndpoint.vue', () => ({
+  default: { template: '<div class="endpoint" />' },
+}));
+
 vi.mock('../DashboardOverviewTab.vue', () => ({
   default: { template: '<div class="overview-tab" />' },
 }));
@@ -38,7 +45,6 @@ vi.mock('../useDashboardData', async () => {
   return {
     useDashboardData: () => ({
       state: ref('ready'),
-      updatedAt: ref(null),
       refresh: vi.fn(),
     }),
   };

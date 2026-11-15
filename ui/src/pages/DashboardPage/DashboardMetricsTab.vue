@@ -22,7 +22,6 @@
   import { useMetricsCharts } from './useMetricsCharts';
   import i18nMonitoring from '@/components/tutti/monitoring/i18nMonitoring';
   import MonitoringBreakdown from '@/components/tutti/monitoring/MonitoringBreakdown.vue';
-  import MonitoringKpiTiles from '@/components/tutti/monitoring/MonitoringKpiTiles.vue';
   import MonitoringReplication from '@/components/tutti/monitoring/MonitoringReplication.vue';
   import ThroughputPanel from '@/components/tutti/throughput/ThroughputPanel.vue';
   import TrafficLineChart from '@/components/tutti/monitoring/TrafficLineChart.vue';
@@ -48,7 +47,6 @@
     windowEnd,
     points,
     proxies,
-    totalRates,
   } = storeToRefs(store);
 
   const now = useNow(1000);
@@ -81,7 +79,6 @@
   const windowStart = computed(() => windowEnd.value - RANGE_MS[range.value]);
   const bucketMs = computed(() => RANGE_BUCKET_MS[range.value]);
   const rangeLabel = computed(() => t(`rangeText${range.value}`));
-  const baseLabel = computed(() => t(`rangeAgo${range.value}`));
 
   const { charts } = useMetricsCharts(points, bucketMs);
 </script>
@@ -143,12 +140,6 @@
       />
 
       <template v-else>
-        <MonitoringKpiTiles
-          :current="totalRates ?? points[points.length - 1]?.rates ?? null"
-          :points="points"
-          :base-label="baseLabel"
-        />
-
         <section
           class="dashboard-metrics__charts"
           :aria-label="t('chartsSection')"

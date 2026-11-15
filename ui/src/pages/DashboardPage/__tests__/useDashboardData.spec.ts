@@ -80,7 +80,6 @@ describe('useDashboardData', () => {
     expect(result.state.value).toBe('loading');
     await settle();
     expect(result.state.value).toBe('ready');
-    expect(result.updatedAt.value).toBeInstanceOf(Date);
     wrapper.unmount();
   });
 

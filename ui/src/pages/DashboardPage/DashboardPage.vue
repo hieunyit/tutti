@@ -15,7 +15,6 @@
   -->
 
 <script setup lang="ts">
-  import { NButton } from 'naive-ui';
   import { computed } from 'vue';
   import { storeToRefs } from 'pinia';
   import { useI18n } from 'vue-i18n';
@@ -23,6 +22,7 @@
   import DashboardOverviewTab from './DashboardOverviewTab.vue';
   import i18nDashboard from './i18nDashboard';
   import { useDashboardData } from './useDashboardData';
+  import DashboardEndpoint from '@/components/tutti/dashboard/DashboardEndpoint.vue';
   import { PageShell, useQueryTab } from '@/components/kit';
   import { useAuthStore } from '@/stores/authStore';
 
@@ -49,22 +49,11 @@
   const shellState = computed(() =>
     isMetrics.value ? 'ready' : data.state.value,
   );
-  const updatedText = computed(() =>
-    data.updatedAt.value === null
-      ? t('notUpdated')
-      : t('updatedAt', {
-          time: data.updatedAt.value.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }),
-  );
 </script>
 
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('description')"
     :state="shellState"
     :tabs="tabs.length > 1 ? tabs : undefined"
     :active-tab="activeTab"
@@ -76,24 +65,10 @@
       v-if="!isMetrics"
       #actions
     >
-      <span
-        class="dashboard-page__updated"
-        role="status"
-        >{{ updatedText }}</span
-      >
-      <NButton @click="data.refresh()">{{ t('refresh') }}</NButton>
+      <DashboardEndpoint />
     </template>
 
     <DashboardMetricsTab v-if="isMetrics" />
     <DashboardOverviewTab v-else />
   </PageShell>
 </template>
-
-<style lang="scss" scoped>
-  .dashboard-page__updated {
-    align-self: center;
-    margin-right: var(--tt-space-3);
-    font-size: var(--tt-text-sm);
-    color: var(--tt-text-2);
-  }
-</style>

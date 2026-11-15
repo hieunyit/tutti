@@ -31,21 +31,18 @@ import { useTuttiDashboardStore } from '@/stores/tuttiDashboardStore';
  */
 export function useDashboardData() {
   const store = useTuttiDashboardStore();
-  const { isLoading, hasFatalError, lastUpdated } = storeToRefs(store);
+  const { isLoading, hasFatalError } = storeToRefs(store);
 
   const state = computed<PageState>(() => {
     if (isLoading.value) return 'loading';
 
     return hasFatalError.value ? 'error' : 'ready';
   });
-  const updatedAt = computed(() =>
-    lastUpdated.value === null ? null : new Date(lastUpdated.value),
-  );
 
   if (getCurrentInstance()) {
     onBeforeMount(() => store.startPolling());
     onBeforeUnmount(() => store.stopPolling());
   }
 
-  return { state, updatedAt, refresh: () => store.refresh() };
+  return { state, refresh: () => store.refresh() };
 }

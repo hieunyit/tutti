@@ -22,38 +22,24 @@
   import { CopyValue } from '@/components/kit';
   import { TuttiCoreService } from '@/services/TuttiCoreService';
   import { useAuthStore } from '@/stores/authStore';
-  import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-  import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({ messages: i18nDashboard });
   const { isViewer } = storeToRefs(useAuthStore());
 
   const address = ref('');
-  const isLoading = ref(false);
-  const isForbidden = ref(false);
-  const hasError = ref(false);
 
+  /**
+   * The address is admin-only and a convenience: viewers, errors and a
+   * missing address all simply show nothing.
+   */
   async function load() {
-    hasError.value = false;
-    isForbidden.value = false;
-
-    // the endpoint is admin-only: do not request it for viewers
-    if (isViewer.value) {
-      isForbidden.value = true;
-
-      return;
-    }
-
-    isLoading.value = true;
+    if (isViewer.value) return;
 
     try {
       address.value =
         (await TuttiCoreService.getProxyCredentials()).address ?? '';
-    } catch (error: unknown) {
-      if (ErrorHelper.getStatusCode(error) === 403) isForbidden.value = true;
-      else hasError.value = true;
-    } finally {
-      isLoading.value = false;
+    } catch {
+      address.value = '';
     }
   }
 
@@ -61,91 +47,28 @@
 </script>
 
 <template>
-  <section
+  <div
+    v-if="address"
     class="dashboard-endpoint"
-    :aria-label="t('endpointTitle')"
   >
-    <div class="dashboard-endpoint__text">
-      <h2 class="dashboard-endpoint__title">{{ t('endpointTitle') }}</h2>
-      <span class="dashboard-endpoint__hint">{{
-        isForbidden ? t('endpointAdminNote') : t('endpointText')
-      }}</span>
-    </div>
-
-    <span
-      v-if="isLoading"
-      class="dashboard-endpoint__note"
-      >…</span
-    >
-    <span
-      v-else-if="hasError"
-      class="dashboard-endpoint__note"
-      >{{ t('endpointError') }}</span
-    >
+    <span class="dashboard-endpoint__label">{{ t('endpointTitle') }}</span>
     <CopyValue
-      v-else-if="address"
       :value="address"
       :label="t('endpointTitle')"
     />
-    <span
-      v-else-if="!isForbidden"
-      class="dashboard-endpoint__note"
-      >{{ t('endpointUnavailable') }}</span
-    >
-
-    <RouterLink
-      class="dashboard-endpoint__link"
-      :to="{ name: RouteName.TUTTI_ACCESS_KEYS }"
-    >
-      {{ t('endpointManage') }}
-    </RouterLink>
-  </section>
+  </div>
 </template>
 
 <style lang="scss" scoped>
   .dashboard-endpoint {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px 24px;
-    padding: var(--tt-card-padding);
-    background-color: var(--tt-surface);
-    border: 1px solid var(--tt-border);
-    border-radius: var(--tt-radius-card);
+    gap: var(--tt-space-2);
 
-    &__text {
-      display: flex;
-      flex: 1 1 280px;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    &__title {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    &__hint {
-      font-size: 13px;
+    &__label {
+      font-size: var(--tt-text-sm);
       color: var(--tt-text-2);
-    }
-
-    &__note {
-      font-size: 13px;
-      color: var(--tt-text-3);
-    }
-
-    &__link {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--tt-accent);
-      text-decoration: none;
-
-      &:hover {
-        color: var(--tt-accent-hover);
-        text-decoration: underline;
-      }
+      white-space: nowrap;
     }
   }
 </style>
