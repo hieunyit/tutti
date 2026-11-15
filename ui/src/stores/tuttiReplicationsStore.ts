@@ -388,6 +388,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: errorList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });
@@ -410,6 +411,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: successList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });
@@ -477,6 +479,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: errorList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });
@@ -499,6 +502,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: successList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });
@@ -543,6 +547,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: errorList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });
@@ -577,6 +582,7 @@ export const useTuttiReplicationsStore = defineStore(
               ),
               h(ReplicationsShortList, {
                 replications: successList,
+                allBucketsText: t('allBuckets'),
               }),
             ]),
         });

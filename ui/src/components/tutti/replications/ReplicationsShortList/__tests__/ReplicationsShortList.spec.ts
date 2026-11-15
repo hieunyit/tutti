@@ -29,25 +29,53 @@ vi.mock('@clyso/clyso-ui-kit', () => ({
   },
 }));
 
-function render(id: Record<string, string>) {
+function render(id: Record<string, string>, name?: string) {
   return mount(ReplicationsShortList, {
-    props: { replications: [{ id, idStr: 'x' } as never] },
+    props: { replications: [{ id, idStr: 'x', name } as never] },
   }).text();
 }
 
 describe('ReplicationsShortList', () => {
-  it('renders "A → B" for an empty user', () => {
+  it('renders the auto label for an unnamed storage-level replication', () => {
     expect(
       render({ user: '', fromStorage: 'A', toStorage: 'B' }).replace(
         /\s+/g,
         ' ',
       ),
-    ).toBe('A → B');
+    ).toBe('A → B · all buckets');
   });
 
   it('keeps showing a real user', () => {
     expect(
       render({ user: 'alice', fromStorage: 'A', toStorage: 'B' }),
     ).toContain('alice:');
+  });
+
+  it('shows the replication name when it has one', () => {
+    const text = render(
+      {
+        user: '',
+        fromStorage: 'A',
+        toStorage: 'B',
+        fromBucket: 'b',
+        toBucket: 'b',
+      },
+      'nightly copy',
+    );
+
+    expect(text).toContain('nightly copy');
+    expect(text).not.toContain('→');
+  });
+
+  it('falls back to from → to · bucket without a name', () => {
+    expect(
+      render({
+        user: '',
+        fromStorage: 'A',
+        toStorage: 'B',
+        fromBucket: 'b',
+        toBucket: 'b',
+      }),
+    ).toContain('A → B · b');
   });
 });

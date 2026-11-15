@@ -18,17 +18,20 @@
   import { CShortList } from '@clyso/clyso-ui-kit';
   import type { AddId } from '@/utils/types/helper';
   import type { TuttiReplication } from '@/utils/types/tuttiCore';
-  import { ReplicationsHelper } from '@/utils/helpers/ReplicationsHelper';
+  import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
 
   withDefaults(
     defineProps<{
       replications: AddId<TuttiReplication>[];
       max?: number;
       size?: 'small' | 'medium';
+      /** wording of "every bucket" in the `from → to · bucket` fallback label */
+      allBucketsText?: string;
     }>(),
     {
       max: 5,
       size: 'small',
+      allBucketsText: 'all buckets',
     },
   );
 </script>
@@ -42,23 +45,12 @@
     class="replications-short-list"
   >
     <template #default="{ item }: { item: AddId<TuttiReplication> }">
-      <template v-if="item.id.user || item.id.fromBucket">
-        <strong v-if="item.id.user">
-          <span class="replications-short-list__user"
-            >{{ item.id.user }}:
-          </span>
-        </strong>
-        {{ item.id.fromStorage }}/<span class="replications-short-list__bucket">
-          {{ item.id.fromBucket || '*' }}
-        </span>
-        →
-        {{ item.id.toStorage }}/<span class="replications-short-list__bucket">
-          {{ item.id.toBucket || '*' }}
-        </span>
-      </template>
-      <template v-else>
-        {{ ReplicationsHelper.getDirectionPairString(item) }}
-      </template>
+      <strong v-if="item.id.user">
+        <span class="replications-short-list__user">{{ item.id.user }}: </span>
+      </strong>
+      <span class="replications-short-list__label">{{
+        ReplicationNameHelper.getDisplayName(item, allBucketsText)
+      }}</span>
     </template>
   </CShortList>
 </template>
@@ -67,7 +59,7 @@
   @use '@/styles/utils' as utils;
 
   .replications-short-list {
-    &__bucket,
+    &__label,
     &__user {
       font-weight: utils.$font-weight-medium;
     }

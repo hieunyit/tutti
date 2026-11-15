@@ -112,6 +112,10 @@ export abstract class DashboardHelper {
   }
 
   static replicationLabel(replication: TuttiReplication): string {
+    const name = replication.name?.trim();
+
+    if (name) return name;
+
     const { user, fromStorage, toStorage, fromBucket } = replication.id;
 
     return `${user}: ${fromStorage} → ${toStorage}${fromBucket ? ` (${fromBucket})` : ''}`;

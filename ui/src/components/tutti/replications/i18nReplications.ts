@@ -44,6 +44,7 @@ export default <I18nMessages>{
       'The following replication was resumed: | The following {total} replications were resumed:',
     resumeSelectedErrorContent:
       'An error occurred while resuming the following replication: | An error occurred while resuming the following {total} replications:',
+    allBuckets: 'all buckets',
     pauseSelectedSuccessContent:
       'The following replication was paused: | The following {total} replications were paused:',
     pauseSelectedErrorContent:
@@ -100,6 +101,7 @@ export default <I18nMessages>{
       'Die folgende Replikation wurde fortgesetzt: | Die folgenden {total} Replikationen wurden fortgesetzt:',
     resumeSelectedErrorContent:
       'Es ist ein Fehler beim Fortsetzen der folgenden Replikation aufgetreten: | Es ist ein Fehler beim Fortsetzen der folgenden {total} Replikationen aufgetreten:',
+    allBuckets: 'alle Buckets',
     pauseSelectedSuccessContent:
       'Die folgende Replikation wurde pausiert: | Die folgenden {total} Replikationen wurden pausiert:',
     pauseSelectedErrorContent:
@@ -155,6 +157,7 @@ export default <I18nMessages>{
     resumeSelectedSuccessContent: 'Đã tiếp tục {total} replication sau:',
     resumeSelectedErrorContent:
       'Đã xảy ra lỗi khi tiếp tục {total} replication sau:',
+    allBuckets: 'tất cả bucket',
     pauseSelectedSuccessContent: 'Đã tạm dừng {total} replication sau:',
     pauseSelectedErrorContent:
       'Đã xảy ra lỗi khi tạm dừng {total} replication sau:',
