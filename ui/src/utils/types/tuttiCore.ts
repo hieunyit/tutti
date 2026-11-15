@@ -239,12 +239,6 @@ export enum ReplicationStatusFilter {
   LIVE_UP_TO_DATE = 'LIVE_UP_TO_DATE',
 }
 
-export enum AddReplicationStepName {
-  'FROM_STORAGE' = 1,
-  'TO_STORAGE' = 2,
-  'BUCKETS' = 3,
-}
-
 export enum ReplicationType {
   'USER' = 'User Replication',
   'BUCKET' = 'Bucket Replication',
@@ -365,13 +359,6 @@ export interface AddDiffReportRequest {
   checkOnlyLastVersions: boolean;
   ignoreEtags: boolean;
   ignoreSizes: boolean;
-}
-
-export enum AddDiffReportStepName {
-  'FROM_STORAGE_BUCKET' = 1,
-  'TO_STORAGE_BUCKET' = 2,
-  'USER' = 3,
-  'SETTINGS' = 4,
 }
 
 export interface DiffReportEntry {

@@ -20,16 +20,8 @@ export default <I18nMessages>{
   [I18nLocale.EN]: {
     statusInitial: 'Initial copy',
     statusLagging: 'Behind',
-    pageDescription:
-      'Continuously copy objects from a source storage to a destination, for a single bucket or for all buckets of a user.',
     replicationsTitle: 'Replication',
     noResultsTitle: 'No Replications yet',
-    noResultsText:
-      'There is no replications available at the moment.\nTo create a new replication please click the button below.',
-    filterNoResultsTitle: 'No Replications found',
-    filterNoResultsText:
-      'There is no replication matching your filter criteria.',
-    filterNoResultsAction: 'Clear Filters',
     errorTitle: 'Error',
     errorText:
       'An error occurred while getting the replication list.\nPlease try one more time.',
@@ -84,16 +76,8 @@ export default <I18nMessages>{
   [I18nLocale.DE]: {
     statusInitial: 'Erstkopie',
     statusLagging: 'Im Rückstand',
-    pageDescription:
-      'Kopiert Objekte fortlaufend von einem Quellspeicher in ein Ziel, für einen einzelnen Bucket oder alle Buckets eines Benutzers.',
     replicationsTitle: 'Replikation',
     noResultsTitle: 'Noch keine Replikationen',
-    noResultsText:
-      'Derzeit sind keine Replikationen verfügbar.\nUm eine neue Replikation zu erstellen, klicken Sie bitte auf die Schaltfläche unten.',
-    filterNoResultsTitle: 'Keine Replikationen gefunden',
-    filterNoResultsText:
-      'Es gibt keine Replikationen, die Ihren Filterkriterien entsprechen.',
-    filterNoResultsAction: 'Filter zurücksetzen',
     errorTitle: 'Fehler',
     errorText:
       'Beim Abrufen der Replikationsliste ist ein Fehler aufgetreten.\nBitte versuchen Sie es noch einmal.',
@@ -148,15 +132,8 @@ export default <I18nMessages>{
   vi: {
     statusInitial: 'Sao chép ban đầu',
     statusLagging: 'Đang chậm',
-    pageDescription:
-      'Liên tục sao chép object từ storage nguồn sang đích, cho một bucket hoặc cho tất cả bucket của một user.',
     replicationsTitle: 'Replication',
     noResultsTitle: 'Chưa có replication',
-    noResultsText:
-      'Hiện chưa có replication nào.\nĐể tạo replication mới, hãy nhấp nút bên dưới.',
-    filterNoResultsTitle: 'Không tìm thấy replication',
-    filterNoResultsText: 'Không có replication nào khớp với tiêu chí lọc.',
-    filterNoResultsAction: 'Xóa bộ lọc',
     errorTitle: 'Lỗi',
     errorText:
       'Đã xảy ra lỗi khi lấy danh sách replication.\nVui lòng thử lại một lần nữa.',

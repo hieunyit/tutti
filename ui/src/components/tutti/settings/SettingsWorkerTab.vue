@@ -6,6 +6,7 @@
   import SettingsRecommendations from './SettingsRecommendations.vue';
   import { useSettingsForm } from './useSettingsForm';
   import { SectionCard } from '@/components/kit';
+  import { RouteName } from '@/utils/types/router';
   import {
     WORKER_DURATION_FIELDS,
     WORKER_TUNING_FIELDS,
@@ -151,7 +152,7 @@
         </SettingsField>
         <RouterLink
           class="settings-tab__link"
-          to="/dashboard?tab=traffic"
+          :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'traffic' } }"
           data-test="throughput-link"
           >{{ t('throughputLink') }}</RouterLink
         >

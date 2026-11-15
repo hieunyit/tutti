@@ -28,7 +28,6 @@ export default <I18nMessages>{
     bucketOne: 'One bucket',
     bucketLabel: 'Bucket name',
     bucketHint: 'Pick a bucket or type a name.',
-    bucketsLoading: 'Looking for buckets…',
     bucketNameRequired: 'Enter a bucket name.',
     bucketErrLength: 'A bucket name has 3 to 63 characters.',
     bucketErrChars:
@@ -65,7 +64,6 @@ export default <I18nMessages>{
     bucketOne: 'Ein Bucket',
     bucketLabel: 'Bucket-Name',
     bucketHint: 'Wählen Sie einen Bucket oder geben Sie einen Namen ein.',
-    bucketsLoading: 'Buckets werden gesucht …',
     bucketNameRequired: 'Geben Sie einen Bucket-Namen ein.',
     bucketErrLength: 'Ein Bucket-Name hat 3 bis 63 Zeichen.',
     bucketErrChars:
@@ -107,7 +105,6 @@ export default <I18nMessages>{
     bucketOne: 'Một bucket',
     bucketLabel: 'Tên bucket',
     bucketHint: 'Chọn một bucket hoặc nhập tên.',
-    bucketsLoading: 'Đang tìm bucket…',
     bucketNameRequired: 'Hãy nhập tên bucket.',
     bucketErrLength: 'Tên bucket dài từ 3 đến 63 ký tự.',
     bucketErrChars:
