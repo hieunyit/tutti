@@ -36,8 +36,8 @@ export const BYTE_KEYS = ['bandwidthLimitBytes', 'bufferBudgetBytes'] as const;
 
 export const SETTINGS_TABS = [
   'features',
-  'bulk',
   'worker',
+  'bulk',
   'locking',
   'webhook',
   /** proxy defaults: the former Proxies > Config tab (own store and save flow) */
@@ -63,7 +63,7 @@ export function tabForField(field: string): SettingsTab {
 
   if (field === 'webhookBaseUrl') return 'webhook';
 
-  return [...WATERMARK_KEYS, ...BYTE_KEYS].some((key) => key === field)
+  return [...WATERMARK_KEYS, 'bandwidthLimitBytes'].includes(field)
     ? 'bulk'
     : 'worker';
 }

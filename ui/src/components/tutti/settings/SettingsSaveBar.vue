@@ -24,6 +24,7 @@
   import { NButton } from 'naive-ui';
   import messages from './i18nSettings';
   import { diffSettings } from './settingsMeta';
+  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import { ConfirmDialog } from '@/components/kit';
   import { useTuttiSystemSettingsStore } from '@/stores/tuttiSystemSettingsStore';
@@ -46,6 +47,21 @@
     () => diffSettings(store.settings, store.draft).length,
   );
 
+  /** The one status text: unsaved count while editing, else the saved version. */
+  const statusText = computed(() => {
+    if (store.hasChanges)
+      return t('unsaved', { count: changeCount.value }, changeCount.value);
+
+    const saved = store.settings;
+
+    return saved?.updatedAt
+      ? t('statusSaved', {
+          version: saved.version ?? 0,
+          when: formatDateTime(saved.updatedAt),
+        })
+      : t('statusNotSaved');
+  });
+
   function openReview() {
     if (invalidCount.value) emit('invalid');
     else review.value = true;
@@ -60,19 +76,14 @@
 <template>
   <div
     class="settings-bar"
+    :class="{ 'settings-bar--dirty': store.hasChanges }"
     role="status"
     aria-live="polite"
   >
     <span
-      v-if="store.hasChanges"
       class="settings-bar__text"
-    >
-      {{ t('unsavedBar') }} · {{ t('changesCount', { count: changeCount }) }}
-    </span>
-    <span
-      v-else-if="store.saveSuccess"
-      class="settings-bar__saved"
-      >{{ t('saved') }}</span
+      :class="{ 'settings-bar__text--dirty': store.hasChanges }"
+      >{{ statusText }}</span
     >
     <span
       v-if="store.hasChanges && invalidCount"
@@ -85,7 +96,10 @@
         >{{ t('reviewFields') }}</NButton
       ></span
     >
-    <div class="settings-bar__actions">
+    <div
+      v-if="store.hasChanges"
+      class="settings-bar__actions"
+    >
       <NButton
         :disabled="!store.hasChanges || store.isSaving"
         data-test="settings-cancel"
@@ -137,33 +151,34 @@
 
 <style lang="scss" scoped>
   .settings-bar {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: var(--tt-space-3);
     margin-top: var(--tt-space-5);
-    padding: var(--tt-space-3) var(--tt-space-4);
-    border: 1px solid var(--tt-border);
-    border-radius: var(--tt-radius-card);
-    background-color: var(--tt-surface);
-    box-shadow: var(--tt-shadow-overlay);
+    font-size: var(--tt-text-sm);
+    color: var(--tt-text-3);
 
-    &__text {
-      font-size: var(--tt-text-sm);
+    // only while editing does the bar float with the actions
+    &--dirty {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      padding: var(--tt-space-3) var(--tt-space-4);
+      border: 1px solid var(--tt-border);
+      border-radius: var(--tt-radius-card);
+      background-color: var(--tt-surface);
+      box-shadow: var(--tt-shadow-overlay);
+    }
+
+    &__text--dirty {
       font-weight: var(--tt-weight-medium);
+      color: var(--tt-text);
     }
 
     &__invalid {
       font-size: var(--tt-text-sm);
       color: var(--tt-danger);
-    }
-
-    &__saved {
-      font-size: var(--tt-text-sm);
-      color: var(--tt-success);
     }
 
     &__actions {

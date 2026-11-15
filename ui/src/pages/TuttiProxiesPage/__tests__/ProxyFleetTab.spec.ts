@@ -87,4 +87,68 @@ describe('ProxyFleetTab', () => {
     expect(wrapper.text()).toContain('proxy-2');
     wrapper.unmount();
   });
+
+  it('is fleet status only: no per-proxy settings, no refresh or pause buttons', async () => {
+    vi.mocked(TuttiService.getProxies).mockResolvedValue({
+      proxies: [
+        {
+          appId: 'proxy-1',
+          settings: { failover: { enabled: true } },
+          storages: [{ name: 's1', available: true }],
+        },
+      ],
+    });
+    const wrapper = mountTab();
+
+    await flushPromises();
+    const text = wrapper.text();
+
+    expect(text).not.toMatch(/Effective settings|Pause|Refresh/);
+    expect(text).not.toMatch(/Failover|Sync replication|Startup config/);
+    expect(text).toContain('1 / 1');
+    wrapper.unmount();
+  });
+
+  it('marks a proxy degraded and lists only the storages needing attention', async () => {
+    vi.mocked(TuttiService.getProxies).mockResolvedValue({
+      proxies: [
+        {
+          appId: 'proxy-1',
+          updatedAt: new Date().toISOString(),
+          storages: [
+            { name: 'ok-storage', available: true },
+            {
+              name: 'bad-storage',
+              available: false,
+              consecutiveFailures: 3,
+              lastError: 'timeout',
+            },
+          ],
+        },
+      ],
+    });
+    const wrapper = mountTab();
+
+    await flushPromises();
+    expect(wrapper.text()).toContain('Degraded');
+    expect(wrapper.text()).toContain('Storages needing attention');
+    expect(wrapper.text()).toContain('proxy-1 · bad-storage');
+    expect(wrapper.text()).toContain('timeout');
+    expect(wrapper.text()).not.toContain('ok-storage');
+    wrapper.unmount();
+  });
+
+  it('offers one action in the empty state that checks again', async () => {
+    vi.mocked(TuttiService.getProxies).mockResolvedValue({ proxies: [] });
+    const wrapper = mountTab();
+
+    await flushPromises();
+    const button = wrapper.get('[data-kit-state="empty"] button');
+
+    expect(button.text()).toBe('Check again');
+    await button.trigger('click');
+    await flushPromises();
+    expect(TuttiService.getProxies).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
+  });
 });

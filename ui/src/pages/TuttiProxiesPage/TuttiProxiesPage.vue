@@ -16,7 +16,6 @@
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('description')"
     state="ready"
   >
     <ProxyFleetTab />

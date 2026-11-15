@@ -12,10 +12,7 @@
     StatusBadge,
   } from '@/components/kit';
   import ProxyHealthCard from '@/components/tutti/health/ProxyHealthCard.vue';
-  import {
-    PROXIES_REFRESH_INTERVAL_MS,
-    useTuttiProxiesStore,
-  } from '@/stores/tuttiProxiesStore';
+  import { useTuttiProxiesStore } from '@/stores/tuttiProxiesStore';
   import { DashboardHelper } from '@/utils/helpers/DashboardHelper';
   import { formatRelative } from '@/utils/helpers/DateTimeHelper';
   import { ProxiesHelper } from '@/utils/helpers/ProxiesHelper';
@@ -23,8 +20,7 @@
 
   const { t } = useI18n({ messages: i18nProxies });
   const store = useTuttiProxiesStore();
-  const { proxies, configVersion, loading, error, polling } =
-    storeToRefs(store);
+  const { proxies, configVersion, loading, error } = storeToRefs(store);
   const now = ref(Date.now());
   let clock: ReturnType<typeof setInterval> | undefined;
 
@@ -32,45 +28,66 @@
     ProxiesHelper.settingsDrift(proxies.value, now.value),
   );
   const outliers = computed(() => ProxiesHelper.outliers(drift.value));
-  const seconds = PROXIES_REFRESH_INTERVAL_MS / 1000;
+  const hasGroups = computed(
+    () =>
+      new Set(proxies.value.map((p) => ProxiesHelper.effectiveGroup(p))).size >
+      1,
+  );
+  const hasIssues = computed(() =>
+    proxies.value.some((p) =>
+      (p.storages ?? []).some((s) => !s.available || s.lastError),
+    ),
+  );
 
   const number = (value?: number) =>
     value === undefined
       ? '–'
       : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  const onOff = (value?: boolean) => (value ? t('on') : t('off'));
 
-  function syncCell(proxy: TuttiProxyStatus) {
+  function configCell(proxy: TuttiProxyStatus) {
     const sync = ProxiesHelper.configSyncStatus(proxy, configVersion.value);
-    const badge =
-      sync.state === 'applied'
-        ? h(StatusBadge, {
-            tone: 'success',
-            label: t('appliedVersion', { version: sync.appliedVersion }),
-          })
-        : sync.state === 'applying'
-          ? h(StatusBadge, {
-              tone: 'warning',
-              label: t('applyingVersion', { version: sync.targetVersion }),
-            })
-          : h(StatusBadge, { tone: 'neutral', label: t('startupConfig') });
+    const badges = [];
+
+    if (sync.state === 'applied') {
+      badges.push(h(StatusBadge, { tone: 'success', label: t('inSync') }));
+    } else if (sync.state === 'applying') {
+      badges.push(
+        h(StatusBadge, {
+          tone: 'warning',
+          label: t('applyingVersion', { version: sync.targetVersion }),
+        }),
+      );
+    }
+
+    if (proxy.configError) {
+      badges.push(
+        h(StatusBadge, { tone: 'danger', label: t('configRejected') }),
+        h('small', proxy.configError),
+      );
+    }
+
+    if (proxy.pendingRestart) {
+      badges.push(
+        h(StatusBadge, { tone: 'warning', label: t('pendingRestart') }),
+      );
+    }
+
+    return badges.length
+      ? h('div', { class: 'fleet-cell' }, badges)
+      : h('span', '–');
+  }
+
+  function statusCell(proxy: TuttiProxyStatus) {
+    const live = DashboardHelper.isProxyReporting(proxy, now.value);
+    const s = ProxiesHelper.storageAvailability(proxy);
+    const degraded = s.available < s.total;
 
     return h('div', { class: 'fleet-cell' }, [
-      badge,
-      proxy.configError
-        ? h('div', [
-            h(StatusBadge, { tone: 'danger', label: t('configRejected') }),
-            h('small', proxy.configError),
-          ])
-        : null,
-      proxy.pendingRestart
-        ? h('div', [
-            h(StatusBadge, { tone: 'warning', label: t('pendingRestart') }),
-            proxy.pendingRestartReasons?.length
-              ? h('small', proxy.pendingRestartReasons.join(', '))
-              : null,
-          ])
-        : null,
+      h(StatusBadge, {
+        tone: !live ? 'warning' : degraded ? 'warning' : 'success',
+        label: t(!live ? 'stale' : degraded ? 'degraded' : 'healthy'),
+      }),
+      h('small', formatRelative(proxy.updatedAt, undefined, now.value)),
     ]);
   }
 
@@ -87,27 +104,17 @@
             : null,
         ]),
     },
-    {
-      title: t('group'),
-      key: 'group',
-      render: (p) => ProxiesHelper.effectiveGroup(p),
-    },
-    { title: t('configSync'), key: 'sync', render: syncCell },
-    {
-      title: t('status'),
-      key: 'status',
-      render: (p) => {
-        const live = DashboardHelper.isProxyReporting(p, now.value);
-
-        return h('div', { class: 'fleet-cell' }, [
-          h(StatusBadge, {
-            tone: live ? 'success' : 'warning',
-            label: t(live ? 'reporting' : 'stale'),
-          }),
-          h('small', formatRelative(p.updatedAt, undefined, now.value)),
-        ]);
-      },
-    },
+    ...(hasGroups.value
+      ? [
+          {
+            title: t('group'),
+            key: 'group',
+            render: (p: TuttiProxyStatus) => ProxiesHelper.effectiveGroup(p),
+          },
+        ]
+      : []),
+    { title: t('status'), key: 'status', render: statusCell },
+    { title: t('config'), key: 'config', render: configCell },
     {
       title: t('uptime'),
       key: 'uptime',
@@ -137,28 +144,7 @@
         return `${s.available} / ${s.total}`;
       },
     },
-    {
-      title: t('failover'),
-      key: 'failover',
-      render: (p) => onOff(p.settings?.failover?.enabled),
-    },
-    {
-      title: t('sync'),
-      key: 'syncRep',
-      render: (p) => {
-        const sync = p.settings?.replication?.sync;
-
-        return sync?.enabled
-          ? `${t('on')} · ${t('quorum', { value: sync.writeQuorum || t('all') })}`
-          : t('off');
-      },
-    },
   ]);
-
-  function togglePolling() {
-    if (polling.value) store.stopPolling();
-    else store.startPolling();
-  }
 
   onMounted(() => {
     store.startPolling();
@@ -172,22 +158,6 @@
 
 <template>
   <div class="fleet-tab">
-    <div class="fleet-tab__bar">
-      <span class="fleet-tab__hint">{{
-        polling ? t('autoRefresh', { seconds }) : t('paused')
-      }}</span>
-      <NButton
-        size="small"
-        @click="togglePolling"
-        >{{ polling ? t('pause') : t('resume') }}</NButton
-      >
-      <NButton
-        size="small"
-        :loading="loading"
-        @click="store.load()"
-        >{{ t('refresh') }}</NButton
-      >
-    </div>
     <Callout
       v-if="drift.length"
       tone="warning"
@@ -217,20 +187,23 @@
         <EmptyBlock
           :title="t('noProxies')"
           :description="t('noProxiesHint')"
-        />
+        >
+          <NButton
+            :loading="loading"
+            @click="store.load()"
+            >{{ t('checkAgain') }}</NButton
+          >
+        </EmptyBlock>
       </template>
     </DataTable>
-    <h2
-      v-if="proxies.length"
-      class="fleet-tab__title"
-    >
-      {{ t('healthTitle') }}
-    </h2>
-    <ProxyHealthCard
-      v-for="proxy in proxies"
-      :key="proxy.appId"
-      :proxy="proxy"
-    />
+    <template v-if="hasIssues">
+      <h2 class="fleet-tab__title">{{ t('issuesTitle') }}</h2>
+      <ProxyHealthCard
+        v-for="proxy in proxies"
+        :key="proxy.appId"
+        :proxy="proxy"
+      />
+    </template>
   </div>
 </template>
 
@@ -240,20 +213,6 @@
     flex-direction: column;
     gap: var(--tt-space-4);
     min-width: 0;
-
-    &__bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: flex-end;
-      gap: var(--tt-space-2);
-    }
-
-    &__hint {
-      margin-right: auto;
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-3);
-    }
 
     &__drift {
       font-size: var(--tt-text-sm);

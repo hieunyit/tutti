@@ -134,7 +134,7 @@ describe('TuttiSystemSettingsPage', () => {
   it('disables save until the draft is dirty', async () => {
     const wrapper = await mountPage();
 
-    expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-test="settings-save"]').exists()).toBe(false);
 
     await wrapper.get('[role="switch"]').trigger('click');
     await flushPromises();
@@ -160,7 +160,7 @@ describe('TuttiSystemSettingsPage', () => {
     expect(wrapper.find('#settings-bulkConcurrencyPercent').exists()).toBe(
       true,
     );
-    expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-test="settings-save"]').exists()).toBe(false);
 
     // detected hardware (container limits) and the Auto badge on derived knobs
     expect(wrapper.get('[data-test="detected-hardware"]').text()).toContain(
@@ -176,6 +176,34 @@ describe('TuttiSystemSettingsPage', () => {
       (wrapper.get('#settings-multipartThreads').element as HTMLInputElement)
         .value,
     ).toBe('1');
+    wrapper.unmount();
+  });
+
+  it('shows one status text in the save bar and no separate refresh or badges', async () => {
+    const wrapper = await mountPage();
+    const bar = wrapper.get('.settings-bar');
+
+    expect(bar.text()).toMatch(/Version \d+ · saved/);
+    expect(wrapper.text()).not.toContain('Saved version');
+    expect(wrapper.text()).not.toContain('Last updated');
+    expect(wrapper.text()).not.toContain('Refresh');
+
+    await wrapper.get('[role="switch"]').trigger('click');
+    await flushPromises();
+    expect(bar.text()).toContain('1 unsaved change');
+    expect(bar.text()).not.toMatch(/Version \d+ · saved/);
+    wrapper.unmount();
+  });
+
+  it('names the tabs without the word migration and keeps the buffer budget in Worker', async () => {
+    const wrapper = await mountPage();
+
+    expect(wrapper.text()).toContain('Initial copy limits');
+    expect(wrapper.text()).not.toMatch(/migration/i);
+
+    await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('#settings-bufferBudgetBytes').exists()).toBe(true);
     wrapper.unmount();
   });
 

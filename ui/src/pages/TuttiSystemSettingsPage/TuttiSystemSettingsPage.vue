@@ -18,18 +18,20 @@
   import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
   import { onBeforeRouteLeave } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import { NButton } from 'naive-ui';
   import {
     Callout,
     ConfirmDialog,
     PageShell,
-    StatusBadge,
     useQueryTab,
     type PageShellTab,
   } from '@/components/kit';
   import ProxyConfigTab from '@/pages/TuttiProxiesPage/ProxyConfigTab.vue';
   import SettingsConflictDialog from '@/components/tutti/settings/SettingsConflictDialog.vue';
-  import SettingsPanels from '@/components/tutti/settings/SettingsPanels.vue';
+  import SettingsBulkTab from '@/components/tutti/settings/SettingsBulkTab.vue';
+  import SettingsFeaturesTab from '@/components/tutti/settings/SettingsFeaturesTab.vue';
+  import SettingsLockingTab from '@/components/tutti/settings/SettingsLockingTab.vue';
+  import SettingsWebhookTab from '@/components/tutti/settings/SettingsWebhookTab.vue';
+  import SettingsWorkerTab from '@/components/tutti/settings/SettingsWorkerTab.vue';
   import SettingsSaveBar from '@/components/tutti/settings/SettingsSaveBar.vue';
   import messages from '@/components/tutti/settings/i18nSettings';
   import {
@@ -38,7 +40,6 @@
     type SettingsTab,
   } from '@/components/tutti/settings/settingsMeta';
   import { useTuttiSystemSettingsStore } from '@/stores/tuttiSystemSettingsStore';
-  import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
 
   const { t } = useI18n({ messages });
   const store = useTuttiSystemSettingsStore();
@@ -60,8 +61,8 @@
   });
   const tabLabels: Record<SettingsTab, string> = {
     features: 'tabFeatures',
-    bulk: 'tabBulk',
     worker: 'tabWorker',
+    bulk: 'tabBulk',
     locking: 'tabLocking',
     webhook: 'tabWebhook',
     proxies: 'tabProxies',
@@ -105,14 +106,6 @@
     });
   }
 
-  async function refresh() {
-    if (busy.value) return;
-
-    if (store.hasChanges && !(await confirmDiscard())) return;
-
-    await store.load();
-  }
-
   async function discard() {
     if (await confirmDiscard()) store.resetDraft();
   }
@@ -150,7 +143,6 @@
 <template>
   <PageShell
     :title="t('title')"
-    :description="t('subtitle')"
     :state="state"
     :tabs="tabs"
     :active-tab="activeTab"
@@ -158,45 +150,8 @@
     @update:active-tab="tab = $event"
     @retry="store.load()"
   >
-    <template
-      v-if="!isProxies"
-      #actions
-    >
-      <NButton
-        :disabled="busy"
-        :loading="store.isLoading"
-        @click="refresh"
-        >{{ t('refresh') }}</NButton
-      >
-    </template>
-    <template
-      v-if="store.settings && !isProxies"
-      #meta
-    >
-      <StatusBadge
-        tone="neutral"
-        :label="`${t('savedVersion')} ${store.settings.version ?? 0}`"
-      />
-      <StatusBadge
-        v-if="store.hasChanges"
-        tone="warning"
-        :label="t('unsavedChanges')"
-      />
-    </template>
-
     <ProxyConfigTab v-if="isProxies" />
     <template v-else>
-      <p
-        v-if="store.settings"
-        class="settings-page__updated"
-      >
-        {{ t('lastUpdated') }}:
-        {{
-          store.settings.updatedAt
-            ? formatDateTime(store.settings.updatedAt)
-            : t('never')
-        }}
-      </p>
       <Callout
         v-if="store.hasError && !store.conflictError"
         tone="danger"
@@ -210,11 +165,26 @@
         :aria-busy="busy"
         @submit.prevent
       >
-        <SettingsPanels
-          :tab="activeTab"
+        <SettingsFeaturesTab
+          v-if="activeTab === 'features'"
           :disabled="busy"
         />
-        <p class="settings-page__note">{{ t('effectiveNotice') }}</p>
+        <SettingsWorkerTab
+          v-else-if="activeTab === 'worker'"
+          :disabled="busy"
+        />
+        <SettingsBulkTab
+          v-else-if="activeTab === 'bulk'"
+          :disabled="busy"
+        />
+        <SettingsLockingTab
+          v-else-if="activeTab === 'locking'"
+          :disabled="busy"
+        />
+        <SettingsWebhookTab
+          v-else
+          :disabled="busy"
+        />
         <SettingsSaveBar
           @discard="discard"
           @invalid="reviewInvalidFields"
@@ -237,24 +207,11 @@
 
 <style lang="scss" scoped>
   .settings-page {
-    &__updated {
-      margin: 0 0 var(--tt-space-3);
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-3);
-    }
-
     &__form {
       display: flex;
       flex-direction: column;
       gap: var(--tt-space-4);
       min-width: 0;
-    }
-
-    &__note {
-      margin: 0;
-      max-width: var(--tt-measure);
-      font-size: var(--tt-text-xs);
-      color: var(--tt-text-3);
     }
   }
 </style>

@@ -3,7 +3,7 @@
   import { NFormItem, NInput, NInputNumber, NSelect } from 'naive-ui';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import i18nProxies from './i18nProxies';
+  import i18nProxies from './i18nProxyConfig';
   import { FormSection } from '@/components/kit';
   import { useTuttiProxyFleetConfigStore } from '@/stores/tuttiProxyFleetConfigStore';
 
