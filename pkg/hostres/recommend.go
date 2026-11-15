@@ -23,6 +23,21 @@ type Recommended struct {
 	BufferBudgetBytes      int64
 	MultipartThreads       int
 	MultipartPartSizeMiB   int
+	LargeObjectStreams     int
+}
+
+// recommendLargeObjectStreams: concurrent large-object copies per destination storage, 2 per CPU, 4..16.
+// Large copies are network bound streams of hundreds of MiB; more of them only share the same pipe and keep
+// every object unfinished for longer.
+func recommendLargeObjectStreams(cpu int) int {
+	n := 2 * cpu
+	if n < 4 {
+		n = 4
+	}
+	if n > 16 {
+		n = 16
+	}
+	return n
 }
 
 // Recommend derives worker settings from the available CPU count and memory in bytes.
@@ -62,5 +77,6 @@ func Recommend(cpu int, memBytes int64) Recommended {
 	case cpu >= 4:
 		bulk = 30
 	}
-	return Recommended{Concurrency: conc, BulkConcurrencyPercent: bulk, BufferBudgetBytes: buf, MultipartThreads: 1, MultipartPartSizeMiB: 16}
+	return Recommended{Concurrency: conc, BulkConcurrencyPercent: bulk, BufferBudgetBytes: buf, MultipartThreads: 1, MultipartPartSizeMiB: 16,
+		LargeObjectStreams: recommendLargeObjectStreams(cpu)}
 }

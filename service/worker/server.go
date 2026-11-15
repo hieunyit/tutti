@@ -163,6 +163,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	// YAML/env tuning values are the fallback for knobs left at 0 in the system settings.
 	systemsettings.SetConcurrencyFallback(conf.Concurrency)
 	systemsettings.SetConfigFallbacks(conf.BulkConcurrencyPercent, conf.MultipartThreads, conf.MultipartPartSizeMiB)
+	systemsettings.SetLargeObjectStreamsFallback(conf.LargeObjectStreams)
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
 		systemsettings.ApplySettings(*loadedSettings)
 		if loadedSettings.Worker.Concurrency > 0 {
@@ -217,6 +218,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				BulkConcurrencyPercent:   conf.BulkConcurrencyPercent,
 				MultipartThreads:         conf.MultipartThreads,
 				MultipartPartSizeMiB:     conf.MultipartPartSizeMiB,
+				LargeObjectStreams:       conf.LargeObjectStreams,
 				QueueUpdateInterval:      conf.Worker.QueueUpdateInterval,
 				TaskCheckInterval:        conf.Worker.TaskCheckInterval,
 				DelayedTaskCheckInterval: conf.Worker.DelayedTaskCheckInterval,
@@ -248,6 +250,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		Str("buffer_budget_bytes", effStr(eff.BufferBudgetBytes)).
 		Str("multipart_threads", effStr(eff.MultipartThreads)).
 		Str("multipart_part_size_mib", effStr(eff.MultipartPartSizeMiB)).
+		Str("large_object_streams", effStr(eff.LargeObjectStreams)).
 		Msg("worker tuning: detected hardware and effective values (auto = derived from hardware)")
 	systemsettings.Watch(ctx, confRedis, cpStore, logger)
 

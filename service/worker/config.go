@@ -52,6 +52,8 @@ type Config struct {
 	MultipartThreads int `yaml:"multipartThreads"`
 	// MultipartPartSizeMiB: multipart part size in MiB (min 5, default 16).
 	MultipartPartSizeMiB int `yaml:"multipartPartSizeMiB"`
+	// LargeObjectStreams: max concurrent copies of objects >= 128 MiB per destination storage (1..64, 0 = auto).
+	LargeObjectStreams int `yaml:"largeObjectStreams"`
 
 	// Debug: diagnostics, all OFF by default.
 	Debug DebugConfig `yaml:"debug"`
@@ -89,6 +91,9 @@ func (c *Config) Validate() error {
 	}
 	if c.MultipartPartSizeMiB != 0 && c.MultipartPartSizeMiB < 5 {
 		return fmt.Errorf("worker config: multipartPartSizeMiB must be at least 5: %d", c.MultipartPartSizeMiB)
+	}
+	if c.LargeObjectStreams < 0 || c.LargeObjectStreams > 64 {
+		return fmt.Errorf("worker config: largeObjectStreams must be 0 (auto) or in 1..64: %d", c.LargeObjectStreams)
 	}
 	if c.Api == nil {
 		return fmt.Errorf("worker config: empty Api config")

@@ -247,3 +247,23 @@ func TestResilience_UpdateSystemSettings_PartialPutRoundTrip(t *testing.T) {
 	require.EqualValues(t, 0, got.Worker.GetBandwidthLimitBytes())
 	require.EqualValues(t, 256<<20, got.Worker.GetBufferBudgetBytes())
 }
+
+func TestSystemSettingsFromPb_LargeObjectStreams(t *testing.T) {
+	base := DefaultSystemSettings()
+	out, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"largeObjectStreams":8}}`), base)
+	require.NoError(t, err)
+	require.Equal(t, 8, out.Worker.LargeObjectStreams)
+
+	// absent keeps the stored value, explicit 0 resets to auto
+	out2, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"multipartThreads":2}}`), out)
+	require.NoError(t, err)
+	require.Equal(t, 8, out2.Worker.LargeObjectStreams)
+	out3, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"largeObjectStreams":0}}`), out)
+	require.NoError(t, err)
+	require.Equal(t, 0, out3.Worker.LargeObjectStreams)
+
+	for _, bad := range []string{`{"worker":{"largeObjectStreams":-1}}`, `{"worker":{"largeObjectStreams":65}}`} {
+		_, err = systemSettingsFromPb(workerFromJSON(t, bad), base)
+		require.Error(t, err, bad)
+	}
+}

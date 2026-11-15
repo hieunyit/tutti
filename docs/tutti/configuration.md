@@ -386,6 +386,7 @@ Knobs with no explicit value (stored setting `0`, YAML/env `0`) use a value deri
 | Buffer budget | `bufferBudgetBytes` (0 = auto, else at least 16 MiB; never unlimited) | none | 25% of memory, clamped to 256 MiB..8 GiB | next copy, no restart |
 | Parallel multipart parts | `multipartThreads` (0 or 1..16) | `multipartThreads` | 1 | next copy, no restart |
 | Multipart part size | `multipartPartSizeMib` (0 or 5..512) | `multipartPartSizeMiB` | 16 MiB | next copy, no restart |
+| Large-object streams | `largeObjectStreams` (0 or 1..64) | `largeObjectStreams` / `CFG_LARGEOBJECTSTREAMS` | 2 per CPU, clamped to 4..16 | next task, no restart |
 
 | CPU / memory | concurrency | bulk % | buffer budget |
 |---|---|---|---|
@@ -397,6 +398,14 @@ Knobs with no explicit value (stored setting `0`, YAML/env `0`) use a value deri
 The floors equal the former static defaults (10, 20%, 256 MiB), so small hosts are never worse than before. The buffer never exceeds a quarter of memory (above the 256 MiB floor) so Go heap overhead, TLS and GC headroom remain.
 
 `multipartThreads` stays at 1 unless you set it. Parallel parts were 3-4x slower than a single stream in local loopback tests (cause not isolated), so any gain over a WAN is unverified: raise it only after measuring on your own network, and revert if throughput does not improve.
+
+#### Large-object concurrency cap
+
+Objects of 128 MiB or more (the same threshold MinIO replication uses) take one of `largeObjectStreams` slots of their **destination storage** before they are copied. Smaller objects never take or wait for a slot. The reason: dozens of hour-long copies in parallel only share the same network pipe, keep every object unfinished for longer and hold buffers and sockets, while a few streams finish objects in minutes. The cap also covers the case where the live worker slots pick up bulk copies (queue fallback, see `pkg/tasks/queue.go`), because the check runs in the copy task itself on whatever slot runs it.
+
+How waiting works: the slot is requested at the very start of the initial-replication/diff-fix copy task, before the object lock and rate-limit tokens. If all slots of that destination are busy the task does **not** wait: it returns a retryable "rate limited" error and asynq re-queues it after a random 3..10 s without counting a failed attempt. No worker slot is parked, so live replication events (which are never capped or delayed) and small objects keep flowing. Cost: a polling retry per waiting large object (one Redis round trip each 3..10 s). The cap is per worker process (each worker replica has its own counters), so N replicas allow N times the setting. Versioned-object migration copies are not capped.
+
+Roll back by setting a large value (for example 64): then the cap effectively never triggers. The value is read at every task, so changes apply immediately.
 
 In the System settings API an omitted worker field keeps the stored value; an explicit `0` resets it to auto (`bandwidthLimitBytes`: unlimited).
 

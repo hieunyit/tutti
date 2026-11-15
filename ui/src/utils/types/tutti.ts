@@ -334,6 +334,8 @@ export interface TuttiSystemWorkerSettings {
   multipartThreads?: number;
   /** 0 = auto (16); valid 0 or 5..512; applies live */
   multipartPartSizeMib?: number;
+  /** 0 = auto (2 per CPU, 4..16); valid 0 or 1..64; max concurrent copies of objects >= 128 MiB per destination storage; applies live */
+  largeObjectStreams?: number;
 }
 
 export interface TuttiSystemLockSettings {
@@ -361,6 +363,7 @@ export interface TuttiWorkerTuningSources {
   bufferBudgetBytes?: string;
   multipartThreads?: string;
   multipartPartSizeMib?: string;
+  largeObjectStreams?: string;
 }
 
 export interface TuttiSystemSettings {

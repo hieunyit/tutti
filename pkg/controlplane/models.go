@@ -273,6 +273,9 @@ type SystemWorkerSettings struct {
 	MultipartThreads int `json:"multipartThreads,omitempty"`
 	// MultipartPartSizeMiB is the multipart part size in MiB (min 5, 0 = 16).
 	MultipartPartSizeMiB int `json:"multipartPartSizeMiB,omitempty"`
+	// LargeObjectStreams caps concurrent copies of large objects (>= 128 MiB) per destination storage
+	// (1..64, 0 = auto: derived from the CPU count).
+	LargeObjectStreams int `json:"largeObjectStreams,omitempty"`
 }
 
 type SystemLockSettings struct {

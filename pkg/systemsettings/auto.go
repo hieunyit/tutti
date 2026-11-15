@@ -53,6 +53,7 @@ type EffectiveValue struct {
 // Effective is the resolved view of the tunables.
 type Effective struct {
 	Concurrency, BulkConcurrencyPercent, BufferBudgetBytes, MultipartThreads, MultipartPartSizeMiB EffectiveValue
+	LargeObjectStreams                                                                           EffectiveValue
 }
 
 func pickInt(explicit int, auto int64, haveAuto bool, fallback int64) EffectiveValue {
@@ -78,6 +79,7 @@ func ResolveEffective(w controlplane.SystemWorkerSettings) Effective {
 		BufferBudgetBytes:      pickInt(0, rec.BufferBudgetBytes, ok, 256<<20),
 		MultipartThreads:       pickInt(firstPositive(w.MultipartThreads, int(yamlMultipartThreads.Load())), int64(rec.MultipartThreads), ok, DefaultMultipartThreads),
 		MultipartPartSizeMiB:   pickInt(firstPartSize(w.MultipartPartSizeMiB, int(yamlMultipartPartMiB.Load())), int64(rec.MultipartPartSizeMiB), ok, DefaultMultipartPartSizeMiB),
+		LargeObjectStreams:     pickInt(firstPositive(w.LargeObjectStreams, int(yamlLargeObjectStreams.Load())), int64(rec.LargeObjectStreams), ok, DefaultLargeObjectStreams),
 	}
 	if w.BufferBudgetBytes > 0 {
 		e.BufferBudgetBytes = EffectiveValue{w.BufferBudgetBytes, SourceExplicit}

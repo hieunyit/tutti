@@ -66,6 +66,7 @@
     bulkConcurrencyPercent: '20',
     multipartThreads: '1',
     multipartPartSizeMib: '16',
+    largeObjectStreams: '4',
   };
 
   /** "Auto" badge: the saved value is unset, so the worker uses the hardware-derived one. */

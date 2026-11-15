@@ -56,6 +56,7 @@ export const WORKER_TUNING_FIELDS = {
   bulkConcurrencyPercent: { min: 5, max: 95, error: 'invalidBulkPercent' },
   multipartThreads: { min: 1, max: 16, error: 'invalidMultipartThreads' },
   multipartPartSizeMib: { min: 5, max: 512, error: 'invalidPartSize' },
+  largeObjectStreams: { min: 1, max: 64, error: 'invalidLargeStreams' },
 } as const;
 
 export type WorkerTuningKey = keyof typeof WORKER_TUNING_FIELDS;

@@ -6050,6 +6050,11 @@
           "type": "integer",
           "format": "int32",
           "description": "Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy."
+        },
+        "largeObjectStreams": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Max concurrent copies of objects \u003e= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.\nOther copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live."
         }
       }
     },
@@ -6654,6 +6659,9 @@
           "type": "string"
         },
         "multipartPartSizeMib": {
+          "type": "string"
+        },
+        "largeObjectStreams": {
           "type": "string"
         }
       },

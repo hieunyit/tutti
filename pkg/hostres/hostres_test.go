@@ -62,12 +62,12 @@ func TestRecommendTable(t *testing.T) {
 		mem  int64
 		want Recommended
 	}{
-		{1, 1 * gib, Recommended{10, 20, 256 * mib, 1, 16}},
-		{2, 4 * gib, Recommended{20, 20, 1 * gib, 1, 16}},
-		{4, 32 * gib, Recommended{40, 30, 8 * gib, 1, 16}},
-		{16, 64 * gib, Recommended{128, 40, 8 * gib, 1, 16}},
-		{0, 0, Recommended{10, 20, 256 * mib, 1, 16}},
-		{64, 512 * mib, Recommended{10, 40, 256 * mib, 1, 16}}, // memory-starved: concurrency follows buffer, floor 10
+		{1, 1 * gib, Recommended{10, 20, 256 * mib, 1, 16, 4}},
+		{2, 4 * gib, Recommended{20, 20, 1 * gib, 1, 16, 4}},
+		{4, 32 * gib, Recommended{40, 30, 8 * gib, 1, 16, 8}},
+		{16, 64 * gib, Recommended{128, 40, 8 * gib, 1, 16, 16}},
+		{0, 0, Recommended{10, 20, 256 * mib, 1, 16, 4}},
+		{64, 512 * mib, Recommended{10, 40, 256 * mib, 1, 16, 16}}, // memory-starved: concurrency follows buffer, floor 10
 	}
 	for _, c := range cases {
 		if got := Recommend(c.cpu, c.mem); got != c.want {

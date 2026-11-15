@@ -6179,8 +6179,11 @@ type SystemWorkerSettings struct {
 	MultipartThreads *int32 `protobuf:"varint,14,opt,name=multipart_threads,json=multipartThreads,proto3,oneof" json:"multipart_threads,omitempty"`
 	// Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy.
 	MultipartPartSizeMib *int32 `protobuf:"varint,15,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3,oneof" json:"multipart_part_size_mib,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Max concurrent copies of objects >= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.
+	// Other copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live.
+	LargeObjectStreams *int32 `protobuf:"varint,16,opt,name=large_object_streams,json=largeObjectStreams,proto3,oneof" json:"large_object_streams,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SystemWorkerSettings) Reset() {
@@ -6314,6 +6317,13 @@ func (x *SystemWorkerSettings) GetMultipartThreads() int32 {
 func (x *SystemWorkerSettings) GetMultipartPartSizeMib() int32 {
 	if x != nil && x.MultipartPartSizeMib != nil {
 		return *x.MultipartPartSizeMib
+	}
+	return 0
+}
+
+func (x *SystemWorkerSettings) GetLargeObjectStreams() int32 {
+	if x != nil && x.LargeObjectStreams != nil {
+		return *x.LargeObjectStreams
 	}
 	return 0
 }
@@ -6622,6 +6632,7 @@ type WorkerTuningSources struct {
 	BufferBudgetBytes      string                 `protobuf:"bytes,3,opt,name=buffer_budget_bytes,json=bufferBudgetBytes,proto3" json:"buffer_budget_bytes,omitempty"`
 	MultipartThreads       string                 `protobuf:"bytes,4,opt,name=multipart_threads,json=multipartThreads,proto3" json:"multipart_threads,omitempty"`
 	MultipartPartSizeMib   string                 `protobuf:"bytes,5,opt,name=multipart_part_size_mib,json=multipartPartSizeMib,proto3" json:"multipart_part_size_mib,omitempty"`
+	LargeObjectStreams     string                 `protobuf:"bytes,6,opt,name=large_object_streams,json=largeObjectStreams,proto3" json:"large_object_streams,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -6687,6 +6698,13 @@ func (x *WorkerTuningSources) GetMultipartThreads() string {
 func (x *WorkerTuningSources) GetMultipartPartSizeMib() string {
 	if x != nil {
 		return x.MultipartPartSizeMib
+	}
+	return ""
+}
+
+func (x *WorkerTuningSources) GetLargeObjectStreams() string {
+	if x != nil {
+		return x.LargeObjectStreams
 	}
 	return ""
 }
@@ -7682,7 +7700,8 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x13preserve_acl_grants\x18\x05 \x01(\bR\x11preserveAclGrants\x12\x1e\n" +
 	"\n" +
 	"versioning\x18\x06 \x01(\bR\n" +
-	"versioning\"\xb5\t\n" +
+	"versioning\"\x85\n" +
+	"\n" +
 	"\x14SystemWorkerSettings\x12%\n" +
 	"\vconcurrency\x18\x01 \x01(\x05H\x00R\vconcurrency\x88\x01\x01\x12D\n" +
 	"\x10shutdown_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x0fshutdownTimeout\x12M\n" +
@@ -7699,7 +7718,8 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x13buffer_budget_bytes\x18\f \x01(\x03H\x04R\x11bufferBudgetBytes\x88\x01\x01\x12=\n" +
 	"\x18bulk_concurrency_percent\x18\r \x01(\x05H\x05R\x16bulkConcurrencyPercent\x88\x01\x01\x120\n" +
 	"\x11multipart_threads\x18\x0e \x01(\x05H\x06R\x10multipartThreads\x88\x01\x01\x12:\n" +
-	"\x17multipart_part_size_mib\x18\x0f \x01(\x05H\aR\x14multipartPartSizeMib\x88\x01\x01B\x0e\n" +
+	"\x17multipart_part_size_mib\x18\x0f \x01(\x05H\aR\x14multipartPartSizeMib\x88\x01\x01\x125\n" +
+	"\x14large_object_streams\x18\x10 \x01(\x05H\bR\x12largeObjectStreams\x88\x01\x01B\x0e\n" +
 	"\f_concurrencyB\x19\n" +
 	"\x17_backlog_high_watermarkB\x18\n" +
 	"\x16_backlog_low_watermarkB\x18\n" +
@@ -7707,7 +7727,8 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x14_buffer_budget_bytesB\x1b\n" +
 	"\x19_bulk_concurrency_percentB\x14\n" +
 	"\x12_multipart_threadsB\x1a\n" +
-	"\x18_multipart_part_size_mib\"I\n" +
+	"\x18_multipart_part_size_mibB\x17\n" +
+	"\x15_large_object_streams\"I\n" +
 	"\x12SystemLockSettings\x123\n" +
 	"\aoverlap\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\aoverlap\"L\n" +
 	"\x15SystemWebhookSettings\x12\x18\n" +
@@ -7731,13 +7752,14 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x0ecpu_fractional\x18\x02 \x01(\x01R\rcpuFractional\x12!\n" +
 	"\fmemory_bytes\x18\x03 \x01(\x03R\vmemoryBytes\x12\x16\n" +
 	"\x06source\x18\x04 \x01(\tR\x06source\x12%\n" +
-	"\x0ememory_limited\x18\x05 \x01(\bR\rmemoryLimited\"\x85\x02\n" +
+	"\x0ememory_limited\x18\x05 \x01(\bR\rmemoryLimited\"\xb7\x02\n" +
 	"\x13WorkerTuningSources\x12 \n" +
 	"\vconcurrency\x18\x01 \x01(\tR\vconcurrency\x128\n" +
 	"\x18bulk_concurrency_percent\x18\x02 \x01(\tR\x16bulkConcurrencyPercent\x12.\n" +
 	"\x13buffer_budget_bytes\x18\x03 \x01(\tR\x11bufferBudgetBytes\x12+\n" +
 	"\x11multipart_threads\x18\x04 \x01(\tR\x10multipartThreads\x125\n" +
-	"\x17multipart_part_size_mib\x18\x05 \x01(\tR\x14multipartPartSizeMib\"\xb9\x02\n" +
+	"\x17multipart_part_size_mib\x18\x05 \x01(\tR\x14multipartPartSizeMib\x120\n" +
+	"\x14large_object_streams\x18\x06 \x01(\tR\x12largeObjectStreams\"\xb9\x02\n" +
 	"\x1bUpdateSystemSettingsRequest\x12.\n" +
 	"\x10expected_version\x18\x01 \x01(\x03H\x00R\x0fexpectedVersion\x88\x01\x01\x129\n" +
 	"\bfeatures\x18\x02 \x01(\v2\x1d.tutti.SystemFeaturesSettingsR\bfeatures\x123\n" +

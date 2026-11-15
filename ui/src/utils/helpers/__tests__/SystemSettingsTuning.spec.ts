@@ -47,6 +47,10 @@ describe('worker tuning validation', () => {
     ['multipartPartSizeMib', 512, true],
     ['multipartPartSizeMib', 4, false],
     ['multipartPartSizeMib', 513, false],
+    ['largeObjectStreams', 0, true],
+    ['largeObjectStreams', 1, true],
+    ['largeObjectStreams', 64, true],
+    ['largeObjectStreams', 65, false],
   ])('%s=%s valid=%s', (key, value, valid) => {
     const errors = validateSystemSettings(draft({ [key]: value }));
 

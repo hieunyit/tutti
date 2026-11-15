@@ -127,6 +127,7 @@
     worker.bulkConcurrencyPercent = 0;
     worker.multipartThreads = 0;
     worker.multipartPartSizeMib = 0;
+    worker.largeObjectStreams = 0;
   }
 </script>
 

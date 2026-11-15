@@ -207,6 +207,7 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			BulkConcurrencyPercent:   proto.Int32(int32(s.Worker.BulkConcurrencyPercent)),
 			MultipartThreads:         proto.Int32(int32(s.Worker.MultipartThreads)),
 			MultipartPartSizeMib:     proto.Int32(int32(s.Worker.MultipartPartSizeMiB)),
+			LargeObjectStreams:       proto.Int32(int32(s.Worker.LargeObjectStreams)),
 		},
 		Lock: &pb.SystemLockSettings{
 			Overlap: durationpb.New(s.Lock.Overlap),
@@ -234,6 +235,7 @@ func addHardwareInfo(out *pb.SystemSettings, w controlplane.SystemWorkerSettings
 		BufferBudgetBytes:      proto.Int64(rec.BufferBudgetBytes),
 		MultipartThreads:       proto.Int32(int32(rec.MultipartThreads)),
 		MultipartPartSizeMib:   proto.Int32(int32(rec.MultipartPartSizeMiB)),
+		LargeObjectStreams:     proto.Int32(int32(rec.LargeObjectStreams)),
 	}
 	out.Effective = &pb.SystemWorkerSettings{
 		Concurrency:            proto.Int32(int32(eff.Concurrency.Value)),
@@ -241,6 +243,7 @@ func addHardwareInfo(out *pb.SystemSettings, w controlplane.SystemWorkerSettings
 		BufferBudgetBytes:      proto.Int64(eff.BufferBudgetBytes.Value),
 		MultipartThreads:       proto.Int32(int32(eff.MultipartThreads.Value)),
 		MultipartPartSizeMib:   proto.Int32(int32(eff.MultipartPartSizeMiB.Value)),
+		LargeObjectStreams:     proto.Int32(int32(eff.LargeObjectStreams.Value)),
 	}
 	out.TuningSources = &pb.WorkerTuningSources{
 		Concurrency:            eff.Concurrency.Source,
@@ -248,6 +251,7 @@ func addHardwareInfo(out *pb.SystemSettings, w controlplane.SystemWorkerSettings
 		BufferBudgetBytes:      eff.BufferBudgetBytes.Source,
 		MultipartThreads:       eff.MultipartThreads.Source,
 		MultipartPartSizeMib:   eff.MultipartPartSizeMiB.Source,
+		LargeObjectStreams:     eff.LargeObjectStreams.Source,
 	}
 }
 
@@ -319,6 +323,12 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 		}
 		if v := w.MultipartPartSizeMib; v != nil && *v != 0 && (*v < 5 || *v > 512) {
 			return out, fmt.Errorf("%w: worker.multipartPartSizeMib must be 0 (default) or in 5..512: %d", dom.ErrInvalidArg, *v)
+		}
+		if v := w.LargeObjectStreams; v != nil && (*v < 0 || *v > 64) {
+			return out, fmt.Errorf("%w: worker.largeObjectStreams must be 0 (auto) or in 1..64: %d", dom.ErrInvalidArg, *v)
+		}
+		if w.LargeObjectStreams != nil {
+			out.Worker.LargeObjectStreams = int(*w.LargeObjectStreams)
 		}
 		// Absent keeps the stored value; an explicit 0 resets to the built-in default
 		// (bandwidth: unlimited). Stored 0 already means "default" for the multipart/bulk knobs.

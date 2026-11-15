@@ -65,6 +65,7 @@ function getDefaultDraft(): TuttiUpdateSystemSettingsRequest {
       bulkConcurrencyPercent: 0,
       multipartThreads: 0,
       multipartPartSizeMib: 0,
+      largeObjectStreams: 0,
     },
     lock: {
       overlap: '2s',
@@ -107,6 +108,7 @@ function cloneSettingsToDraft(
       bulkConcurrencyPercent: s.worker?.bulkConcurrencyPercent ?? 0,
       multipartThreads: s.worker?.multipartThreads ?? 0,
       multipartPartSizeMib: s.worker?.multipartPartSizeMib ?? 0,
+      largeObjectStreams: s.worker?.largeObjectStreams ?? 0,
     },
     lock: {
       overlap: s.lock?.overlap ?? '2s',

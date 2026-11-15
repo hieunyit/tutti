@@ -936,6 +936,9 @@ message SystemWorkerSettings {
   optional int32 multipart_threads = 14;
   // Multipart part size in MiB: 0 = auto (16) or 5..512. Applied live to the next copy.
   optional int32 multipart_part_size_mib = 15;
+  // Max concurrent copies of objects >= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.
+  // Other copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live.
+  optional int32 large_object_streams = 16;
 }
 
 message SystemLockSettings {
@@ -983,6 +986,7 @@ message WorkerTuningSources {
   string buffer_budget_bytes = 3;
   string multipart_threads = 4;
   string multipart_part_size_mib = 5;
+  string large_object_streams = 6;
 }
 
 message UpdateSystemSettingsRequest {

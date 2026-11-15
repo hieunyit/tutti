@@ -137,6 +137,10 @@ export default <I18nMessages>{
     multipartPartSizeMib: 'Multipart part size (MiB)',
     multipartPartSizeMibHint:
       'Size of each uploaded part. 0 = auto (16); allowed 5 to 512.',
+    largeObjectStreams: 'Large object streams',
+    largeObjectStreamsHint:
+      'Max concurrent copies of objects of 128 MiB or more per destination storage; other copies are not limited and waiting ones retry shortly without holding a worker slot. 0 = auto (2 per CPU, 4 to 16); allowed 1 to 64.',
+    invalidLargeStreams: 'Enter 0 (auto) or a whole number from 1 to 64.',
     invalidBulkPercent: 'Enter 0 (auto) or a whole number from 5 to 95.',
     invalidMultipartThreads: 'Enter 0 (auto) or a whole number from 1 to 16.',
     invalidPartSize: 'Enter 0 (auto) or a whole number from 5 to 512.',
@@ -298,6 +302,11 @@ export default <I18nMessages>{
     multipartPartSizeMib: 'Multipart-Teilgröße (MiB)',
     multipartPartSizeMibHint:
       'Größe jedes hochgeladenen Teils. 0 = automatisch (16); erlaubt 5 bis 512.',
+    largeObjectStreams: 'Streams für große Objekte',
+    largeObjectStreamsHint:
+      'Max. gleichzeitige Kopien von Objekten ab 128 MiB pro Zielspeicher; andere Kopien sind nicht begrenzt, wartende werden kurz später erneut versucht und belegen keinen Worker-Slot. 0 = automatisch (2 pro CPU, 4 bis 16); erlaubt 1 bis 64.',
+    invalidLargeStreams:
+      '0 (automatisch) oder eine ganze Zahl von 1 bis 64 eingeben.',
     invalidBulkPercent:
       '0 (automatisch) oder eine ganze Zahl von 5 bis 95 eingeben.',
     invalidMultipartThreads:
@@ -460,6 +469,10 @@ export default <I18nMessages>{
     multipartPartSizeMib: 'Kích thước phần multipart (MiB)',
     multipartPartSizeMibHint:
       'Kích thước mỗi phần tải lên. 0 = tự động (16); cho phép 5 đến 512.',
+    largeObjectStreams: 'Luồng cho đối tượng lớn',
+    largeObjectStreamsHint:
+      'Số bản sao đồng thời tối đa của đối tượng từ 128 MiB trên mỗi kho đích; bản sao khác không bị giới hạn, bản sao phải chờ sẽ thử lại sau ít giây và không giữ slot worker. 0 = tự động (2 mỗi CPU, 4 đến 16); cho phép 1 đến 64.',
+    invalidLargeStreams: 'Nhập 0 (tự động) hoặc số nguyên từ 1 đến 64.',
     invalidBulkPercent: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 95.',
     invalidMultipartThreads: 'Nhập 0 (tự động) hoặc số nguyên từ 1 đến 16.',
     invalidPartSize: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 512.',

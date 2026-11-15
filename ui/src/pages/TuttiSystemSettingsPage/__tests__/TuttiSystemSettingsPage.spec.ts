@@ -90,6 +90,7 @@ const settings: TuttiSystemSettings = {
     bulkConcurrencyPercent: 'auto',
     multipartThreads: 'auto',
     multipartPartSizeMib: 'auto',
+    largeObjectStreams: 'auto',
   },
 };
 
@@ -155,7 +156,7 @@ describe('TuttiSystemSettingsPage', () => {
   it('badges the tuning fields and fills recommendations only on request', async () => {
     const wrapper = await mountPage('worker');
 
-    expect(wrapper.findAll('[data-test="live-label"]')).toHaveLength(2);
+    expect(wrapper.findAll('[data-test="live-label"]')).toHaveLength(3);
     expect(wrapper.find('#settings-bulkConcurrencyPercent').exists()).toBe(
       true,
     );
@@ -165,7 +166,7 @@ describe('TuttiSystemSettingsPage', () => {
     expect(wrapper.get('[data-test="detected-hardware"]').text()).toContain(
       'cgroup-v2',
     );
-    expect(wrapper.findAll('[data-test="auto-label"]')).toHaveLength(3);
+    expect(wrapper.findAll('[data-test="auto-label"]')).toHaveLength(4);
 
     await wrapper.get('[data-test="fill-multipartThreads"]').trigger('click');
     await flushPromises();

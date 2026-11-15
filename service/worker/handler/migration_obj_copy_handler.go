@@ -32,8 +32,16 @@ import (
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/store"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/util"
 	"github.com/hieunyit/tutti/service/worker/copy"
+)
+
+// retry delay of a large copy that found no free stream slot
+const (
+	largeObjectRetryMin = 3 * time.Second
+	largeObjectRetryMax = 10 * time.Second
 )
 
 func (s *svc) HandleMigrationObjCopy(ctx context.Context, t *asynq.Task) error {
@@ -57,6 +65,19 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	ctx = log.WithUser(ctx, p.ID.User())
 	logger := zerolog.Ctx(ctx)
 	fromBucket, toBucket := p.ID.FromToBuckets(p.Bucket)
+
+	// Large objects share a per-destination-storage stream cap. The slot is taken before anything else (no lock
+	// or rate-limit token is held while waiting) and never blocks: when all slots are busy the task goes back to
+	// the retry set with a short delay (not counted as a failure), so no worker slot is parked and live events
+	// keep their share. Small objects are never delayed. See docs/tutti/configuration.md.
+	if p.Obj.Size >= systemsettings.LargeObjectThreshold {
+		release, ok := systemsettings.TryAcquireLargeObject(p.ID.ToStorage(), p.Obj.Size)
+		if !ok {
+			logger.Debug().Str(log.Storage, p.ID.ToStorage()).Int64("size", p.Obj.Size).Msg("large object stream cap reached: retry later")
+			return &dom.ErrRateLimitExceeded{RetryIn: util.DurationJitter(largeObjectRetryMin, largeObjectRetryMax)}
+		}
+		defer release()
+	}
 
 	// acquire rate limits for source and destination storage before proceeding
 	if storage, err := s.rateLimitSides(ctx,
