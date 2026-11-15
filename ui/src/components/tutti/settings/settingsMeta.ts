@@ -28,6 +28,19 @@ export const FEATURE_KEYS = [
   'preserveAclGrants',
   'versioning',
 ] as const;
+/** Feature switches grouped into titled sections of the Replication features tab. */
+export const FEATURE_GROUPS = [
+  {
+    title: 'groupMetadata',
+    description: 'groupMetadataDesc',
+    keys: ['tagging', 'acl', 'preserveAclGrants'],
+  },
+  {
+    title: 'groupConfig',
+    description: 'groupConfigDesc',
+    keys: ['lifecycle', 'policy', 'versioning'],
+  },
+] as const;
 export const WATERMARK_KEYS = [
   'backlogHighWatermark',
   'backlogLowWatermark',

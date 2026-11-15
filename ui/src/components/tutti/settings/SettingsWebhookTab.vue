@@ -2,6 +2,8 @@
 <script setup lang="ts">
   import { NInput } from 'naive-ui';
   import SettingsField from './SettingsField.vue';
+  import SettingsSection from './SettingsSection.vue';
+  import SettingsTabLayout from './SettingsTabLayout.vue';
   import SettingsSwitchRow from './SettingsSwitchRow.vue';
   import { useSettingsForm } from './useSettingsForm';
 
@@ -11,42 +13,34 @@
 </script>
 
 <template>
-  <div class="settings-tab">
-    <p class="settings-tab__lead">{{ t('webhookLead') }}</p>
-    <SettingsSwitchRow
-      id="webhook"
-      v-model:value="draft.webhook!.enabled"
-      :label="t('webhookEnabled')"
-      :disabled="disabled"
-    />
-    <SettingsField
-      id="webhookBaseUrl"
-      :label="t('webhookBaseUrl')"
-      :hint="t('webhookBaseUrlHint')"
-      :error="err('webhookBaseUrl')"
+  <SettingsTabLayout>
+    <SettingsSection
+      :title="t('sectionWebhook')"
+      :description="t('webhookLead')"
+      list
     >
-      <NInput
-        v-model:value="draft.webhook!.baseUrl"
+      <SettingsSwitchRow
+        id="webhook"
+        v-model:value="draft.webhook!.enabled"
+        :label="t('webhookEnabled')"
         :disabled="disabled"
-        placeholder="https://tutti.example.com"
-        :status="status('webhookBaseUrl')"
-        :input-props="{ ...inputProps('webhookBaseUrl'), type: 'url' }"
       />
-    </SettingsField>
-  </div>
+    </SettingsSection>
+    <SettingsSection :title="t('sectionAddress')">
+      <SettingsField
+        id="webhookBaseUrl"
+        :label="t('webhookBaseUrl')"
+        :hint="t('webhookBaseUrlHint')"
+        :error="err('webhookBaseUrl')"
+      >
+        <NInput
+          v-model:value="draft.webhook!.baseUrl"
+          :disabled="disabled"
+          placeholder="https://tutti.example.com"
+          :status="status('webhookBaseUrl')"
+          :input-props="{ ...inputProps('webhookBaseUrl'), type: 'url' }"
+        />
+      </SettingsField>
+    </SettingsSection>
+  </SettingsTabLayout>
 </template>
-
-<style lang="scss" scoped>
-  .settings-tab {
-    display: flex;
-    flex-direction: column;
-    gap: var(--tt-space-4);
-    max-width: var(--tt-measure);
-
-    &__lead {
-      margin: 0;
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-2);
-    }
-  }
-</style>

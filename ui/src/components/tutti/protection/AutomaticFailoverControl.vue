@@ -15,7 +15,7 @@
   -->
 
 <script setup lang="ts">
-  import { NSwitch } from 'naive-ui';
+  import { NSwitch, NTooltip } from 'naive-ui';
   import { storeToRefs } from 'pinia';
   import { ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -26,7 +26,8 @@
 
   /**
    * The global automatic-failover switch (one setting for all groups), shown
-   * as a small labelled control next to the list toolbar, not in the header.
+   * as a compact control on the list toolbar row (never in the empty state);
+   * the help sits in a tooltip and is spelled out only while frozen.
    */
   const { t } = useI18n({ messages: i18nProtection });
   const store = useTuttiProtectionStore();
@@ -54,7 +55,16 @@
     class="pg-failover"
   >
     <label class="pg-failover__control">
-      <span id="pg-failover-label">{{ t('freezeSwitch') }}</span>
+      <NTooltip placement="bottom">
+        <template #trigger>
+          <span
+            id="pg-failover-label"
+            class="pg-failover__label"
+            >{{ t('freezeSwitch') }}</span
+          >
+        </template>
+        {{ t('freezeHelp') }}
+      </NTooltip>
       <WriteGate>
         <NSwitch
           :value="!automaticFrozen"
@@ -67,7 +77,13 @@
         automaticFrozen ? t('freezeSwitchOff') : t('freezeSwitchOn')
       }}</strong>
     </label>
-    <p class="pg-failover__help">{{ t('freezeHelp') }}</p>
+    <p
+      v-if="automaticFrozen"
+      class="pg-failover__help"
+      data-test="failover-help"
+    >
+      {{ t('freezeHelp') }}
+    </p>
     <ErrorBlock
       v-if="failed"
       :title="t('freezeErrorTitle')"
@@ -97,6 +113,13 @@
     display: flex;
     flex-direction: column;
     gap: var(--tt-space-1);
+    align-items: flex-end;
+    margin-left: auto;
+
+    &__label {
+      border-bottom: 1px dotted var(--tt-border);
+      cursor: help;
+    }
 
     &__control {
       display: inline-flex;
@@ -113,7 +136,8 @@
 
     &__help {
       margin: 0;
-      max-width: var(--tt-measure);
+      max-width: 40ch;
+      text-align: right;
       color: var(--tt-text-3);
       font-size: var(--tt-text-xs);
     }

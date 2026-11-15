@@ -76,7 +76,6 @@ export default {
   bufferBudgetBytes: 'Ngân sách bộ đệm multipart (bytes)',
   bufferBudgetHint:
     'Theo worker. 0 = tự động (25% bộ nhớ); nếu không thì tối thiểu 16 MiB.',
-  tuneTitle: 'Thông lượng đồng bộ',
   tuneDesc: 'Để trống để giữ giá trị tự động hiển thị trong ô.',
   appliesLive: 'Áp dụng ngay',
   bulkConcurrencyPercent: 'Tỷ lệ sao chép ban đầu (%)',
@@ -95,7 +94,6 @@ export default {
   invalidBulkPercent: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 95.',
   invalidMultipartThreads: 'Nhập 0 (tự động) hoặc số nguyên từ 1 đến 16.',
   invalidPartSize: 'Nhập 0 (tự động) hoặc số nguyên từ 5 đến 512.',
-  recTitle: 'Giá trị khuyến nghị',
   recIntro:
     'Giá trị gắn nhãn Tự động lấy từ phần cứng phát hiện được. Điền chép giá trị vào biểu mẫu; Dùng tự động đặt lại tất cả. Không gì thay đổi cho đến khi bạn lưu.',
   recDetected: 'Worker phát hiện: {cpu} CPU, {mem} bộ nhớ ({source}).',
@@ -121,10 +119,24 @@ export default {
   webhookBaseUrlHint: 'Địa chỉ HTTP(S) công khai nhận thông báo từ Storage.',
   conflictError:
     'Cấu hình đã bị thay đổi bởi người quản trị khác. Vui lòng tải lại trang.',
-  featuresLead: 'Chọn những gì replication sao chép ngoài object.',
   bulkLead: 'Giới hạn theo worker cho lần sao chép ban đầu và hàng đợi của nó.',
   statusSaved: 'Phiên bản {version} · lưu {when}',
   statusNotSaved: 'Chưa lưu',
   unsaved: '{count} thay đổi chưa lưu | {count} thay đổi chưa lưu',
   webhookLead: 'Nhận thông báo object từ Storage S3 và Swift.',
+  groupMetadata: 'Metadata',
+  groupMetadataDesc: 'Những gì replication sao chép cùng với object.',
+  groupConfig: 'Cấu hình bucket',
+  groupConfigDesc: 'Quy tắc bucket và phiên bản object đi theo dữ liệu.',
+  sectionQueue: 'Hàng đợi',
+  sectionBandwidth: 'Băng thông',
+  sectionLocks: 'Khóa của worker',
+  sectionWebhook: 'Webhook',
+  sectionAddress: 'Địa chỉ',
+  sectionConcurrency: 'Đồng thời',
+  sectionMultipart: 'Sao chép multipart',
+  sectionTiming: 'Thời gian nâng cao',
+  sectionTimingDesc:
+    'Khoảng thời gian kiểm tra và thử lại. Giá trị mặc định phù hợp với đa số hệ thống.',
+  recTitle: 'Khuyến nghị cho phần cứng này',
 } as Record<string, string>;

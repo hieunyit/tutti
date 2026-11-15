@@ -2,6 +2,8 @@
 <script setup lang="ts">
   import { NInput } from 'naive-ui';
   import SettingsField from './SettingsField.vue';
+  import SettingsSection from './SettingsSection.vue';
+  import SettingsTabLayout from './SettingsTabLayout.vue';
   import { useSettingsForm } from './useSettingsForm';
 
   defineProps<{ disabled: boolean }>();
@@ -10,27 +12,23 @@
 </script>
 
 <template>
-  <div class="settings-tab">
-    <SettingsField
-      id="lockOverlap"
-      :label="t('lockOverlap')"
-      :hint="t('lockOverlapHint')"
-      :error="err('lockOverlap')"
-      :restart="restart('lockOverlap')"
-    >
-      <NInput
-        v-model:value="draft.lock!.overlap"
-        :disabled="disabled"
-        placeholder="2s"
-        :status="status('lockOverlap')"
-        :input-props="inputProps('lockOverlap')"
-      />
-    </SettingsField>
-  </div>
+  <SettingsTabLayout>
+    <SettingsSection :title="t('sectionLocks')">
+      <SettingsField
+        id="lockOverlap"
+        :label="t('lockOverlap')"
+        :hint="t('lockOverlapHint')"
+        :error="err('lockOverlap')"
+        :restart="restart('lockOverlap')"
+      >
+        <NInput
+          v-model:value="draft.lock!.overlap"
+          :disabled="disabled"
+          placeholder="2s"
+          :status="status('lockOverlap')"
+          :input-props="inputProps('lockOverlap')"
+        />
+      </SettingsField>
+    </SettingsSection>
+  </SettingsTabLayout>
 </template>
-
-<style lang="scss" scoped>
-  .settings-tab {
-    max-width: var(--tt-measure);
-  }
-</style>

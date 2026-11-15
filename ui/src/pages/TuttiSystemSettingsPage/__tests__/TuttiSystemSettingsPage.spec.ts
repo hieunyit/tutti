@@ -186,6 +186,38 @@ describe('TuttiSystemSettingsPage', () => {
     wrapper.unmount();
   });
 
+  it('keeps the advanced timing section collapsed until opened or invalid', async () => {
+    const wrapper = await mountPage('worker');
+    const details = wrapper.get('[data-test="settings-section-collapsible"]');
+
+    expect(details.attributes('open')).toBeUndefined();
+    expect(details.find('#settings-shutdownTimeout').exists()).toBe(true);
+
+    await wrapper.get('#settings-shutdownTimeout').setValue('nonsense');
+    await wrapper.get('[data-test="settings-save"]').trigger('click');
+    await flushPromises();
+    expect(
+      wrapper
+        .get('[data-test="settings-section-collapsible"]')
+        .attributes('open'),
+    ).toBeDefined();
+    wrapper.unmount();
+  });
+
+  it('groups the worker fields into concurrency and multipart sections', async () => {
+    const wrapper = await mountPage('worker');
+    const titles = wrapper
+      .findAll('.settings-section__title')
+      .map((node) => node.text());
+
+    expect(titles).toEqual([
+      'Concurrency',
+      'Multipart copy',
+      'Advanced timing',
+    ]);
+    wrapper.unmount();
+  });
+
   it('shows one status text in the save bar and no separate refresh or badges', async () => {
     const wrapper = await mountPage();
     const bar = wrapper.get('.settings-bar');

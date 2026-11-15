@@ -77,7 +77,6 @@ export default {
   bufferBudgetBytes: 'Multipart buffer budget (bytes)',
   bufferBudgetHint:
     'Per worker. 0 = auto (25% of memory); otherwise at least 16 MiB.',
-  tuneTitle: 'Replication throughput',
   tuneDesc: 'Leave a field empty to keep the automatic value shown in it.',
   appliesLive: 'Applies immediately',
   bulkConcurrencyPercent: 'Initial copy share (%)',
@@ -95,7 +94,6 @@ export default {
   invalidBulkPercent: 'Enter 0 (auto) or a whole number from 5 to 95.',
   invalidMultipartThreads: 'Enter 0 (auto) or a whole number from 1 to 16.',
   invalidPartSize: 'Enter 0 (auto) or a whole number from 5 to 512.',
-  recTitle: 'Recommended values',
   recIntro:
     'Values marked Auto come from the detected hardware. Fill in copies a value into the form; Use auto resets all to auto. Nothing changes until you save.',
   recDetected: 'Detected by the worker: {cpu} CPU, {mem} memory ({source}).',
@@ -123,10 +121,24 @@ export default {
     'Public HTTP(S) address that receives storage notifications.',
   conflictError:
     'The configuration was modified by another operator. Reload and review your changes.',
-  featuresLead: 'Choose what replication copies besides the objects.',
   bulkLead: 'Per worker limits for the initial copy and its queue.',
   statusSaved: 'Version {version} · saved {when}',
   statusNotSaved: 'Not saved yet',
   unsaved: '{count} unsaved change | {count} unsaved changes',
   webhookLead: 'Receive object notifications from S3 and Swift storages.',
+  groupMetadata: 'Metadata',
+  groupMetadataDesc: 'What replication copies along with the objects.',
+  groupConfig: 'Bucket configuration',
+  groupConfigDesc: 'Bucket rules and object versions that follow the data.',
+  sectionQueue: 'Queue',
+  sectionBandwidth: 'Bandwidth',
+  sectionLocks: 'Worker locks',
+  sectionWebhook: 'Webhook',
+  sectionAddress: 'Address',
+  sectionConcurrency: 'Concurrency',
+  sectionMultipart: 'Multipart copy',
+  sectionTiming: 'Advanced timing',
+  sectionTimingDesc:
+    'Polling and retry intervals. The defaults suit most installations.',
+  recTitle: 'Recommended for this hardware',
 } as Record<string, string>;

@@ -68,11 +68,11 @@ describe('Protection groups actions with an empty list', () => {
     wrapper.unmount();
   });
 
-  it('opens automatic failover confirmation even when there are no groups', async () => {
+  it('shows no automatic failover control under the empty state', () => {
     const wrapper = page();
 
-    await wrapper.get('[role="switch"]').trigger('click');
-    expect(wrapper.get('[role="alertdialog"]').text()).toBe('Confirm failover');
+    expect(wrapper.find('[role="switch"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Automatic failover');
     wrapper.unmount();
   });
 });
@@ -94,6 +94,10 @@ describe('Protection groups list', () => {
 
     expect(wrapper.text()).toContain('hcm02 → hcm04');
     expect(wrapper.find('.kit-header [role="switch"]').exists()).toBe(false);
+    // the control sits on the toolbar row and opens the confirmation
+    expect(wrapper.find('.pg-list__bar [role="switch"]').exists()).toBe(true);
+    await wrapper.get('.pg-list__bar [role="switch"]').trigger('click');
+    expect(wrapper.get('[role="alertdialog"]').text()).toBe('Confirm failover');
     await wrapper.get('input').setValue('silver');
     expect(wrapper.text()).toContain('silver');
     expect(wrapper.text()).not.toContain('gold');

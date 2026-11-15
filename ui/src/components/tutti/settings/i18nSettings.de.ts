@@ -78,7 +78,6 @@ export default {
   bufferBudgetBytes: 'Pufferbudget im Flug (Bytes)',
   bufferBudgetHint:
     'Je Worker. 0 = automatisch (25 % des Speichers); sonst mindestens 16 MiB.',
-  tuneTitle: 'Replikationsdurchsatz',
   tuneDesc: 'Ein leeres Feld behält den darin angezeigten automatischen Wert.',
   appliesLive: 'Wirkt sofort',
   bulkConcurrencyPercent: 'Anteil Erstkopie (%)',
@@ -101,7 +100,6 @@ export default {
     '0 (automatisch) oder eine ganze Zahl von 1 bis 16 eingeben.',
   invalidPartSize:
     '0 (automatisch) oder eine ganze Zahl von 5 bis 512 eingeben.',
-  recTitle: 'Empfohlene Werte',
   recIntro:
     'Mit Auto markierte Werte stammen aus der erkannten Hardware. Übernehmen setzt einen Wert im Formular; Automatik nutzen setzt alles auf automatisch. Nichts ändert sich vor dem Speichern.',
   recDetected: 'Vom Worker erkannt: {cpu} CPU, {mem} Speicher ({source}).',
@@ -129,7 +127,6 @@ export default {
     'Öffentliche HTTP(S)-Adresse, die Speicherbenachrichtigungen empfängt.',
   conflictError:
     'Die Konfiguration wurde von einem anderen Benutzer geändert. Bitte neu laden.',
-  featuresLead: 'Wählen Sie, was die Replikation außer den Objekten kopiert.',
   bulkLead: 'Limits je Worker für die Erstkopie und ihre Warteschlange.',
   statusSaved: 'Version {version} · gespeichert {when}',
   statusNotSaved: 'Noch nicht gespeichert',
@@ -137,4 +134,19 @@ export default {
     '{count} ungespeicherte Änderung | {count} ungespeicherte Änderungen',
   webhookLead:
     'Ereignisbenachrichtigungen von S3- und Swift-Speichern empfangen.',
+  groupMetadata: 'Metadaten',
+  groupMetadataDesc: 'Was die Replikation zusammen mit den Objekten kopiert.',
+  groupConfig: 'Bucket-Konfiguration',
+  groupConfigDesc: 'Bucket-Regeln und Objektversionen, die den Daten folgen.',
+  sectionQueue: 'Warteschlange',
+  sectionBandwidth: 'Bandbreite',
+  sectionLocks: 'Worker-Sperren',
+  sectionWebhook: 'Webhook',
+  sectionAddress: 'Adresse',
+  sectionConcurrency: 'Parallelität',
+  sectionMultipart: 'Multipart-Kopie',
+  sectionTiming: 'Erweiterte Zeitsteuerung',
+  sectionTimingDesc:
+    'Abfrage- und Wiederholungsintervalle. Die Standardwerte passen für die meisten Installationen.',
+  recTitle: 'Empfohlen für diese Hardware',
 } as Record<string, string>;

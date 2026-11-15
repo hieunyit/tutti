@@ -173,7 +173,6 @@
           </NButton>
         </WriteGate>
       </EmptyBlock>
-      <AutomaticFailoverControl class="pg-list__failover" />
     </template>
 
     <div class="pg-list">
@@ -237,13 +236,9 @@
     &__bar {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: var(--tt-space-3) var(--tt-space-5);
-    }
-
-    &__failover {
-      margin-top: var(--tt-space-4);
     }
   }
 </style>

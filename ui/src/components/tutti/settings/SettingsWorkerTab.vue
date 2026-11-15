@@ -2,15 +2,16 @@
 <script setup lang="ts">
   /** Worker concurrency, intervals, throughput tuning (Auto badges) and recommendations. */
   import { NInput, NInputNumber } from 'naive-ui';
+  import { computed } from 'vue';
   import SettingsField from './SettingsField.vue';
+  import SettingsSection from './SettingsSection.vue';
+  import SettingsTabLayout from './SettingsTabLayout.vue';
   import SettingsRecommendations from './SettingsRecommendations.vue';
   import { useSettingsForm } from './useSettingsForm';
-  import { SectionCard } from '@/components/kit';
   import { RouteName } from '@/utils/types/router';
   import {
     WORKER_DURATION_FIELDS,
     WORKER_TUNING_FIELDS,
-    WORKER_TUNING_KEYS,
     type WorkerTuningKey,
   } from '@/utils/helpers/SystemSettingsHelper';
 
@@ -47,14 +48,21 @@
     return v === '0' || v === '' ? '' : (v ?? '');
   }
 
+  const timingHasError = computed(() =>
+    WORKER_DURATION_FIELDS.some((key) => err(key)),
+  );
+
   function setBuffer(value: string) {
     draft.value.worker!.bufferBudgetBytes = value.trim() === '' ? '0' : value;
   }
 </script>
 
 <template>
-  <div class="settings-tab">
-    <div class="settings-tab__group">
+  <SettingsTabLayout>
+    <SettingsSection
+      :title="t('sectionConcurrency')"
+      :description="t('tuneDesc')"
+    >
       <SettingsField
         id="concurrency"
         :label="t('concurrency')"
@@ -77,6 +85,127 @@
         />
       </SettingsField>
       <SettingsField
+        id="bulkConcurrencyPercent"
+        :label="t('bulkConcurrencyPercent')"
+        :hint="t('bulkConcurrencyPercentHint')"
+        :error="err('bulkConcurrencyPercent')"
+        :restart="t('restartRequired')"
+        :auto="autoLabel('bulkConcurrencyPercent')"
+        :auto-title="t('autoBadgeTitle')"
+      >
+        <NInputNumber
+          :value="tuningValue('bulkConcurrencyPercent')"
+          :disabled="disabled"
+          :min="0"
+          :max="WORKER_TUNING_FIELDS.bulkConcurrencyPercent.max"
+          :precision="0"
+          :placeholder="tuningPlaceholder('bulkConcurrencyPercent')"
+          :status="status('bulkConcurrencyPercent')"
+          :input-props="inputProps('bulkConcurrencyPercent')"
+          @update:value="(v) => setTuning('bulkConcurrencyPercent', v)"
+        />
+      </SettingsField>
+      <SettingsField
+        id="largeObjectStreams"
+        :label="t('largeObjectStreams')"
+        :hint="t('largeObjectStreamsHint')"
+        :error="err('largeObjectStreams')"
+        :live="t('appliesLive')"
+        :auto="autoLabel('largeObjectStreams')"
+        :auto-title="t('autoBadgeTitle')"
+      >
+        <NInputNumber
+          :value="tuningValue('largeObjectStreams')"
+          :disabled="disabled"
+          :min="0"
+          :max="WORKER_TUNING_FIELDS.largeObjectStreams.max"
+          :precision="0"
+          :placeholder="tuningPlaceholder('largeObjectStreams')"
+          :status="status('largeObjectStreams')"
+          :input-props="inputProps('largeObjectStreams')"
+          @update:value="(v) => setTuning('largeObjectStreams', v)"
+        />
+      </SettingsField>
+    </SettingsSection>
+    <SettingsSection :title="t('sectionMultipart')">
+      <SettingsField
+        id="multipartThreads"
+        :label="t('multipartThreads')"
+        :hint="t('multipartThreadsHint')"
+        :error="err('multipartThreads')"
+        :live="t('appliesLive')"
+        :auto="autoLabel('multipartThreads')"
+        :auto-title="t('autoBadgeTitle')"
+      >
+        <NInputNumber
+          :value="tuningValue('multipartThreads')"
+          :disabled="disabled"
+          :min="0"
+          :max="WORKER_TUNING_FIELDS.multipartThreads.max"
+          :precision="0"
+          :placeholder="tuningPlaceholder('multipartThreads')"
+          :status="status('multipartThreads')"
+          :input-props="inputProps('multipartThreads')"
+          @update:value="(v) => setTuning('multipartThreads', v)"
+        />
+      </SettingsField>
+      <SettingsField
+        id="multipartPartSizeMib"
+        :label="t('multipartPartSizeMib')"
+        :hint="t('multipartPartSizeMibHint')"
+        :error="err('multipartPartSizeMib')"
+        :live="t('appliesLive')"
+        :auto="autoLabel('multipartPartSizeMib')"
+        :auto-title="t('autoBadgeTitle')"
+      >
+        <NInputNumber
+          :value="tuningValue('multipartPartSizeMib')"
+          :disabled="disabled"
+          :min="0"
+          :max="WORKER_TUNING_FIELDS.multipartPartSizeMib.max"
+          :precision="0"
+          :placeholder="tuningPlaceholder('multipartPartSizeMib')"
+          :status="status('multipartPartSizeMib')"
+          :input-props="inputProps('multipartPartSizeMib')"
+          @update:value="(v) => setTuning('multipartPartSizeMib', v)"
+        />
+      </SettingsField>
+      <SettingsField
+        id="bufferBudgetBytes"
+        :label="t('bufferBudgetBytes')"
+        :hint="t('bufferBudgetHint')"
+        :error="err('bufferBudgetBytes')"
+        :auto="autoLabel('bufferBudgetBytes')"
+        :auto-title="t('autoBadgeTitle')"
+      >
+        <NInput
+          :value="bufferValue()"
+          :disabled="disabled"
+          :placeholder="
+            String(store.settings?.effective?.bufferBudgetBytes ?? '')
+          "
+          :status="status('bufferBudgetBytes')"
+          :input-props="{
+            ...inputProps('bufferBudgetBytes'),
+            inputmode: 'numeric',
+          }"
+          @update:value="setBuffer"
+        />
+      </SettingsField>
+    </SettingsSection>
+    <RouterLink
+      class="settings-worker__link"
+      :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'traffic' } }"
+      data-test="throughput-link"
+      >{{ t('throughputLink') }}</RouterLink
+    >
+    <SettingsSection
+      collapsible
+      :force-open="timingHasError"
+      :title="t('sectionTiming')"
+      :description="t('sectionTimingDesc')"
+    >
+      <SettingsField
         v-for="key in WORKER_DURATION_FIELDS"
         :id="key"
         :key="key"
@@ -93,98 +222,18 @@
           :input-props="inputProps(key)"
         />
       </SettingsField>
-    </div>
-    <SectionCard
-      :title="t('tuneTitle')"
-      variant="section"
-    >
-      <div class="settings-tab__group">
-        <p class="settings-tab__lead">{{ t('tuneDesc') }}</p>
-        <SettingsField
-          v-for="key in WORKER_TUNING_KEYS"
-          :id="key"
-          :key="key"
-          :label="t(key)"
-          :hint="t(`${key}Hint`)"
-          :error="err(key)"
-          :restart="
-            key === 'bulkConcurrencyPercent' ? t('restartRequired') : undefined
-          "
-          :live="
-            key === 'bulkConcurrencyPercent' ? undefined : t('appliesLive')
-          "
-          :auto="autoLabel(key)"
-          :auto-title="t('autoBadgeTitle')"
-        >
-          <NInputNumber
-            :value="tuningValue(key)"
-            :disabled="disabled"
-            :min="0"
-            :max="WORKER_TUNING_FIELDS[key].max"
-            :precision="0"
-            :placeholder="tuningPlaceholder(key)"
-            :status="status(key)"
-            :input-props="inputProps(key)"
-            @update:value="(v) => setTuning(key, v)"
-          />
-        </SettingsField>
-        <SettingsField
-          id="bufferBudgetBytes"
-          :label="t('bufferBudgetBytes')"
-          :hint="t('bufferBudgetHint')"
-          :error="err('bufferBudgetBytes')"
-          :auto="autoLabel('bufferBudgetBytes')"
-          :auto-title="t('autoBadgeTitle')"
-        >
-          <NInput
-            :value="bufferValue()"
-            :disabled="disabled"
-            :placeholder="
-              String(store.settings?.effective?.bufferBudgetBytes ?? '')
-            "
-            :status="status('bufferBudgetBytes')"
-            :input-props="{
-              ...inputProps('bufferBudgetBytes'),
-              inputmode: 'numeric',
-            }"
-            @update:value="setBuffer"
-          />
-        </SettingsField>
-        <RouterLink
-          class="settings-tab__link"
-          :to="{ name: RouteName.TUTTI_DASHBOARD, query: { tab: 'traffic' } }"
-          data-test="throughput-link"
-          >{{ t('throughputLink') }}</RouterLink
-        >
-        <SettingsRecommendations :disabled="disabled" />
-      </div>
-    </SectionCard>
-  </div>
+    </SettingsSection>
+    <template #aside>
+      <SettingsRecommendations :disabled="disabled" />
+    </template>
+  </SettingsTabLayout>
 </template>
 
 <style lang="scss" scoped>
-  .settings-tab {
-    display: flex;
-    flex-direction: column;
-    gap: var(--tt-space-6);
-    max-width: var(--tt-measure);
-
-    &__group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--tt-space-4);
-    }
-
-    &__lead {
-      margin: 0;
-      font-size: var(--tt-text-sm);
-      color: var(--tt-text-2);
-    }
-
-    &__link {
-      align-self: flex-start;
-      font-size: var(--tt-text-sm);
-      color: var(--tt-accent);
-    }
+  .settings-worker__link {
+    align-self: flex-start;
+    margin-top: calc(-1 * var(--tt-space-4));
+    font-size: var(--tt-text-sm);
+    color: var(--tt-accent);
   }
 </style>

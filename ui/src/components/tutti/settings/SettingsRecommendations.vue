@@ -20,7 +20,7 @@
    * detected (cgroup / Kubernetes limits included) and the values derived
    * from it. Values are only copied into the draft by "Fill in".
    */
-  import { computed, ref } from 'vue';
+  import { computed, onMounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NInputNumber } from 'naive-ui';
   import messages from './i18nSettings';
@@ -35,6 +35,12 @@
 
   const { t } = useI18n({ messages });
   const store = useTuttiSystemSettingsStore();
+  // Open beside the form (>= 1280px, where it is a sticky card); collapsed below it.
+  const open = ref(false);
+
+  onMounted(() => {
+    open.value = window.matchMedia?.('(min-width: 1280px)').matches ?? false;
+  });
   // Optional preview for other hardware; empty = use the detected hardware.
   const cores = ref<number | null>(null);
   const ramGb = ref<number | null>(null);
@@ -135,7 +141,8 @@
   <details
     class="settings-rec"
     data-test="recommendations"
-    open
+    :open="open"
+    @toggle="open = ($event.target as HTMLDetailsElement).open"
   >
     <summary class="settings-rec__summary">{{ t('recTitle') }}</summary>
     <p class="settings-rec__intro">{{ t('recIntro') }}</p>
@@ -201,7 +208,10 @@
 
 <style lang="scss" scoped>
   .settings-rec {
-    padding-top: var(--tt-space-3);
+    padding: var(--tt-space-3) var(--tt-space-4);
+    border: 1px solid var(--tt-border-subtle);
+    border-radius: var(--tt-radius-md, 8px);
+    background: var(--tt-surface, transparent);
     font-size: var(--tt-text-sm);
 
     &__summary {
