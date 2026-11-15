@@ -49,7 +49,6 @@ interface TuttiAddRoutingPolicyState {
   bucketName: string | null;
   isForAllBuckets: boolean;
   isBlocked: boolean;
-  isConfirmDialogOpen: boolean;
   availableBuckets: string[];
   isBucketsLoading: boolean;
 }
@@ -63,9 +62,9 @@ function getInitialState(): TuttiAddRoutingPolicyState {
     selectedToStorage: null,
     selectedUser: null,
     bucketName: null,
-    isForAllBuckets: false,
+    // the most common rule covers all buckets of the user
+    isForAllBuckets: true,
     isBlocked: false,
-    isConfirmDialogOpen: false,
     availableBuckets: [],
     isBucketsLoading: false,
   };
@@ -148,13 +147,13 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
     const validationRules = computed(() => ({
       selectedUser: {
         required: helpers.withMessage(
-          t('userSelectionRequired'),
+          t('userRequired'),
           (value: string | null) => !!value,
         ),
       },
       selectedToStorage: {
         required: helpers.withMessage(
-          t('storageSelectionRequired'),
+          t('storageRequired'),
           (value: TuttiStorage | null) => state.isBlocked || !!value,
         ),
       },
@@ -249,7 +248,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
         await TuttiCoreService.addRoutingPolicy(addPolicyRequestData);
       } catch (addError: unknown) {
         const addReason =
-          ErrorHelper.getReason(addError) || t('addRoutingPolicyErrorUnknown');
+          ErrorHelper.getReason(addError) || t('createErrorUnknown');
 
         throw new Error(addReason);
       }
@@ -270,15 +269,15 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
       try {
         await TuttiCoreService.blockRoutingPolicy(editPolicyRequestData);
       } catch (blockError: unknown) {
+        // a created rule that could not be blocked is removed again, so the
+        // user retries from a clean state
         if (hasCreationRollback) {
-          return handleCreationRollback(editPolicyRequestData);
+          await handleCreationRollback(editPolicyRequestData);
         }
 
-        const customBlockMsg = hasCreationRollback
-          ? t('addBlockRollbackErrorUnknown')
-          : t('addBlockErrorUnknown');
-
-        throw new Error(ErrorHelper.getReason(blockError) || customBlockMsg);
+        throw new Error(
+          ErrorHelper.getReason(blockError) || t('blockErrorUnknown'),
+        );
       }
     }
 
@@ -289,8 +288,7 @@ export const useTuttiAddRoutingPolicyStore = defineStore(
         await TuttiCoreService.deleteRoutingPolicy(editPolicyRequestData);
       } catch (deleteError: unknown) {
         throw new Error(
-          ErrorHelper.getReason(deleteError) ||
-            t('addRoutingPolicyRollbackErrorUnknown'),
+          ErrorHelper.getReason(deleteError) || t('rollbackErrorUnknown'),
         );
       }
     }

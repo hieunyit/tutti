@@ -1,5 +1,5 @@
 /*
- * Copyright © 2026 Clyso GmbH
+ * Copyright © 2026 hieunyit
  *
  *  Licensed under the GNU Affero General Public License, Version 3.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,217 +18,119 @@ import { I18nLocale, type I18nMessages } from '@clyso/clyso-ui-kit';
 
 export default <I18nMessages>{
   [I18nLocale.EN]: {
-    backToRoutingPolicies: 'Routing policies',
-    breadcrumbAddRoutingPolicy: 'Add Routing Policy',
-    addRoutingPolicyTitle: 'Add routing policy',
-    addRoutingPolicyHeader:
-      'Create a new routing policy to control traffic direction within the proxy.',
-    userSelectionTitle: 'User',
-    userSelectionDescription: 'Select or specify an S3 user:',
-    userSelectionPlaceholder: 'Select or enter an S3 user name',
-    bucketSelectionTitle: 'Bucket Name',
-    bucketSelectionDescription: 'Narrow down a policy to a specific bucket:',
-    bucketSelectionAll: 'Apply to all buckets (including future ones)',
-    bucketSelectionPlaceholder: 'Enter bucket name',
-    selectFromAvailableBuckets: 'Or select from available cluster buckets:',
-    loadingBuckets: 'Discovering buckets...',
-    availableBucketsCount: '{count} buckets available',
-    bucketSelectionInputLabel: 'Bucket Name',
-    bucketNameRequired: 'Please enter a bucket name.',
-    bucketNameInvalid:
-      'Invalid bucket name. Use 3-63 lowercase letters, numbers, hyphens, or dots.',
-    bucketErrLength: 'Bucket name must be between 3 and 63 characters long.',
+    title: 'Add routing rule',
+    loadError: 'Storages could not be loaded. Try again.',
+    userLabel: 'User',
+    userHint: 'Pick a user or type a name.',
+    userRequired: 'Choose a user.',
+    bucketsLegend: 'Buckets',
+    bucketAll: 'All buckets, including future ones',
+    bucketOne: 'One bucket',
+    bucketLabel: 'Bucket name',
+    bucketHint: 'Pick a bucket or type a name.',
+    bucketsLoading: 'Looking for buckets…',
+    bucketNameRequired: 'Enter a bucket name.',
+    bucketErrLength: 'A bucket name has 3 to 63 characters.',
     bucketErrChars:
-      'Bucket name can only contain lowercase letters, numbers, dots, and hyphens.',
-    bucketErrStartEnd:
-      'Bucket name must begin and end with a letter or number.',
-    bucketErrAdjacentPeriods:
-      'Bucket name must not contain two adjacent periods.',
-    bucketErrIpAddress: 'Bucket name must not be formatted as an IP address.',
-    bucketErrPrefixSuffix:
-      'Bucket name contains a restricted AWS prefix or suffix.',
-    storageSelectionTitle: 'Storage',
-    storageSelectionDescription: 'Select a destination storage:',
-    storageSelectionRequired: 'Please select a destination storage.',
-    storageSelectionBlockedOnlyHint:
-      'No storage selected: a blocked-only policy without routing will be created.',
-    unknownValidationError: 'Unknown validation error',
-    statusSelectionTitle: 'Blocked Status',
-    statusSelectionDescription:
-      'Determine whether this routing policy should be actively allowed or explicitly blocked.',
-    statusSelectionAllowed: 'Allowed',
-    statusSelectionBlocked: 'Blocked',
-    actionAddRoutingPolicy: 'Add Routing Policy',
-    userSelectionRequired: 'Please select a user.',
-    addRoutingPolicyConfirmTitle: 'Confirm Routing Policy Creation',
-    confirmRoutingPolicyDescription:
-      'You are about to create the following routing policy:',
-    confirmRoutingPolicyPositive: 'Create Routing Policy',
-    confirmRoutingPolicyNegative: 'Cancel',
-    summaryColumnUser: 'User',
-    summaryColumnStorage: 'Storage',
-    summaryNoStoragePlaceholder: 'No storage selected',
-    summaryColumnBucket: 'Bucket',
-    summaryColumnStatus: 'Blocked Status',
-    summaryStatusBlocked: 'Blocked',
-    summaryStatusAllowed: 'Allowed',
-    addRoutingPolicySuccessTitle: 'Routing Policy created!',
-    addRoutingPolicySuccessContent:
-      'Routing Policy has been created successfully.',
-    addRoutingPolicyErrorTitle: 'Routing Policy not created!',
-    addRoutingPolicyErrorContent:
-      'An error occurred while creating the routing policy:',
-    addErrorAction: 'Retry',
-    addRoutingPolicyErrorUnknown:
-      'An unknown error occurred while creating the routing policy.',
-    addBlockErrorUnknown:
-      'An unknown error occurred while creating a blocked policy',
-    addBlockRollbackErrorUnknown:
-      'Blocking the newly created routing policy failed. The routing policy creation has been rolled back. You can retry, or create the routing policy without blocking and block it separately afterwards.',
-    addRoutingPolicyRollbackErrorUnknown:
-      'Blocking the newly created routing policy failed, and rolling back the creation also failed. The routing policy was created but is not blocked. Please block it manually.',
+      'Use only lowercase letters, numbers, dots and hyphens in a bucket name.',
+    bucketErrStartEnd: 'A bucket name starts and ends with a letter or number.',
+    bucketErrAdjacentPeriods: 'A bucket name cannot contain two dots in a row.',
+    bucketErrIpAddress: 'A bucket name cannot look like an IP address.',
+    bucketErrPrefixSuffix: 'This bucket name uses a reserved prefix or suffix.',
+    requestsLegend: 'Requests',
+    requestsRoute: 'Send to a storage',
+    requestsBlock: 'Block',
+    blockHint: 'Requests are rejected until you allow the routing rule again.',
+    storageLabel: 'Storage',
+    storageRequired: 'Choose a storage.',
+    create: 'Create routing rule',
+    cancel: 'Cancel',
+    created: 'Routing rule created',
+    createFailed: 'The routing rule could not be created',
+    createFailedHint: 'Your entries are kept. Check them and try again.',
+    createErrorUnknown: 'The routing rule could not be created.',
+    blockErrorUnknown: 'The routing rule could not be blocked.',
+    rollbackErrorUnknown:
+      'The routing rule was created but could not be blocked. Block it from the list.',
   },
   [I18nLocale.DE]: {
-    backToRoutingPolicies: 'Routing-Richtlinien',
-    breadcrumbAddRoutingPolicy: 'Routing-Richtlinie hinzufügen',
-    addRoutingPolicyTitle: 'Routing-Richtlinie hinzufügen',
-    addRoutingPolicyHeader:
-      'Neue Routing-Richtlinie erstellen, um den Datenverkehr im Proxy zu steuern.',
-    userSelectionTitle: 'Benutzer',
-    userSelectionDescription: 'Benutzer für die Routing-Richtlinie auswählen:',
-    userSelectionPlaceholder: 'S3-Benutzernamen auswählen oder eingeben',
-    bucketSelectionTitle: 'Bucket Name',
-    bucketSelectionDescription:
-      'Richtlinie auf einen speziellen Bucket anwenden:',
-    bucketSelectionAll:
-      'Auf alle Buckets anwenden (einschließlich zukünftiger)',
-    bucketSelectionPlaceholder: 'Bucket Namen eingeben',
-    selectFromAvailableBuckets:
-      'Oder aus verfügbaren Cluster-Buckets auswählen:',
-    loadingBuckets: 'Buckets werden ermittelt...',
-    availableBucketsCount: '{count} Buckets verfügbar',
-    bucketSelectionInputLabel: 'Bucket-Name',
-    bucketNameRequired: 'Bitte geben Sie einen Bucket-Namen ein.',
-    bucketNameInvalid:
-      'Ungültiger Bucket-Name. Erlaubt sind 3-63 Kleinbuchstaben, Zahlen, Bindestriche oder Punkte.',
-    bucketErrLength:
-      'Der Bucket-Name muss zwischen 3 und 63 Zeichen lang sein.',
+    title: 'Routing-Regel hinzufügen',
+    loadError:
+      'Die Speicher konnten nicht geladen werden. Versuchen Sie es erneut.',
+    userLabel: 'Benutzer',
+    userHint: 'Wählen Sie einen Benutzer oder geben Sie einen Namen ein.',
+    userRequired: 'Wählen Sie einen Benutzer.',
+    bucketsLegend: 'Buckets',
+    bucketAll: 'Alle Buckets, auch künftige',
+    bucketOne: 'Ein Bucket',
+    bucketLabel: 'Bucket-Name',
+    bucketHint: 'Wählen Sie einen Bucket oder geben Sie einen Namen ein.',
+    bucketsLoading: 'Buckets werden gesucht …',
+    bucketNameRequired: 'Geben Sie einen Bucket-Namen ein.',
+    bucketErrLength: 'Ein Bucket-Name hat 3 bis 63 Zeichen.',
     bucketErrChars:
-      'Der Bucket-Name darf nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche enthalten.',
+      'Ein Bucket-Name darf nur Kleinbuchstaben, Zahlen, Punkte und Bindestriche enthalten.',
     bucketErrStartEnd:
-      'Der Bucket-Name muss mit einem Buchstaben oder einer Zahl beginnen und enden.',
+      'Ein Bucket-Name beginnt und endet mit einem Buchstaben oder einer Zahl.',
     bucketErrAdjacentPeriods:
-      'Der Bucket-Name darf keine zwei aufeinanderfolgenden Punkte enthalten.',
+      'Ein Bucket-Name darf nicht zwei Punkte hintereinander enthalten.',
     bucketErrIpAddress:
-      'Der Bucket-Name darf nicht als IP-Adresse formatiert sein.',
+      'Ein Bucket-Name darf nicht wie eine IP-Adresse aussehen.',
     bucketErrPrefixSuffix:
-      'Der Bucket-Name enthält ein unzulässiges AWS-Präfix oder -Suffix.',
-    storageSelectionTitle: 'Speicher',
-    storageSelectionDescription: 'Wählen Sie einen Zielspeicher:',
-    storageSelectionRequired: 'Bitte wählen Sie einen Zielspeicher aus.',
-    storageSelectionBlockedOnlyHint:
-      'Kein Speicher ausgewählt: es wird nur eine blockierte Richtlinie erstellt.',
-    unknownValidationError: 'Unbekannter Fehler beim Validieren der Eingabe',
-    statusSelectionTitle: 'Blockiert-Status',
-    statusSelectionDescription:
-      'Legen Sie fest, ob diese Routing-Policy zugelassen oder explizit blockiert werden soll.',
-    statusSelectionAllowed: 'Zugelassen',
-    statusSelectionBlocked: 'Blockiert',
-    actionAddRoutingPolicy: 'Routing-Richtlinie hinzufügen',
-    userSelectionRequired: 'Bitte wählen Sie einen Benutzer aus.',
-    addRoutingPolicyConfirmTitle: 'Anlegen der Routing-Richtlinie bestätigen',
-    confirmRoutingPolicyDescription:
-      'Sie erstellen folgende Routing-Richtlinie:',
-    confirmRoutingPolicyPositive: 'Routing-Richtlinie erstellen',
-    confirmRoutingPolicyNegative: 'Abbrechen',
-    summaryColumnUser: 'Benutzer',
-    summaryColumnStorage: 'Speicher',
-    summaryNoStoragePlaceholder: 'Kein Speicher gewählt',
-    summaryColumnBucket: 'Bucket',
-    summaryColumnStatus: 'Blockiert-Status',
-    summaryStatusBlocked: 'Blockiert',
-    summaryStatusAllowed: 'Zugelassen',
-    addRoutingPolicySuccessTitle: 'Routing-Richtlinie erstellt!',
-    addRoutingPolicySuccessContent:
-      'Routing-Richtlinie wurde erfolgreich erstellt.',
-    addRoutingPolicyErrorTitle: 'Routing-Richtlinie nicht erstellt!',
-    addRoutingPolicyErrorContent:
-      'Beim Erstellen der Routing-Richtlinie ist ein Fehler aufgetreten:',
-    addErrorAction: 'Erneut versuchen',
-    addRoutingPolicyErrorUnknown:
-      'Beim Erstellen der Routing-Richtlinie ist ein unbekannter Fehler aufgetreten.',
-    addBlockErrorUnknown:
-      'Beim Erstellen einer Blockierung ist ein unbekannter Fehler aufgetreten.',
-    addBlockRollbackErrorUnknown:
-      'Das Blockieren der neu erstellten Routing-Richtlinie ist fehlgeschlagen. Die Erstellung der Routing-Richtlinie wurde rückgängig gemacht. Sie können den Vorgang wiederholen oder die Routing-Richtlinie zunächst ohne Blockierung erstellen und sie anschließend separat blockieren.',
-    addRoutingPolicyRollbackErrorUnknown:
-      'Das Blockieren der neu erstellten Routing-Richtlinie ist fehlgeschlagen, und das Rückgängigmachen der Erstellung ist ebenfalls fehlgeschlagen. Die Routing-Richtlinie wurde erstellt, ist jedoch nicht blockiert. Bitte blockieren Sie sie manuell.',
+      'Dieser Bucket-Name verwendet ein reserviertes Präfix oder Suffix.',
+    requestsLegend: 'Anfragen',
+    requestsRoute: 'An einen Speicher leiten',
+    requestsBlock: 'Blockieren',
+    blockHint:
+      'Anfragen werden abgelehnt, bis Sie die Routing-Regel wieder zulassen.',
+    storageLabel: 'Speicher',
+    storageRequired: 'Wählen Sie einen Speicher.',
+    create: 'Routing-Regel erstellen',
+    cancel: 'Abbrechen',
+    created: 'Routing-Regel erstellt',
+    createFailed: 'Die Routing-Regel konnte nicht erstellt werden',
+    createFailedHint:
+      'Ihre Eingaben bleiben erhalten. Prüfen Sie sie und versuchen Sie es erneut.',
+    createErrorUnknown: 'Die Routing-Regel konnte nicht erstellt werden.',
+    blockErrorUnknown: 'Die Routing-Regel konnte nicht blockiert werden.',
+    rollbackErrorUnknown:
+      'Die Routing-Regel wurde erstellt, konnte aber nicht blockiert werden. Blockieren Sie sie in der Liste.',
   },
   vi: {
-    backToRoutingPolicies: 'Routing policy',
-    breadcrumbAddRoutingPolicy: 'Thêm routing policy',
-    addRoutingPolicyTitle: 'Thêm routing policy',
-    addRoutingPolicyHeader:
-      'Tạo routing policy mới để điều khiển hướng lưu lượng trong proxy.',
-    userSelectionTitle: 'User',
-    userSelectionDescription: 'Chọn hoặc chỉ định một S3 user:',
-    userSelectionPlaceholder: 'Chọn hoặc nhập tên S3 user',
-    bucketSelectionTitle: 'Tên bucket',
-    bucketSelectionDescription: 'Giới hạn policy cho một bucket cụ thể:',
-    bucketSelectionAll: 'Áp dụng cho tất cả bucket (kể cả bucket tạo sau này)',
-    bucketSelectionPlaceholder: 'Nhập tên bucket',
-    selectFromAvailableBuckets: 'Hoặc chọn từ các bucket có sẵn trong cluster:',
-    loadingBuckets: 'Đang tìm bucket...',
-    availableBucketsCount: 'Có {count} bucket khả dụng',
-    bucketSelectionInputLabel: 'Tên bucket',
-    bucketNameRequired: 'Vui lòng nhập tên bucket.',
-    bucketNameInvalid:
-      'Tên bucket không hợp lệ. Dùng 3-63 ký tự gồm chữ thường, số, dấu gạch ngang hoặc dấu chấm.',
-    bucketErrLength: 'Tên bucket phải dài từ 3 đến 63 ký tự.',
+    title: 'Thêm routing rule',
+    loadError: 'Không tải được danh sách storage. Hãy thử lại.',
+    userLabel: 'User',
+    userHint: 'Chọn một user hoặc nhập tên.',
+    userRequired: 'Hãy chọn một user.',
+    bucketsLegend: 'Bucket',
+    bucketAll: 'Tất cả bucket, kể cả bucket tạo sau này',
+    bucketOne: 'Một bucket',
+    bucketLabel: 'Tên bucket',
+    bucketHint: 'Chọn một bucket hoặc nhập tên.',
+    bucketsLoading: 'Đang tìm bucket…',
+    bucketNameRequired: 'Hãy nhập tên bucket.',
+    bucketErrLength: 'Tên bucket dài từ 3 đến 63 ký tự.',
     bucketErrChars:
-      'Tên bucket chỉ được chứa chữ thường, số, dấu chấm và dấu gạch ngang.',
-    bucketErrStartEnd:
-      'Tên bucket phải bắt đầu và kết thúc bằng chữ cái hoặc số.',
-    bucketErrAdjacentPeriods:
-      'Tên bucket không được chứa hai dấu chấm liền nhau.',
-    bucketErrIpAddress: 'Tên bucket không được có định dạng địa chỉ IP.',
+      'Tên bucket chỉ gồm chữ thường, số, dấu chấm và dấu gạch ngang.',
+    bucketErrStartEnd: 'Tên bucket phải bắt đầu và kết thúc bằng chữ hoặc số.',
+    bucketErrAdjacentPeriods: 'Tên bucket không có hai dấu chấm liền nhau.',
+    bucketErrIpAddress: 'Tên bucket không được giống địa chỉ IP.',
     bucketErrPrefixSuffix:
-      'Tên bucket chứa tiền tố hoặc hậu tố bị AWS hạn chế.',
-    storageSelectionTitle: 'Storage',
-    storageSelectionDescription: 'Chọn storage đích:',
-    storageSelectionRequired: 'Vui lòng chọn storage đích.',
-    storageSelectionBlockedOnlyHint:
-      'Chưa chọn storage: sẽ tạo policy chỉ chặn, không định tuyến.',
-    unknownValidationError: 'Lỗi xác thực không xác định',
-    statusSelectionTitle: 'Trạng thái chặn',
-    statusSelectionDescription:
-      'Xác định routing policy này được cho phép hoạt động hay bị chặn rõ ràng.',
-    statusSelectionAllowed: 'Cho phép',
-    statusSelectionBlocked: 'Bị chặn',
-    actionAddRoutingPolicy: 'Thêm routing policy',
-    userSelectionRequired: 'Vui lòng chọn user.',
-    addRoutingPolicyConfirmTitle: 'Xác nhận tạo routing policy',
-    confirmRoutingPolicyDescription: 'Bạn sắp tạo routing policy sau:',
-    confirmRoutingPolicyPositive: 'Tạo routing policy',
-    confirmRoutingPolicyNegative: 'Hủy',
-    summaryColumnUser: 'User',
-    summaryColumnStorage: 'Storage',
-    summaryNoStoragePlaceholder: 'Chưa chọn storage',
-    summaryColumnBucket: 'Bucket',
-    summaryColumnStatus: 'Trạng thái chặn',
-    summaryStatusBlocked: 'Bị chặn',
-    summaryStatusAllowed: 'Cho phép',
-    addRoutingPolicySuccessTitle: 'Đã tạo routing policy!',
-    addRoutingPolicySuccessContent: 'Đã tạo routing policy thành công.',
-    addRoutingPolicyErrorTitle: 'Chưa tạo được routing policy!',
-    addRoutingPolicyErrorContent: 'Đã xảy ra lỗi khi tạo routing policy:',
-    addErrorAction: 'Thử lại',
-    addRoutingPolicyErrorUnknown:
-      'Đã xảy ra lỗi không xác định khi tạo routing policy.',
-    addBlockErrorUnknown: 'Đã xảy ra lỗi không xác định khi tạo policy chặn',
-    addBlockRollbackErrorUnknown:
-      'Chặn routing policy vừa tạo không thành công. Việc tạo routing policy đã được hoàn tác. Bạn có thể thử lại, hoặc tạo routing policy không chặn rồi chặn riêng sau đó.',
-    addRoutingPolicyRollbackErrorUnknown:
-      'Chặn routing policy vừa tạo không thành công, và việc hoàn tác cũng thất bại. Routing policy đã được tạo nhưng chưa bị chặn. Vui lòng chặn thủ công.',
+      'Tên bucket này dùng tiền tố hoặc hậu tố dành riêng.',
+    requestsLegend: 'Request',
+    requestsRoute: 'Gửi tới một storage',
+    requestsBlock: 'Chặn',
+    blockHint: 'Request bị từ chối cho đến khi bạn cho phép lại routing rule.',
+    storageLabel: 'Storage',
+    storageRequired: 'Hãy chọn một storage.',
+    create: 'Tạo routing rule',
+    cancel: 'Hủy',
+    created: 'Đã tạo routing rule',
+    createFailed: 'Không thể tạo routing rule',
+    createFailedHint: 'Các mục đã nhập được giữ lại. Hãy kiểm tra và thử lại.',
+    createErrorUnknown: 'Không thể tạo routing rule.',
+    blockErrorUnknown: 'Không thể chặn routing rule.',
+    rollbackErrorUnknown:
+      'Đã tạo routing rule nhưng không chặn được. Hãy chặn nó trong danh sách.',
   },
 };

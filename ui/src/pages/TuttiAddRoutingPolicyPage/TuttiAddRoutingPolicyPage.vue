@@ -14,22 +14,20 @@
   -  limitations under the License.
   -->
 <script setup lang="ts">
+  /**
+   * Add a routing rule: one form (user, buckets, requests) with sensible
+   * defaults. The entries survive leaving the page; a failed create keeps them
+   * and says what to do next.
+   */
   import { computed, onBeforeMount, onUnmounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import { useRouter } from 'vue-router';
-  import {
-    clearWizardDraft,
-    WizardShell,
-    type WizardStep,
-  } from '@/components/kit';
+  import { NButton } from 'naive-ui';
+  import { Callout, clearWizardDraft } from '@/components/kit';
+  import RoutingRuleForm from '@/components/tutti/add-routing-policies/RoutingRuleForm.vue';
+  import i18nAddRoutingPolicy from '@/components/tutti/add-routing-policies/i18nAddRoutingPolicy';
   import TuttiWizardPage from '@/components/tutti/common/TuttiWizardPage/TuttiWizardPage.vue';
-  import UserSelection from '@/components/tutti/add-routing-policies/UserSelection/UserSelection.vue';
-  import StorageSelection from '@/components/tutti/add-routing-policies/StorageSelection/StorageSelection.vue';
-  import BucketSelection from '@/components/tutti/add-routing-policies/BucketSelection/BucketSelection.vue';
-  import StatusSelection from '@/components/tutti/add-routing-policies/StatusSelection/StatusSelection.vue';
-  import AddRoutingPolicySummary from '@/components/tutti/add-routing-policies/AddRoutingPolicySummary/AddRoutingPolicySummary.vue';
-  import i18nReplicationHub from '@/pages/TuttiReplicationPage/i18nReplicationHub';
   import { useTuttiAddRoutingPolicyStore } from '@/stores/tuttiAddRoutingPolicyStore';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
@@ -45,7 +43,7 @@
     blocked: boolean;
   }
 
-  const { t } = useI18n({ messages: i18nReplicationHub });
+  const { t } = useI18n({ messages: i18nAddRoutingPolicy });
   const router = useRouter();
   const store = useTuttiAddRoutingPolicyStore();
   const {
@@ -61,6 +59,7 @@
   } = storeToRefs(store);
   const { createNotification } = useTuttiNotification();
   const isSubmitting = ref(false);
+  const submitError = ref('');
 
   const ready = computed(() => !isLoading.value && !hasError.value);
 
@@ -70,7 +69,7 @@
       user: null,
       storage: null,
       bucket: null,
-      all: false,
+      all: true,
       blocked: false,
     }),
     snapshot: () => ({
@@ -81,11 +80,12 @@
       blocked: isBlocked.value,
     }),
     apply: (draft) => {
-      if (draft.user && store.users.includes(draft.user))
-        selectedUser.value = draft.user;
+      if (draft.user) selectedUser.value = draft.user;
 
+      // the only storage is the obvious choice
       selectedToStorage.value =
-        storages.value.find((s) => s.name === draft.storage) ?? null;
+        storages.value.find((s) => s.name === draft.storage) ??
+        (storages.value.length === 1 ? (storages.value[0] ?? null) : null);
       bucketName.value = draft.bucket;
       isForAllBuckets.value = draft.all;
       isBlocked.value = draft.blocked;
@@ -93,94 +93,92 @@
     ready,
   });
 
-  const steps = computed<WizardStep[]>(() => [
-    { key: 'user', label: t('stepUser'), valid: !!selectedUser.value },
-    { key: 'storage', label: t('stepStorage'), valid: true },
-    {
-      key: 'bucket',
-      label: t('stepBucket'),
-      valid: !validator.value.bucketName.$invalid,
-    },
-    { key: 'status', label: t('stepStatus'), valid: true },
-    {
-      key: 'confirm',
-      label: t('stepConfirm'),
-      valid: !validator.value.$invalid,
-    },
-  ]);
+  async function submit() {
+    validator.value.$touch();
 
-  async function finish() {
+    if (validator.value.$invalid) return;
+
     isSubmitting.value = true;
+    submitError.value = '';
 
     try {
       await store.addRoutingPolicy();
       createNotification({
         type: 'success',
-        title: t('createdPolicy'),
+        title: t('created'),
         duration: 4000,
       });
       clearWizardDraft(DRAFT_KEY);
-      router.push({
-        name: RouteName.TUTTI_REPLICATION,
-        query: { tab: 'routing' },
-      });
+      router.push({ name: RouteName.TUTTI_ROUTING_RULES });
     } catch (error: unknown) {
-      createNotification({
-        type: 'error',
-        title: t('createFailed'),
-        content: error instanceof Error ? error.message : undefined,
-      });
+      submitError.value =
+        error instanceof Error ? error.message : t('createErrorUnknown');
     } finally {
       isSubmitting.value = false;
     }
   }
 
-  function startOver() {
-    store.$reset();
-    store.initAddRoutingPolicyPage();
-  }
-
   onBeforeMount(() => {
     store.initAddRoutingPolicyPage();
   });
-
-  onUnmounted(() => {
-    store.$reset();
-  });
+  onUnmounted(() => store.$reset());
 </script>
 
 <template>
   <TuttiWizardPage
-    :title="t('addRoutingTitle')"
-    :description="t('addRoutingDescription')"
+    :title="t('title')"
     :state="isLoading ? 'loading' : hasError ? 'error' : 'ready'"
-    :error-text="t('wizardLoadError')"
-    back-tab="routing"
+    :error-text="t('loadError')"
+    back-to="routing"
     @retry="store.initAddRoutingPolicyPage()"
   >
-    <WizardShell
-      :steps="steps"
-      :draft-key="DRAFT_KEY"
-      :finish-label="t('finishRoutingPolicy')"
-      :busy="isSubmitting"
-      @finish="finish"
-      @reset="startOver"
+    <form
+      class="add-rule"
+      novalidate
+      @submit.prevent="submit"
     >
-      <template #user>
-        <UserSelection />
-      </template>
-      <template #storage>
-        <StorageSelection />
-      </template>
-      <template #bucket>
-        <BucketSelection />
-      </template>
-      <template #status>
-        <StatusSelection />
-      </template>
-      <template #confirm>
-        <AddRoutingPolicySummary />
-      </template>
-    </WizardShell>
+      <Callout
+        v-if="submitError"
+        tone="danger"
+        :title="t('createFailed')"
+      >
+        {{ submitError }} {{ t('createFailedHint') }}
+      </Callout>
+
+      <RoutingRuleForm />
+
+      <div class="add-rule__footer">
+        <RouterLink :to="{ name: RouteName.TUTTI_ROUTING_RULES }">
+          <NButton
+            tag="span"
+            :disabled="isSubmitting"
+          >
+            {{ t('cancel') }}
+          </NButton>
+        </RouterLink>
+        <NButton
+          type="primary"
+          attr-type="submit"
+          :loading="isSubmitting"
+        >
+          {{ t('create') }}
+        </NButton>
+      </div>
+    </form>
   </TuttiWizardPage>
 </template>
+
+<style scoped lang="scss">
+  .add-rule {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tt-space-5);
+
+    &__footer {
+      display: flex;
+      gap: var(--tt-space-2);
+      padding-top: var(--tt-space-3);
+      border-top: 1px solid var(--tt-border);
+    }
+  }
+</style>

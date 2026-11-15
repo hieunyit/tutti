@@ -14,8 +14,6 @@
  *  limitations under the License.
  */
 
-import { type DataTablePaginationObject } from '@clyso/clyso-ui-kit';
-import type { DataTableSortState } from 'naive-ui';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRefs } from 'vue';
 import { usePolling } from '@/utils/composables/usePolling';
@@ -25,25 +23,17 @@ import { GeneralHelper } from '@/utils/helpers/GeneralHelper';
 import {
   RoutingPolicyStatusFilter,
   RoutingPolicyTypes,
-  type RoutingPolicyListRequest,
   type RoutingPolicy,
   type RoutingPolicyEditRequest,
 } from '@/utils/types/tuttiCore';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
-import i18nRoutingPolicies from '@/components/tutti/routing-policies/i18nRoutingPolicies';
+import i18nRouting from '@/pages/TuttiRoutingPage/i18nRouting';
 
 interface TuttiRoutingPoliciesState {
   isLoading: boolean;
   hasError: boolean;
   routingPolicies: RoutingPolicy[];
-  sorter: DataTableSortState | null;
-  page: number;
-  pageSize: number;
-  selectedRoutingPolicyIds: string[];
-  isDeleteSelectedProcessing: boolean;
-
-  routingPoliciesRequestOptions: RoutingPolicyListRequest | null;
 
   filterUsers: string[];
   filterBuckets: string[];
@@ -51,7 +41,6 @@ interface TuttiRoutingPoliciesState {
   filterStatus: RoutingPolicyStatusFilter | null;
 }
 
-const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 const POLL_INTERVAL_MS = 5000;
 
 function getInitialState(): TuttiRoutingPoliciesState {
@@ -59,13 +48,6 @@ function getInitialState(): TuttiRoutingPoliciesState {
     isLoading: false,
     hasError: false,
     routingPolicies: [],
-    sorter: null,
-    page: 1,
-    pageSize: PAGE_SIZES[0],
-    selectedRoutingPolicyIds: [],
-    isDeleteSelectedProcessing: false,
-
-    routingPoliciesRequestOptions: null,
 
     filterUsers: [],
     filterBuckets: [],
@@ -82,48 +64,28 @@ export const useTuttiRoutingPoliciesStore = defineStore(
     const changes = createChangeDetector();
 
     const { t } = useStoreI18n({
-      messages: i18nRoutingPolicies,
+      messages: i18nRouting,
     });
+
+    const isIn = (list: string[], value: string) =>
+      list.length === 0 || list.includes(value);
 
     const filteredRoutingPolicies = computed<RoutingPolicy[]>(() =>
-      state.routingPolicies.filter((routingPolicy) => {
-        const isUserMatched =
-          !state.filterUsers.length ||
-          state.filterUsers.includes(routingPolicy.user);
-        const isStorageMatched =
-          !state.filterStorages.length ||
-          state.filterStorages.includes(routingPolicy.toStorage);
-        const isStatusMatched =
-          state.filterStatus === null ||
-          (state.filterStatus === RoutingPolicyStatusFilter.BLOCKED) ===
-            routingPolicy.isBlocked;
-        const isBucketMatched =
-          !state.filterBuckets.length ||
-          state.filterBuckets.includes(routingPolicy.bucket);
-
-        return (
-          isUserMatched &&
-          isStorageMatched &&
-          isStatusMatched &&
-          isBucketMatched
-        );
-      }),
+      state.routingPolicies.filter(
+        (rule) =>
+          isIn(state.filterUsers, rule.user) &&
+          isIn(state.filterStorages, rule.toStorage) &&
+          isIn(state.filterBuckets, rule.bucket) &&
+          (state.filterStatus === null ||
+            (state.filterStatus === RoutingPolicyStatusFilter.BLOCKED) ===
+              rule.isBlocked),
+      ),
     );
 
-    const computedRoutingPolicies = computed<RoutingPolicy[]>(() => {
-      const pageRoutingPolicies = state.sorter
-        ? GeneralHelper.orderBy(
-            filteredRoutingPolicies.value,
-            [state.sorter.columnKey, 'id'],
-            [state.sorter.order === 'ascend' ? 'asc' : 'desc'],
-          )
-        : GeneralHelper.orderBy(filteredRoutingPolicies.value, ['id'], ['asc']);
-
-      const start = (state.page - 1) * state.pageSize;
-      const end = state.page * state.pageSize;
-
-      return pageRoutingPolicies.slice(start, end);
-    });
+    /** filtered rows, in a stable order (the kit table pages them itself) */
+    const computedRoutingPolicies = computed<RoutingPolicy[]>(() =>
+      GeneralHelper.orderBy(filteredRoutingPolicies.value, ['id'], ['asc']),
+    );
 
     const hasNoData = computed<boolean>(
       () => state.routingPolicies.length === 0,
@@ -145,14 +107,10 @@ export const useTuttiRoutingPoliciesStore = defineStore(
     }
 
     async function getRoutingPolicies() {
-      state.routingPoliciesRequestOptions = {
+      const res = await TuttiCoreService.getRoutingPolicies({
         hideUserRoutings: false,
         hideBucketRoutings: false,
-      };
-
-      const res = await TuttiCoreService.getRoutingPolicies(
-        state.routingPoliciesRequestOptions,
-      );
+      });
 
       if (!changes.hasChanged(res)) return;
 
@@ -197,48 +155,38 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       }
     }
 
-    const pagination = computed<DataTablePaginationObject>(() => ({
-      page: state.page,
-      pageSize: state.pageSize,
-      showSizePicker: true,
-      pageSizes: [...PAGE_SIZES],
-      pageCount: Math.ceil(
-        filteredRoutingPolicies.value.length / state.pageSize,
-      ),
-      itemCount: filteredRoutingPolicies.value.length,
-      prefix({ itemCount }) {
-        if (state.isLoading || state.hasError) {
-          return '';
-        }
+    /** the API addresses a rule by user and bucket; "all buckets" is null */
+    const toRequest = (rule: RoutingPolicy): RoutingPolicyEditRequest => ({
+      user: rule.user,
+      bucket: rule.bucket === '*' ? null : rule.bucket,
+    });
 
-        if (isFiltered.value) {
-          return `Filtered: ${filteredRoutingPolicies.value.length} / Total: ${state.routingPolicies.length}`;
-        }
+    const reasonOf = (error: unknown) =>
+      ErrorHelper.getReason(error) || t('unknownError');
 
-        return `Total: ${itemCount}`;
-      },
-    }));
+    /** runs `action` for every rule; failures are collected, not thrown */
+    async function forEachRule(
+      rules: RoutingPolicy[],
+      action: (rule: RoutingPolicy) => Promise<void>,
+    ) {
+      const successList: RoutingPolicy[] = [];
+      const errorList: [RoutingPolicy, string][] = [];
 
-    async function deleteRoutingPolicy(routingPolicy: RoutingPolicy) {
-      const deleteRequestData: RoutingPolicyEditRequest = {
-        user: routingPolicy.user,
-        bucket: routingPolicy.bucket === '*' ? null : routingPolicy.bucket,
-      };
+      await Promise.all(
+        rules.map(async (rule) => {
+          try {
+            await action(rule);
+            successList.push(rule);
+          } catch (error: unknown) {
+            errorList.push([
+              rule,
+              error instanceof Error ? error.message : String(error),
+            ]);
+          }
+        }),
+      );
 
-      state.isDeleteSelectedProcessing = true;
-      await stopRoutingPoliciesPolling();
-
-      try {
-        await TuttiCoreService.deleteRoutingPolicy(deleteRequestData);
-      } catch (error: unknown) {
-        const reason =
-          ErrorHelper.getReason(error) || t('deleteRoutingPolicyErrorUnknown');
-
-        throw new Error(reason);
-      } finally {
-        startRoutingPoliciesPolling();
-        state.isDeleteSelectedProcessing = false;
-      }
+      return { successList, errorList };
     }
 
     /** Changes the target storage; rethrows the original error for the caller. */
@@ -247,14 +195,9 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       toStorage: string,
     ) {
       await TuttiCoreService.updateRoutingPolicy({
-        user: routingPolicy.user,
-        bucket: routingPolicy.bucket === '*' ? null : routingPolicy.bucket,
+        ...toRequest(routingPolicy),
         toStorage,
       });
-
-      state.selectedRoutingPolicyIds = state.selectedRoutingPolicyIds.filter(
-        (id) => id !== routingPolicy.id,
-      );
 
       try {
         await getRoutingPolicies();
@@ -263,139 +206,57 @@ export const useTuttiRoutingPoliciesStore = defineStore(
       }
     }
 
-    async function deleteRoutingPolicies(
-      routingPolicies: RoutingPolicy[],
-    ): Promise<{
-      successList: RoutingPolicy[];
-      errorList: [RoutingPolicy, string][];
-    }> {
-      const successList: RoutingPolicy[] = [];
-      const errorList: [RoutingPolicy, string][] = [];
-
-      await Promise.all(
-        routingPolicies.map(async (routingPolicy) => {
-          try {
-            await deleteRoutingPolicy(routingPolicy);
-            successList.push(routingPolicy);
-          } catch (error: unknown) {
-            errorList.push([
-              routingPolicy,
-              error instanceof Error ? error.message : String(error),
-            ]);
-          }
-        }),
-      );
-
-      if (successList.length > 0) {
-        const successListIds = successList.map((item) => item.id);
-
-        state.routingPolicies = state.routingPolicies.filter(
-          (item) => !successListIds.includes(item.id),
-        );
-
-        state.selectedRoutingPolicyIds = state.selectedRoutingPolicyIds.filter(
-          (item) => !successListIds.includes(item),
-        );
-
-        const pageCount = pagination.value.pageCount ?? 1;
-
-        if (state.page > pageCount) {
-          state.page = pageCount;
-        }
-      }
-
-      return { successList, errorList };
-    }
-
-    async function setRoutingPolicyBlock(
-      routingPolicy: RoutingPolicy,
-      setBlock: boolean,
-    ) {
-      const routingPolicyIndex = state.routingPolicies.findIndex(
-        ({ id }) => routingPolicy.id === id,
-      );
-
-      if (routingPolicyIndex === -1) {
-        return;
-      }
-
-      const blockRequestData: RoutingPolicyEditRequest = {
-        user: routingPolicy.user,
-        bucket: routingPolicy.bucket === '*' ? null : routingPolicy.bucket,
-      };
-
+    async function deleteRoutingPolicies(rules: RoutingPolicy[]) {
       await stopRoutingPoliciesPolling();
 
-      try {
-        await (
-          setBlock
-            ? TuttiCoreService.blockRoutingPolicy
-            : TuttiCoreService.unblockRoutingPolicy
-        )(blockRequestData);
-      } catch (error: unknown) {
-        const reason =
-          ErrorHelper.getReason(error) || t('deleteRoutingPolicyErrorUnknown');
-
-        throw new Error(reason);
-      }
-
-      state.routingPolicies.splice(routingPolicyIndex, 1, {
-        ...routingPolicy,
-        isBlocked: setBlock,
+      const result = await forEachRule(rules, async (rule) => {
+        try {
+          await TuttiCoreService.deleteRoutingPolicy(toRequest(rule));
+        } catch (error: unknown) {
+          throw new Error(reasonOf(error));
+        }
       });
+      const removed = new Set(result.successList.map((rule) => rule.id));
 
+      state.routingPolicies = state.routingPolicies.filter(
+        (rule) => !removed.has(rule.id),
+      );
       startRoutingPoliciesPolling();
+
+      return result;
     }
 
     async function setRoutingPoliciesBlock(
-      routingPolicies: RoutingPolicy[],
+      rules: RoutingPolicy[],
       setBlock: boolean,
-    ): Promise<{
-      successList: RoutingPolicy[];
-      errorList: [RoutingPolicy, string][];
-    }> {
-      const successList: RoutingPolicy[] = [];
-      const errorList: [RoutingPolicy, string][] = [];
-      const promises: Promise<void>[] = [];
-
+    ) {
       await stopRoutingPoliciesPolling();
 
-      for (const routingPolicy of routingPolicies) {
-        promises.push(
-          (async () => {
-            try {
-              await setRoutingPolicyBlock(routingPolicy, setBlock);
-              successList.push(routingPolicy);
-            } catch (error: unknown) {
-              errorList.push([
-                routingPolicy,
-                error instanceof Error ? error.message : String(error),
-              ]);
-            }
-          })(),
-        );
-      }
+      const call = setBlock
+        ? TuttiCoreService.blockRoutingPolicy
+        : TuttiCoreService.unblockRoutingPolicy;
+      const result = await forEachRule(rules, async (rule) => {
+        try {
+          await call(toRequest(rule));
+        } catch (error: unknown) {
+          throw new Error(reasonOf(error));
+        }
 
-      await Promise.all(promises);
+        const index = state.routingPolicies.findIndex(
+          ({ id }) => id === rule.id,
+        );
+
+        if (index !== -1)
+          state.routingPolicies.splice(index, 1, {
+            ...rule,
+            isBlocked: setBlock,
+          });
+      });
 
       startRoutingPoliciesPolling();
 
-      return { successList, errorList };
+      return result;
     }
-
-    const selectedRoutingPoliciesCount = computed(
-      () => state.selectedRoutingPolicyIds.length,
-    );
-
-    const isAnyRoutingPolicySelected = computed(
-      () => state.selectedRoutingPolicyIds.length !== 0,
-    );
-
-    const selectedRoutingPolicies = computed<RoutingPolicy[]>(() =>
-      state.routingPolicies.filter((routingPolicy) =>
-        state.selectedRoutingPolicyIds.includes(routingPolicy.id),
-      ),
-    );
 
     async function $reset() {
       try {
@@ -408,17 +269,11 @@ export const useTuttiRoutingPoliciesStore = defineStore(
     return {
       ...toRefs(state),
       hasNoData,
-      pagination,
-      deleteRoutingPolicy,
       updateRoutingPolicyTarget,
       deleteRoutingPolicies,
-      setRoutingPolicyBlock,
       setRoutingPoliciesBlock,
       computedRoutingPolicies,
       initRoutingPoliciesPage,
-      selectedRoutingPoliciesCount,
-      isAnyRoutingPolicySelected,
-      selectedRoutingPolicies,
       isFiltered,
       clearFilters,
       $reset,

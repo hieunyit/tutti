@@ -16,9 +16,9 @@
 
 <script setup lang="ts">
   import { NAlert, NButton, NModal, NSelect, NSpace } from 'naive-ui';
-  import { computed, ref, watch } from 'vue';
+  import { computed, ref, useId, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import i18nRoutingPolicies from '../i18nRoutingPolicies';
+  import i18nRouting from '@/pages/TuttiRoutingPage/i18nRouting';
   import { TuttiCoreService } from '@/services/TuttiCoreService';
   import { useTuttiRoutingPoliciesStore } from '@/stores/tuttiRoutingPoliciesStore';
   import { useTuttiNotification } from '@/utils/composables/useTuttiNotification';
@@ -34,10 +34,11 @@
     (e: 'update:show', value: boolean): void;
   }>();
 
-  const { t } = useI18n({ messages: i18nRoutingPolicies });
+  const { t } = useI18n({ messages: i18nRouting });
   const { updateRoutingPolicyTarget } = useTuttiRoutingPoliciesStore();
   const { createNotification } = useTuttiNotification();
 
+  const selectId = `routing-edit-${useId()}`;
   const storageNames = ref<string[]>([]);
   const selected = ref<string | null>(null);
   const isLoading = ref(false);
@@ -88,7 +89,7 @@
 
       createNotification({
         type: 'success',
-        title: t('editSuccessTitle'),
+        title: t('editSuccess'),
         duration: 4000,
       });
       emit('update:show', false);
@@ -114,7 +115,6 @@
       vertical
       :size="12"
     >
-      <p>{{ t('editDescription') }}</p>
       <div>
         {{ routingPolicy.user }}
         <template v-if="routingPolicy.bucket !== '*'">
@@ -124,13 +124,17 @@
         <small>{{ t('editCurrent') }}: {{ routingPolicy.toStorage }}</small>
       </div>
 
+      <label
+        :for="selectId"
+        class="routing-edit__label"
+        >{{ t('editNew') }}</label
+      >
       <NSelect
         v-model:value="selected"
+        :input-props="{ id: selectId }"
         :options="options"
         :loading="isLoading"
-        :placeholder="t('editPlaceholder')"
         :disabled="isSaving"
-        :aria-label="t('editNew')"
       />
       <small v-if="!isLoading && options.length === 0">
         {{ t('editNoStorages') }}
@@ -164,3 +168,9 @@
     </template>
   </NModal>
 </template>
+
+<style scoped lang="scss">
+  .routing-edit__label {
+    font-weight: var(--tt-weight-strong);
+  }
+</style>
