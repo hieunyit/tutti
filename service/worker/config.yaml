@@ -12,6 +12,8 @@ shutdownTimeout: 5s
 bulkConcurrencyPercent: 0 # 0 = auto (20..40 by CPU) or 5..95, share of concurrency for bulk migration; the rest serves live events (restart)
 multipartThreads: 0 # 0 = auto (1), or 1..16; keep 1 unless measured: parallel parts were slower in local tests, gain unverified
 multipartPartSizeMiB: 0 # 0 = auto (16) or 5..512
+copyEngine: "" # "" = built-in default (legacy), "pipeline" or "legacy": how objects larger than one part are copied (docs/tutti/configuration.md, "Copy engines"); System setting worker.copyEngine wins
+resumeMultipart: false # true = continue an interrupted multipart upload when a copy is retried (pipeline engine only; read the warning in docs/tutti/configuration.md); System setting worker.resumeMultipart true also enables it
 orphanUploadCleanup: true # abort incomplete multipart uploads of failed copies and sweep stale (older than 5 min) ones of the same key before a multipart copy; false = off
 largeObjectStreams: 0 # 0 = auto (2 per CPU, 4..16) or 1..64: max concurrent copies of objects >= 128 MiB per destination storage; waiting copies retry later and hold no slot. Large value (e.g. 64) effectively disables the cap
 # Diagnostics, all off by default.

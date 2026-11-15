@@ -544,12 +544,20 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	// Multipart tuning: objects above the part size are uploaded with several parts in flight.
 	// Defaults (1 thread) keep the sequential single-stream upload.
 	threads, partSize, partExplicit := systemsettings.EffectiveMultipart()
-	parallel := threads > 1 && stat.Size > int64(partSize)
+	// The pipeline engine streams objects larger than one part; an object of at most one part is a single PUT
+	// on the legacy path in both engines.
+	enginePart := pipelinePartSize(stat.Size, partSize)
+	usePipeline := systemsettings.EffectiveCopyEngine() == systemsettings.CopyEnginePipeline && stat.Size > enginePart
+	pipelineThreads := systemsettings.EffectivePipelineThreads()
+	parallel := !usePipeline && threads > 1 && stat.Size > int64(partSize)
+	// legacyPartSize also raises the part size when size/9000 needs it (10000 parts limit)
 	if parallel {
 		putObjectOpts.NumThreads = uint(threads)
-		putObjectOpts.PartSize = partSize
+		putObjectOpts.PartSize = legacyPartSize(stat.Size, partSize)
 	} else if partExplicit && stat.Size > int64(partSize) {
-		putObjectOpts.PartSize = partSize
+		putObjectOpts.PartSize = legacyPartSize(stat.Size, partSize)
+	} else if ps := legacyPartSize(stat.Size, 0); ps > 0 {
+		putObjectOpts.PartSize = ps
 	}
 
 	if fn := progressFrom(ctx); fn != nil {
@@ -563,6 +571,9 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	estimatedBuffer := EstimateCopyBuffer(stat.Size, putObjectOpts.PartSize)
 	if parallel {
 		estimatedBuffer = EstimateParallelCopyBuffer(stat.Size, putObjectOpts.PartSize, threads)
+	}
+	if usePipeline {
+		estimatedBuffer = pipelineBuffer(stat.Size, enginePart, pipelineThreads)
 	}
 	releaseBuffer, err := systemsettings.AcquireBufferBudget(ctx, estimatedBuffer)
 	if err != nil {
@@ -581,19 +592,50 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	if putObjectOpts.PartSize > 0 {
 		multipartThreshold = int64(putObjectOpts.PartSize)
 	}
-	multipartExpected := stat.Size >= multipartThreshold
+	multipartExpected := stat.Size >= multipartThreshold && !usePipeline
 	toCore := minio.Core{Client: toClient.S3().Client}
 	if multipartExpected {
 		r.sweepBeforeUpload(ctx, toCore, to.Bucket, to.Name, nil)
 	}
 
 	var info minio.UploadInfo
-	if parallel {
+	if usePipeline {
+		// the stat HEAD above is all that was needed from the minio.Object: the engine streams the source itself
+		fromObject.Close()
+		pp := pipelineParams{
+			from: fromClient.S3(), to: toClient.S3(),
+			fromBucket: from.Bucket, fromName: from.Name, fromVersion: from.Version, sourceETag: stat.ETag,
+			toBucket: to.Bucket, toName: to.Name,
+			size: stat.Size, partSize: enginePart, threads: pipelineThreads,
+			putOpts: putObjectOpts, limiter: systemsettings.BandwidthLimiter(),
+			progress:      progressFrom(ctx),
+			disableSha256: putObjectOpts.DisableContentSha256,
+		}
+		pp.putOpts.Progress = nil
+		core := toClient.S3().Core()
+		var keep func(string) bool
+		if rs := resumeFrom(ctx); rs != nil && systemsettings.EffectiveResumeMultipart() {
+			plan := planResume(ctx, rs, core, to.Bucket, to.Name, stat.ETag, stat.Size, stat.LastModified, enginePart)
+			pp.resume, pp.rec = plan.state, plan.rec
+			if plan.keepID != "" {
+				keep = func(id string) bool { return id == plan.keepID }
+			}
+		}
+		r.sweepBeforeUpload(ctx, core, to.Bucket, to.Name, keep)
+		info, err = r.pipelineCopy(ctx, pp)
+		if err != nil {
+			var nf *sourceNotFoundError
+			if errors.As(err, &nf) {
+				return dom.ErrNotFound
+			}
+			return fmt.Errorf("unable to upload object: %w", err)
+		}
+	} else if parallel {
 		// minio-go uploads parts concurrently only from an io.ReaderAt. minio.Object.ReadAt is serialized by
 		// a mutex, so parallelSource serves each part with its own ranged GET instead. The whole-object GET
 		// opened for the stat is not needed any more.
 		fromObject.Close()
-		psrc := newParallelSource(ctx, stat.Size, int64(partSize), systemsettings.BandwidthLimiter(),
+		psrc := newParallelSource(ctx, stat.Size, int64(putObjectOpts.PartSize), systemsettings.BandwidthLimiter(),
 			minioObjectOpener(func(c context.Context, o minio.GetObjectOptions) (*minio.Object, error) {
 				return fromClient.S3().GetObject(c, from.Bucket, from.Name, o)
 			}, from.Version, stat.ETag))

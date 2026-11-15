@@ -231,3 +231,19 @@ func (s *S3) PutObject(ctx context.Context, bucketName, objectName string, reade
 	defer s.metricsSvc.Upload(xctx.GetFlow(ctx), s.name, bucketName, int(size))
 	return s.Client.PutObject(ctx, bucketName, objectName, reader, size, opts)
 }
+
+// Core returns the low level multipart API of the same client (same transport, credentials and retry policy).
+// Calls made through it bypass this wrapper's tracing and metrics: streaming engines record them with
+// CountGetRequest and CountPut.
+func (s *S3) Core() mclient.Core { return mclient.Core{Client: s.Client} }
+
+// CountGetRequest records one GetObject request made through Core.
+func (s *S3) CountGetRequest(ctx context.Context) {
+	s.metricsSvc.Count(xctx.GetFlow(ctx), s.name, s3.GetObject.String())
+}
+
+// CountPut records one completed (or failed) object upload of size bytes made through Core.
+func (s *S3) CountPut(ctx context.Context, bucketName string, size int64) {
+	s.metricsSvc.Count(xctx.GetFlow(ctx), s.name, s3.PutObject.String())
+	s.metricsSvc.Upload(xctx.GetFlow(ctx), s.name, bucketName, int(size))
+}

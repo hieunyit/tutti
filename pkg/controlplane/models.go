@@ -276,6 +276,12 @@ type SystemWorkerSettings struct {
 	// LargeObjectStreams caps concurrent copies of large objects (>= 128 MiB) per destination storage
 	// (1..64, 0 = auto: derived from the CPU count).
 	LargeObjectStreams int `json:"largeObjectStreams,omitempty"`
+	// CopyEngine selects how large objects are copied: "pipeline" (streaming multipart engine), "legacy"
+	// (minio-go PutObject), "" = built-in default.
+	CopyEngine string `json:"copyEngine,omitempty"`
+	// ResumeMultipart continues an interrupted multipart upload of a retried copy instead of restarting
+	// (pipeline engine only, default off).
+	ResumeMultipart bool `json:"resumeMultipart,omitempty"`
 }
 
 type SystemLockSettings struct {

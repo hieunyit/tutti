@@ -6055,6 +6055,14 @@
           "type": "integer",
           "format": "int32",
           "description": "Max concurrent copies of objects \u003e= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.\nOther copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live."
+        },
+        "copyEngine": {
+          "type": "string",
+          "description": "Copy engine for large objects: \"\" = built-in default, \"pipeline\" (streaming multipart engine) or \"legacy\"\n(minio-go PutObject). Applied live to the next copy."
+        },
+        "resumeMultipart": {
+          "type": "boolean",
+          "description": "Continue an interrupted multipart upload of a retried copy instead of restarting it. Pipeline engine only;\noff by default. Applied live to the next copy."
         }
       }
     },

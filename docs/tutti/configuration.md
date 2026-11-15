@@ -351,6 +351,53 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 - `readHeaderTimeout` and `writerLease` need a restart (`pendingRestart`).
 
 
+## Copy engines, resumable multipart and part sizes
+
+Objects larger than one part (default 16 MiB) are uploaded as multipart. Two engines exist, selected by `worker.copyEngine` (System setting, applies to the next copy) or `copyEngine` in the worker YAML (`""`/`legacy`/`pipeline`):
+
+- **`legacy` (default)**: minio-go `PutObject`. With `multipartThreads` 1 it reads one part from the source into memory, uploads it, then reads the next (the source stalls during each upload); with `multipartThreads` > 1 each part is a separate ranged GET streamed straight into the upload (no buffering, several source connections).
+- **`pipeline`**: one sequential source GET (continued with a ranged GET at the current offset if the connection breaks), cut into parts that are read into pooled buffers and uploaded by K uploaders, so reading part N+1 overlaps uploading part N. K = `multipartThreads` when set explicitly, otherwise 2. Peak memory per object is `(K+1) x part size` (reserved from the buffer budget up front, buffers come from one process-wide size-class pool and go back as soon as a part is done). Objects of at most one part are a single PUT in both engines.
+
+Part size for both engines: the configured part size (default 16 MiB), raised to `ceil(size / 9000)` rounded up to a MiB so the 10000-part limit is never reached (5 MiB parts of a 100 GB object would otherwise fail).
+
+### Why the default is still `legacy`
+
+Measured with the in-process benchmark (`go test ./service/worker/copy -run '^$' -bench Copy -benchtime 1x`, synthetic S3 servers in child processes, GOMAXPROCS=2, no TLS, loopback; 256 MiB objects; "MB/s" is the total over all objects; peak heap is per object). Loopback numbers are not WAN numbers.
+
+| scenario (per-request latency 30 ms) | engine | 1 object MB/s | 8 objects MB/s | CPU s/GiB (1 / 8 obj) | peak heap MiB per object |
+|---|---|---|---|---|---|
+| 50 MiB/s per stream on both sides | legacy t1 | 43.7 | 348 | 1.09 / 0.64 | 22 |
+| | legacy t2 (ranged GETs) | 84.4 | 674 | 1.84 / 0.66 | 6.5 |
+| | pipeline t2 | 47.7 | 381 | 1.55 / 0.79 | 70 |
+| | pipeline t4 | 47.7 | 381 | 1.49 / 0.74 | 70 |
+| source 100, destination 25 MiB/s per stream | legacy t1 / t2 | 24 / 49 | 193 / 390 | 1.37 / 0.65 | 22 / 6.5 |
+| | pipeline t2 / t4 | 46 / 77 | 366 / 615 | 1.14 / 0.75 | 70 / 102 |
+| source 25, destination 100 MiB/s per stream | legacy t1 / t2 | 25 / 47 | 203 / 374 | 1.87 / 0.79 | 22 / 6.5 |
+| | pipeline t2 / t4 | 25 | 203 | 2.1 / 0.88 | 54-70 |
+| 50 MiB/s TOTAL per side (shared pipe) | all engines | 43-51 | 48-52 | 1.1-2.6 | - |
+| unlimited loopback, 512 MiB | legacy t1 | 1720 | 2717 | 0.65 / 0.84 | 40 |
+| | legacy t2 | 3307 | 2037 | 0.65 / 1.12 | 8.5 |
+| | pipeline t2 | 2884 | 2292 | 0.71 / 1.08 | 74 |
+
+What this says, honestly:
+
+- The pipeline engine is better than `legacy` with one thread when the source and destination speeds are similar and the loss is the stall of the serial read/upload loop (+9% here, because the kernel socket buffers already hide part of the stall on loopback), and when the destination is slow per stream it scales with K (K=4: 77 vs 24 MB/s for `legacy` t1).
+- It is **not** better than the existing parallel legacy path (`multipartThreads` 2..4): that path opens several source connections, so with a per-stream limit on the source it is about twice as fast, uses about a tenth of the memory (no part buffers) and about the same CPU. A single sequential source stream cannot exceed one stream's speed.
+- The pipeline engine costs 3x the memory per object of `legacy` t1 and 10-15% more CPU per GiB in these runs (page faults of fresh pool buffers, extra copy through a part buffer); with one shared pipe (total cap) nothing helps, all engines are bound by the pipe.
+- Hence `legacy` stays the default. If your real bottleneck is a per-connection limit, try `multipartThreads` 2..4 first (legacy, no extra memory) at lower `concurrency`; use `pipeline` when you need resume or when the source is a single fast stream and the destination is slow per stream.
+
+Run the benchmarks yourself with `BENCH_NET=<scenario> go test ./service/worker/copy -run '^$' -bench 'Copy/' -benchtime 1x -benchmem` (scenarios in `service/worker/copy/bench_test.go`) and take a real profile first (see Profiling the worker).
+
+### Resumable multipart (`worker.resumeMultipart`, off by default)
+
+With `copyEngine: pipeline` and `worker.resumeMultipart: true` (System setting, or `resumeMultipart: true` in the worker YAML), an interrupted large copy continues instead of restarting. The worker stores `{uploadId, source ETag, size, last modified, part size, completed parts}` in the queue Redis under `p:mpu:{<replication id>:<generation>}:<sha1(key, version)>` (TTL 7 days, refreshed while parts complete, writes throttled to one per 2 s, deleted on success and on abort). On a retry it checks that the source ETag/size/last-modified and the part size are unchanged, asks the destination which parts exist (`ListParts` is the source of truth: part sizes and ETags are verified, parts the destination does not list are uploaded again), reads the source with a ranged GET (`If-Match`) from the first missing part, uploads only the missing parts and completes with all parts in order. Anything unexpected (changed source, different part size, unknown upload, listing error, duplicate or mismatching parts) aborts the old upload (fresh context) and restarts from zero. A failure that is not transient (client errors, source gone or changed) aborts the upload and deletes the record. The orphan sweep does not abort the upload named by the record.
+
+**Warning.** This is new and unproven against your Ceph: it relies on `ListParts` behaving per S3, on part ETags staying stable and on the destination keeping incomplete uploads for as long as the record lives (a lifecycle rule `AbortIncompleteMultipartUpload` shorter than the retry delay defeats it). Keep it off in production until you have killed a worker mid-copy in a test setup and verified the object (size and a checksum) afterwards. Resume applies to initial-replication/diff-fix copies only (not live events, not versioned migrations). Switching it off is immediate: records are ignored and expire by themselves.
+
+### TODO: checksum trailers
+
+Not implemented: end-to-end integrity with `x-amz-checksum-crc32c` trailers (aws-chunked) on uploads. Before doing so, probe the destination Ceph RGW for support (a one-object test with a trailing CRC32C, reading back `x-amz-checksum-crc32c`) and measure the CPU cost, since the worker would hash every byte. Today integrity rests on TLS, the part ETags and the final size check.
+
 ## Orphaned multipart uploads
 
 A copy that fails or is cancelled in the middle of a multipart upload leaves an incomplete upload on the destination that keeps using quota until it is aborted. minio-go aborts with the copy context, which is already cancelled on shutdown, task timeout or retry, so the abort failed silently. The worker now (a) aborts with a fresh context (1 minute, 3 tries) after a failed multipart copy and (b) at the start of a multipart copy lists the incomplete uploads of exactly that key and aborts the ones older than 5 minutes. Both run only while the worker holds the distributed destination-key lock, which guarantees that no other worker uploads the same key (a younger upload is never touched). Switch: `orphanUploadCleanup: false` in the worker YAML (env `CFG_ORPHANUPLOADCLEANUP=false`) restores the old behaviour. Cost: one `ListMultipartUploads` request per multipart copy.
@@ -392,6 +439,8 @@ Knobs with no explicit value (stored setting `0`, YAML/env `0`) use a value deri
 | Buffer budget | `bufferBudgetBytes` (0 = auto, else at least 16 MiB; never unlimited) | none | 25% of memory, clamped to 256 MiB..8 GiB | next copy, no restart |
 | Parallel multipart parts | `multipartThreads` (0 or 1..16) | `multipartThreads` | 1 | next copy, no restart |
 | Multipart part size | `multipartPartSizeMib` (0 or 5..512) | `multipartPartSizeMiB` | 16 MiB | next copy, no restart |
+| Copy engine | `copyEngine` (`""`, `legacy`, `pipeline`) | `copyEngine` | `legacy` | next copy, no restart |
+| Resumable multipart | `resumeMultipart` (bool) | `resumeMultipart` | off | next copy, no restart |
 | Large-object streams | `largeObjectStreams` (0 or 1..64) | `largeObjectStreams` / `CFG_LARGEOBJECTSTREAMS` | 2 per CPU, clamped to 4..16 | next task, no restart |
 
 | CPU / memory | concurrency | bulk % | buffer budget |

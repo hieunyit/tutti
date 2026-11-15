@@ -57,6 +57,11 @@ type Config struct {
 	// OrphanUploadCleanup: abort incomplete multipart uploads left by failed copies (fresh context) and sweep
 	// stale ones of the same key before a multipart copy. Default true; false rolls the behaviour back.
 	OrphanUploadCleanup bool `yaml:"orphanUploadCleanup"`
+	// CopyEngine: "pipeline" or "legacy" (default legacy); the System setting worker.copyEngine wins.
+	CopyEngine string `yaml:"copyEngine"`
+	// ResumeMultipart: continue interrupted multipart uploads of retried copies (pipeline engine only, default
+	// off); on if this or the System setting worker.resumeMultipart is true.
+	ResumeMultipart bool `yaml:"resumeMultipart"`
 
 	// Debug: diagnostics, all OFF by default.
 	Debug DebugConfig `yaml:"debug"`
@@ -97,6 +102,9 @@ func (c *Config) Validate() error {
 	}
 	if c.LargeObjectStreams < 0 || c.LargeObjectStreams > 64 {
 		return fmt.Errorf("worker config: largeObjectStreams must be 0 (auto) or in 1..64: %d", c.LargeObjectStreams)
+	}
+	if c.CopyEngine != "" && c.CopyEngine != "pipeline" && c.CopyEngine != "legacy" {
+		return fmt.Errorf("worker config: copyEngine must be empty, pipeline or legacy: %q", c.CopyEngine)
 	}
 	if c.Api == nil {
 		return fmt.Errorf("worker config: empty Api config")

@@ -267,3 +267,24 @@ func TestSystemSettingsFromPb_LargeObjectStreams(t *testing.T) {
 		require.Error(t, err, bad)
 	}
 }
+
+func TestSystemSettingsFromPb_CopyEngineAndResume(t *testing.T) {
+	base := DefaultSystemSettings()
+	out, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"copyEngine":"pipeline","resumeMultipart":true}}`), base)
+	require.NoError(t, err)
+	require.Equal(t, "pipeline", out.Worker.CopyEngine)
+	require.True(t, out.Worker.ResumeMultipart)
+
+	// absent keeps, explicit empty / false resets
+	out2, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"multipartThreads":2}}`), out)
+	require.NoError(t, err)
+	require.Equal(t, "pipeline", out2.Worker.CopyEngine)
+	require.True(t, out2.Worker.ResumeMultipart)
+	out3, err := systemSettingsFromPb(workerFromJSON(t, `{"worker":{"copyEngine":"","resumeMultipart":false}}`), out)
+	require.NoError(t, err)
+	require.Equal(t, "", out3.Worker.CopyEngine)
+	require.False(t, out3.Worker.ResumeMultipart)
+
+	_, err = systemSettingsFromPb(workerFromJSON(t, `{"worker":{"copyEngine":"turbo"}}`), base)
+	require.Error(t, err)
+}

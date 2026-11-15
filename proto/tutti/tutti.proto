@@ -939,6 +939,12 @@ message SystemWorkerSettings {
   // Max concurrent copies of objects >= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.
   // Other copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live.
   optional int32 large_object_streams = 16;
+  // Copy engine for large objects: "" = built-in default, "pipeline" (streaming multipart engine) or "legacy"
+  // (minio-go PutObject). Applied live to the next copy.
+  optional string copy_engine = 17;
+  // Continue an interrupted multipart upload of a retried copy instead of restarting it. Pipeline engine only;
+  // off by default. Applied live to the next copy.
+  optional bool resume_multipart = 18;
 }
 
 message SystemLockSettings {

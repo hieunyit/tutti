@@ -65,11 +65,17 @@ type memS3 struct {
 
 	// synthetic mode: objects named "s<size>..." exist without storage and uploads are discarded (benchmarks)
 	synthetic bool
+	// synthSource: unknown keys "s<size>..." are served as objects of that size (needs synthetic)
+	synthSource bool
 
 	Latency   time.Duration
 	StreamBps int64 // per request body cap, bytes/s (0 = unlimited)
 	totalLim  *rate.Limiter
 	Hook      func(n int, r *http.Request) *memFault
+
+	// dupListing makes ListParts report every part twice (a misbehaving destination)
+	dupListing bool
+	rangeLog   []string
 
 	srv        *httptest.Server
 	putBytes   atomic.Int64
@@ -145,6 +151,12 @@ func (f *memS3) OpenUploads() []string {
 	}
 	sort.Strings(ids)
 	return ids
+}
+
+func (f *memS3) Ranges() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.rangeLog...)
 }
 
 // Age moves the initiation time of an upload into the past.
@@ -447,7 +459,7 @@ func (f *memS3) lookup(path string) (*memObj, bool) {
 	if o, ok := f.objs[path]; ok {
 		return o, true
 	}
-	if f.synthetic {
+	if f.synthetic && f.synthSource {
 		if sz, ok := synthSize(path); ok {
 			return &memObj{size: sz, etag: "synthetic-" + strconv.FormatInt(sz, 10), header: http.Header{"Content-Type": {"application/octet-stream"}}, modified: time.Unix(1700000000, 0)}, true
 		}
@@ -495,6 +507,9 @@ func (f *memS3) getObject(w http.ResponseWriter, r *http.Request, path string, t
 			}
 		}
 		status = 206
+		f.mu.Lock()
+		f.rangeLog = append(f.rangeLog, rg)
+		f.mu.Unlock()
 		h.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", a, b, o.size))
 	}
 	h.Set("Content-Length", strconv.FormatInt(b-a+1, 10))
@@ -646,6 +661,9 @@ func (f *memS3) listParts(w http.ResponseWriter, q map[string][]string, path str
 	for _, n := range nums {
 		p := u.parts[n]
 		next = n
+		if f.dupListing {
+			fmt.Fprintf(&sb, `<Part><PartNumber>%d</PartNumber><ETag>"%s"</ETag><Size>%d</Size><LastModified>%s</LastModified></Part>`, n, p.etag, p.size, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"))
+		}
 		fmt.Fprintf(&sb, `<Part><PartNumber>%d</PartNumber><ETag>"%s"</ETag><Size>%d</Size><LastModified>%s</LastModified></Part>`, n, p.etag, p.size, time.Now().UTC().Format("2006-01-02T15:04:05.000Z"))
 	}
 	f.mu.Unlock()

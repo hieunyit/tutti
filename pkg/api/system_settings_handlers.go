@@ -208,6 +208,8 @@ func systemSettingsToPb(v controlplane.Versioned[controlplane.SystemSettings]) *
 			MultipartThreads:         proto.Int32(int32(s.Worker.MultipartThreads)),
 			MultipartPartSizeMib:     proto.Int32(int32(s.Worker.MultipartPartSizeMiB)),
 			LargeObjectStreams:       proto.Int32(int32(s.Worker.LargeObjectStreams)),
+			CopyEngine:               proto.String(s.Worker.CopyEngine),
+			ResumeMultipart:          proto.Bool(s.Worker.ResumeMultipart),
 		},
 		Lock: &pb.SystemLockSettings{
 			Overlap: durationpb.New(s.Lock.Overlap),
@@ -244,6 +246,8 @@ func addHardwareInfo(out *pb.SystemSettings, w controlplane.SystemWorkerSettings
 		MultipartThreads:       proto.Int32(int32(eff.MultipartThreads.Value)),
 		MultipartPartSizeMib:   proto.Int32(int32(eff.MultipartPartSizeMiB.Value)),
 		LargeObjectStreams:     proto.Int32(int32(eff.LargeObjectStreams.Value)),
+		CopyEngine:             proto.String(systemsettings.EffectiveCopyEngine()),
+		ResumeMultipart:        proto.Bool(systemsettings.EffectiveResumeMultipart()),
 	}
 	out.TuningSources = &pb.WorkerTuningSources{
 		Concurrency:            eff.Concurrency.Source,
@@ -329,6 +333,15 @@ func systemSettingsFromPb(req *pb.UpdateSystemSettingsRequest, base controlplane
 		}
 		if w.LargeObjectStreams != nil {
 			out.Worker.LargeObjectStreams = int(*w.LargeObjectStreams)
+		}
+		if v := w.CopyEngine; v != nil && *v != "" && *v != "pipeline" && *v != "legacy" {
+			return out, fmt.Errorf("%w: worker.copyEngine must be empty (default), \"pipeline\" or \"legacy\": %q", dom.ErrInvalidArg, *v)
+		}
+		if w.CopyEngine != nil {
+			out.Worker.CopyEngine = *w.CopyEngine
+		}
+		if w.ResumeMultipart != nil {
+			out.Worker.ResumeMultipart = *w.ResumeMultipart
 		}
 		// Absent keeps the stored value; an explicit 0 resets to the built-in default
 		// (bandwidth: unlimited). Stored 0 already means "default" for the multipart/bulk knobs.

@@ -135,6 +135,11 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	// 1. sync obj meta and content
 	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
 		ctx = copy.WithKeyLocked(ctx)
+		if systemsettings.EffectiveResumeMultipart() {
+			if rc := s.redisClient(); rc != nil {
+				ctx = copy.WithResume(ctx, store.NewMultipartResumeStore(rc), copy.ResumeKey(p.ID.AsString(), p.Generation, p.Obj.Name, p.Obj.VersionID))
+			}
+		}
 		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
 			Storage: p.ID.FromStorage(),
 			Bucket:  fromBucket,

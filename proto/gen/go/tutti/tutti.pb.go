@@ -6182,8 +6182,14 @@ type SystemWorkerSettings struct {
 	// Max concurrent copies of objects >= 128 MiB per destination storage: 0 = auto (2 per CPU, 4..16) or 1..64.
 	// Other copies are not limited; waiting copies are retried after a short delay and hold no worker slot. Applied live.
 	LargeObjectStreams *int32 `protobuf:"varint,16,opt,name=large_object_streams,json=largeObjectStreams,proto3,oneof" json:"large_object_streams,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Copy engine for large objects: "" = built-in default, "pipeline" (streaming multipart engine) or "legacy"
+	// (minio-go PutObject). Applied live to the next copy.
+	CopyEngine *string `protobuf:"bytes,17,opt,name=copy_engine,json=copyEngine,proto3,oneof" json:"copy_engine,omitempty"`
+	// Continue an interrupted multipart upload of a retried copy instead of restarting it. Pipeline engine only;
+	// off by default. Applied live to the next copy.
+	ResumeMultipart *bool `protobuf:"varint,18,opt,name=resume_multipart,json=resumeMultipart,proto3,oneof" json:"resume_multipart,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SystemWorkerSettings) Reset() {
@@ -6326,6 +6332,20 @@ func (x *SystemWorkerSettings) GetLargeObjectStreams() int32 {
 		return *x.LargeObjectStreams
 	}
 	return 0
+}
+
+func (x *SystemWorkerSettings) GetCopyEngine() string {
+	if x != nil && x.CopyEngine != nil {
+		return *x.CopyEngine
+	}
+	return ""
+}
+
+func (x *SystemWorkerSettings) GetResumeMultipart() bool {
+	if x != nil && x.ResumeMultipart != nil {
+		return *x.ResumeMultipart
+	}
+	return false
 }
 
 type SystemLockSettings struct {
@@ -7700,8 +7720,7 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x13preserve_acl_grants\x18\x05 \x01(\bR\x11preserveAclGrants\x12\x1e\n" +
 	"\n" +
 	"versioning\x18\x06 \x01(\bR\n" +
-	"versioning\"\x85\n" +
-	"\n" +
+	"versioning\"\x80\v\n" +
 	"\x14SystemWorkerSettings\x12%\n" +
 	"\vconcurrency\x18\x01 \x01(\x05H\x00R\vconcurrency\x88\x01\x01\x12D\n" +
 	"\x10shutdown_timeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x0fshutdownTimeout\x12M\n" +
@@ -7719,7 +7738,11 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x18bulk_concurrency_percent\x18\r \x01(\x05H\x05R\x16bulkConcurrencyPercent\x88\x01\x01\x120\n" +
 	"\x11multipart_threads\x18\x0e \x01(\x05H\x06R\x10multipartThreads\x88\x01\x01\x12:\n" +
 	"\x17multipart_part_size_mib\x18\x0f \x01(\x05H\aR\x14multipartPartSizeMib\x88\x01\x01\x125\n" +
-	"\x14large_object_streams\x18\x10 \x01(\x05H\bR\x12largeObjectStreams\x88\x01\x01B\x0e\n" +
+	"\x14large_object_streams\x18\x10 \x01(\x05H\bR\x12largeObjectStreams\x88\x01\x01\x12$\n" +
+	"\vcopy_engine\x18\x11 \x01(\tH\tR\n" +
+	"copyEngine\x88\x01\x01\x12.\n" +
+	"\x10resume_multipart\x18\x12 \x01(\bH\n" +
+	"R\x0fresumeMultipart\x88\x01\x01B\x0e\n" +
 	"\f_concurrencyB\x19\n" +
 	"\x17_backlog_high_watermarkB\x18\n" +
 	"\x16_backlog_low_watermarkB\x18\n" +
@@ -7728,7 +7751,9 @@ const file_tutti_tutti_proto_rawDesc = "" +
 	"\x19_bulk_concurrency_percentB\x14\n" +
 	"\x12_multipart_threadsB\x1a\n" +
 	"\x18_multipart_part_size_mibB\x17\n" +
-	"\x15_large_object_streams\"I\n" +
+	"\x15_large_object_streamsB\x0e\n" +
+	"\f_copy_engineB\x13\n" +
+	"\x11_resume_multipart\"I\n" +
 	"\x12SystemLockSettings\x123\n" +
 	"\aoverlap\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\aoverlap\"L\n" +
 	"\x15SystemWebhookSettings\x12\x18\n" +

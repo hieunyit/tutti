@@ -2,6 +2,7 @@ package copy
 
 import (
 	"context"
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/s3client"
 	"github.com/minio/minio-go/v7"
 	"net/http"
@@ -26,14 +27,14 @@ func newCopyEnv(t *testing.T, worker controlplane.SystemWorkerSettings, feat fea
 	t.Helper()
 	old := &features.Config{Versioning: features.Versioning(t.Context()), Tagging: features.Tagging(t.Context()), ACL: features.ACL(t.Context())}
 	t.Cleanup(func() { features.Set(old) })
-	fc := feat
-	features.Set(&fc)
 	prev := systemsettings.Current()
 	t.Cleanup(func() { systemsettings.ApplySettings(prev) })
 	if worker.BufferBudgetBytes == 0 {
 		worker.BufferBudgetBytes = 256 << 20
 	}
 	systemsettings.ApplySettings(controlplane.SystemSettings{Worker: worker})
+	fc := feat // after ApplySettings, which also resets the feature flags
+	features.Set(&fc)
 	e := &copyEnv{t: t, src: newMemS3(), dst: newMemS3()}
 	t.Cleanup(e.src.Close)
 	t.Cleanup(e.dst.Close)
@@ -57,3 +58,5 @@ func (e *copyEnv) destBytes(name string) []byte {
 }
 
 func coreOf(c s3client.Client) minio.Core { return minio.Core{Client: c.S3().Client} }
+
+var errNotFoundForTest = dom.ErrNotFound

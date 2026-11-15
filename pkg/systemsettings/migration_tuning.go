@@ -103,3 +103,63 @@ func EffectiveMultipart() (threads int, partSize uint64, partExplicit bool) {
 	t, mib, explicit := ResolveMultipart(w.MultipartThreads, w.MultipartPartSizeMiB, int(yamlMultipartThreads.Load()), int(yamlMultipartPartMiB.Load()))
 	return t, uint64(mib) << 20, explicit
 }
+
+// DefaultPipelineThreads is the number of parts uploaded in parallel by the pipeline copy engine when
+// multipartThreads is not set explicitly (legacy engine default is 1).
+const DefaultPipelineThreads = 2
+
+// Copy engines (worker.copyEngine).
+const (
+	CopyEnginePipeline = "pipeline"
+	CopyEngineLegacy   = "legacy"
+)
+
+var yamlCopyEngine atomic.Value // string
+
+// SetCopyEngineFallback records the YAML/env copy engine used when the system setting is empty.
+func SetCopyEngineFallback(v string) { yamlCopyEngine.Store(v) }
+
+// NormalizeCopyEngine returns "pipeline", "legacy" or "" (unset or unknown).
+func NormalizeCopyEngine(v string) string {
+	switch v {
+	case CopyEnginePipeline, CopyEngineLegacy:
+		return v
+	}
+	return ""
+}
+
+// EffectiveCopyEngine resolves the copy engine: system setting, then YAML/env, then DefaultCopyEngine.
+// Read for every copy, so a change applies to the next copy without a restart.
+func EffectiveCopyEngine() string {
+	if v := NormalizeCopyEngine(Current().Worker.CopyEngine); v != "" {
+		return v
+	}
+	if s, _ := yamlCopyEngine.Load().(string); NormalizeCopyEngine(s) != "" {
+		return s
+	}
+	return DefaultCopyEngine
+}
+
+// EffectivePipelineThreads: parts in flight of the pipeline engine. An explicit multipartThreads (system
+// setting or YAML) wins, otherwise DefaultPipelineThreads.
+func EffectivePipelineThreads() int {
+	e := ResolveEffective(Current().Worker).MultipartThreads
+	if e.Source == SourceExplicit && e.Value >= 1 {
+		return int(e.Value)
+	}
+	return DefaultPipelineThreads
+}
+
+// DefaultCopyEngine is used when neither the system setting nor YAML selects an engine.
+const DefaultCopyEngine = CopyEngineLegacy
+
+var yamlResumeMultipart atomic.Bool
+
+// SetResumeMultipartFallback records the YAML/env switch for resumable multipart uploads.
+func SetResumeMultipartFallback(on bool) { yamlResumeMultipart.Store(on) }
+
+// EffectiveResumeMultipart reports whether resumable multipart uploads are on (system setting or YAML; off by
+// default). Only the pipeline copy engine resumes.
+func EffectiveResumeMultipart() bool {
+	return Current().Worker.ResumeMultipart || yamlResumeMultipart.Load()
+}

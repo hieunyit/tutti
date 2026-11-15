@@ -53,7 +53,7 @@ type EffectiveValue struct {
 // Effective is the resolved view of the tunables.
 type Effective struct {
 	Concurrency, BulkConcurrencyPercent, BufferBudgetBytes, MultipartThreads, MultipartPartSizeMiB EffectiveValue
-	LargeObjectStreams                                                                           EffectiveValue
+	LargeObjectStreams                                                                             EffectiveValue
 }
 
 func pickInt(explicit int, auto int64, haveAuto bool, fallback int64) EffectiveValue {
