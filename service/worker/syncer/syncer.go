@@ -83,6 +83,7 @@ func (s *ObjectSyncer) Sync(ctx context.Context, p tasks.ObjectSyncPayload) erro
 	}
 
 	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
+		ctx = copy.WithKeyLocked(ctx)
 		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
 			Storage: p.ID.FromStorage(),
 			Bucket:  fromBucket,

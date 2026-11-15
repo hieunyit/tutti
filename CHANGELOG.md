@@ -12,6 +12,8 @@ First Tutti release: a fork of [Chorus](https://github.com/clyso/chorus) (base c
 
 ### Added
 
+- Worker: orphaned multipart uploads are cleaned up. After a failed or cancelled multipart copy the upload is aborted with a fresh context (1 min, 3 tries), and before a multipart copy of a key the incomplete uploads of that exact key older than 5 minutes are aborted; both only while the destination-key lock is held. `orphanUploadCleanup: false` rolls it back. See [configuration](./docs/tutti/configuration.md#orphaned-multipart-uploads).
+
 - Worker: large-object concurrency cap. Initial-replication and diff-fix copies of objects of 128 MiB or more take a slot of a per-destination-storage limit (new system setting `worker.largeObjectStreams`, `0` = auto: 2 per CPU clamped to 4..16; YAML/env `largeObjectStreams`; API `effective`/`recommended`/`tuningSources`, console field with Auto badge; applies live). Smaller objects and live events are never limited; a copy that finds no free slot is re-queued after 3..10 s without holding a worker slot or counting as a failure. Set a large value to disable. See [configuration](./docs/tutti/configuration.md#large-object-concurrency-cap).
 
 - Worker: optional pprof server for CPU/heap profiles of the real worker. OFF by default; set `debug.pprofAddr` (env `CFG_DEBUG_PPROFADDR`, e.g. `127.0.0.1:6060`) and take a profile with `docker compose exec` / `kubectl port-forward` (see [throughput tuning](./docs/tutti/configuration.md#profiling-the-worker)). Note: when `metrics.enabled` is true the metrics port already serves `/debug/pprof/` unauthenticated on all interfaces.

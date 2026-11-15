@@ -51,6 +51,10 @@ const (
 	CTuttiSourceVersionIDMetaHeader = "x-amz-meta-tutti-source-version-id"
 
 	CRGWVersionMigrationQueryParam = "rgwx-version-id"
+
+	// legacyMultipartThreshold is the object size above which minio-go's PutObject switches to multipart
+	// (the fork's minimum part size).
+	legacyMultipartThreshold = 16 << 20
 )
 
 type Bucket struct {
@@ -570,6 +574,19 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 	}
 	defer releaseBuffer()
 
+	// Multipart uploads leave incomplete uploads behind when they fail: sweep leftovers of earlier attempts now
+	// and abort (with a fresh context) what this attempt leaves behind. minio-go starts multipart above 16 MiB
+	// or above an explicit part size.
+	multipartThreshold := int64(legacyMultipartThreshold)
+	if putObjectOpts.PartSize > 0 {
+		multipartThreshold = int64(putObjectOpts.PartSize)
+	}
+	multipartExpected := stat.Size >= multipartThreshold
+	toCore := minio.Core{Client: toClient.S3().Client}
+	if multipartExpected {
+		r.sweepBeforeUpload(ctx, toCore, to.Bucket, to.Name, nil)
+	}
+
 	var info minio.UploadInfo
 	if parallel {
 		// minio-go uploads parts concurrently only from an io.ReaderAt. minio.Object.ReadAt is serialized by
@@ -583,6 +600,9 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 		defer psrc.Close()
 		info, err = toClient.S3().PutObject(ctx, to.Bucket, to.Name, psrc, stat.Size, putObjectOpts)
 		if err != nil {
+			if multipartExpected {
+				r.cleanupAfterFailure(ctx, toCore, to.Bucket, to.Name, nil)
+			}
 			if isNotFound(psrc.Err()) {
 				return dom.ErrNotFound
 			}
@@ -593,6 +613,9 @@ func (r *S3CopySvc) copyObject(ctx context.Context, user string, from File, to F
 		throttledSource := systemsettings.NewThrottledReader(ctx, source, systemsettings.BandwidthLimiter())
 		info, err = toClient.S3().PutObject(ctx, to.Bucket, to.Name, throttledSource, stat.Size, putObjectOpts)
 		if err != nil {
+			if multipartExpected {
+				r.cleanupAfterFailure(ctx, toCore, to.Bucket, to.Name, nil)
+			}
 			if isNotFound(source.err) {
 				return dom.ErrNotFound
 			}

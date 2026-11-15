@@ -134,7 +134,9 @@ func (r *VersionedMigrationSvc) withObjectLock(ctx context.Context, id entity.Bu
 		return err
 	}
 	defer lock.Release(ctx)
-	return lock.DoCtx(ctx, 2*time.Second, work)
+	return lock.DoCtx(ctx, 2*time.Second, func(ctx context.Context) error {
+		return work(copy.WithKeyLocked(ctx))
+	})
 }
 
 func (r *VersionedMigrationSvc) snapshot(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, work *store.ObjectVersionInfoStore) error {

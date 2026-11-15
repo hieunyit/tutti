@@ -164,6 +164,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	systemsettings.SetConcurrencyFallback(conf.Concurrency)
 	systemsettings.SetConfigFallbacks(conf.BulkConcurrencyPercent, conf.MultipartThreads, conf.MultipartPartSizeMiB)
 	systemsettings.SetLargeObjectStreamsFallback(conf.LargeObjectStreams)
+	copy.SetOrphanSweep(conf.OrphanUploadCleanup)
 	if loadedSettings, _, err := systemsettings.Load(ctx, cpStore, confRedis); err == nil && loadedSettings != nil {
 		systemsettings.ApplySettings(*loadedSettings)
 		if loadedSettings.Worker.Concurrency > 0 {

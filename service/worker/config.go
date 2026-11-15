@@ -54,6 +54,9 @@ type Config struct {
 	MultipartPartSizeMiB int `yaml:"multipartPartSizeMiB"`
 	// LargeObjectStreams: max concurrent copies of objects >= 128 MiB per destination storage (1..64, 0 = auto).
 	LargeObjectStreams int `yaml:"largeObjectStreams"`
+	// OrphanUploadCleanup: abort incomplete multipart uploads left by failed copies (fresh context) and sweep
+	// stale ones of the same key before a multipart copy. Default true; false rolls the behaviour back.
+	OrphanUploadCleanup bool `yaml:"orphanUploadCleanup"`
 
 	// Debug: diagnostics, all OFF by default.
 	Debug DebugConfig `yaml:"debug"`

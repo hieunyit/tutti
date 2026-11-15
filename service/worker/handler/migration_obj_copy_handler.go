@@ -134,6 +134,7 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	}
 	// 1. sync obj meta and content
 	err = lock.DoCtx(ctx, time.Second*2, func(ctx context.Context) error {
+		ctx = copy.WithKeyLocked(ctx)
 		return s.copySvc.CopyObject(ctx, p.ID.User(), copy.File{
 			Storage: p.ID.FromStorage(),
 			Bucket:  fromBucket,

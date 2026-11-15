@@ -351,6 +351,12 @@ Central settings: `replication.onEventError`, `replication.eventRetryBudget`, `r
 - `readHeaderTimeout` and `writerLease` need a restart (`pendingRestart`).
 
 
+## Orphaned multipart uploads
+
+A copy that fails or is cancelled in the middle of a multipart upload leaves an incomplete upload on the destination that keeps using quota until it is aborted. minio-go aborts with the copy context, which is already cancelled on shutdown, task timeout or retry, so the abort failed silently. The worker now (a) aborts with a fresh context (1 minute, 3 tries) after a failed multipart copy and (b) at the start of a multipart copy lists the incomplete uploads of exactly that key and aborts the ones older than 5 minutes. Both run only while the worker holds the distributed destination-key lock, which guarantees that no other worker uploads the same key (a younger upload is never touched). Switch: `orphanUploadCleanup: false` in the worker YAML (env `CFG_ORPHANUPLOADCLEANUP=false`) restores the old behaviour. Cost: one `ListMultipartUploads` request per multipart copy.
+
+Uploads older than the sweep window of keys that are never copied again are not found by this mechanism; use a bucket lifecycle rule `AbortIncompleteMultipartUpload` on the destination (for example 7 days) as a safety net.
+
 ## Profiling the worker
 
 The worker can serve Go pprof profiles (CPU, heap, goroutines, trace) to find out where CPU time and memory go during a real copy. It is **off by default**: nothing listens unless `debug.pprofAddr` (env `CFG_DEBUG_PPROFADDR`) is set. The endpoint is unauthenticated, so bind it to loopback and reach it from inside the container or pod:
