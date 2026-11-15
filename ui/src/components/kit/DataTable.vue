@@ -122,6 +122,9 @@
   function clear() {
     setChecked([]);
   }
+
+  /** lets the page replace the selection, e.g. keep only the rows an action failed for */
+  defineExpose({ select: (keys: string[]) => setChecked(keys) });
 </script>
 
 <template>

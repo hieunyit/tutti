@@ -42,6 +42,8 @@
       collapsible?: boolean;
       /** render nothing (list is empty and no filter is active) */
       hidden?: boolean;
+      /** the page shows its own "clear filters" (the filtered-to-zero empty state) */
+      hideClear?: boolean;
     }>(),
     {
       search: '',
@@ -51,6 +53,7 @@
       noSearch: false,
       collapsible: false,
       hidden: false,
+      hideClear: false,
     },
   );
 
@@ -115,7 +118,7 @@
       </NButton>
       <slot v-if="!collapsible" />
       <NButton
-        v-if="hasFilters"
+        v-if="hasFilters && !hideClear"
         quaternary
         class="kit-filter__clear"
         @click="clear"

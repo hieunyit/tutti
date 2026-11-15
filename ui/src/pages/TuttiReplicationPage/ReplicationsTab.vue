@@ -281,10 +281,32 @@
     rows.value.filter((row) => selectedKeys.value.includes(rowKey(row))),
   );
 
-  async function bulkDelete() {
-    bulkDeleteOpen.value = false;
-    await store.deleteReplications(selectedRows.value);
+  const table = ref<{ select: (keys: string[]) => void } | null>(null);
+  // Pause only applies to running rows, Resume only to paused ones
+  const pausableRows = computed(() =>
+    selectedRows.value.filter((row) => !row.isPaused),
+  );
+  const resumableRows = computed(() =>
+    selectedRows.value.filter((row) => row.isPaused),
+  );
+
+  /** clears the selection afterwards, keeping only the rows the action failed for */
+  async function runBulk(action: (rows: Row[]) => Promise<Row[]>, rows: Row[]) {
+    const failed = await action(rows);
+
+    table.value?.select(failed.map(rowKey));
   }
+
+  function bulkDelete() {
+    bulkDeleteOpen.value = false;
+
+    return runBulk(store.deleteReplications, selectedRows.value);
+  }
+
+  // the empty block carries "Clear filters" when the filters left no row
+  const isFilteredToZero = computed(
+    () => !isEmptyList.value && !isLoading.value && rows.value.length === 0,
+  );
 
   const targetOf = (row: Row) => ReplicationsHelper.getSubjectLabel(row);
 </script>
@@ -297,6 +319,7 @@
       :search-placeholder="t('searchPlaceholder')"
       :chips="chips"
       :hidden="isEmptyList"
+      :hide-clear="isFilteredToZero"
       @remove="removeChip"
       @clear="clearAll"
     >
@@ -312,6 +335,7 @@
     />
     <DataTable
       v-else
+      ref="table"
       :columns="columns"
       :rows="rows"
       :loading="isLoading"
@@ -350,16 +374,18 @@
       <template #bulk-actions="{ keys }">
         <WriteGate>
           <NButton
+            v-if="pausableRows.length > 0"
             size="small"
-            @click="store.pauseReplications(selectedRows)"
+            @click="runBulk(store.pauseReplications, pausableRows)"
           >
-            {{ t('pauseSelected', { n: keys.length }) }}
+            {{ t('pauseSelected', { n: pausableRows.length }) }}
           </NButton>
           <NButton
+            v-if="resumableRows.length > 0"
             size="small"
-            @click="store.resumeReplications(selectedRows)"
+            @click="runBulk(store.resumeReplications, resumableRows)"
           >
-            {{ t('resumeSelected', { n: keys.length }) }}
+            {{ t('resumeSelected', { n: resumableRows.length }) }}
           </NButton>
           <NButton
             size="small"

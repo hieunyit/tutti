@@ -344,7 +344,9 @@ export const useTuttiReplicationsStore = defineStore(
         state.isDeleteSelectedProcessing,
     );
 
-    async function resumeReplications(replications: AddId<TuttiReplication>[]) {
+    async function resumeReplications(
+      replications: AddId<TuttiReplication>[],
+    ): Promise<AddId<TuttiReplication>[]> {
       state.isResumeSelectedProcessing = true;
 
       const successList: AddId<TuttiReplication>[] = [];
@@ -419,6 +421,8 @@ export const useTuttiReplicationsStore = defineStore(
 
       startReplicationPolling();
       state.isResumeSelectedProcessing = false;
+
+      return errorList;
     }
 
     /** Rejects when the server refuses; the list keeps the old name then. */
@@ -435,7 +439,9 @@ export const useTuttiReplicationsStore = defineStore(
       if (row) row.name = name;
     }
 
-    async function pauseReplications(replications: AddId<TuttiReplication>[]) {
+    async function pauseReplications(
+      replications: AddId<TuttiReplication>[],
+    ): Promise<AddId<TuttiReplication>[]> {
       state.isPauseSelectedProcessing = true;
 
       const successList: AddId<TuttiReplication>[] = [];
@@ -510,9 +516,13 @@ export const useTuttiReplicationsStore = defineStore(
 
       startReplicationPolling();
       state.isPauseSelectedProcessing = false;
+
+      return errorList;
     }
 
-    async function deleteReplications(replications: AddId<TuttiReplication>[]) {
+    async function deleteReplications(
+      replications: AddId<TuttiReplication>[],
+    ): Promise<AddId<TuttiReplication>[]> {
       state.isDeleteSelectedProcessing = true;
 
       const successList: AddId<TuttiReplication>[] = [];
@@ -590,6 +600,8 @@ export const useTuttiReplicationsStore = defineStore(
 
       startReplicationPolling();
       state.isDeleteSelectedProcessing = false;
+
+      return errorList;
     }
 
     async function $reset() {

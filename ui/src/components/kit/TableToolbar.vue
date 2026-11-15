@@ -32,6 +32,7 @@
       chips?: FilterChip[];
       noSearch?: boolean;
       hidden?: boolean;
+      hideClear?: boolean;
     }>(),
     {
       search: '',
@@ -40,6 +41,7 @@
       chips: () => [],
       noSearch: false,
       hidden: false,
+      hideClear: false,
     },
   );
 
@@ -59,6 +61,7 @@
     :chips="chips"
     :no-search="noSearch"
     :hidden="hidden"
+    :hide-clear="hideClear"
     @update:search="emit('update:search', $event)"
     @remove="emit('remove', $event)"
     @clear="emit('clear')"
