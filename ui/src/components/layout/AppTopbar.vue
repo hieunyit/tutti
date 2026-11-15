@@ -18,7 +18,9 @@
   /**
    * Top bar: menu button (mobile), breadcrumbs, quick search (Ctrl/Cmd+K),
    * environment label, language, Help menu, theme menu and the user menu
-   * (change password, sign out).
+   * (change password, sign out). On phones (<= 640px) it is a single row:
+   * menu button, page title, overflow menu (help, theme, language) and the
+   * user menu; the quick search is not rendered (the drawer is the navigation).
    */
   import { storeToRefs } from 'pinia';
   import { computed } from 'vue';
@@ -28,8 +30,10 @@
   import AppQuickSearch from './AppQuickSearch.vue';
   import AppThemeToggle from './AppThemeToggle.vue';
   import HelpMenu from './HelpMenu.vue';
+  import TopbarOverflow from './TopbarOverflow.vue';
   import i18nLayout from './i18nLayout';
   import AuthUserMenu from '@/components/auth/AuthUserMenu.vue';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import { useAuthStore } from '@/stores/authStore';
   import { useI18nStore } from '@/stores/i18nStore';
   import { APP_LOCALE_LABELS } from '@/i18n/locales';
@@ -55,6 +59,8 @@
   );
   const { setLocale } = useI18nStore();
   const { showUserMenu } = storeToRefs(useAuthStore());
+  // phones (<= 640px): one 56px row, the rest lives in the overflow menu
+  const isPhone = useNarrowScreen(641);
 </script>
 
 <template>
@@ -86,15 +92,29 @@
 
     <AppBreadcrumbs class="app-topbar__crumbs" />
 
-    <AppQuickSearch class="app-topbar__search" />
+    <AppQuickSearch
+      v-if="!isPhone"
+      class="app-topbar__search"
+    />
 
     <span
-      v-if="ENV_LABEL"
+      v-if="ENV_LABEL && !isPhone"
       class="app-topbar__env"
       >{{ ENV_LABEL }}</span
     >
 
-    <div class="app-topbar__controls">
+    <div
+      v-if="isPhone"
+      class="app-topbar__controls"
+    >
+      <TopbarOverflow />
+      <AuthUserMenu v-if="showUserMenu" />
+    </div>
+
+    <div
+      v-else
+      class="app-topbar__controls"
+    >
       <NSelect
         v-if="HAS_LANG_SELECT"
         class="app-topbar__lang"
@@ -126,12 +146,20 @@
     box-sizing: border-box;
     padding: var(--tt-space-2) var(--tt-page-padding);
 
-    @media screen and (max-width: 639px) {
-      padding: var(--tt-space-2) var(--tt-space-3);
+    @media screen and (max-width: 640px) {
+      flex-wrap: nowrap;
+      height: 56px;
+      min-height: 56px;
+      padding: 0 var(--tt-space-2);
       gap: var(--tt-space-2);
     }
 
     &__burger {
+      &:focus-visible {
+        outline: 2px solid var(--tt-accent-solid);
+        outline-offset: 2px;
+      }
+
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -152,17 +180,14 @@
     &__crumbs {
       flex: 0 1 auto;
       min-width: 0;
+
+      @media screen and (max-width: 640px) {
+        flex: 1 1 auto;
+      }
     }
 
     &__search {
       margin-left: auto;
-
-      @media screen and (max-width: 639px) {
-        order: 10;
-        flex: 1 1 100%;
-        width: 100%;
-        margin-left: 0;
-      }
     }
 
     &__env {
@@ -182,8 +207,8 @@
       flex: none;
       gap: var(--tt-space-2);
 
-      @media screen and (max-width: 639px) {
-        margin-left: auto;
+      @media screen and (max-width: 640px) {
+        gap: 0;
       }
     }
   }

@@ -15,37 +15,15 @@
   -->
 
 <script setup lang="ts">
-  /**
-   * Light / dark / system theme menu. "System" is the absence of a saved
-   * choice: the store then follows prefers-color-scheme (also live, here).
-   */
-  import { storeToRefs } from 'pinia';
-  import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+  /** Light / dark / system theme menu (state in useThemeMode). */
+  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NDropdown, type DropdownOption } from 'naive-ui';
-  import { ColorScheme } from '@clyso/clyso-ui-kit';
   import i18nLayout from './i18nLayout';
-  import { useColorSchemeStore } from '@/stores/colorSchemeStore';
-  import LocalStorageHelper from '@/utils/helpers/LocalStorageHelper';
-  import { LocalStorageItem } from '@/utils/types/localStorage';
-
-  type ThemeMode = 'light' | 'dark' | 'system';
+  import { useThemeMode } from './useThemeMode';
 
   const { t } = useI18n({ messages: i18nLayout });
-  const store = useColorSchemeStore();
-  const { isDark } = storeToRefs(store);
-  const media =
-    typeof window.matchMedia === 'function'
-      ? window.matchMedia('(prefers-color-scheme: dark)')
-      : null;
-
-  const mode = ref<ThemeMode>(
-    LocalStorageHelper.get(LocalStorageItem.COLOR_SCHEME) === null
-      ? 'system'
-      : isDark.value
-        ? 'dark'
-        : 'light',
-  );
+  const { mode, isDark, select } = useThemeMode();
 
   const label = computed(
     () =>
@@ -70,30 +48,6 @@
             : t('themeOptionSystem')),
     })),
   );
-
-  function followSystem() {
-    store.setColorScheme(media?.matches ? ColorScheme.DARK : ColorScheme.LIGHT);
-    LocalStorageHelper.remove(LocalStorageItem.COLOR_SCHEME);
-  }
-
-  function select(key: string | number) {
-    mode.value = key as ThemeMode;
-
-    if (key === 'system') {
-      followSystem();
-
-      return;
-    }
-
-    store.setColorScheme(key === 'dark' ? ColorScheme.DARK : ColorScheme.LIGHT);
-  }
-
-  function onSystemChange() {
-    if (mode.value === 'system') followSystem();
-  }
-
-  onMounted(() => media?.addEventListener('change', onSystemChange));
-  onBeforeUnmount(() => media?.removeEventListener('change', onSystemChange));
 </script>
 
 <template>

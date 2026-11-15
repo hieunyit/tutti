@@ -150,7 +150,7 @@
       }
     }
 
-    @media screen and (max-width: 639px) {
+    @media screen and (max-width: 640px) {
       // phones: only the current page
       &__item:not(:last-child) {
         display: none;

@@ -23,10 +23,12 @@
   import { useAuthStore } from '@/stores/authStore';
   import AppSidebar from '@/components/layout/AppSidebar.vue';
   import AppTopbar from '@/components/layout/AppTopbar.vue';
+  import CompactNotice from '@/components/layout/CompactNotice.vue';
   import Callout from '@/components/ui/Callout.vue';
   import i18nLayout from '@/components/layout/i18nLayout';
   import DashboardFooter from '@/components/dashboard/DashboardFooter/DashboardFooter.vue';
   import { RouteName } from '@/utils/types/router';
+  import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
   import { useSidebar } from '@/utils/composables/useSidebar';
 
   const { t } = useI18n({ messages: i18nLayout });
@@ -34,6 +36,7 @@
 
   const { authEnabled, warnings } = storeToRefs(useAuthStore());
 
+  const isPhone = useNarrowScreen(641);
   const { isCollapsed, isMobile, isDrawerOpen, toggleCollapsed } = useSidebar();
 
   watch(
@@ -94,8 +97,27 @@
           @open-menu="isDrawerOpen = true"
         />
 
+        <!-- phones: ONE compact, session-dismissible line instead of stacked callouts -->
+        <CompactNotice
+          v-if="isPhone && authEnabled === false"
+          id="auth-disabled"
+          :text="t('authDisabledBanner')"
+          :link-label="t('noticeDetails')"
+          :to="{ name: RouteName.TUTTI_DOCS }"
+        />
+        <CompactNotice
+          v-else-if="isPhone && warnings.includes('webhook_unauthenticated')"
+          id="webhook-unauthenticated"
+          :text="t('webhookUnauthenticated')"
+          :link-label="t('noticeDetails')"
+          :to="{
+            name: RouteName.TUTTI_DOCS,
+            params: { slug: 'configuration' },
+          }"
+        />
+
         <Callout
-          v-if="authEnabled === false"
+          v-if="!isPhone && authEnabled === false"
           class="dashboard-view__auth-warning"
           tone="warning"
         >
@@ -107,7 +129,7 @@
           </template>
         </Callout>
         <Callout
-          v-if="warnings.includes('webhook_unauthenticated')"
+          v-if="!isPhone && warnings.includes('webhook_unauthenticated')"
           class="dashboard-view__auth-warning"
           tone="warning"
         >

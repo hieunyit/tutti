@@ -53,6 +53,9 @@ export default <I18nMessages>{
     version: 'Version',
     sourceCode: 'Source code on GitHub',
     close: 'Close',
+    moreOptions: 'More options',
+    dismissNotice: 'Dismiss notice',
+    noticeDetails: 'Details',
   },
   [I18nLocale.DE]: {
     skipToContent: 'Zum Hauptinhalt springen',
@@ -91,6 +94,9 @@ export default <I18nMessages>{
     version: 'Version',
     sourceCode: 'Quellcode auf GitHub',
     close: 'Schließen',
+    moreOptions: 'Weitere Optionen',
+    dismissNotice: 'Hinweis ausblenden',
+    noticeDetails: 'Details',
   },
   vi: {
     skipToContent: 'Chuyển đến nội dung chính',
@@ -129,5 +135,8 @@ export default <I18nMessages>{
     version: 'Phiên bản',
     sourceCode: 'Mã nguồn trên GitHub',
     close: 'Đóng',
+    moreOptions: 'Tùy chọn khác',
+    dismissNotice: 'Ẩn thông báo',
+    noticeDetails: 'Chi tiết',
   },
 };
