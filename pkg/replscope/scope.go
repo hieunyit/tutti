@@ -16,6 +16,7 @@ package replscope
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 )
@@ -72,11 +73,35 @@ func (e *ConflictError) Error() string {
 			who = fmt.Sprintf("replications of user %q", e.User)
 		}
 		if e.Bucket == "*" {
-			return fmt.Sprintf("%s must share one source storage per bucket: all buckets are already replicated from %q by %s %q", who, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+			return fmt.Sprintf("%s must share one source storage per bucket: all buckets are already replicated from %q by %s %s", who, e.OtherEdge.From, e.OwnerKind, e.ownerLabel())
 		}
-		return fmt.Sprintf("%s must share one source storage per bucket: bucket %q is already replicated from %q by %s %q", who, e.Bucket, e.OtherEdge.From, e.OwnerKind, e.OwnerID)
+		return fmt.Sprintf("%s must share one source storage per bucket: bucket %q is already replicated from %q by %s %s", who, e.Bucket, e.OtherEdge.From, e.OwnerKind, e.ownerLabel())
 	}
-	return fmt.Sprintf("bucket %q on %s->%s is already covered by %s %q", e.Bucket, e.Edge.From, e.Edge.To, e.OwnerKind, e.OwnerID)
+	return fmt.Sprintf("bucket %q on %s->%s is already covered by %s %s", e.Bucket, e.Edge.From, e.Edge.To, e.OwnerKind, e.ownerLabel())
+}
+
+// ownerLabel renders the owner readably and already quoted: a group id as is, a replication id
+// ("user:from:to[:fromBucket:toBucket]") as `stb -> sta (bucket b)`, with the user when it has one.
+func (e *ConflictError) ownerLabel() string {
+	if e.OwnerKind != "replication" {
+		return fmt.Sprintf("%q", e.OwnerID)
+	}
+	parts := strings.Split(e.OwnerID, ":")
+	if len(parts) != 3 && len(parts) != 5 {
+		return fmt.Sprintf("%q", e.OwnerID)
+	}
+	out := parts[1] + " -> " + parts[2]
+	if len(parts) == 5 {
+		if parts[3] == parts[4] {
+			out += " (bucket " + parts[3] + ")"
+		} else {
+			out += " (bucket " + parts[3] + " -> " + parts[4] + ")"
+		}
+	}
+	if parts[0] != "" {
+		out += " of user " + parts[0]
+	}
+	return `"` + out + `"`
 }
 
 func (e *ConflictError) Unwrap() error { return dom.ErrAlreadyExists }

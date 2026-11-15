@@ -134,3 +134,10 @@ func TestConflictReason(t *testing.T) {
 	require.Equal(t, ReasonSourceStorage, err.Reason)
 	require.Contains(t, err.Error(), `replications of user "alice" must share one source storage per bucket: bucket "b1" is already replicated from "A" by replication "x"`)
 }
+
+func TestConflictErrorReadsReplicationIDs(t *testing.T) {
+	e := &ConflictError{OwnerKind: "replication", OwnerID: ":stb:sta:other-bkt:other-bkt", Bucket: "other-bkt", Edge: Edge{From: "stb", To: "sta"}}
+	require.Contains(t, e.Error(), `is already covered by replication "stb -> sta (bucket other-bkt)"`)
+	e.OwnerID = "alice:stb:sta"
+	require.Contains(t, e.Error(), `replication "stb -> sta of user alice"`)
+}
