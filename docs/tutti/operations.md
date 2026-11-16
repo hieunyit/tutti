@@ -241,6 +241,23 @@ Data behavior during the initial copy and later events: same object name with di
 
 See [performance and Redis recovery](./performance-and-redis.md) for the measured baseline, backup/restore commands and production durability requirements.
 
+## Copy only recent objects
+
+By default a new replication copies the whole bucket. To copy only objects last modified at or after a cutoff (for example the last 30 days), set a cutoff when you create the replication. It cannot be changed later: delete and recreate the replication.
+
+In the console: Replication, Add replication, on the Review step open "Which objects to copy" and choose "Only recent objects" (a number of days or hours, 30 days by default) or "Since a date". The line below the fields shows the exact moment, in your time zone, before you press Create. The replications list then shows "Since 17 Oct 2026" under the name, and the replication page shows the exact moment.
+
+With tuttictl:
+
+```shell
+tuttictl repl add -f main -t follower -u admin -b photos --since 30d      # last 30 days
+tuttictl repl add -f main -t follower -u admin -b photos --since 12h      # last 12 hours
+tuttictl repl add -f main -t follower -u admin -b photos --since 2026-10-17   # from 00:00 local time that day
+tuttictl repl add -f main -t follower -u admin -b photos --since 2026-10-17T14:03:00Z
+```
+
+`30d` and `12h` are turned into an absolute time when you run the command. A cutoff in the future or before the year 2000 is refused. `tuttictl repl` shows it in the `SINCE` column (empty when the whole source is copied). For what is and is not filtered, see the [API](./api.md).
+
 ## See also
 
 - [Runbooks](./runbooks.md): step-by-step procedures for failover, failback, Redis incidents, key rotation and console lockout.
