@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
@@ -46,7 +47,7 @@ func StorageRow(in *pb.Storage) string {
 }
 
 func ReplHeader() string {
-	return "ID\tNAME\tSINCE\tPROGRESS\tOBJECTS\tINIT_BYTES\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
+	return "ID\tNAME\tSINCE\tRESCAN\tLAST_SCAN\tPROGRESS\tOBJECTS\tINIT_BYTES\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
 }
 
 func ReplRow(in *pb.Replication) string {
@@ -62,10 +63,12 @@ func ReplRow(in *pb.Replication) string {
 	if name == "" {
 		name = "-"
 	}
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
 		id,
 		name,
 		SinceToStr(in.Since),
+		RescanToStr(in.RescanInterval),
+		LastScanToStr(in.LastRescanAt),
 		ToPercentage(p),
 		objects,
 		InitBytesToStr(in),
@@ -209,6 +212,27 @@ func SinceToStr(d *timestamppb.Timestamp) string {
 		return ""
 	}
 	return d.AsTime().Local().Format("2006-01-02")
+}
+
+// RescanToStr renders the rescan interval compactly (15m, 1h, 90m); empty when off.
+func RescanToStr(d *durationpb.Duration) string {
+	if d == nil || d.AsDuration() <= 0 {
+		return ""
+	}
+	v := d.AsDuration()
+	if v%time.Hour == 0 {
+		return fmt.Sprintf("%dh", int(v/time.Hour))
+	}
+	return fmt.Sprintf("%dm", int(v/time.Minute))
+}
+
+// LastScanToStr renders the start of the last completed rescan in local time;
+// empty when there was none.
+func LastScanToStr(t *timestamppb.Timestamp) string {
+	if t == nil || t.AsTime().Year() < 2000 {
+		return ""
+	}
+	return t.AsTime().Local().Format("2006-01-02 15:04")
 }
 
 func DateToAge(d *timestamppb.Timestamp) string {

@@ -64,6 +64,13 @@ tuttictl repl add -u <user> -b <bucket> -f <from storage> -t <to storage>
 # Copy only recent objects: 30d, 12h, 2026-10-17 (local midnight) or RFC3339
 tuttictl repl add -f <from storage> -t <to storage> --since 30d
 
+# Pick up files written directly to the source: rescan every 15m to 24h (default off)
+tuttictl repl add -f <from storage> -t <to storage> --rescan-every 1h
+
+# Sync now, and change or turn off the rescan interval of an existing replication
+tuttictl repl rescan -f <from storage> -t <to storage> -b <bucket>
+tuttictl repl set-rescan -f <from storage> -t <to storage> -b <bucket> --every 1h   # or --every off
+
 # See all repl subcommands
 tuttictl repl --help
 ```

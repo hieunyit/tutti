@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -122,4 +123,22 @@ func TestInitBytesToStr(t *testing.T) {
 		InitListingComplete: true,
 	}))
 	r.Equal("1.0KB/>=2.0KB ?/s ?", InitBytesToStr(&pb.Replication{InitBytesTotal: 2048, InitBytesDone: 1024}))
+}
+
+func TestReplRow_Rescan(t *testing.T) {
+	r := require.New(t)
+	r.Contains(ReplHeader(), "\tRESCAN\tLAST_SCAN\t")
+	row := func(in *pb.Replication) []string {
+		in.Id = &pb.ReplicationID{FromStorage: "A", ToStorage: "B"}
+		return strings.Split(ReplRow(in), "\t")
+	}
+	off := row(&pb.Replication{})
+	r.Equal("", off[3])
+	r.Equal("", off[4])
+	ts := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
+	on := row(&pb.Replication{RescanInterval: durationpb.New(time.Hour), LastRescanAt: timestamppb.New(ts)})
+	r.Equal("1h", on[3])
+	r.Equal(ts.Local().Format("2006-01-02 15:04"), on[4])
+	r.Equal("90m", row(&pb.Replication{RescanInterval: durationpb.New(90 * time.Minute)})[3])
+	r.Len(on, len(strings.Split(ReplHeader(), "\t")))
 }

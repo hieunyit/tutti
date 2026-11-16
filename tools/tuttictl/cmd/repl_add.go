@@ -24,6 +24,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
@@ -39,6 +40,7 @@ var (
 	raToBucket    string
 	raName        string
 	raSince       string
+	raRescanEvery string
 )
 
 // addCmd represents the add command
@@ -65,6 +67,11 @@ Copy only recent objects instead of the whole bucket (objects last modified at o
 RFC3339 time (2026-10-17T14:03:00Z). It is converted to an absolute UTC timestamp before sending:
   tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --since 30d
 
+Pick up files that are written directly to the source storage, not through the Tutti proxy: rescan the
+source every 15m to 24h (15m, 30m, 1h, 3h, 6h, 12h, 24h or a Go duration like 90m). Deleted files are not
+removed from the destination. Off when the flag is omitted:
+  tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --rescan-every 1h
+
 S3 notification event source (worker creates SNS topic + bucket notification):
   tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --event-source s3-notification
 
@@ -82,6 +89,11 @@ External webhook event source (e.g. Swift access log exporter):
 		}
 		if raSince != "" {
 			if _, err := parseSince(raSince, time.Now(), time.Local); err != nil {
+				return err
+			}
+		}
+		if raRescanEvery != "" {
+			if _, err := parseRescanEvery("rescan-every", raRescanEvery, false); err != nil {
 				return err
 			}
 		}
@@ -119,6 +131,17 @@ External webhook event source (e.g. Swift access log exporter):
 			req.Opts.Since = timestamppb.New(since)
 		}
 
+		if raRescanEvery != "" {
+			every, err := parseRescanEvery("rescan-every", raRescanEvery, false)
+			if err != nil {
+				logrus.WithError(err).Fatal()
+			}
+			if req.Opts == nil {
+				req.Opts = &pb.ReplicationOpts{}
+			}
+			req.Opts.RescanInterval = durationpb.New(every)
+		}
+
 		_, err := client.AddReplication(ctx, req)
 		if err != nil {
 			api.PrintGrpcError(err)
@@ -135,6 +158,7 @@ func init() {
 	addCmd.Flags().StringVarP(&raFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
 	addCmd.Flags().StringVar(&raName, "name", "", "optional display name (max 64 characters)")
 	addCmd.Flags().StringVar(&raSince, "since", "", "copy only objects modified since: 30d, 12h, 2026-10-17 (local midnight) or RFC3339; default all objects")
+	addCmd.Flags().StringVar(&raRescanEvery, "rescan-every", "", "rescan the source for files written directly to it: 15m to 24h (e.g. 1h); default off")
 	addCmd.Flags().StringVar(&raToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
 
 	if err := addCmd.MarkFlagRequired("from"); err != nil {
