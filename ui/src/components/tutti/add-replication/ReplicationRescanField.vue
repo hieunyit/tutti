@@ -30,6 +30,8 @@
   const { t } = useI18n({ messages: i18nReplicationRescan });
   const model = defineModel<number>({ required: true });
   const uid = useId();
+  /** All eight options (Off to 24 h) fit without scrolling inside the menu. */
+  const menuTheme = { peers: { InternalSelectMenu: { height: '360px' } } };
 
   const options = computed(() =>
     RESCAN_MINUTES.map((minutes) => {
@@ -53,6 +55,7 @@
     <NSelect
       :value="model"
       :options="options"
+      :theme-overrides="menuTheme"
       :input-props="{
         id: `rescan-select-${uid}`,
         'aria-describedby': `rescan-help-${uid}`,

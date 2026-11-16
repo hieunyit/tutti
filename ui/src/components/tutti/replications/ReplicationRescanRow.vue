@@ -19,7 +19,7 @@
    * "Sync now" and a small control to change or turn off the interval.
    * Mutating controls are write-gated.
    */
-  import { computed, ref } from 'vue';
+  import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NSelect } from 'naive-ui';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -93,6 +93,16 @@
       label: m === 0 ? t('rescanOff') : t(`rescanOpt${m}`),
       value: m,
     })),
+  );
+
+  const menuTheme = { peers: { InternalSelectMenu: { height: '360px' } } };
+
+  // "Scan started" is only true until the scan ends: drop the success note then.
+  watch(
+    () => props.replication.rescanRunning,
+    (running, wasRunning) => {
+      if (wasRunning && !running && feedback.value?.ok) feedback.value = null;
+    },
   );
 
   async function run(action: () => Promise<void>, ok: string, fail: string) {
@@ -177,6 +187,7 @@
           <NSelect
             v-model:value="draft"
             :options="options"
+            :theme-overrides="menuTheme"
             size="small"
             :aria-label="t('rescanChangeLabel')"
           />

@@ -123,6 +123,24 @@ describe('ReplicationRescanRow (detail)', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe('scan already running');
   });
 
+  it('drops the Scan started note once the scan has finished', async () => {
+    const { wrapper } = mountRow({ ...base, rescanRunning: false });
+
+    await button(wrapper, /Sync now/).trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Scan started');
+
+    await wrapper.setProps({
+      replication: { ...base, rescanRunning: true } as never,
+    });
+    expect(wrapper.text()).toContain('Scan started');
+
+    await wrapper.setProps({
+      replication: { ...base, rescanRunning: false } as never,
+    });
+    expect(wrapper.text()).not.toContain('Scan started');
+  });
+
   it('changes the interval through the select', async () => {
     const { wrapper, changeInterval } = mountRow({
       ...base,
