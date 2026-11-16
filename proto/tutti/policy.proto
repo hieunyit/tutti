@@ -243,6 +243,13 @@ message ReplicationOpts {
   reserved 1; // was agent_url, removed in favor of event_source
   // Determines how ongoing data change events are captured.
   EventSource event_source = 2;
+  // OPTIONAL: copy only objects last modified at or after this time (like
+  // rclone --max-age). Applies to the initial copy only: older source objects
+  // are skipped at listing time and never copied by this replication (they are
+  // not deleted at the destination). Live events are not filtered. Unset copies
+  // everything. Must not be in the future nor earlier than year 2000. Clients
+  // convert relative input ("30d") to an absolute time before sending.
+  google.protobuf.Timestamp since = 3;
 
   // TODO: implement for https://github.com/clyso/chorus/issues/141
   // message OriginToMeta {
@@ -375,6 +382,10 @@ message Replication {
   int64 init_eta_seconds = 21;
   // true when the source listing has finished, so init_bytes_total is final.
   bool init_listing_complete = 22;
+
+  // Cutoff of the initial copy (ReplicationOpts.since); unset when the whole
+  // source is copied.
+  google.protobuf.Timestamp since = 23;
 }
 
 // Request list of bucket available for replication for given user and from/to

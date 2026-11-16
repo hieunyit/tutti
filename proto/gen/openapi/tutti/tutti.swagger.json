@@ -4764,6 +4764,11 @@
         "initListingComplete": {
           "type": "boolean",
           "description": "true when the source listing has finished, so init_bytes_total is final."
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Cutoff of the initial copy (ReplicationOpts.since); unset when the whole\nsource is copied."
         }
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
@@ -4886,6 +4891,11 @@
         "eventSource": {
           "$ref": "#/definitions/tuttiEventSource",
           "description": "Determines how ongoing data change events are captured."
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "OPTIONAL: copy only objects last modified at or after this time (like\nrclone --max-age). Applies to the initial copy only: older source objects\nare skipped at listing time and never copied by this replication (they are\nnot deleted at the destination). Live events are not filtered. Unset copies\neverything. Must not be in the future nor earlier than year 2000. Clients\nconvert relative input (\"30d\") to an absolute time before sending."
         }
       },
       "description": "Additional replication options for bucket and user-level replications."

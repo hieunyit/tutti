@@ -741,7 +741,14 @@ func (x *ReplicationActivityEvent) GetError() string {
 type ReplicationOpts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Determines how ongoing data change events are captured.
-	EventSource   EventSource `protobuf:"varint,2,opt,name=event_source,json=eventSource,proto3,enum=tutti.EventSource" json:"event_source,omitempty"`
+	EventSource EventSource `protobuf:"varint,2,opt,name=event_source,json=eventSource,proto3,enum=tutti.EventSource" json:"event_source,omitempty"`
+	// OPTIONAL: copy only objects last modified at or after this time (like
+	// rclone --max-age). Applies to the initial copy only: older source objects
+	// are skipped at listing time and never copied by this replication (they are
+	// not deleted at the destination). Live events are not filtered. Unset copies
+	// everything. Must not be in the future nor earlier than year 2000. Clients
+	// convert relative input ("30d") to an absolute time before sending.
+	Since         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=since,proto3" json:"since,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -781,6 +788,13 @@ func (x *ReplicationOpts) GetEventSource() EventSource {
 		return x.EventSource
 	}
 	return EventSource_EVENT_SOURCE_PROXY
+}
+
+func (x *ReplicationOpts) GetSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Since
+	}
+	return nil
 }
 
 // Filters replications list.
@@ -966,8 +980,11 @@ type Replication struct {
 	InitEtaSeconds int64 `protobuf:"varint,21,opt,name=init_eta_seconds,json=initEtaSeconds,proto3" json:"init_eta_seconds,omitempty"`
 	// true when the source listing has finished, so init_bytes_total is final.
 	InitListingComplete bool `protobuf:"varint,22,opt,name=init_listing_complete,json=initListingComplete,proto3" json:"init_listing_complete,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Cutoff of the initial copy (ReplicationOpts.since); unset when the whole
+	// source is copied.
+	Since         *timestamppb.Timestamp `protobuf:"bytes,23,opt,name=since,proto3" json:"since,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Replication) Reset() {
@@ -1152,6 +1169,13 @@ func (x *Replication) GetInitListingComplete() bool {
 		return x.InitListingComplete
 	}
 	return false
+}
+
+func (x *Replication) GetSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Since
+	}
+	return nil
 }
 
 // Request list of bucket available for replication for given user and from/to
@@ -2660,9 +2684,10 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\aattempt\x18\n" +
 	" \x01(\x05R\aattempt\x12\x12\n" +
 	"\x04flow\x18\v \x01(\tR\x04flow\x12\x14\n" +
-	"\x05error\x18\f \x01(\tR\x05error\"N\n" +
+	"\x05error\x18\f \x01(\tR\x05error\"\x80\x01\n" +
 	"\x0fReplicationOpts\x125\n" +
-	"\fevent_source\x18\x02 \x01(\x0e2\x12.tutti.EventSourceR\veventSourceJ\x04\b\x01\x10\x02\"\x95\x06\n" +
+	"\fevent_source\x18\x02 \x01(\x0e2\x12.tutti.EventSourceR\veventSource\x120\n" +
+	"\x05since\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05sinceJ\x04\b\x01\x10\x02\"\x95\x06\n" +
 	"\x17ListReplicationsRequest\x124\n" +
 	"\x16hide_user_replications\x18\x01 \x01(\bR\x14hideUserReplications\x128\n" +
 	"\x18hide_bucket_replications\x18\x02 \x01(\bR\x16hideBucketReplications\x12(\n" +
@@ -2698,7 +2723,7 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\r_event_sourceJ\x04\b\n" +
 	"\x10\v\"R\n" +
 	"\x18ListReplicationsResponse\x126\n" +
-	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xb2\a\n" +
+	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xe4\a\n" +
 	"\vReplication\x12$\n" +
 	"\x02id\x18\x01 \x01(\v2\x14.tutti.ReplicationIDR\x02id\x12*\n" +
 	"\x04opts\x18\x02 \x01(\v2\x16.tutti.ReplicationOptsR\x04opts\x129\n" +
@@ -2730,7 +2755,8 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\x0finit_bytes_done\x18\x13 \x01(\x03R\rinitBytesDone\x121\n" +
 	"\x15init_bytes_per_second\x18\x14 \x01(\x03R\x12initBytesPerSecond\x12(\n" +
 	"\x10init_eta_seconds\x18\x15 \x01(\x03R\x0einitEtaSeconds\x122\n" +
-	"\x15init_listing_complete\x18\x16 \x01(\bR\x13initListingCompleteB\x0e\n" +
+	"\x15init_listing_complete\x18\x16 \x01(\bR\x13initListingComplete\x120\n" +
+	"\x05since\x18\x17 \x01(\v2\x1a.google.protobuf.TimestampR\x05sinceB\x0e\n" +
 	"\f_switch_info\"\x98\x01\n" +
 	"\x17AvailableBucketsRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12!\n" +
@@ -2948,81 +2974,83 @@ var file_tutti_policy_proto_depIdxs = []int32{
 	33, // 7: tutti.ReplicationInFlight.started_at:type_name -> google.protobuf.Timestamp
 	33, // 8: tutti.ReplicationActivityEvent.time:type_name -> google.protobuf.Timestamp
 	0,  // 9: tutti.ReplicationOpts.event_source:type_name -> tutti.EventSource
-	31, // 10: tutti.ListReplicationsRequest.filter:type_name -> tutti.ListReplicationsRequest.Filter
-	12, // 11: tutti.ListReplicationsResponse.replications:type_name -> tutti.Replication
-	2,  // 12: tutti.Replication.id:type_name -> tutti.ReplicationID
-	9,  // 13: tutti.Replication.opts:type_name -> tutti.ReplicationOpts
-	33, // 14: tutti.Replication.created_at:type_name -> google.protobuf.Timestamp
-	34, // 15: tutti.Replication.event_lag:type_name -> google.protobuf.Duration
-	33, // 16: tutti.Replication.archived_at:type_name -> google.protobuf.Timestamp
-	21, // 17: tutti.Replication.switch_info:type_name -> tutti.ReplicationSwitch
-	0,  // 18: tutti.Replication.event_source:type_name -> tutti.EventSource
-	15, // 19: tutti.AvailableBucketsResponse.covered_buckets:type_name -> tutti.CoveredBucket
-	2,  // 20: tutti.CompareBucketRequest.target:type_name -> tutti.ReplicationID
-	2,  // 21: tutti.SwitchZeroDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
-	34, // 22: tutti.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
-	2,  // 23: tutti.SwitchDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
-	20, // 24: tutti.SwitchDowntimeRequest.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
-	33, // 25: tutti.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
-	34, // 26: tutti.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
-	1,  // 27: tutti.ReplicationSwitch.last_status:type_name -> tutti.ReplicationSwitch.Status
-	34, // 28: tutti.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
-	20, // 29: tutti.ReplicationSwitch.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
-	33, // 30: tutti.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
-	33, // 31: tutti.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
-	2,  // 32: tutti.ReplicationSwitch.replication_id:type_name -> tutti.ReplicationID
-	32, // 33: tutti.RoutingsRequest.filter:type_name -> tutti.RoutingsRequest.Filter
-	24, // 34: tutti.RoutingsResponse.user_routings:type_name -> tutti.UserRouting
-	25, // 35: tutti.RoutingsResponse.bucket_routings:type_name -> tutti.BucketRouting
-	2,  // 36: tutti.TestProxyResponse.replications:type_name -> tutti.ReplicationID
-	0,  // 37: tutti.ListReplicationsRequest.Filter.event_source:type_name -> tutti.EventSource
-	13, // 38: tutti.Policy.AvailableBuckets:input_type -> tutti.AvailableBucketsRequest
-	3,  // 39: tutti.Policy.AddReplication:input_type -> tutti.AddReplicationRequest
-	2,  // 40: tutti.Policy.GetReplication:input_type -> tutti.ReplicationID
-	5,  // 41: tutti.Policy.GetReplicationActivity:input_type -> tutti.GetReplicationActivityRequest
-	10, // 42: tutti.Policy.ListReplications:input_type -> tutti.ListReplicationsRequest
-	2,  // 43: tutti.Policy.StreamReplication:input_type -> tutti.ReplicationID
-	2,  // 44: tutti.Policy.PauseReplication:input_type -> tutti.ReplicationID
-	2,  // 45: tutti.Policy.ResumeReplication:input_type -> tutti.ReplicationID
-	2,  // 46: tutti.Policy.DeleteReplication:input_type -> tutti.ReplicationID
-	4,  // 47: tutti.Policy.UpdateReplicationName:input_type -> tutti.UpdateReplicationNameRequest
-	18, // 48: tutti.Policy.SwitchWithZeroDowntime:input_type -> tutti.SwitchZeroDowntimeRequest
-	19, // 49: tutti.Policy.SwitchWithDowntime:input_type -> tutti.SwitchDowntimeRequest
-	2,  // 50: tutti.Policy.DeleteSwitch:input_type -> tutti.ReplicationID
-	2,  // 51: tutti.Policy.GetSwitchStatus:input_type -> tutti.ReplicationID
-	22, // 52: tutti.Policy.ListRoutings:input_type -> tutti.RoutingsRequest
-	26, // 53: tutti.Policy.AddRouting:input_type -> tutti.AddRoutingRequest
-	27, // 54: tutti.Policy.UpdateRouting:input_type -> tutti.UpdateRoutingRequest
-	28, // 55: tutti.Policy.DeleteRouting:input_type -> tutti.RoutingID
-	28, // 56: tutti.Policy.BlockRouting:input_type -> tutti.RoutingID
-	28, // 57: tutti.Policy.UnblockRouting:input_type -> tutti.RoutingID
-	29, // 58: tutti.Policy.TestProxy:input_type -> tutti.TestProxyRequest
-	14, // 59: tutti.Policy.AvailableBuckets:output_type -> tutti.AvailableBucketsResponse
-	35, // 60: tutti.Policy.AddReplication:output_type -> google.protobuf.Empty
-	12, // 61: tutti.Policy.GetReplication:output_type -> tutti.Replication
-	6,  // 62: tutti.Policy.GetReplicationActivity:output_type -> tutti.GetReplicationActivityResponse
-	11, // 63: tutti.Policy.ListReplications:output_type -> tutti.ListReplicationsResponse
-	12, // 64: tutti.Policy.StreamReplication:output_type -> tutti.Replication
-	35, // 65: tutti.Policy.PauseReplication:output_type -> google.protobuf.Empty
-	35, // 66: tutti.Policy.ResumeReplication:output_type -> google.protobuf.Empty
-	35, // 67: tutti.Policy.DeleteReplication:output_type -> google.protobuf.Empty
-	35, // 68: tutti.Policy.UpdateReplicationName:output_type -> google.protobuf.Empty
-	35, // 69: tutti.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
-	35, // 70: tutti.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
-	35, // 71: tutti.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
-	21, // 72: tutti.Policy.GetSwitchStatus:output_type -> tutti.ReplicationSwitch
-	23, // 73: tutti.Policy.ListRoutings:output_type -> tutti.RoutingsResponse
-	35, // 74: tutti.Policy.AddRouting:output_type -> google.protobuf.Empty
-	35, // 75: tutti.Policy.UpdateRouting:output_type -> google.protobuf.Empty
-	35, // 76: tutti.Policy.DeleteRouting:output_type -> google.protobuf.Empty
-	35, // 77: tutti.Policy.BlockRouting:output_type -> google.protobuf.Empty
-	35, // 78: tutti.Policy.UnblockRouting:output_type -> google.protobuf.Empty
-	30, // 79: tutti.Policy.TestProxy:output_type -> tutti.TestProxyResponse
-	59, // [59:80] is the sub-list for method output_type
-	38, // [38:59] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	33, // 10: tutti.ReplicationOpts.since:type_name -> google.protobuf.Timestamp
+	31, // 11: tutti.ListReplicationsRequest.filter:type_name -> tutti.ListReplicationsRequest.Filter
+	12, // 12: tutti.ListReplicationsResponse.replications:type_name -> tutti.Replication
+	2,  // 13: tutti.Replication.id:type_name -> tutti.ReplicationID
+	9,  // 14: tutti.Replication.opts:type_name -> tutti.ReplicationOpts
+	33, // 15: tutti.Replication.created_at:type_name -> google.protobuf.Timestamp
+	34, // 16: tutti.Replication.event_lag:type_name -> google.protobuf.Duration
+	33, // 17: tutti.Replication.archived_at:type_name -> google.protobuf.Timestamp
+	21, // 18: tutti.Replication.switch_info:type_name -> tutti.ReplicationSwitch
+	0,  // 19: tutti.Replication.event_source:type_name -> tutti.EventSource
+	33, // 20: tutti.Replication.since:type_name -> google.protobuf.Timestamp
+	15, // 21: tutti.AvailableBucketsResponse.covered_buckets:type_name -> tutti.CoveredBucket
+	2,  // 22: tutti.CompareBucketRequest.target:type_name -> tutti.ReplicationID
+	2,  // 23: tutti.SwitchZeroDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
+	34, // 24: tutti.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
+	2,  // 25: tutti.SwitchDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
+	20, // 26: tutti.SwitchDowntimeRequest.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
+	33, // 27: tutti.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
+	34, // 28: tutti.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
+	1,  // 29: tutti.ReplicationSwitch.last_status:type_name -> tutti.ReplicationSwitch.Status
+	34, // 30: tutti.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
+	20, // 31: tutti.ReplicationSwitch.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
+	33, // 32: tutti.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
+	33, // 33: tutti.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
+	2,  // 34: tutti.ReplicationSwitch.replication_id:type_name -> tutti.ReplicationID
+	32, // 35: tutti.RoutingsRequest.filter:type_name -> tutti.RoutingsRequest.Filter
+	24, // 36: tutti.RoutingsResponse.user_routings:type_name -> tutti.UserRouting
+	25, // 37: tutti.RoutingsResponse.bucket_routings:type_name -> tutti.BucketRouting
+	2,  // 38: tutti.TestProxyResponse.replications:type_name -> tutti.ReplicationID
+	0,  // 39: tutti.ListReplicationsRequest.Filter.event_source:type_name -> tutti.EventSource
+	13, // 40: tutti.Policy.AvailableBuckets:input_type -> tutti.AvailableBucketsRequest
+	3,  // 41: tutti.Policy.AddReplication:input_type -> tutti.AddReplicationRequest
+	2,  // 42: tutti.Policy.GetReplication:input_type -> tutti.ReplicationID
+	5,  // 43: tutti.Policy.GetReplicationActivity:input_type -> tutti.GetReplicationActivityRequest
+	10, // 44: tutti.Policy.ListReplications:input_type -> tutti.ListReplicationsRequest
+	2,  // 45: tutti.Policy.StreamReplication:input_type -> tutti.ReplicationID
+	2,  // 46: tutti.Policy.PauseReplication:input_type -> tutti.ReplicationID
+	2,  // 47: tutti.Policy.ResumeReplication:input_type -> tutti.ReplicationID
+	2,  // 48: tutti.Policy.DeleteReplication:input_type -> tutti.ReplicationID
+	4,  // 49: tutti.Policy.UpdateReplicationName:input_type -> tutti.UpdateReplicationNameRequest
+	18, // 50: tutti.Policy.SwitchWithZeroDowntime:input_type -> tutti.SwitchZeroDowntimeRequest
+	19, // 51: tutti.Policy.SwitchWithDowntime:input_type -> tutti.SwitchDowntimeRequest
+	2,  // 52: tutti.Policy.DeleteSwitch:input_type -> tutti.ReplicationID
+	2,  // 53: tutti.Policy.GetSwitchStatus:input_type -> tutti.ReplicationID
+	22, // 54: tutti.Policy.ListRoutings:input_type -> tutti.RoutingsRequest
+	26, // 55: tutti.Policy.AddRouting:input_type -> tutti.AddRoutingRequest
+	27, // 56: tutti.Policy.UpdateRouting:input_type -> tutti.UpdateRoutingRequest
+	28, // 57: tutti.Policy.DeleteRouting:input_type -> tutti.RoutingID
+	28, // 58: tutti.Policy.BlockRouting:input_type -> tutti.RoutingID
+	28, // 59: tutti.Policy.UnblockRouting:input_type -> tutti.RoutingID
+	29, // 60: tutti.Policy.TestProxy:input_type -> tutti.TestProxyRequest
+	14, // 61: tutti.Policy.AvailableBuckets:output_type -> tutti.AvailableBucketsResponse
+	35, // 62: tutti.Policy.AddReplication:output_type -> google.protobuf.Empty
+	12, // 63: tutti.Policy.GetReplication:output_type -> tutti.Replication
+	6,  // 64: tutti.Policy.GetReplicationActivity:output_type -> tutti.GetReplicationActivityResponse
+	11, // 65: tutti.Policy.ListReplications:output_type -> tutti.ListReplicationsResponse
+	12, // 66: tutti.Policy.StreamReplication:output_type -> tutti.Replication
+	35, // 67: tutti.Policy.PauseReplication:output_type -> google.protobuf.Empty
+	35, // 68: tutti.Policy.ResumeReplication:output_type -> google.protobuf.Empty
+	35, // 69: tutti.Policy.DeleteReplication:output_type -> google.protobuf.Empty
+	35, // 70: tutti.Policy.UpdateReplicationName:output_type -> google.protobuf.Empty
+	35, // 71: tutti.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
+	35, // 72: tutti.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
+	35, // 73: tutti.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
+	21, // 74: tutti.Policy.GetSwitchStatus:output_type -> tutti.ReplicationSwitch
+	23, // 75: tutti.Policy.ListRoutings:output_type -> tutti.RoutingsResponse
+	35, // 76: tutti.Policy.AddRouting:output_type -> google.protobuf.Empty
+	35, // 77: tutti.Policy.UpdateRouting:output_type -> google.protobuf.Empty
+	35, // 78: tutti.Policy.DeleteRouting:output_type -> google.protobuf.Empty
+	35, // 79: tutti.Policy.BlockRouting:output_type -> google.protobuf.Empty
+	35, // 80: tutti.Policy.UnblockRouting:output_type -> google.protobuf.Empty
+	30, // 81: tutti.Policy.TestProxy:output_type -> tutti.TestProxyResponse
+	61, // [61:82] is the sub-list for method output_type
+	40, // [40:61] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_tutti_policy_proto_init() }
