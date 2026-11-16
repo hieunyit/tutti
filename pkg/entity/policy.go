@@ -146,6 +146,8 @@ type ReplicationStatusExtended struct {
 	EventMigration QueueStats
 	// Initial migration progress by bytes (non-versioned objects only).
 	InitBytes InitBytesStats
+	// Rescan is the periodic source rescan configuration and state.
+	Rescan RescanInfo
 }
 
 // InitBytesStats is initial replication progress measured in bytes.

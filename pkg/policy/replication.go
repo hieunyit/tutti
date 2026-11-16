@@ -26,6 +26,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/rescan"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
 )
@@ -85,6 +86,11 @@ type ReplicationSvc interface {
 	// SetReplicationRescanInterval sets or clears (0) the periodic source rescan interval. The caller validates it
 	// (entity.NormalizeRescanInterval). It never touches queues, routing or generations.
 	SetReplicationRescanInterval(ctx context.Context, id entity.UniversalReplicationID, interval time.Duration) error
+	// RescanReplicationNow starts a source rescan immediately. dom.ErrFailedPrecondition when one is running, the
+	// replication is paused or its initial copy is not finished.
+	RescanReplicationNow(ctx context.Context, id entity.UniversalReplicationID) error
+	// ListRescanTargets lists the replications a rescan may start for now (see policySvc.ListRescanTargets).
+	ListRescanTargets(ctx context.Context, users []string) ([]rescan.Target, error)
 	GetReplicationPolicyInfoExtended(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatusExtended, error)
 	GetReplicationGeneration(ctx context.Context, id entity.UniversalReplicationID) (int64, error)
 	// GetReplicationSince returns the cutoff of the initial copy of the replication (nil: copy everything).
@@ -143,11 +149,33 @@ func (r *policySvc) RenameReplication(ctx context.Context, id entity.UniversalRe
 	return nil
 }
 
-func (r *policySvc) SetReplicationRescanInterval(ctx context.Context, id entity.UniversalReplicationID, interval time.Duration) error {
+func (r *policySvc) SetReplicationRescanInterval(ctx context.Context, id entity.UniversalReplicationID, interval time.Duration) (retErr error) {
 	if err := id.Validate(); err != nil {
 		return fmt.Errorf("set rescan interval: unable to validate replication id: %w", err)
 	}
 	seconds := int64(interval / time.Second)
+	// enabling rescan on a replication that had it off: the first scan catches up with everything written directly
+	// to the source in the meantime (whole source, or from since)
+	enabling := false
+	if seconds > 0 {
+		if cur, err := r.getStatus(ctx, id); err == nil && cur.RescanSeconds == 0 {
+			enabling = true
+		}
+	}
+	if enabling {
+		defer func() {
+			if retErr != nil {
+				return
+			}
+			if gen, err := r.GetReplicationGeneration(ctx, id); err == nil && gen > 0 {
+				if rs := r.rescanStore(); rs != nil {
+					if err := rs.RequestFull(context.WithoutCancel(ctx), id.AsString(), gen); err != nil {
+						zerolog.Ctx(ctx).Warn().Err(err).Msg("unable to request a catch-up rescan")
+					}
+				}
+			}
+		}()
+	}
 	if r.cp != nil {
 		return controlplane.WrapWriteError(r.cp.Tx(ctx, func(repos controlplane.Repos) error {
 			return repos.Replications.SetRescanInterval(ctx, toCPReplicationID(id), seconds)
@@ -329,6 +357,7 @@ func (r *policySvc) fillExtendedReplicationStatus(ctx context.Context, id entity
 		return entity.ReplicationStatusExtended{}, fmt.Errorf("unable to get event migration queue stats: %w", err)
 	}
 	result.IsPaused = result.IsPaused || paused
+	result.Rescan = r.rescanInfo(ctx, id, status, result.IsPaused, result.InitDone())
 
 	return result, nil
 }
@@ -574,6 +603,7 @@ func (r *policySvc) DeleteUserReplication(ctx context.Context, policy entity.Use
 	if err := policy.Validate(); err != nil {
 		return fmt.Errorf("unable to validate user replication policy: %w", err)
 	}
+	defer r.dropRescanStateOnDelete(ctx, entity.UniversalFromUserReplication(policy))()
 	// cannot delete if switch exists
 	_, err := r.userReplicationSwitchStore.Get(ctx, policy.User)
 	switch {
@@ -826,6 +856,7 @@ func (r *policySvc) DeleteBucketReplication(ctx context.Context, policy entity.B
 	if err := policy.Validate(); err != nil {
 		return fmt.Errorf("unable to validate bucket replication policy: %w", err)
 	}
+	defer r.dropRescanStateOnDelete(ctx, entity.UniversalFromBucketReplication(policy))()
 	// cannot delete if switch exists
 	_, err := r.bucketReplicationSwitchStore.Get(ctx, policy.LookupID())
 	switch {

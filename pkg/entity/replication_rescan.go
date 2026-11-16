@@ -37,3 +37,18 @@ func (s *ReplicationStatus) RescanInterval() time.Duration {
 	}
 	return time.Duration(s.RescanSeconds) * time.Second
 }
+
+// RescanInfo is the periodic rescan configuration and runtime state of a replication as shown by the API.
+type RescanInfo struct {
+	// Interval is the configured interval (0 = off).
+	Interval time.Duration
+	// LastScanAt is the START time of the last completed scan (nil: none yet).
+	LastScanAt *time.Time
+	// NextScanAt is nil when rescan is off, the replication is paused, its initial copy is not done or a scan runs.
+	NextScanAt *time.Time
+	Running    bool
+	// LastObjects is the number of objects the last completed scan copied.
+	LastObjects int64
+	// LastError is empty when the last scan succeeded.
+	LastError string
+}

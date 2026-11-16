@@ -28,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
@@ -243,7 +244,11 @@ func (h *policyHandlers) validateAddReplication(ctx context.Context, uid entity.
 	if err != nil {
 		return entity.ReplicationOptions{}, err
 	}
-	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name, Since: since}
+	rescanInterval, err := h.validateRescanInterval(uid, req.GetOpts().GetRescanInterval())
+	if err != nil {
+		return entity.ReplicationOptions{}, err
+	}
+	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name, Since: since, RescanInterval: rescanInterval}
 	if userRepl, ok := uid.AsUserID(); ok {
 		if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
 			return opts, fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)
@@ -791,6 +796,68 @@ func (h *policyHandlers) UpdateReplicationName(ctx context.Context, req *pb.Upda
 	}
 	if h.cpStore != nil {
 		_ = h.cpStore.Repos().Audit.Record(ctx, "RENAME", "replication", uid.String(), req)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// validateRescanInterval checks the optional periodic rescan interval (unset or 0 = off) of a replication. Rescan
+// lists the source bucket through the S3 API, so the source storage must be S3.
+func (h *policyHandlers) validateRescanInterval(uid entity.UniversalReplicationID, d *durationpb.Duration) (time.Duration, error) {
+	if d == nil {
+		return 0, nil
+	}
+	if err := d.CheckValid(); err != nil {
+		return 0, fmt.Errorf("%w: invalid rescan_interval: %v", dom.ErrInvalidArg, err)
+	}
+	interval, err := entity.NormalizeRescanInterval(d.AsDuration())
+	if err != nil {
+		return 0, err
+	}
+	if interval > 0 {
+		if st, ok := h.credsSvc.Storages()[uid.FromStorage()]; ok && st != dom.S3 {
+			return 0, fmt.Errorf("%w: rescan_interval is only supported for S3 source storages", dom.ErrInvalidArg)
+		}
+	}
+	return interval, nil
+}
+
+// UpdateReplicationRescanInterval changes how often the source of a replication is rescanned (0 turns it off). Like
+// the rename it takes the user lock but never touches queues, routing, generations or the scope lock.
+func (h *policyHandlers) UpdateReplicationRescanInterval(ctx context.Context, req *pb.UpdateReplicationRescanIntervalRequest) (*emptypb.Empty, error) {
+	uid, err := pbToReplicationID(req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	interval, err := h.validateRescanInterval(uid, req.GetRescanInterval())
+	if err != nil {
+		return nil, err
+	}
+	err = h.inUserLock(ctx, uid.User(), func(ctx context.Context) error {
+		return h.policySvc.SetReplicationRescanInterval(ctx, uid, interval)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "RESCAN_INTERVAL", "replication", uid.String(), req)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+// RescanReplication starts a scan of the replication source now ("Sync now").
+func (h *policyHandlers) RescanReplication(ctx context.Context, req *pb.ReplicationID) (*emptypb.Empty, error) {
+	uid, err := pbToReplicationID(req)
+	if err != nil {
+		return nil, err
+	}
+	if st, ok := h.credsSvc.Storages()[uid.FromStorage()]; ok && st != dom.S3 {
+		return nil, fmt.Errorf("%w: rescan is only supported for S3 source storages", dom.ErrInvalidArg)
+	}
+	if err := h.policySvc.RescanReplicationNow(ctx, uid); err != nil {
+		return nil, err
+	}
+	if h.cpStore != nil {
+		_ = h.cpStore.Repos().Audit.Record(ctx, "RESCAN", "replication", uid.String(), req)
 	}
 	return &emptypb.Empty{}, nil
 }

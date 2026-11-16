@@ -53,6 +53,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/replication"
 	"github.com/hieunyit/tutti/pkg/replscope"
+	"github.com/hieunyit/tutti/pkg/rescan"
 	"github.com/hieunyit/tutti/pkg/rpc"
 	"github.com/hieunyit/tutti/pkg/s3users"
 	"github.com/hieunyit/tutti/pkg/store"
@@ -476,6 +477,14 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		mux.HandleFunc(tasks.TypeMigrateVersionedObject, workerSvc.HandleVersionedObjectMigration)
 		logger.Info().Msg("registered S3 versioned workers")
 
+		// periodic rescan of replication sources
+		mux.HandleFunc(tasks.TypeRescanUserListBuckets, workerSvc.HandleRescanUserListBuckets)
+		mux.HandleFunc(tasks.TypeRescanBucketListObjects, workerSvc.HandleRescanListObjects)
+		mux.HandleFunc(tasks.TypeRescanObjCopy, workerSvc.HandleRescanObjCopy)
+		mux.HandleFunc(tasks.TypeRescanObjectListVersions, workerSvc.HandleRescanListVersions)
+		mux.HandleFunc(tasks.TypeRescanVersionedObject, workerSvc.HandleRescanVersionedObject)
+		logger.Info().Msg("registered rescan workers")
+
 		mux.HandleFunc(tasks.TypeDiffFixCopyS3, workerSvc.HandleMigrationObjCopy)
 		mux.HandleFunc(tasks.TypeDiffFixS3ListVersions, workerSvc.HandleObjectVersionList)
 		logger.Info().Msg("registered diff fix s3 workers")
@@ -560,6 +569,23 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}
 		}
 		return out
+	}
+	if len(credsSvc.S3Storages()) != 0 || credsSvc.ManagedStoragesEnabled() {
+		rescanScheduler := &handler.RescanScheduler{
+			Store: store.NewRescanStore(queueSvc.RedisClient()),
+			Queue: queueSvc,
+			Tick:  handler.DefaultRescanTick,
+			Targets: func(ctx context.Context) ([]rescan.Target, error) {
+				return policySvc.ListRescanTargets(ctx, users())
+			},
+		}
+		err = server.Add("rescan_scheduler", func(ctx context.Context) error {
+			rescanScheduler.Run(logger.WithContext(ctx))
+			return nil
+		}, func(context.Context) error { return nil })
+		if err != nil {
+			return err
+		}
 	}
 	failoverStore := failover.NewStore(confRedis, func(name string) bool { _, ok := credsSvc.Storages()[name]; return ok }).WithControlPlane(cpStore)
 	unprotectedOpts := func() protectiongroups.UnprotectedOptions {

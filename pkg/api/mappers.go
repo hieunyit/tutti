@@ -65,7 +65,22 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		InitBytesPerSecond:  value.InitBytes.BytesPerSecond,
 		InitEtaSeconds:      initETASeconds(value),
 		InitListingComplete: value.InitBytes.ListingComplete,
+
+		RescanInterval:    rescanIntervalToPb(value.Rescan.Interval),
+		LastRescanAt:      tsToPb(value.Rescan.LastScanAt),
+		NextRescanAt:      tsToPb(value.Rescan.NextScanAt),
+		RescanRunning:     value.Rescan.Running,
+		LastRescanObjects: value.Rescan.LastObjects,
+		LastRescanError:   value.Rescan.LastError,
 	}
+}
+
+// rescanIntervalToPb returns nil when rescan is off.
+func rescanIntervalToPb(d time.Duration) *durationpb.Duration {
+	if d <= 0 {
+		return nil
+	}
+	return durationpb.New(d)
 }
 
 var activityCursorRe = regexp.MustCompile(`^(|[0-9]{1,20}(-[0-9]{1,20})?)$`)
