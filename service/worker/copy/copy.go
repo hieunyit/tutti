@@ -303,6 +303,8 @@ type Outcome struct {
 	Missing bool
 	// Bytes is the number of transferred bytes.
 	Bytes int64
+	// Copied counts the CopyObject calls that transferred data (a versioned object may copy several versions).
+	Copied int
 }
 
 type outcomeKey struct{}
@@ -310,6 +312,12 @@ type outcomeKey struct{}
 // WithOutcome returns a context that makes CopyObject fill o.
 func WithOutcome(ctx context.Context, o *Outcome) context.Context {
 	return context.WithValue(ctx, outcomeKey{}, o)
+}
+
+// OutcomeFrom returns the Outcome attached with WithOutcome, or nil.
+func OutcomeFrom(ctx context.Context) *Outcome {
+	o, _ := ctx.Value(outcomeKey{}).(*Outcome)
+	return o
 }
 
 // CopyObject copies one object and records the throughput counters (in-flight, result, bytes, duration).
@@ -327,6 +335,9 @@ func (r *S3CopySvc) CopyObject(ctx context.Context, user string, from File, to F
 		o.Missing = errors.Is(err, dom.ErrNotFound)
 		if copiedBytes > 0 {
 			o.Bytes = copiedBytes
+		}
+		if err == nil && copiedBytes >= 0 {
+			o.Copied++
 		}
 	}
 	switch {

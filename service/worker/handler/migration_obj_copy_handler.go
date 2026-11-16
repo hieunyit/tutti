@@ -87,11 +87,22 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 		return err
 	}
 
-	act := s.activityBegin(ctx, p.ID, p.Generation, p.Obj.Name, p.Obj.VersionID, p.Obj.Size, store.ActivityFlowInit)
+	isRescan := t.Type() == tasks.TypeRescanObjCopy
+	flow := store.ActivityFlowInit
+	if isRescan {
+		flow = store.ActivityFlowRescan
+	}
+	act := s.activityBegin(ctx, p.ID, p.Generation, p.Obj.Name, p.Obj.VersionID, p.Obj.Size, flow)
 	var outcome copy.Outcome
 	if act != nil {
-		ctx = copy.WithOutcome(ctx, &outcome)
-		defer func() { act.finish(ctx, err, &outcome) }()
+		if pre := copy.OutcomeFrom(ctx); pre != nil {
+			// the caller (rescan accounting) already watches the outcome: share it
+			ctx = copy.WithOutcome(ctx, pre)
+			defer func() { act.finish(ctx, err, pre) }()
+		} else {
+			ctx = copy.WithOutcome(ctx, &outcome)
+			defer func() { act.finish(ctx, err, &outcome) }()
+		}
 	}
 
 	if t.Type() == tasks.TypeMigrateObjCopy {
@@ -124,8 +135,10 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	}
 	fromVer, toVer := versions.From, versions.To
 
+	// diff fix and rescan copies bypass the version check: objects written directly to the source never bump the
+	// proxy version, and CopyObject itself skips an object the destination already holds (ETag / source marker).
 	isDiffFix := t.Type() == tasks.TypeDiffFixCopyS3
-	if !isDiffFix && fromVer != 0 && fromVer <= toVer {
+	if !isDiffFix && !isRescan && fromVer != 0 && fromVer <= toVer {
 		logger.Info().Int("from_ver", fromVer).Int("to_ver", toVer).Msg("migration obj copy: identical from/to obj version: skip copy")
 		return nil
 	}

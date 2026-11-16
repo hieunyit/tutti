@@ -43,6 +43,8 @@ const (
 
 	ActivityFlowInit = "init"
 	ActivityFlowLive = "live"
+	// ActivityFlowRescan marks copies of the periodic source rescan.
+	ActivityFlowRescan = "rescan"
 )
 
 // ActivityInFlight is one object copy that is running right now.

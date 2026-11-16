@@ -55,9 +55,11 @@ var Priority = map[string]int{
 	string(QueueEventsPrefix) + ":*":             80,  // live replication events: allocated dominant share during concurrent bulk
 	string(QueueDiffFix) + ":*":                  50,
 	string(QueueDiff) + ":*":                     40,
-	string(QueueMigrateCopyObjectPrefix) + ":*":  20,  // bulk migration copy
-	string(QueueMigrateListObjectsPrefix) + ":*": 10,  // bulk listing (controlled by pagination & backpressure)
-	"*":                                          1,   // fallback for legacy queues
+	string(QueueMigrateCopyObjectPrefix) + ":*":  20, // bulk migration copy
+	string(QueueRescanCopyObjectPrefix) + ":*":   19, // periodic rescan copy
+	string(QueueRescanListObjectsPrefix) + ":*":  9,  // periodic rescan listing
+	string(QueueMigrateListObjectsPrefix) + ":*": 10, // bulk listing (controlled by pagination & backpressure)
+	"*": 1, // fallback for legacy queues
 }
 
 // LivePriority defines priority for interactive API, live replication events, and diff fix queues.
@@ -68,19 +70,23 @@ var LivePriority = map[string]int{
 	string(QueueDiffFix) + ":*":                  50,
 	string(QueueDiff) + ":*":                     40,
 	string(QueueMigrateCopyObjectPrefix) + ":*":  20,
+	string(QueueRescanCopyObjectPrefix) + ":*":   19,
+	string(QueueRescanListObjectsPrefix) + ":*":  9,
 	string(QueueMigrateListObjectsPrefix) + ":*": 10,
-	"*":                                          1,
+	"*": 1,
 }
 
 // BulkPriority defines dedicated priorities exclusively for bulk migration copy and listing tasks,
 // ensuring bulk progress even when live event queues are continuously saturated.
 var BulkPriority = map[string]int{
 	string(QueueMigrateCopyObjectPrefix) + ":*":  20,
+	string(QueueRescanCopyObjectPrefix) + ":*":   19,
+	string(QueueRescanListObjectsPrefix) + ":*":  9,
 	string(QueueMigrateListObjectsPrefix) + ":*": 10,
-	"*":                                          1,
+	"*": 1,
 }
 
-var replicationQueuePrefixes = []Queue{QueueMigrateListObjectsPrefix, QueueMigrateCopyObjectPrefix, QueueEventsPrefix}
+var replicationQueuePrefixes = []Queue{QueueMigrateListObjectsPrefix, QueueMigrateCopyObjectPrefix, QueueEventsPrefix, QueueRescanListObjectsPrefix, QueueRescanCopyObjectPrefix}
 
 func replicationQueueName(queuePrefix Queue, id entity.UniversalReplicationID) string {
 	if !slices.Contains(replicationQueuePrefixes, queuePrefix) {
@@ -115,7 +121,17 @@ func AllReplicationQueues(id entity.UniversalReplicationID) []string {
 		InitMigrationListQueue(id),
 		InitMigrationCopyQueue(id),
 		EventMigrationQueue(id),
+		RescanListQueue(id),
+		RescanCopyQueue(id),
 	}
+}
+
+func RescanListQueue(id entity.UniversalReplicationID) string {
+	return replicationQueueName(QueueRescanListObjectsPrefix, id)
+}
+
+func RescanCopyQueue(id entity.UniversalReplicationID) string {
+	return replicationQueueName(QueueRescanCopyObjectPrefix, id)
 }
 
 func DiffQueue(id entity.DiffID) string {

@@ -240,6 +240,26 @@ func EncodeAny(ctx context.Context, payload any) (*asynq.Task, error) {
 		return swiftObjectMigration.Encode(ctx, *p)
 	case SwiftObjectMigrationPayload:
 		return swiftObjectMigration.Encode(ctx, p)
+	case *RescanUserListBucketsPayload:
+		return rescanUserListBuckets.Encode(ctx, *p)
+	case RescanUserListBucketsPayload:
+		return rescanUserListBuckets.Encode(ctx, p)
+	case *RescanListObjectsPayload:
+		return rescanListObjects.Encode(ctx, *p)
+	case RescanListObjectsPayload:
+		return rescanListObjects.Encode(ctx, p)
+	case *RescanObjCopyPayload:
+		return rescanObjCopy.Encode(ctx, *p)
+	case RescanObjCopyPayload:
+		return rescanObjCopy.Encode(ctx, p)
+	case *RescanListVersionsPayload:
+		return rescanListVersions.Encode(ctx, *p)
+	case RescanListVersionsPayload:
+		return rescanListVersions.Encode(ctx, p)
+	case *RescanVersionedObjectPayload:
+		return rescanVersionedObject.Encode(ctx, *p)
+	case RescanVersionedObjectPayload:
+		return rescanVersionedObject.Encode(ctx, p)
 	default:
 		return nil, fmt.Errorf("%w: unsupported payload type %T. Define encoder[%T] instance in pkg/tasks/encoder.go and add it to EncodeAny switch statement", dom.ErrNotImplemented, payload, payload)
 	}

@@ -94,7 +94,12 @@ type TaskPayload interface {
 		DiffFixEnsureObjectsRemovedPayload |
 		DiffFixSwiftCopyPayload |
 		DiffFixS3CopyPayload |
-		DiffFixS3ListVersionsPayload
+		DiffFixS3ListVersionsPayload |
+		RescanUserListBucketsPayload |
+		RescanListObjectsPayload |
+		RescanObjCopyPayload |
+		RescanListVersionsPayload |
+		RescanVersionedObjectPayload
 }
 
 type TraceableTask interface {
