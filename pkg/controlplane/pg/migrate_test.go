@@ -31,8 +31,8 @@ func TestMigrateUpFromEmpty(t *testing.T) {
 	require.NoError(t, err)
 	latest, err := pg.LatestVersion()
 	require.NoError(t, err)
-	require.Equal(t, []int{1, 2, 3, 4, 5}, applied)
-	require.Equal(t, 5, latest)
+	require.Equal(t, []int{1, 2, 3, 4, 5, 6}, applied)
+	require.Equal(t, 6, latest)
 
 	v, err = pg.SchemaVersion(ctx, s.Pool())
 	require.NoError(t, err)
@@ -86,5 +86,5 @@ func TestMigrateConcurrent(t *testing.T) {
 		require.NoError(t, errs[i])
 		sum += total[i]
 	}
-	require.Equal(t, 5, sum, "exactly one migrator applies each migration (versions 1 to 5)")
+	require.Equal(t, 6, sum, "exactly one migrator applies each migration (versions 1 to 6)")
 }

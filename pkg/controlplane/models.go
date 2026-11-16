@@ -209,6 +209,8 @@ type ReplicationStatus struct {
 	// Since is the optional cutoff of the initial copy: source objects last modified before it are skipped.
 	// Nil copies everything. Not part of the replication identity.
 	Since *time.Time
+	// RescanSeconds is the interval of the periodic source rescan in seconds (0 = off).
+	RescanSeconds int64
 }
 
 // AuditEntry is one row of the audit log.

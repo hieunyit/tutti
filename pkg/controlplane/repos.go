@@ -59,7 +59,6 @@ type StorageTests interface{ KV[RawDoc] }
 // SystemSettings: dynamic cluster features and operational parameters. Key: "system".
 type SystemSettingsStore interface{ KV[SystemSettings] }
 
-
 // ConsoleUserGuard configures the "keep one enabled admin" check of ConsoleUsers.MutateGuarded (pkg/auth
 // consoleMutation).
 type ConsoleUserGuard struct {
@@ -153,6 +152,8 @@ type Replications interface {
 	GetStatus(ctx context.Context, id ReplicationID) (ReplicationStatus, error)
 	// SetName changes only the display name of an existing status (empty clears it). ErrNotFound if absent.
 	SetName(ctx context.Context, id ReplicationID, name string) error
+	// SetRescanInterval changes only the rescan interval in seconds (0 turns it off). ErrNotFound if absent.
+	SetRescanInterval(ctx context.Context, id ReplicationID, seconds int64) error
 	// ListStatuses returns all statuses; user filters the bucket-level ones and user-level ones when non-empty.
 	ListStatuses(ctx context.Context, user string) (map[ReplicationID]ReplicationStatus, error)
 	// BucketReplicationExistsForUser reports whether the user has a bucket-level replication.

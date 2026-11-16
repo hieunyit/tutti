@@ -50,13 +50,14 @@ func toCPReplicationID(id entity.UniversalReplicationID) controlplane.Replicatio
 
 func toCPStatus(st entity.ReplicationStatus) controlplane.ReplicationStatus {
 	return controlplane.ReplicationStatus{
-		CreatedAt:   st.CreatedAt,
-		Archived:    st.IsArchived,
-		ArchivedAt:  st.ArchivedAt,
-		AgentURL:    st.AgentURL,
-		EventSource: st.EventSource,
-		Name:        st.Name,
-		Since:       st.Since,
+		CreatedAt:     st.CreatedAt,
+		Archived:      st.IsArchived,
+		ArchivedAt:    st.ArchivedAt,
+		AgentURL:      st.AgentURL,
+		EventSource:   st.EventSource,
+		Name:          st.Name,
+		Since:         st.Since,
+		RescanSeconds: st.RescanSeconds,
 	}
 }
 
@@ -69,6 +70,7 @@ func fromCPStatus(st controlplane.ReplicationStatus, failoverPending bool) entit
 		EventSource:     st.EventSource,
 		Name:            st.Name,
 		Since:           st.Since,
+		RescanSeconds:   st.RescanSeconds,
 		FailoverPending: failoverPending,
 	}
 }
@@ -80,6 +82,9 @@ type ReplicationSvc interface {
 	// RenameReplication sets or clears (empty) the display name of an existing replication. The name must be
 	// normalized by the caller (entity.NormalizeReplicationName). It never touches queues, routing or generations.
 	RenameReplication(ctx context.Context, id entity.UniversalReplicationID, name string) error
+	// SetReplicationRescanInterval sets or clears (0) the periodic source rescan interval. The caller validates it
+	// (entity.NormalizeRescanInterval). It never touches queues, routing or generations.
+	SetReplicationRescanInterval(ctx context.Context, id entity.UniversalReplicationID, interval time.Duration) error
 	GetReplicationPolicyInfoExtended(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatusExtended, error)
 	GetReplicationGeneration(ctx context.Context, id entity.UniversalReplicationID) (int64, error)
 	// GetReplicationSince returns the cutoff of the initial copy of the replication (nil: copy everything).
@@ -134,6 +139,29 @@ func (r *policySvc) RenameReplication(ctx context.Context, id entity.UniversalRe
 	}
 	if err != nil {
 		return fmt.Errorf("rename replication: %w", err)
+	}
+	return nil
+}
+
+func (r *policySvc) SetReplicationRescanInterval(ctx context.Context, id entity.UniversalReplicationID, interval time.Duration) error {
+	if err := id.Validate(); err != nil {
+		return fmt.Errorf("set rescan interval: unable to validate replication id: %w", err)
+	}
+	seconds := int64(interval / time.Second)
+	if r.cp != nil {
+		return controlplane.WrapWriteError(r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			return repos.Replications.SetRescanInterval(ctx, toCPReplicationID(id), seconds)
+		}))
+	}
+	var err error
+	if userID, ok := id.AsUserID(); ok {
+		err = r.userReplicationStatusStore.SetRescanInterval(ctx, userID, seconds)
+	} else {
+		bucketID, _ := id.AsBucketID()
+		err = r.bucketReplicationStatusStore.SetRescanInterval(ctx, bucketID, seconds)
+	}
+	if err != nil {
+		return fmt.Errorf("set rescan interval: %w", err)
 	}
 	return nil
 }

@@ -346,3 +346,25 @@ func setStatusName[ID any](ctx context.Context, h *RedisIDKeyHash[ID, entity.Rep
 	_, err := h.DelField(ctx, id, "name")
 	return err
 }
+
+// SetRescanInterval sets or clears (0) the rescan interval in seconds of an existing status. Returns dom.ErrNotFound
+// if the status does not exist.
+func (r *BucketReplicationStatusStore) SetRescanInterval(ctx context.Context, id entity.BucketReplicationPolicy, seconds int64) error {
+	return setStatusRescan(ctx, r.status, id, seconds)
+}
+
+// SetRescanInterval sets or clears (0) the rescan interval in seconds of an existing status.
+func (r *UserReplicationStatusStore) SetRescanInterval(ctx context.Context, id entity.UserReplicationPolicy, seconds int64) error {
+	return setStatusRescan(ctx, r.status, id, seconds)
+}
+
+func setStatusRescan[ID any](ctx context.Context, h *RedisIDKeyHash[ID, entity.ReplicationStatus], id ID, seconds int64) error {
+	if seconds > 0 {
+		return h.SetFieldIfExists(ctx, id, "rescan_seconds", seconds)
+	}
+	if _, err := h.Get(ctx, id); err != nil {
+		return err
+	}
+	_, err := h.DelField(ctx, id, "rescan_seconds")
+	return err
+}

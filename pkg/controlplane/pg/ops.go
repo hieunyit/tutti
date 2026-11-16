@@ -6,22 +6,22 @@ package pg
 // writes the committed PostgreSQL state into them (pkg/controlplane/migrate tests compare the result with data
 // written by the real Redis stores).
 const (
-	KeyStorages            = "tutti:storages" // pkg/objstore managedStoragesKey
-	KeyStoragesVersion     = "tutti:storages:version"
-	KeyS3Users             = "tutti:s3users" // pkg/objstore identitiesKey
-	KeyS3UsersVersion      = "tutti:s3users:version"
-	KeyStorageTests        = "tutti:storage-tests"
-	KeyDynamicCreds        = "tutti:dynamic_creds" // pkg/objstore redisHashKey
-	KeyProxyAccounts       = "tutti:proxy-accounts"
-	KeyAccessPolicies      = "tutti:access-policies"
-	KeyConsoleUsers        = "tutti:console-users"
-	KeyConsoleLogins       = "tutti:console-users:last-login"
-	KeyFailoverPolicies    = "tutti:failover-policies"
-	KeyFailoverEventPrefix = "tutti:failover:"
-	KeyProtectionGroups    = "tutti:protection:groups"
-	KeySystemSettings      = "tutti:system-settings"
+	KeyStorages              = "tutti:storages" // pkg/objstore managedStoragesKey
+	KeyStoragesVersion       = "tutti:storages:version"
+	KeyS3Users               = "tutti:s3users" // pkg/objstore identitiesKey
+	KeyS3UsersVersion        = "tutti:s3users:version"
+	KeyStorageTests          = "tutti:storage-tests"
+	KeyDynamicCreds          = "tutti:dynamic_creds" // pkg/objstore redisHashKey
+	KeyProxyAccounts         = "tutti:proxy-accounts"
+	KeyAccessPolicies        = "tutti:access-policies"
+	KeyConsoleUsers          = "tutti:console-users"
+	KeyConsoleLogins         = "tutti:console-users:last-login"
+	KeyFailoverPolicies      = "tutti:failover-policies"
+	KeyFailoverEventPrefix   = "tutti:failover:"
+	KeyProtectionGroups      = "tutti:protection:groups"
+	KeySystemSettings        = "tutti:system-settings"
 	KeySystemSettingsVersion = "tutti:system-settings:version"
-	SystemSettingsChannel  = "tutti:system-settings:changed"
+	SystemSettingsChannel    = "tutti:system-settings:changed"
 
 	// SnapshotVersionKey and SnapshotChannel are pkg/policy.SnapshotVersionKey / SnapshotChannel.
 	SnapshotVersionKey = "tutti:cfg:version"

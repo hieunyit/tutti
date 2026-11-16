@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -438,6 +439,13 @@ func parseStatus(h map[string]string) (controlplane.ReplicationStatus, error) {
 		}
 		t = t.UTC()
 		st.Since = &t
+	}
+	if v := h["rescan_seconds"]; v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return st, fmt.Errorf("rescan_seconds: %w", err)
+		}
+		st.RescanSeconds = n
 	}
 	return st, nil
 }

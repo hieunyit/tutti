@@ -526,5 +526,3 @@ func TestUnknownScope_FallsBackToAdmission(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code, "corrupted index must fail closed")
 	require.False(t, handlerReached, "downstream handler must not be reached when index is unreadable")
 }
-
-

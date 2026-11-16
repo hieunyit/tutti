@@ -53,6 +53,8 @@ type ReplicationOptions struct {
 	// Since is the optional cutoff of the initial copy (source objects last modified before it are skipped).
 	// Nil copies everything. Validated with NormalizeReplicationSince.
 	Since *time.Time
+	// RescanInterval is the optional periodic source rescan interval (0 = off). Validated with NormalizeRescanInterval.
+	RescanInterval time.Duration
 }
 
 func (p UserReplicationPolicy) LookupID() string {
@@ -110,6 +112,8 @@ type ReplicationStatus struct {
 	Name string `redis:"name,omitempty"`
 	// Since is the optional cutoff of the initial copy. It is not part of the replication identity.
 	Since *time.Time `redis:"since,omitempty"`
+	// RescanSeconds is the interval of the periodic source rescan in seconds (0 = off).
+	RescanSeconds int64 `redis:"rescan_seconds,omitempty"`
 
 	IsArchived bool `redis:"archived"`
 	// FailoverPending identifies a pause owned by an unfinished automatic failover.
@@ -119,10 +123,11 @@ type ReplicationStatus struct {
 func StatusFromOptions(opts ReplicationOptions) ReplicationStatus {
 	// TODO: add other replication options here, like copy origin timestamp, etc.
 	return ReplicationStatus{
-		AgentURL:    opts.AgentURL,
-		EventSource: string(opts.EventSource),
-		Name:        opts.Name,
-		Since:       opts.Since,
+		AgentURL:      opts.AgentURL,
+		EventSource:   string(opts.EventSource),
+		Name:          opts.Name,
+		Since:         opts.Since,
+		RescanSeconds: int64(opts.RescanInterval / time.Second),
 	}
 }
 

@@ -246,7 +246,6 @@ func (s *Store) EnqueueSnapshot(ctx context.Context) (int, error) {
 		}
 	}
 
-
 	if err := tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("controlplane: commit snapshot: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -191,6 +192,11 @@ func statusFields(s controlplane.ReplicationStatus) (set map[string]string, del 
 	} else {
 		opt("since", "")
 	}
+	if s.RescanSeconds > 0 {
+		set["rescan_seconds"] = strconv.FormatInt(s.RescanSeconds, 10)
+	} else {
+		del = append(del, "rescan_seconds")
+	}
 	return set, del
 }
 
@@ -210,7 +216,7 @@ func replDoc(id controlplane.ReplicationID, extra map[string]any) []byte {
 }
 
 func statusDoc(s controlplane.ReplicationStatus) map[string]any {
-	return map[string]any{"status": map[string]any{"createdAt": s.CreatedAt, "archived": s.Archived, "archivedAt": s.ArchivedAt, "agentUrl": s.AgentURL, "eventSource": s.EventSource, "name": s.Name, "since": s.Since}}
+	return map[string]any{"status": map[string]any{"createdAt": s.CreatedAt, "archived": s.Archived, "archivedAt": s.ArchivedAt, "agentUrl": s.AgentURL, "eventSource": s.EventSource, "name": s.Name, "since": s.Since, "rescanSeconds": s.RescanSeconds}}
 }
 
 func (r *replications) Add(ctx context.Context, id controlplane.ReplicationID, st controlplane.ReplicationStatus) error {
@@ -265,16 +271,16 @@ func unchanged(ctx context.Context, tx pgx.Tx, id controlplane.ReplicationID, st
 
 func sameStatus(ctx context.Context, tx pgx.Tx, id controlplane.ReplicationID, st controlplane.ReplicationStatus) (bool, error) {
 	var cur controlplane.ReplicationStatus
-	err := tx.QueryRow(ctx, `SELECT created_at, archived, archived_at, agent_url, event_source, name, since FROM replication_status
+	err := tx.QueryRow(ctx, `SELECT created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0) FROM replication_status
 		WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5`,
-		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).Scan(&cur.CreatedAt, &cur.Archived, &cur.ArchivedAt, &cur.AgentURL, &cur.EventSource, &cur.Name, &cur.Since)
+		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).Scan(&cur.CreatedAt, &cur.Archived, &cur.ArchivedAt, &cur.AgentURL, &cur.EventSource, &cur.Name, &cur.Since, &cur.RescanSeconds)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return cur.CreatedAt.Equal(st.CreatedAt) && cur.Archived == st.Archived && cur.AgentURL == st.AgentURL && cur.EventSource == st.EventSource && cur.Name == st.Name && sameTime(cur.Since, st.Since) &&
+	return cur.CreatedAt.Equal(st.CreatedAt) && cur.Archived == st.Archived && cur.AgentURL == st.AgentURL && cur.EventSource == st.EventSource && cur.Name == st.Name && sameTime(cur.Since, st.Since) && cur.RescanSeconds == st.RescanSeconds &&
 		(cur.ArchivedAt == nil) == (st.ArchivedAt == nil) && (cur.ArchivedAt == nil || cur.ArchivedAt.Equal(*st.ArchivedAt)), nil
 }
 
@@ -301,11 +307,11 @@ func (r *replications) PutStatus(ctx context.Context, id controlplane.Replicatio
 }
 
 func upsertStatus(ctx context.Context, tx pgx.Tx, id controlplane.ReplicationID, st controlplane.ReplicationStatus) error {
-	_, err := tx.Exec(ctx, `INSERT INTO replication_status (user_name, from_storage, to_storage, from_bucket, to_bucket, created_at, archived, archived_at, agent_url, event_source, name, since)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+	_, err := tx.Exec(ctx, `INSERT INTO replication_status (user_name, from_storage, to_storage, from_bucket, to_bucket, created_at, archived, archived_at, agent_url, event_source, name, since, rescan_seconds)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,0))
 		ON CONFLICT (user_name, from_storage, to_storage, from_bucket, to_bucket) DO UPDATE SET created_at=EXCLUDED.created_at, archived=EXCLUDED.archived,
-		archived_at=EXCLUDED.archived_at, agent_url=EXCLUDED.agent_url, event_source=EXCLUDED.event_source, name=EXCLUDED.name, since=EXCLUDED.since`,
-		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket, st.CreatedAt, st.Archived, st.ArchivedAt, st.AgentURL, st.EventSource, st.Name, st.Since)
+		archived_at=EXCLUDED.archived_at, agent_url=EXCLUDED.agent_url, event_source=EXCLUDED.event_source, name=EXCLUDED.name, since=EXCLUDED.since, rescan_seconds=EXCLUDED.rescan_seconds`,
+		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket, st.CreatedAt, st.Archived, st.ArchivedAt, st.AgentURL, st.EventSource, st.Name, st.Since, st.RescanSeconds)
 	return err
 }
 
@@ -339,8 +345,8 @@ func (r *replications) Archive(ctx context.Context, id controlplane.ReplicationI
 		}
 		var st controlplane.ReplicationStatus
 		err := tx.QueryRow(ctx, `UPDATE replication_status SET archived=true, archived_at=now() WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5
-			RETURNING created_at, archived, archived_at, agent_url, event_source, name, since`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).
-			Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since)
+			RETURNING created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0)`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).
+			Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since, &st.RescanSeconds)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: replication status %q", dom.ErrNotFound, id.String())
 		}
@@ -372,9 +378,9 @@ func (r *replications) DeleteStatus(ctx context.Context, id controlplane.Replica
 
 func (r *replications) GetStatus(ctx context.Context, id controlplane.ReplicationID) (controlplane.ReplicationStatus, error) {
 	var st controlplane.ReplicationStatus
-	err := r.rt.q().QueryRow(ctx, `SELECT created_at, archived, archived_at, agent_url, event_source, name, since FROM replication_status
+	err := r.rt.q().QueryRow(ctx, `SELECT created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0) FROM replication_status
 		WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5`,
-		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since)
+		id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket).Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since, &st.RescanSeconds)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return st, fmt.Errorf("%w: replication status %q", dom.ErrNotFound, id.String())
 	}
@@ -389,8 +395,8 @@ func (r *replications) SetName(ctx context.Context, id controlplane.ReplicationI
 		}
 		var st controlplane.ReplicationStatus
 		err := tx.QueryRow(ctx, `UPDATE replication_status SET name=$6 WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5
-			RETURNING created_at, archived, archived_at, agent_url, event_source, name, since`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket, name).
-			Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since)
+			RETURNING created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0)`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket, name).
+			Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since, &st.RescanSeconds)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: replication status %q", dom.ErrNotFound, id.String())
 		}
@@ -402,7 +408,7 @@ func (r *replications) SetName(ctx context.Context, id controlplane.ReplicationI
 }
 
 func (r *replications) ListStatuses(ctx context.Context, user string) (map[controlplane.ReplicationID]controlplane.ReplicationStatus, error) {
-	q := `SELECT user_name, from_storage, to_storage, from_bucket, to_bucket, created_at, archived, archived_at, agent_url, event_source, name, since FROM replication_status`
+	q := `SELECT user_name, from_storage, to_storage, from_bucket, to_bucket, created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0) FROM replication_status`
 	var args []any
 	if user != "" {
 		q += ` WHERE user_name=$1`
@@ -417,7 +423,7 @@ func (r *replications) ListStatuses(ctx context.Context, user string) (map[contr
 	for rows.Next() {
 		var id controlplane.ReplicationID
 		var st controlplane.ReplicationStatus
-		if err := rows.Scan(&id.User, &id.FromStorage, &id.ToStorage, &id.FromBucket, &id.ToBucket, &st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since); err != nil {
+		if err := rows.Scan(&id.User, &id.FromStorage, &id.ToStorage, &id.FromBucket, &id.ToBucket, &st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since, &st.RescanSeconds); err != nil {
 			return nil, err
 		}
 		res[id] = st
@@ -554,4 +560,24 @@ func (r *replications) ListGenerations(ctx context.Context) (map[controlplane.Re
 
 func sameTime(a, b *time.Time) bool {
 	return (a == nil) == (b == nil) && (a == nil || a.Equal(*b))
+}
+
+// SetRescanInterval changes only the rescan interval (0 turns it off); the projection and the audit row carry the whole status.
+func (r *replications) SetRescanInterval(ctx context.Context, id controlplane.ReplicationID, seconds int64) error {
+	return r.rt.write(ctx, func(tx pgx.Tx) error {
+		if err := lockScope(ctx, tx, id.User, id.FromBucket); err != nil {
+			return err
+		}
+		var st controlplane.ReplicationStatus
+		err := tx.QueryRow(ctx, `UPDATE replication_status SET rescan_seconds=NULLIF($6,0) WHERE user_name=$1 AND from_storage=$2 AND to_storage=$3 AND from_bucket=$4 AND to_bucket=$5
+			RETURNING created_at, archived, archived_at, agent_url, event_source, name, since, COALESCE(rescan_seconds,0)`, id.User, id.FromStorage, id.ToStorage, id.FromBucket, id.ToBucket, seconds).
+			Scan(&st.CreatedAt, &st.Archived, &st.ArchivedAt, &st.AgentURL, &st.EventSource, &st.Name, &st.Since, &st.RescanSeconds)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: replication status %q", dom.ErrNotFound, id.String())
+		}
+		if err != nil {
+			return err
+		}
+		return record(ctx, tx, mutation{action: "rescan_interval", objectType: "replication_status", objectID: id.String(), after: replDoc(id, statusDoc(st)), ops: statusOps(id, st), key: replScopeKey(id.User, id.FromBucket)})
+	})
 }
