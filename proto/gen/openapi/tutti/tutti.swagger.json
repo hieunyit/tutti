@@ -584,6 +584,76 @@
         ]
       }
     },
+    "/replication/rescan": {
+      "put": {
+        "summary": "Sync now: starts a rescan of the source bucket immediately. Fails with\nFailedPrecondition when a rescan is already running, the replication is\npaused or its initial copy is not finished.",
+        "operationId": "Policy_RescanReplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Represents user-level and bucket-level replication source and destination\ntargets.\n- User-level replicates all existing and future buckets of the user.\n- Bucket-level  replicates a single bucket.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiReplicationID"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
+    "/replication/rescan-interval": {
+      "put": {
+        "summary": "Changes how often the source is rescanned (see\nReplicationOpts.rescan_interval). Unset or 0 turns it off.",
+        "operationId": "Policy_UpdateReplicationRescanInterval",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Changes the rescan interval of a replication.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiUpdateReplicationRescanIntervalRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
     "/replication/resume": {
       "put": {
         "summary": "Resumes given replication",
@@ -4769,6 +4839,33 @@
           "type": "string",
           "format": "date-time",
           "description": "Cutoff of the initial copy (ReplicationOpts.since); unset when the whole\nsource is copied."
+        },
+        "rescanInterval": {
+          "type": "string",
+          "description": "Periodic rescan of the source (ReplicationOpts.rescan_interval); unset\nwhen off."
+        },
+        "lastRescanAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "START time of the last completed rescan."
+        },
+        "nextRescanAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the next rescan is due; unset when rescan is off, the replication is\npaused or its initial copy is not done."
+        },
+        "rescanRunning": {
+          "type": "boolean",
+          "description": "true while a rescan is running."
+        },
+        "lastRescanObjects": {
+          "type": "string",
+          "format": "int64",
+          "description": "Objects copied (enqueued) by the last completed rescan."
+        },
+        "lastRescanError": {
+          "type": "string",
+          "description": "Error of the last rescan attempt; empty when it succeeded."
         }
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
@@ -4896,6 +4993,10 @@
           "type": "string",
           "format": "date-time",
           "description": "OPTIONAL: copy only objects last modified at or after this time (like\nrclone --max-age). Applies to the initial copy only: older source objects\nare skipped at listing time and never copied by this replication (they are\nnot deleted at the destination). Live events are not filtered. Unset copies\neverything. Must not be in the future nor earlier than year 2000. Clients\nconvert relative input (\"30d\") to an absolute time before sending."
+        },
+        "rescanInterval": {
+          "type": "string",
+          "description": "OPTIONAL: periodically re-list the source bucket and copy objects that are\nmissing at the destination (like a recurring rclone copy --max-age). Use it\nwhen something writes to the source bucket directly, so no event reaches\nTutti. Unset or 0 turns it off. Allowed range 15m..24h, else InvalidArg.\nJSON form is a string like \"3600s\"."
         }
       },
       "description": "Additional replication options for bucket and user-level replications."
@@ -6412,6 +6513,20 @@
         }
       },
       "description": "Renames a replication (display label only)."
+    },
+    "tuttiUpdateReplicationRescanIntervalRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/tuttiReplicationID",
+          "description": "REQUIRED: Replication to change."
+        },
+        "rescanInterval": {
+          "type": "string",
+          "description": "Unset or 0 turns rescan off; else 15m..24h."
+        }
+      },
+      "description": "Changes the rescan interval of a replication."
     },
     "tuttiUpdateRoutingRequest": {
       "type": "object",

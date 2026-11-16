@@ -62,6 +62,12 @@ http:
     - selector: tutti.Policy.UpdateReplicationName
       put: /replication/rename
       body: "*"
+    - selector: tutti.Policy.RescanReplication
+      put: /replication/rescan
+      body: "*"
+    - selector: tutti.Policy.UpdateReplicationRescanInterval
+      put: /replication/rescan-interval
+      body: "*"
     - selector: tutti.Policy.SwitchWithZeroDowntime
       post: /replication/switch/zero-downtime
       body: "*"

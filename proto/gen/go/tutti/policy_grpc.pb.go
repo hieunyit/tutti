@@ -20,27 +20,29 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Policy_AvailableBuckets_FullMethodName       = "/tutti.Policy/AvailableBuckets"
-	Policy_AddReplication_FullMethodName         = "/tutti.Policy/AddReplication"
-	Policy_GetReplication_FullMethodName         = "/tutti.Policy/GetReplication"
-	Policy_GetReplicationActivity_FullMethodName = "/tutti.Policy/GetReplicationActivity"
-	Policy_ListReplications_FullMethodName       = "/tutti.Policy/ListReplications"
-	Policy_StreamReplication_FullMethodName      = "/tutti.Policy/StreamReplication"
-	Policy_PauseReplication_FullMethodName       = "/tutti.Policy/PauseReplication"
-	Policy_ResumeReplication_FullMethodName      = "/tutti.Policy/ResumeReplication"
-	Policy_DeleteReplication_FullMethodName      = "/tutti.Policy/DeleteReplication"
-	Policy_UpdateReplicationName_FullMethodName  = "/tutti.Policy/UpdateReplicationName"
-	Policy_SwitchWithZeroDowntime_FullMethodName = "/tutti.Policy/SwitchWithZeroDowntime"
-	Policy_SwitchWithDowntime_FullMethodName     = "/tutti.Policy/SwitchWithDowntime"
-	Policy_DeleteSwitch_FullMethodName           = "/tutti.Policy/DeleteSwitch"
-	Policy_GetSwitchStatus_FullMethodName        = "/tutti.Policy/GetSwitchStatus"
-	Policy_ListRoutings_FullMethodName           = "/tutti.Policy/ListRoutings"
-	Policy_AddRouting_FullMethodName             = "/tutti.Policy/AddRouting"
-	Policy_UpdateRouting_FullMethodName          = "/tutti.Policy/UpdateRouting"
-	Policy_DeleteRouting_FullMethodName          = "/tutti.Policy/DeleteRouting"
-	Policy_BlockRouting_FullMethodName           = "/tutti.Policy/BlockRouting"
-	Policy_UnblockRouting_FullMethodName         = "/tutti.Policy/UnblockRouting"
-	Policy_TestProxy_FullMethodName              = "/tutti.Policy/TestProxy"
+	Policy_AvailableBuckets_FullMethodName                = "/tutti.Policy/AvailableBuckets"
+	Policy_AddReplication_FullMethodName                  = "/tutti.Policy/AddReplication"
+	Policy_GetReplication_FullMethodName                  = "/tutti.Policy/GetReplication"
+	Policy_GetReplicationActivity_FullMethodName          = "/tutti.Policy/GetReplicationActivity"
+	Policy_ListReplications_FullMethodName                = "/tutti.Policy/ListReplications"
+	Policy_StreamReplication_FullMethodName               = "/tutti.Policy/StreamReplication"
+	Policy_PauseReplication_FullMethodName                = "/tutti.Policy/PauseReplication"
+	Policy_ResumeReplication_FullMethodName               = "/tutti.Policy/ResumeReplication"
+	Policy_DeleteReplication_FullMethodName               = "/tutti.Policy/DeleteReplication"
+	Policy_UpdateReplicationName_FullMethodName           = "/tutti.Policy/UpdateReplicationName"
+	Policy_RescanReplication_FullMethodName               = "/tutti.Policy/RescanReplication"
+	Policy_UpdateReplicationRescanInterval_FullMethodName = "/tutti.Policy/UpdateReplicationRescanInterval"
+	Policy_SwitchWithZeroDowntime_FullMethodName          = "/tutti.Policy/SwitchWithZeroDowntime"
+	Policy_SwitchWithDowntime_FullMethodName              = "/tutti.Policy/SwitchWithDowntime"
+	Policy_DeleteSwitch_FullMethodName                    = "/tutti.Policy/DeleteSwitch"
+	Policy_GetSwitchStatus_FullMethodName                 = "/tutti.Policy/GetSwitchStatus"
+	Policy_ListRoutings_FullMethodName                    = "/tutti.Policy/ListRoutings"
+	Policy_AddRouting_FullMethodName                      = "/tutti.Policy/AddRouting"
+	Policy_UpdateRouting_FullMethodName                   = "/tutti.Policy/UpdateRouting"
+	Policy_DeleteRouting_FullMethodName                   = "/tutti.Policy/DeleteRouting"
+	Policy_BlockRouting_FullMethodName                    = "/tutti.Policy/BlockRouting"
+	Policy_UnblockRouting_FullMethodName                  = "/tutti.Policy/UnblockRouting"
+	Policy_TestProxy_FullMethodName                       = "/tutti.Policy/TestProxy"
 )
 
 // PolicyClient is the client API for Policy service.
@@ -72,6 +74,13 @@ type PolicyClient interface {
 	// Changes the display name of given replication. The name is a label only:
 	// it does not affect replication identity, progress or routing.
 	UpdateReplicationName(ctx context.Context, in *UpdateReplicationNameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Sync now: starts a rescan of the source bucket immediately. Fails with
+	// FailedPrecondition when a rescan is already running, the replication is
+	// paused or its initial copy is not finished.
+	RescanReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Changes how often the source is rescanned (see
+	// ReplicationOpts.rescan_interval). Unset or 0 turns it off.
+	UpdateReplicationRescanInterval(ctx context.Context, in *UpdateReplicationRescanIntervalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -259,6 +268,26 @@ func (c *policyClient) UpdateReplicationName(ctx context.Context, in *UpdateRepl
 	return out, nil
 }
 
+func (c *policyClient) RescanReplication(ctx context.Context, in *ReplicationID, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_RescanReplication_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *policyClient) UpdateReplicationRescanInterval(ctx context.Context, in *UpdateReplicationRescanIntervalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_UpdateReplicationRescanInterval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *policyClient) SwitchWithZeroDowntime(ctx context.Context, in *SwitchZeroDowntimeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -398,6 +427,13 @@ type PolicyServer interface {
 	// Changes the display name of given replication. The name is a label only:
 	// it does not affect replication identity, progress or routing.
 	UpdateReplicationName(context.Context, *UpdateReplicationNameRequest) (*emptypb.Empty, error)
+	// Sync now: starts a rescan of the source bucket immediately. Fails with
+	// FailedPrecondition when a rescan is already running, the replication is
+	// paused or its initial copy is not finished.
+	RescanReplication(context.Context, *ReplicationID) (*emptypb.Empty, error)
+	// Changes how often the source is rescanned (see
+	// ReplicationOpts.rescan_interval). Unset or 0 turns it off.
+	UpdateReplicationRescanInterval(context.Context, *UpdateReplicationRescanIntervalRequest) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -504,6 +540,12 @@ func (UnimplementedPolicyServer) DeleteReplication(context.Context, *Replication
 }
 func (UnimplementedPolicyServer) UpdateReplicationName(context.Context, *UpdateReplicationNameRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateReplicationName not implemented")
+}
+func (UnimplementedPolicyServer) RescanReplication(context.Context, *ReplicationID) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RescanReplication not implemented")
+}
+func (UnimplementedPolicyServer) UpdateReplicationRescanInterval(context.Context, *UpdateReplicationRescanIntervalRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateReplicationRescanInterval not implemented")
 }
 func (UnimplementedPolicyServer) SwitchWithZeroDowntime(context.Context, *SwitchZeroDowntimeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SwitchWithZeroDowntime not implemented")
@@ -727,6 +769,42 @@ func _Policy_UpdateReplicationName_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PolicyServer).UpdateReplicationName(ctx, req.(*UpdateReplicationNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_RescanReplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicationID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).RescanReplication(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_RescanReplication_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).RescanReplication(ctx, req.(*ReplicationID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_UpdateReplicationRescanInterval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateReplicationRescanIntervalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).UpdateReplicationRescanInterval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_UpdateReplicationRescanInterval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).UpdateReplicationRescanInterval(ctx, req.(*UpdateReplicationRescanIntervalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -971,6 +1049,14 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateReplicationName",
 			Handler:    _Policy_UpdateReplicationName_Handler,
+		},
+		{
+			MethodName: "RescanReplication",
+			Handler:    _Policy_RescanReplication_Handler,
+		},
+		{
+			MethodName: "UpdateReplicationRescanInterval",
+			Handler:    _Policy_UpdateReplicationRescanInterval_Handler,
 		},
 		{
 			MethodName: "SwitchWithZeroDowntime",

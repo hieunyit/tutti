@@ -44,6 +44,14 @@ service Policy {
   // it does not affect replication identity, progress or routing.
   rpc UpdateReplicationName(UpdateReplicationNameRequest)
       returns (google.protobuf.Empty);
+  // Sync now: starts a rescan of the source bucket immediately. Fails with
+  // FailedPrecondition when a rescan is already running, the replication is
+  // paused or its initial copy is not finished.
+  rpc RescanReplication(ReplicationID) returns (google.protobuf.Empty);
+  // Changes how often the source is rescanned (see
+  // ReplicationOpts.rescan_interval). Unset or 0 turns it off.
+  rpc UpdateReplicationRescanInterval(UpdateReplicationRescanIntervalRequest)
+      returns (google.protobuf.Empty);
 
   // Switches source<->destination replication targets without downtime.
   // Zero-downtime switch will take effect immediately on tutti proxy:
@@ -169,6 +177,14 @@ message UpdateReplicationNameRequest {
   string name = 2;
 }
 
+// Changes the rescan interval of a replication.
+message UpdateReplicationRescanIntervalRequest {
+  // REQUIRED: Replication to change.
+  ReplicationID id = 1;
+  // Unset or 0 turns rescan off; else 15m..24h.
+  google.protobuf.Duration rescan_interval = 2;
+}
+
 message GetReplicationActivityRequest {
   // REQUIRED: Replication to read.
   ReplicationID id = 1;
@@ -250,6 +266,12 @@ message ReplicationOpts {
   // everything. Must not be in the future nor earlier than year 2000. Clients
   // convert relative input ("30d") to an absolute time before sending.
   google.protobuf.Timestamp since = 3;
+  // OPTIONAL: periodically re-list the source bucket and copy objects that are
+  // missing at the destination (like a recurring rclone copy --max-age). Use it
+  // when something writes to the source bucket directly, so no event reaches
+  // Tutti. Unset or 0 turns it off. Allowed range 15m..24h, else InvalidArg.
+  // JSON form is a string like "3600s".
+  google.protobuf.Duration rescan_interval = 4;
 
   // TODO: implement for https://github.com/clyso/chorus/issues/141
   // message OriginToMeta {
@@ -386,6 +408,21 @@ message Replication {
   // Cutoff of the initial copy (ReplicationOpts.since); unset when the whole
   // source is copied.
   google.protobuf.Timestamp since = 23;
+
+  // Periodic rescan of the source (ReplicationOpts.rescan_interval); unset
+  // when off.
+  google.protobuf.Duration rescan_interval = 24;
+  // START time of the last completed rescan.
+  google.protobuf.Timestamp last_rescan_at = 25;
+  // When the next rescan is due; unset when rescan is off, the replication is
+  // paused or its initial copy is not done.
+  google.protobuf.Timestamp next_rescan_at = 26;
+  // true while a rescan is running.
+  bool rescan_running = 27;
+  // Objects copied (enqueued) by the last completed rescan.
+  int64 last_rescan_objects = 28;
+  // Error of the last rescan attempt; empty when it succeeded.
+  string last_rescan_error = 29;
 }
 
 // Request list of bucket available for replication for given user and from/to
