@@ -86,11 +86,23 @@ function formatShort(
 /** the server's readable message, never the raw gRPC code */
 function errorText(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
-    const message = (error.response?.data as { message?: unknown } | undefined)
-      ?.message;
+    // the backend puts the readable reason in the ErrorInfo detail and only a
+    // bare code name ("FailedPrecondition") in `message`
+    const data = error.response?.data as
+      | { message?: unknown; details?: unknown }
+      | undefined;
+    const reason = Array.isArray(data?.details)
+      ? ErrorHelper.getReason(error)
+      : '';
+
+    if (reason) return reason;
+
+    const message = data?.message;
 
     if (typeof message === 'string' && message) {
-      return ErrorHelper.stripCode(message);
+      const text = ErrorHelper.stripCode(message);
+
+      if (text !== message || /\s/.test(text)) return text;
     }
   }
 

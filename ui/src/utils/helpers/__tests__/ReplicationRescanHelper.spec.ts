@@ -71,4 +71,35 @@ describe('ReplicationRescanHelper', () => {
     expect(H.errorText(error, 'fallback')).toBe('scan already running');
     expect(H.errorText(new Error('boom'), 'fallback')).toBe('fallback');
   });
+
+  it('prefers the ErrorInfo reason over the bare code in message', () => {
+    const error = new AxiosError('x', '400', undefined, undefined, {
+      status: 400,
+      data: {
+        code: 9,
+        message: 'FailedPrecondition',
+        details: [
+          { '@type': 'type.googleapis.com/google.rpc.RequestInfo' },
+          {
+            '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+            reason:
+              'FailedPrecondition: replication is paused, resume it before starting a sync',
+          },
+        ],
+      },
+    } as never);
+
+    expect(H.errorText(error, 'fallback')).toBe(
+      'replication is paused, resume it before starting a sync',
+    );
+  });
+
+  it('falls back when only a bare code is known', () => {
+    const error = new AxiosError('x', '400', undefined, undefined, {
+      status: 400,
+      data: { code: 9, message: 'FailedPrecondition', details: [] },
+    } as never);
+
+    expect(H.errorText(error, 'fallback')).toBe('fallback');
+  });
 });

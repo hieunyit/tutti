@@ -234,8 +234,9 @@
       gap: var(--tt-space-2);
     }
 
-    &__edit :deep(.n-select) {
+    &__edit :deep(.c-select) {
       width: 200px;
+      max-width: 100%;
     }
 
     &__hint {
