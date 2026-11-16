@@ -30,6 +30,10 @@ import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplic
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
+import {
+  ReplicationSinceHelper,
+  type SinceChoice,
+} from '@/utils/helpers/ReplicationSinceHelper';
 
 interface TuttiAddReplicationState {
   isLoading: boolean;
@@ -51,6 +55,8 @@ interface TuttiAddReplicationState {
   selectedBuckets: string[];
   /** optional display name applied to every replication created */
   name: string;
+  /** which objects to copy: all, the last N days or hours, or since a date */
+  since: SinceChoice;
   isSubmitting: boolean;
 }
 
@@ -73,6 +79,7 @@ function getInitialState(): TuttiAddReplicationState {
     createError: '',
     selectedBuckets: [],
     name: '',
+    since: ReplicationSinceHelper.defaultChoice(),
     isSubmitting: false,
   };
 }
@@ -217,9 +224,12 @@ export const useTuttiAddReplicationStore = defineStore(
         isForAllBuckets,
       } = state;
       const name = ReplicationNameHelper.normalize(state.name);
+      // relative values count back from this click, not from when they were typed
+      const since = ReplicationSinceHelper.resolve(state.since);
 
       if (
         ReplicationNameHelper.getProblem(name) ||
+        ReplicationSinceHelper.getProblem(state.since) ||
         !selectedToStorage ||
         !selectedFromStorage ||
         (!selectedBuckets.length && !isForAllBuckets) ||
@@ -254,6 +264,7 @@ export const useTuttiAddReplicationStore = defineStore(
           await TuttiCoreService.addReplication({
             id: replicationId,
             ...(name ? { name } : {}),
+            ...(since ? { opts: { since } } : {}),
           });
           successList.push(replicationId);
         } catch (error: unknown) {

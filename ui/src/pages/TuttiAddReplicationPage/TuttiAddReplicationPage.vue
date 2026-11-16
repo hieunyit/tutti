@@ -36,6 +36,10 @@
   import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
   import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
+  import {
+    ReplicationSinceHelper,
+    type SinceChoice,
+  } from '@/utils/helpers/ReplicationSinceHelper';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
 
   const DRAFT_KEY = 'add-replication';
@@ -46,6 +50,7 @@
     buckets: string[];
     all: boolean;
     name: string;
+    since?: SinceChoice;
   }
 
   const { t } = useI18n({ messages: i18nAddReplication });
@@ -60,6 +65,7 @@
     selectedBuckets,
     isForAllBuckets,
     name,
+    since,
     isSubmitting,
     bucketsRequestOptions,
     createError,
@@ -82,6 +88,7 @@
       buckets: [],
       all: false,
       name: '',
+      since: ReplicationSinceHelper.defaultChoice(),
     }),
     snapshot: () => ({
       from: selectedFromStorage.value?.name ?? null,
@@ -89,6 +96,7 @@
       buckets: [...selectedBuckets.value],
       all: isForAllBuckets.value,
       name: name.value,
+      since: { ...since.value },
     }),
     apply: (draft) => {
       const from = storages.value.find((s) => s.name === draft.from);
@@ -100,6 +108,9 @@
 
       isForAllBuckets.value = draft.all;
       name.value = draft.name ?? '';
+      since.value = draft.since
+        ? { ...ReplicationSinceHelper.defaultChoice(), ...draft.since }
+        : ReplicationSinceHelper.defaultChoice();
 
       if (from && to && draft.buckets.length) {
         // marks the bucket list as requested, so opening step 2 keeps the choice
@@ -131,7 +142,9 @@
     {
       key: 'review',
       label: t('stepReview'),
-      valid: ReplicationNameHelper.getProblem(name.value) === null,
+      valid:
+        ReplicationNameHelper.getProblem(name.value) === null &&
+        ReplicationSinceHelper.getProblem(since.value) === null,
     },
   ]);
 

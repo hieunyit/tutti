@@ -84,6 +84,25 @@ describe('ReplicationNameCell', () => {
     );
   });
 
+  it('shows a quiet Since line only when the replication has a cutoff', () => {
+    const withSince = mountCell({
+      ...(named as object),
+      since: '2026-10-17T14:03:00Z',
+    });
+
+    expect(withSince.find('.replication-name-cell__since').text()).toBe(
+      'Since 17 Oct 2026',
+    );
+    expect(
+      mountCell(named).find('.replication-name-cell__since').exists(),
+    ).toBe(false);
+    expect(
+      mountCell({ ...(unnamed as object), since: '0001-01-01T00:00:00Z' })
+        .find('.replication-name-cell__since')
+        .exists(),
+    ).toBe(false);
+  });
+
   it('saves the trimmed name on Enter', async () => {
     const rename = vi.fn().mockResolvedValue(undefined);
     const wrapper = mountCell(named, rename);

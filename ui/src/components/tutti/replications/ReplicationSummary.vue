@@ -23,6 +23,8 @@
   import { useI18n } from 'vue-i18n';
   import { NProgress } from 'naive-ui';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
+  import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
+  import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
   import i18nReplicationInit from '@/components/tutti/replications/i18nReplicationInit';
   import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
   import { formatDateTime } from '@/utils/helpers/DateTimeHelper';
@@ -34,7 +36,11 @@
   const props = defineProps<{ replication: TuttiReplication }>();
 
   const { t, locale } = useI18n({
-    messages: mergeMessages(i18nReplications, i18nReplicationInit),
+    messages: mergeMessages(
+      i18nReplications,
+      i18nReplicationInit,
+      i18nReplicationSince,
+    ),
   });
 
   const progress = computed(() => H.fromReplication(props.replication));
@@ -56,6 +62,15 @@
       ),
     }),
   );
+  const sinceText = computed(() => {
+    const date = ReplicationSinceHelper.parseStored(props.replication.since);
+
+    return date
+      ? t('detailSinceValue', {
+          date: ReplicationSinceHelper.formatMoment(date, String(locale.value)),
+        })
+      : '';
+  });
   const lag = computed(() =>
     props.replication.eventLag
       ? GeneralHelper.formatDurationSeconds(props.replication.eventLag)
@@ -103,6 +118,13 @@
         }}
         <template v-if="lag && status.behind > 0">· {{ lag }}</template>
       </dd>
+    </div>
+    <div
+      v-if="sinceText"
+      class="replication-summary__row"
+    >
+      <dt>{{ t('detailSince') }}</dt>
+      <dd>{{ sinceText }}</dd>
     </div>
     <div class="replication-summary__row">
       <dt>{{ t('createdAt') }}</dt>

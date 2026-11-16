@@ -27,6 +27,9 @@
   import type { RouteLocationRaw } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
+  import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
+  import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
   import {
     REPLICATION_NAME_MAX_LENGTH,
     ReplicationNameHelper,
@@ -41,7 +44,9 @@
     detailTo?: RouteLocationRaw;
   }>();
 
-  const { t } = useI18n({ messages: i18nReplicationName });
+  const { t, locale } = useI18n({
+    messages: mergeMessages(i18nReplicationName, i18nReplicationSince),
+  });
 
   const isEditing = ref(false);
   const isSaving = ref(false);
@@ -55,6 +60,15 @@
   const secondary = computed(() =>
     ReplicationNameHelper.getSecondaryLabel(props.replication, t('allBuckets')),
   );
+  const sinceText = computed(() => {
+    const date = ReplicationSinceHelper.parseStored(props.replication.since);
+
+    return date
+      ? t('listSince', {
+          date: ReplicationSinceHelper.formatDay(date, String(locale.value)),
+        })
+      : '';
+  });
   const problem = computed(() => ReplicationNameHelper.getProblem(draft.value));
   const error = computed(() => {
     if (saveError.value) return saveError.value;
@@ -175,6 +189,12 @@
         class="replication-name-cell__secondary"
         :title="secondary"
         >{{ secondary }}</span
+      >
+      <span
+        v-if="sinceText"
+        class="replication-name-cell__secondary replication-name-cell__since"
+        :title="sinceText"
+        >{{ sinceText }}</span
       >
     </template>
   </div>

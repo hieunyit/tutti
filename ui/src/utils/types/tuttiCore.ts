@@ -187,15 +187,23 @@ export interface TuttiReplication {
   replicationType: ReplicationType;
   /** optional display label; empty or omitted when the replication is unnamed */
   name?: string;
+  /** RFC3339 cutoff of the initial copy; absent when the whole source is copied */
+  since?: string;
 }
 
 export interface TuttiReplicationListResponse {
   replications: TuttiReplication[];
 }
 
+export interface TuttiAddReplicationOpts {
+  agentUrl?: string;
+  /** RFC3339 cutoff: only objects modified at or after it are copied */
+  since?: string;
+}
+
 export interface TuttiAddReplicationsRequest {
   id: TuttiReplicationId;
-  opts?: TuttiReplicationOpts;
+  opts?: TuttiAddReplicationOpts;
   /** optional display name, max 64 characters */
   name?: string;
 }

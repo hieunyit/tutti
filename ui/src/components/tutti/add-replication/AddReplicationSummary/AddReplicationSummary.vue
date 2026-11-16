@@ -22,19 +22,41 @@
   import { useI18n } from 'vue-i18n';
   import { storeToRefs } from 'pinia';
   import i18nAddReplication from '../i18nAddReplication';
+  import ReplicationSinceField from '../ReplicationSinceField.vue';
+  import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
+  import { mergeMessages } from '@/utils/helpers/mergeMessages';
+  import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
   import ReplicationNameField from '@/components/tutti/replications/ReplicationNameField/ReplicationNameField.vue';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
 
-  const { t } = useI18n({ messages: i18nAddReplication });
+  const { t, locale } = useI18n({
+    messages: mergeMessages(i18nAddReplication, i18nReplicationSince),
+  });
   const {
     selectedFromStorage,
     selectedToStorage,
     selectedBuckets,
     isForAllBuckets,
     name,
+    since,
   } = storeToRefs(useTuttiAddReplicationStore());
 
   const buckets = computed(() => [...selectedBuckets.value].sort());
+  const objectsText = computed(() => {
+    const moment =
+      ReplicationSinceHelper.getProblem(since.value) === null
+        ? ReplicationSinceHelper.momentOf(since.value, Date.now())
+        : null;
+
+    return moment === null
+      ? t('reviewObjectsAll')
+      : t('reviewObjectsSince', {
+          date: ReplicationSinceHelper.formatMoment(
+            moment,
+            String(locale.value),
+          ),
+        });
+  });
 </script>
 
 <template>
@@ -62,8 +84,13 @@
           </ul>
         </dd>
       </div>
+      <div class="review__row">
+        <dt>{{ t('reviewObjects') }}</dt>
+        <dd>{{ objectsText }}</dd>
+      </div>
     </dl>
 
+    <ReplicationSinceField v-model="since" />
     <ReplicationNameField v-model="name" />
 
     <p class="review__note">{{ t('reviewNote') }}</p>

@@ -117,3 +117,54 @@ describe('createReplication partial failure', () => {
     expect(push).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('createReplication since', () => {
+  it('sends no opts for all objects', async () => {
+    add.mockResolvedValue(undefined as never);
+    const store = await readyStore();
+
+    store.selectedBuckets = ['b1'];
+    await store.createReplication();
+
+    expect(add.mock.calls[0]?.[0]).not.toHaveProperty('opts');
+  });
+
+  it('sends an absolute cutoff computed at create time, the same for every bucket', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-17T14:03:27Z'));
+    add.mockResolvedValue(undefined as never);
+    const store = await readyStore();
+
+    store.selectedBuckets = ['b1', 'b2'];
+    store.since = { mode: 'recent', amount: 30, unit: 'days', date: null };
+    vi.setSystemTime(new Date('2026-10-17T15:00:00Z'));
+    await store.createReplication();
+    vi.useRealTimers();
+
+    expect(add.mock.calls.map(([req]) => req.opts)).toEqual([
+      { since: '2026-09-17T15:00:00Z' },
+      { since: '2026-09-17T15:00:00Z' },
+    ]);
+  });
+
+  it('refuses to create with a future date and keeps the choice after a failure', async () => {
+    const store = await readyStore();
+
+    store.selectedBuckets = ['b1'];
+    store.since = {
+      mode: 'date',
+      amount: 30,
+      unit: 'days',
+      date: Date.now() + 86_400_000,
+    };
+
+    expect(await store.createReplication()).toBe(false);
+    expect(add).not.toHaveBeenCalled();
+
+    add.mockRejectedValue(rejection('x'));
+    store.since = { mode: 'recent', amount: 7, unit: 'days', date: null };
+    await store.createReplication();
+
+    expect(store.since).toMatchObject({ mode: 'recent', amount: 7 });
+  });
+});
