@@ -46,7 +46,7 @@ func StorageRow(in *pb.Storage) string {
 }
 
 func ReplHeader() string {
-	return "ID\tNAME\tPROGRESS\tOBJECTS\tINIT_BYTES\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
+	return "ID\tNAME\tSINCE\tPROGRESS\tOBJECTS\tINIT_BYTES\tEVENTS\tLAG\tPAUSED\tAGE\tARCHIEVED\tHAS_SWITCH"
 }
 
 func ReplRow(in *pb.Replication) string {
@@ -62,9 +62,10 @@ func ReplRow(in *pb.Replication) string {
 	if name == "" {
 		name = "-"
 	}
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%v\t%s\t%v\t%s",
 		id,
 		name,
+		SinceToStr(in.Since),
 		ToPercentage(p),
 		objects,
 		InitBytesToStr(in),
@@ -199,6 +200,15 @@ func ByteCountIEC(b int64) string {
 	}
 	return fmt.Sprintf("%.1f %ciB",
 		float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// SinceToStr renders a replication cutoff as a short local date; empty when the
+// whole source is copied.
+func SinceToStr(d *timestamppb.Timestamp) string {
+	if d == nil || d.AsTime().Year() < 2000 {
+		return ""
+	}
+	return d.AsTime().Local().Format("2006-01-02")
 }
 
 func DateToAge(d *timestamppb.Timestamp) string {

@@ -7,11 +7,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
@@ -92,6 +94,20 @@ func TestReplRow_Name(t *testing.T) {
 	r.Equal("prod to dr", row("prod to dr")[1])
 	r.Equal("-", row("")[1])
 	r.Len(row("x"), len(strings.Split(ReplHeader(), "\t")))
+}
+
+func TestReplRow_Since(t *testing.T) {
+	r := require.New(t)
+	r.Contains(ReplHeader(), "\tSINCE\t")
+	row := func(in *pb.Replication) []string {
+		in.Id = &pb.ReplicationID{FromStorage: "A", ToStorage: "B"}
+		return strings.Split(ReplRow(in), "\t")
+	}
+	r.Equal("", row(&pb.Replication{})[2])
+	r.Equal("", row(&pb.Replication{Since: timestamppb.New(time.Time{})})[2])
+	ts := time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)
+	r.Equal(ts.Local().Format("2006-01-02"), row(&pb.Replication{Since: timestamppb.New(ts)})[2])
+	r.Len(row(&pb.Replication{Since: timestamppb.New(ts)}), len(strings.Split(ReplHeader(), "\t")))
 }
 
 func TestInitBytesToStr(t *testing.T) {

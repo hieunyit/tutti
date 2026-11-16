@@ -61,6 +61,9 @@ tuttictl repl add -f <from storage> -t <to storage>
 # Bucket-level replication
 tuttictl repl add -u <user> -b <bucket> -f <from storage> -t <to storage>
 
+# Copy only recent objects: 30d, 12h, 2026-10-17 (local midnight) or RFC3339
+tuttictl repl add -f <from storage> -t <to storage> --since 30d
+
 # See all repl subcommands
 tuttictl repl --help
 ```

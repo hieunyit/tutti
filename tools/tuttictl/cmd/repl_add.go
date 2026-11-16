@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 	"github.com/hieunyit/tutti/tools/tuttictl/internal/api"
@@ -36,6 +38,7 @@ var (
 	raFromBucket  string
 	raToBucket    string
 	raName        string
+	raSince       string
 )
 
 // addCmd represents the add command
@@ -57,6 +60,11 @@ Bucket-level replication (different destination bucket name):
 Optional display name (a label only, max 64 characters, not unique):
   tuttictl repl add --from main --to follower --user admin --name "prod to dr"
 
+Copy only recent objects instead of the whole bucket (objects last modified at or after the cutoff).
+--since takes 30d, 12h, a date (2026-10-17 = start of that day in your local timezone) or an
+RFC3339 time (2026-10-17T14:03:00Z). It is converted to an absolute UTC timestamp before sending:
+  tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --since 30d
+
 S3 notification event source (worker creates SNS topic + bucket notification):
   tuttictl repl add --from main --to follower --user admin --from-bucket bucket1 --event-source s3-notification
 
@@ -71,6 +79,11 @@ External webhook event source (e.g. Swift access log exporter):
 		}
 		if err := checkReplName(raName); err != nil {
 			return err
+		}
+		if raSince != "" {
+			if _, err := parseSince(raSince, time.Now(), time.Local); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -94,6 +107,18 @@ External webhook event source (e.g. Swift access log exporter):
 			}
 		}
 
+		if raSince != "" {
+			// converted when the command runs, so "30d" means 30 days before this moment
+			since, err := parseSince(raSince, time.Now(), time.Local)
+			if err != nil {
+				logrus.WithError(err).Fatal()
+			}
+			if req.Opts == nil {
+				req.Opts = &pb.ReplicationOpts{}
+			}
+			req.Opts.Since = timestamppb.New(since)
+		}
+
 		_, err := client.AddReplication(ctx, req)
 		if err != nil {
 			api.PrintGrpcError(err)
@@ -109,6 +134,7 @@ func init() {
 	addCmd.Flags().StringVar(&raEventSource, "event-source", "", "event source: proxy, s3-notification, webhook")
 	addCmd.Flags().StringVarP(&raFromBucket, "from-bucket", "b", "", "source bucket name; omit for user-level policies")
 	addCmd.Flags().StringVar(&raName, "name", "", "optional display name (max 64 characters)")
+	addCmd.Flags().StringVar(&raSince, "since", "", "copy only objects modified since: 30d, 12h, 2026-10-17 (local midnight) or RFC3339; default all objects")
 	addCmd.Flags().StringVar(&raToBucket, "to-bucket", "", "destination bucket name; defaults to from-bucket for bucket-level policies")
 
 	if err := addCmd.MarkFlagRequired("from"); err != nil {
