@@ -140,8 +140,9 @@ func (r *S3CopySvc) GetVersionInfo(ctx context.Context, user string, to File) ([
 		}
 
 		info := entity.ObjectVersionInfo{
-			Version: object.VersionID,
-			Size:    uint64(object.Size),
+			Version:      object.VersionID,
+			Size:         uint64(object.Size),
+			LastModified: object.LastModified,
 		}
 
 		result = append(result, info)

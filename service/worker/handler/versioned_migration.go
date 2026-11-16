@@ -50,12 +50,16 @@ func (s *svc) HandleObjectVersionList(ctx context.Context, t *asynq.Task) error 
 	objectVersionID := entity.NewVersionedObjectID(listVersionsPayload.ID.FromStorage(), fromBucket, listVersionsPayload.Prefix)
 	replicationID := entity.NewBucketReplicationPolicy(user, listVersionsPayload.ID.FromStorage(), fromBucket, listVersionsPayload.ID.ToStorage(), toBucket)
 
-	if err := s.versionedSvc.ListVersions(ctx, objectVersionID, replicationID, listVersionsPayload.Generation); err != nil {
+	since, err := s.replicationSince(ctx, listVersionsPayload.ID)
+	if err != nil {
+		return err
+	}
+	if err := s.versionedSvc.ListVersionsSince(ctx, objectVersionID, replicationID, since, listVersionsPayload.Generation); err != nil {
 		return fmt.Errorf("unable to list obejct versions: %w", err)
 	}
 
 	migratePayload := tasks.MigrateVersionedObjectPayload(listVersionsPayload)
-	err := s.queueSvc.EnqueueTask(ctx, migratePayload)
+	err = s.queueSvc.EnqueueTask(ctx, migratePayload)
 	if err != nil {
 		return fmt.Errorf("migration bucket list obj: unable to enqueue copy obj task: %w", err)
 	}
@@ -94,7 +98,11 @@ func (s *svc) HandleVersionedObjectMigration(ctx context.Context, t *asynq.Task)
 	fromBucket, toBucket := migratePayload.ID.FromToBuckets(migratePayload.Bucket)
 	replicationID := entity.NewBucketReplicationPolicy(user, migratePayload.ID.FromStorage(), fromBucket, migratePayload.ID.ToStorage(), toBucket)
 
-	if err = s.versionedSvc.MigrateVersions(ctx, replicationID, migratePayload.Prefix, migratePayload.Generation); err != nil {
+	since, err := s.replicationSince(ctx, migratePayload.ID)
+	if err != nil {
+		return err
+	}
+	if err = s.versionedSvc.MigrateVersionsSince(ctx, replicationID, migratePayload.Prefix, since, migratePayload.Generation); err != nil {
 		err = fmt.Errorf("unable to migrate object version: %w", err)
 		return err
 	}
@@ -139,13 +147,17 @@ func (r *VersionedMigrationSvc) withObjectLock(ctx context.Context, id entity.Bu
 	})
 }
 
-func (r *VersionedMigrationSvc) snapshot(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, work *store.ObjectVersionInfoStore) error {
+func (r *VersionedMigrationSvc) snapshot(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, work *store.ObjectVersionInfoStore, since *time.Time) error {
 	versions, err := r.copySvc.GetVersionInfo(ctx, id.User, copy.NewFile(objectID.Storage, objectID.Bucket, objectID.Name))
 	if err != nil {
 		return fmt.Errorf("unable to list object versions: %w", err)
 	}
 	// Copy the slice: a client or test may retain its listing result.
 	chronological := append([]entity.ObjectVersionInfo(nil), versions...)
+	if since != nil {
+		// replication cutoff: versions (and delete markers) last modified before it are not copied
+		chronological = slices.DeleteFunc(chronological, func(v entity.ObjectVersionInfo) bool { return !keepSince(v.LastModified, since) })
+	}
 	slices.Reverse(chronological)
 	if err := ctx.Err(); err != nil {
 		return err
@@ -154,20 +166,30 @@ func (r *VersionedMigrationSvc) snapshot(ctx context.Context, objectID entity.Ve
 }
 
 func (r *VersionedMigrationSvc) ListVersions(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, generation ...int64) error {
+	return r.ListVersionsSince(ctx, objectID, id, nil, generation...)
+}
+
+// ListVersionsSince is ListVersions that drops the versions last modified before the replication cutoff (nil keeps all).
+func (r *VersionedMigrationSvc) ListVersionsSince(ctx context.Context, objectID entity.VersionedObjectID, id entity.BucketReplicationPolicy, since *time.Time, generation ...int64) error {
 	work := r.objectVersionInfoStore.ForReplication(id, workGeneration(generation))
 	return r.withObjectLock(ctx, id, objectID.Name, func(ctx context.Context) error {
-		return r.snapshot(ctx, objectID, id, work)
+		return r.snapshot(ctx, objectID, id, work, since)
 	})
 }
 
 func (r *VersionedMigrationSvc) MigrateVersions(ctx context.Context, id entity.BucketReplicationPolicy, prefix string, generation ...int64) error {
+	return r.MigrateVersionsSince(ctx, id, prefix, nil, generation...)
+}
+
+// MigrateVersionsSince is MigrateVersions whose fallback snapshot honours the replication cutoff.
+func (r *VersionedMigrationSvc) MigrateVersionsSince(ctx context.Context, id entity.BucketReplicationPolicy, prefix string, since *time.Time, generation ...int64) error {
 	work := r.objectVersionInfoStore.ForReplication(id, workGeneration(generation))
 	return r.withObjectLock(ctx, id, prefix, func(ctx context.Context) error {
-		return r.migrateVersions(ctx, id, prefix, work)
+		return r.migrateVersions(ctx, id, prefix, work, since)
 	})
 }
 
-func (r *VersionedMigrationSvc) migrateVersions(ctx context.Context, replicationID entity.BucketReplicationPolicy, prefix string, work *store.ObjectVersionInfoStore) error {
+func (r *VersionedMigrationSvc) migrateVersions(ctx context.Context, replicationID entity.BucketReplicationPolicy, prefix string, work *store.ObjectVersionInfoStore, since *time.Time) error {
 	toFile := copy.File{
 		Storage: replicationID.ToStorage,
 		Bucket:  replicationID.ToBucket,
@@ -180,7 +202,7 @@ func (r *VersionedMigrationSvc) migrateVersions(ctx context.Context, replication
 		return err
 	}
 	if len(firstPage) == 0 {
-		if err := r.snapshot(ctx, objectID, replicationID, work); err != nil {
+		if err := r.snapshot(ctx, objectID, replicationID, work, since); err != nil {
 			return err
 		}
 	}

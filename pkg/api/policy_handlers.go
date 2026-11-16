@@ -231,7 +231,19 @@ func (h *policyHandlers) validateAddReplication(ctx context.Context, uid entity.
 	if err != nil {
 		return entity.ReplicationOptions{}, err
 	}
-	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name}
+	var since *time.Time
+	if req.GetOpts().GetSince() != nil {
+		if err := req.Opts.Since.CheckValid(); err != nil {
+			return entity.ReplicationOptions{}, fmt.Errorf("%w: invalid since: %v", dom.ErrInvalidArg, err)
+		}
+		t := req.Opts.Since.AsTime()
+		since = &t
+	}
+	since, err = entity.NormalizeReplicationSince(since, entity.TimeNow())
+	if err != nil {
+		return entity.ReplicationOptions{}, err
+	}
+	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name, Since: since}
 	if userRepl, ok := uid.AsUserID(); ok {
 		if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
 			return opts, fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)

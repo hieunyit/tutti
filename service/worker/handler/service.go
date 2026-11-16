@@ -24,6 +24,7 @@ import (
 
 	"github.com/hibiken/asynq"
 
+	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
@@ -82,6 +83,7 @@ type svc struct {
 	conf                    *Config
 	syncer                  *syncer.ObjectSyncer
 	scope                   *accesspolicy.Scope
+	sinceFor                func(ctx context.Context, id entity.UniversalReplicationID) (*time.Time, error)
 }
 
 // SetBucketScope restricts the buckets listed for user-level replication of users on a shared connection account.

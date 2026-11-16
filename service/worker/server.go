@@ -324,6 +324,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	workerSvc := handler.New(conf.Worker, credsSvc, clientRegistry, versionSvc, copySvc, queueSvc, limiter, objectListStateStore, objectLocker, bucketLocker, replicationStatusLocker, versionedMigrationSvc)
 
 	workerSvc.SetBucketScope(bucketScope)
+	workerSvc.SetSinceResolver(policySvc.GetReplicationSince)
 
 	stdLogger := log.NewStdLogger()
 	redis.SetLogger(stdLogger)

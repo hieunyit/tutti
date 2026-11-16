@@ -58,6 +58,7 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		EventSource:   eventSourceFromStatus(value.ReplicationStatus),
 		WebhookUrl:    webhookURLFromStatus(value.ReplicationStatus),
 		Name:          nameFromStatus(value.ReplicationStatus),
+		Since:         sinceFromStatus(value.ReplicationStatus),
 
 		InitBytesTotal:      value.InitBytes.Total,
 		InitBytesDone:       value.InitBytes.Done,
@@ -108,6 +109,13 @@ func nameFromStatus(s *entity.ReplicationStatus) string {
 		return ""
 	}
 	return s.Name
+}
+
+func sinceFromStatus(s *entity.ReplicationStatus) *timestamppb.Timestamp {
+	if s == nil {
+		return nil
+	}
+	return tsToPb(s.Since)
 }
 
 func webhookURLFromStatus(s *entity.ReplicationStatus) string {

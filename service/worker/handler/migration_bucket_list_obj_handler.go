@@ -190,6 +190,11 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		return nil
 	}
 
+	since, err := s.replicationSince(ctx, replicationID)
+	if err != nil {
+		return err
+	}
+
 	fromClient, err := s.clients.AsS3(ctx, p.ID.FromStorage(), p.ID.User())
 	if err != nil {
 		return fmt.Errorf("migration bucket list obj: unable to get %q s3 client: %w: %w", p.ID.FromStorage(), err, asynq.SkipRetry)
@@ -221,6 +226,10 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		batchKeys     []string
 		batchSizes    []int64
 		batchVersions bool
+		// since cutoff: skipped objects are neither enqueued nor counted. scanned/lastScanned bound a page and let the
+		// checkpoint move past trailing skipped keys.
+		scanned     int
+		lastScanned string
 	)
 	// flush enqueues the pending batch. stop reports that this page must end.
 	flush := func() (stop bool, err error) {
@@ -243,6 +252,9 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		n, enqueueErr := tasks.EnqueueMany(ctx, s.queueSvc, batch)
 		if n > 0 {
 			lastObjName = batchKeys[n-1]
+			if n == len(batch) && lastScanned > lastObjName {
+				lastObjName = lastScanned
+			}
 			count += n
 			s.addInitTotalBytes(ctx, p.ID, p.Generation, batchSizes[:n])
 		}
@@ -271,6 +283,25 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 	for object := range objects {
 		if object.Err != nil {
 			return fmt.Errorf("migration bucket list obj: list objects error %w", object.Err)
+		}
+		if since != nil && scanned >= maxScannedPerPage {
+			// a long stretch of skipped keys: end this slice here and continue from the last scanned key
+			if stopped, err = flush(); err != nil {
+				cancelList()
+				return err
+			}
+			if !stopped {
+				lastObjName = lastScanned
+				hitLimit = true
+				stopped = true
+			}
+			cancelList()
+			break
+		}
+		scanned++
+		lastScanned = object.Key
+		if !keepSince(object.LastModified, since) {
+			continue
 		}
 		isDir := object.Size == 0 && strings.HasSuffix(object.Key, "/")
 		logger.Debug().Str(log.Object, object.Key).Str("obj_version_id", object.VersionID).Bool("is_dir", isDir).Msg("migration bucket list obj: start processing object from the list")
