@@ -107,7 +107,7 @@ describe('ReplicationSinceField', () => {
 
     const emitted = wrapper.emitted('update:modelValue') ?? [];
 
-    expect(emitted.at(-1)?.[0]).toMatchObject({ amount: 2 });
+    expect(emitted[emitted.length - 1]?.[0]).toMatchObject({ amount: 2 });
   });
 
   it('asks for a date when "Since a date" has none yet', async () => {
