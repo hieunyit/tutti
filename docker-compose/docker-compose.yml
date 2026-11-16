@@ -43,6 +43,12 @@ services:
       - REDIS_PORT_NUMBER=6379
     expose:
       - 6379
+    # Wait until the dataset is loaded: after a cold start Redis answers LOADING and dependants would exit.
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
     volumes:
       - redis-data:/data
   # Tutti components
@@ -50,7 +56,7 @@ services:
   worker:
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       postgres:
         condition: service_healthy
     # The worker tunes concurrency and the copy buffer from the CPU/memory it can use. Uncomment to cap it, e.g.
@@ -93,7 +99,8 @@ services:
     profiles:
       - "proxy"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     build:
       context: ../
       args:
