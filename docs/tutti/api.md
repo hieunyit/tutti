@@ -282,6 +282,24 @@ curl -X PUT http://localhost:9671/replication/rename -H "Authorization: Bearer $
 
 With the PostgreSQL control plane the name is stored in `replication_status.name` (migration `0004_replication_name.sql`) and projected to the Redis status hash field `name`. `tuttictl repl add --name`, `tuttictl repl rename --name` and the `NAME` column of `tuttictl repl` use it.
 
+**Copy only recent objects (`since`).** `POST /replication/add` accepts `opts.since`, an RFC 3339 timestamp (like rclone `--max-age`, but absolute): the initial copy only copies source objects whose `LastModified` is at or after it, instead of the whole bucket. Clients turn a relative input such as "30 days" into an absolute time before sending; the server stores only the absolute value, so it does not drift. `get`, `list` and the stream return it as `since` (absent when the whole source is copied). It must not be in the future and not earlier than year 2000 (otherwise `400`). It is not part of the replication id, the scope lock or the overlap rule, and replications without it behave exactly as before.
+
+```bash
+curl -X POST http://localhost:9671/replication/add -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2","fromBucket":"b","toBucket":"b"},"opts":{"since":"2026-10-17T00:00:00Z"}}'
+```
+
+Semantics:
+
+- `LastModified` is the time of the object on the SOURCE storage. Objects older than the cutoff are skipped at listing time: no task is queued, no HEAD request is made, and they do not count in the object or byte totals, progress or ETA (those cover only the objects that pass the filter).
+- Objects older than the cutoff are never copied by this replication and never deleted at the destination. Objects already at the destination are skipped by the usual ETag / source-ETag check.
+- Live events (proxy, webhook, S3 notifications) are not filtered: new objects are always newer than the cutoff, and an overwrite or delete of an old object still replicates.
+- Versioned buckets: a key is listed only if its latest version passes; each of its versions (and delete markers) is then kept only if its own `LastModified` is at or after the cutoff.
+- Diff reports and diff-fix copies are separate from the replication and are not filtered.
+- The cutoff cannot be changed after creation (there is no update call). To move it, delete the replication and create it again with the new value: objects already at the destination are skipped, so only the missing ones are copied.
+- With the PostgreSQL control plane it is stored in `replication_status.since` (nullable, migration `0005_replication_since.sql`) and projected to the Redis status hash field `since`.
+
 **Overlap rule and 409.** Creating a replication, creating a group and updating a group all use the same rule:
 
 | Case | Example | Result |

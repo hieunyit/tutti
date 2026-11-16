@@ -54,7 +54,7 @@ authoritative in Redis until `pkg/protectiongroups` is split (section 7).
 
 ## 2. Schema
 
-Four migrations (`0001_init.sql`, `0002_outbox_pending_key.sql`: the index the publisher's per-object ordering lookup uses, `0003_system_settings.sql`, `0004_replication_name.sql`: optional replication display name) in
+Five migrations (`0001_init.sql`, `0002_outbox_pending_key.sql`: the index the publisher's per-object ordering lookup uses, `0003_system_settings.sql`, `0004_replication_name.sql`: optional replication display name, `0005_replication_since.sql`: optional nullable copy cutoff `since`) in
 `pkg/controlplane/pg/migrations/`, embedded with `embed`, applied by `pg.Migrate`
 (`schema_migrations(version, name, checksum, applied_at)`, one transaction per file, `pg_advisory_xact_lock` against
 concurrent migrators, checksum drift and a database newer than the binary are errors).
