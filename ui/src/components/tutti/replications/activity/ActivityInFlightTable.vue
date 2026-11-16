@@ -72,6 +72,12 @@
     props.items.some((item) => (item.attempt ?? 1) > 1),
   );
 
+  function flowText(row: { flow?: string }) {
+    if (row.flow === 'live') return t('flowLive');
+
+    return row.flow === 'rescan' ? t('flowRescan') : t('flowInit');
+  }
+
   const columns = computed<DataTableColumns<ReplicationInFlight>>(() => {
     const all: DataTableColumns<ReplicationInFlight> = [
       {
@@ -133,11 +139,7 @@
         title: t('colFlow'),
         key: 'flow',
         width: 100,
-        render: (row) => {
-          if (row.flow === 'live') return t('flowLive');
-
-          return row.flow === 'rescan' ? t('flowRescan') : t('flowInit');
-        },
+        render: (row) => flowText(row),
       },
     ];
 
@@ -172,6 +174,7 @@
           <span class="activity-inflight__meta">
             <span>{{ sizeText(row) }}</span>
             <span>{{ elapsedText(row) }}</span>
+            <span>{{ flowText(row) }}</span>
           </span>
           <span
             v-if="progressOf(row)"
