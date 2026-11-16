@@ -99,6 +99,17 @@ describe('ReplicationSinceField', () => {
     );
   });
 
+  it('emits the amount while typing, before the field is left', async () => {
+    const wrapper = mountField({ ...defaultSinceChoice(), mode: 'recent' });
+    const input = wrapper.find('input[type="text"]');
+
+    await input.setValue('2');
+
+    const emitted = wrapper.emitted('update:modelValue') ?? [];
+
+    expect(emitted.at(-1)?.[0]).toMatchObject({ amount: 2 });
+  });
+
   it('asks for a date when "Since a date" has none yet', async () => {
     const wrapper = mountField({ ...defaultSinceChoice(), mode: 'date' });
 

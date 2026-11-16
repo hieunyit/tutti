@@ -107,7 +107,6 @@
         <label :for="`since-amount-${uid}`">{{ t('sinceAmount') }}</label>
         <NInputNumber
           :value="model.amount"
-          :precision="0"
           :show-button="false"
           :status="error ? 'error' : undefined"
           :input-props="{
