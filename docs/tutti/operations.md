@@ -258,6 +258,24 @@ tuttictl repl add -f main -t follower -u admin -b photos --since 2026-10-17T14:0
 
 `30d` and `12h` are turned into an absolute time when you run the command. A cutoff in the future or before the year 2000 is refused. `tuttictl repl` shows it in the `SINCE` column (empty when the whole source is copied). For what is and is not filtered, see the [API](./api.md).
 
+## Pick up files written directly to the source
+
+Tutti only sees objects that go through the Tutti proxy. If your backup jobs write straight into the source S3, no event reaches Tutti and new objects are not replicated after the initial copy. A periodic rescan fixes this: every N minutes or hours the worker lists the source bucket again for objects newer than the last successful scan and copies the missing ones. It is off by default.
+
+In the console: Replication, Add replication, on the Review step open "Pick up files written directly to the source" and choose an interval (every 15 minutes to every 24 hours; one hour is a good start). Afterwards the replications list shows "Rescans every 1 h" under the name (and "Scanning…" while a scan runs), and the replication page has a "Rescan" row with the last scan, the next scan, a "Sync now" button and "Change" to set another interval or turn it off. "Sync now" is also in the row menu of the list. Both need an administrator; viewers see the state only. "Sync now" is refused while a scan is running, while the replication is paused and until the initial copy is done.
+
+With tuttictl:
+
+```shell
+tuttictl repl add -f main -t follower -u admin -b photos --rescan-every 1h     # 15m to 24h, or a Go duration like 90m
+tuttictl repl rescan -f main -t follower -u admin -b photos                    # sync now
+tuttictl repl set-rescan -f main -t follower -u admin -b photos --every 3h     # change; --every off turns it off
+```
+
+`tuttictl repl` shows the interval in the `RESCAN` column and the start of the last scan in `LAST_SCAN`.
+
+Limits: files deleted at the source are not removed from the destination, and every scan lists the whole source bucket, so on very large buckets choose a longer interval.
+
 ## See also
 
 - [Runbooks](./runbooks.md): step-by-step procedures for failover, failback, Redis incidents, key rotation and console lockout.
