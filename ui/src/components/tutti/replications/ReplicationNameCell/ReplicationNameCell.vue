@@ -69,6 +69,16 @@
         })
       : '';
   });
+  /** the hover text keeps the time of day that the list line leaves out */
+  const sinceTitle = computed(() => {
+    const date = ReplicationSinceHelper.parseStored(props.replication.since);
+
+    return date
+      ? t('listSince', {
+          date: ReplicationSinceHelper.formatMoment(date, String(locale.value)),
+        })
+      : '';
+  });
   const problem = computed(() => ReplicationNameHelper.getProblem(draft.value));
   const error = computed(() => {
     if (saveError.value) return saveError.value;
@@ -193,7 +203,7 @@
       <span
         v-if="sinceText"
         class="replication-name-cell__secondary replication-name-cell__since"
-        :title="sinceText"
+        :title="sinceTitle"
         >{{ sinceText }}</span
       >
     </template>

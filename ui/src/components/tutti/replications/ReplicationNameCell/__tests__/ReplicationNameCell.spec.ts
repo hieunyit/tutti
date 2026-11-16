@@ -93,6 +93,10 @@ describe('ReplicationNameCell', () => {
     expect(withSince.find('.replication-name-cell__since').text()).toBe(
       'Since 17 Oct 2026',
     );
+    // the hover text adds the time of day
+    expect(
+      withSince.find('.replication-name-cell__since').attributes('title'),
+    ).toMatch(/^Since 17 Oct 2026, \d{2}:\d{2}$/);
     expect(
       mountCell(named).find('.replication-name-cell__since').exists(),
     ).toBe(false);
