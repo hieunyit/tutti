@@ -20,69 +20,19 @@ import { useNotification } from '@clyso/clyso-ui-kit';
 import { useRouter } from 'vue-router';
 import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
-  type TuttiBucketListRequest,
   type TuttiCoveredBucket,
   type TuttiReplicationId,
-  type TuttiStorage,
 } from '@/utils/types/tuttiCore';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
 import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
 import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
+import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
 import {
-  ReplicationSinceHelper,
-  type SinceChoice,
-} from '@/utils/helpers/ReplicationSinceHelper';
-
-interface TuttiAddReplicationState {
-  isLoading: boolean;
-  hasError: boolean;
-  storages: TuttiStorage[];
-  selectedFromStorage: TuttiStorage | null;
-  selectedToStorage: TuttiStorage | null;
-  isForAllBuckets: boolean;
-  isBucketsListLoading: boolean;
-  hasBucketsError: boolean;
-  bucketsError: string;
-  isReplicatedShown: boolean;
-  bucketsRequestOptions: TuttiBucketListRequest | null;
-  bucketsList: string[];
-  replicatedBucketsList: string[];
-  coveredBucketsList: TuttiCoveredBucket[];
-  /** server text of the last failed create, shown on the page */
-  createError: string;
-  selectedBuckets: string[];
-  /** optional display name applied to every replication created */
-  name: string;
-  /** which objects to copy: all, the last N days or hours, or since a date */
-  since: SinceChoice;
-  isSubmitting: boolean;
-}
-
-function getInitialState(): TuttiAddReplicationState {
-  return {
-    isLoading: false,
-    hasError: false,
-    storages: [],
-    selectedFromStorage: null,
-    selectedToStorage: null,
-    isForAllBuckets: false,
-    isBucketsListLoading: false,
-    hasBucketsError: false,
-    bucketsError: '',
-    isReplicatedShown: false,
-    bucketsRequestOptions: null,
-    bucketsList: [],
-    replicatedBucketsList: [],
-    coveredBucketsList: [],
-    createError: '',
-    selectedBuckets: [],
-    name: '',
-    since: ReplicationSinceHelper.defaultChoice(),
-    isSubmitting: false,
-  };
-}
+  getInitialState,
+  type TuttiAddReplicationState,
+} from '@/stores/tuttiAddReplicationState';
 
 export const useTuttiAddReplicationStore = defineStore(
   'tuttiAddReplication',
