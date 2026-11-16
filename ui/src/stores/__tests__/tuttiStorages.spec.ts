@@ -6,7 +6,7 @@ import { RuntimeStorageService } from '@/services/RuntimeStorageService';
 import type { RuntimeStorageList } from '@/utils/types/runtimeStorage';
 
 vi.mock('@/services/RuntimeStorageService', () => ({
-  RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
+  RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn(), get: vi.fn() },
 }));
 vi.mock('@/services/TuttiCoreService', () => ({
   TuttiCoreService: {
@@ -29,6 +29,7 @@ beforeEach(() => {
   setActivePinia(createPinia());
   vi.mocked(RuntimeStorageService.listSummary).mockReset();
   vi.mocked(RuntimeStorageService.list).mockReset();
+  vi.mocked(RuntimeStorageService.get).mockReset();
 });
 
 describe('tuttiStoragesStore', () => {
@@ -110,23 +111,21 @@ describe('tuttiStoragesStore', () => {
   });
 
   it('loads the users of one storage only on demand', async () => {
-    vi.mocked(RuntimeStorageService.list).mockResolvedValue({
-      storages: [
-        {
-          name: 's1',
-          address: 'x',
-          provider: 'Minio',
-          defaultRegion: '',
-          isSecure: true,
-          httpTimeout: '60s',
-          healthCheckInterval: '10s',
-          users: [{ user: 'a', accessKeyId: 'k', source: 'managed' }],
-        },
-      ],
+    vi.mocked(RuntimeStorageService.get).mockResolvedValue({
+      name: 's1',
+      address: 'x',
+      provider: 'Minio',
+      defaultRegion: '',
+      isSecure: true,
+      httpTimeout: '60s',
+      healthCheckInterval: '10s',
+      users: [{ user: 'a', accessKeyId: 'k', source: 'managed' }],
     });
     const store = useTuttiStoragesStore();
 
     await store.loadStorageUsers('s1');
+    expect(RuntimeStorageService.get).toHaveBeenCalledWith('s1');
+    expect(RuntimeStorageService.list).not.toHaveBeenCalled();
     expect(store.storageUsers['s1']).toHaveLength(1);
   });
 });

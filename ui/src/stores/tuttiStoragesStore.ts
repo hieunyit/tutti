@@ -176,22 +176,20 @@ export const useTuttiStoragesStore = defineStore('tuttiStorages', () => {
       : state.routings;
   }
 
-  /** Detail page: the full users array of one storage (old API form). */
+  /** Detail page: fetch the full users array of this storage. */
   async function loadStorageUsers(name: string) {
     const current = generation;
 
     state.storageUsersLoading = true;
 
     try {
-      const res = await RuntimeStorageService.list();
+      const storage = await RuntimeStorageService.get(name);
 
       if (current !== generation) return;
 
-      const found = (res.storages ?? []).find((item) => item.name === name);
-
       state.storageUsers = {
         ...state.storageUsers,
-        [name]: found?.users ?? [],
+        [name]: storage.users ?? [],
       };
     } finally {
       if (current === generation) state.storageUsersLoading = false;

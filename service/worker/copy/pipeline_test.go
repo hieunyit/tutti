@@ -211,6 +211,26 @@ func TestPipelineMemoryBoundedAndBudgetReleased(t *testing.T) {
 	}
 }
 
+func TestPipelinePartialPartFitsReservedBuffer(t *testing.T) {
+	for _, size := range []int{testPart + 1, 2*testPart + 1, 4*testPart + 1} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			e := pipelineEnv(t, 2, features.Config{})
+			e.putSource("o", patterned(size, 4), nil)
+			partBuffers.peak.Store(0)
+			// Keep uploaded parts alive while the producer allocates the last buffer.
+			e.dst.Hook = func(_ int, req *http.Request) *memFault {
+				if req.Method == http.MethodPut && req.URL.Query().Has("partNumber") {
+					time.Sleep(50 * time.Millisecond)
+				}
+				return nil
+			}
+			require.NoError(t, e.copy(t.Context(), "o"))
+			require.LessOrEqual(t, partBuffers.peak.Load(), pipelineBuffer(int64(size), testPart, 2))
+			require.Zero(t, partBuffers.outstanding.Load())
+		})
+	}
+}
+
 func TestPipelineReportsProgressPerPart(t *testing.T) {
 	e := pipelineEnv(t, 2, features.Config{})
 	size := 6*testPart + 5

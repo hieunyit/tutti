@@ -172,3 +172,20 @@ func TestUserIDFromNotificationID_EmptyUser(t *testing.T) {
 		t.Errorf("unexpected storage-level topic name %q", topicName(""))
 	}
 }
+
+func TestNotificationIDRoundTripDashBoundaries(t *testing.T) {
+	for _, user := range []string{"a", "team-", "team--", "team---", "a-b-", "-u", "-", "--", ""} {
+		for _, bucket := range []string{"abc", "a-b", "a--b", "a---b"} {
+			id := notificationID(user, bucket)
+			got, err := UserIDFromNotificationID(id)
+			if err != nil || got != user {
+				t.Errorf("id %q: got user %q, err %v; want %q", id, got, err, user)
+			}
+		}
+	}
+	for _, id := range []string{"", "other-user-bucket", "tutti-user", "tutti-user-", "tutti-user--"} {
+		if _, err := UserIDFromNotificationID(id); err == nil {
+			t.Errorf("malformed notification id %q was accepted", id)
+		}
+	}
+}

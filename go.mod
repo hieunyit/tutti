@@ -1,6 +1,6 @@
 module github.com/hieunyit/tutti
 
-go 1.26.10
+go 1.26.11
 
 replace (
 	github.com/hibiken/asynq => ./third_party/asynq
@@ -55,6 +55,7 @@ require (
 	github.com/onsi/gomega v1.42.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	golang.org/x/crypto v0.57.0
+	golang.org/x/time v0.15.0
 )
 
 require (
@@ -230,7 +231,7 @@ require (
 	github.com/karamaru-alpha/copyloopvar v1.2.2 // indirect
 	github.com/kisielk/errcheck v1.10.0 // indirect
 	github.com/kkHAIKE/contextcheck v1.1.6 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
@@ -385,7 +386,6 @@ require (
 	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/vuln v1.1.4 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688 // indirect

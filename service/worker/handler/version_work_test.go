@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
+	"time"
 )
 
 type versionWorkCopy struct {
@@ -19,6 +20,7 @@ type versionWorkCopy struct {
 	versions    []entity.ObjectVersionInfo
 	copied      map[string][]string
 	failVersion string
+	clears      int
 }
 
 func (c *versionWorkCopy) GetVersionInfo(context.Context, string, copy.File) ([]entity.ObjectVersionInfo, error) {
@@ -43,6 +45,13 @@ func (c *versionWorkCopy) CopyObject(_ context.Context, _ string, from, to copy.
 		return errors.New("injected destination outage")
 	}
 	c.copied[to.Storage] = append(c.copied[to.Storage], from.Version)
+	return nil
+}
+func (c *versionWorkCopy) ClearDestination(_ context.Context, _ string, to copy.File, _ bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.clears++
+	c.copied[to.Storage] = nil
 	return nil
 }
 func versionWorkSetup(t *testing.T) (*VersionedMigrationSvc, *versionWorkCopy, *store.ObjectVersionInfoStore, entity.VersionedObjectID, entity.BucketReplicationPolicy) {
@@ -113,6 +122,10 @@ func TestVersionWork_GenerationCleanupDoesNotEraseNextRun(t *testing.T) {
 }
 func TestVersionWork_FailedCopyResumesWithoutLosingSnapshot(t *testing.T) {
 	s, c, st, id, a := versionWorkSetup(t)
+	// Listings carry timestamps; destination checkpoints contain only version/size.
+	for i := range c.versions {
+		c.versions[i].LastModified = time.Date(2026, 11, 10, 0, 0, i, 0, time.UTC)
+	}
 	require.NoError(t, s.ListVersions(t.Context(), id, a))
 	c.failVersion = "v2"
 	require.Error(t, s.MigrateVersions(t.Context(), a, "key"))
@@ -120,6 +133,16 @@ func TestVersionWork_FailedCopyResumesWithoutLosingSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, pending, 2)
 	require.NoError(t, s.MigrateVersions(t.Context(), a, "key"))
+	require.Equal(t, []string{"v1", "v2"}, c.copied[a.ToStorage])
+	require.Zero(t, c.clears, "a known checkpoint must not clear versions already copied")
+}
+
+func TestVersionWork_UnknownCheckpointRestartsAtFirstVersion(t *testing.T) {
+	s, c, _, id, a := versionWorkSetup(t)
+	c.copied[a.ToStorage] = []string{"removed-source-version"}
+	require.NoError(t, s.ListVersions(t.Context(), id, a))
+	require.NoError(t, s.MigrateVersions(t.Context(), a, "key"))
+	require.Equal(t, 1, c.clears)
 	require.Equal(t, []string{"v1", "v2"}, c.copied[a.ToStorage])
 }
 func TestVersionWork_LegacyPendingCopyRebuildsScopedSnapshot(t *testing.T) {

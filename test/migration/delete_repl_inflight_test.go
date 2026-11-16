@@ -158,7 +158,20 @@ func TestDeleteReplication_InFlightMigration_ActiveListTask(t *testing.T) {
 	rep, err := e.PolicyClient.GetReplication(ctx, id)
 	r.NoError(err)
 	r.False(rep.IsPaused, "re-added replication must not inherit paused state of deleted one")
-	r.Eventually(func() bool { return countObjs(e.F1Client, bucket) == n }, e.WaitLong, e.RetryShort, "re-added replication must copy all objects")
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("re-added replication copied %d/%d", countObjs(e.F1Client, bucket), n)
+			logQueues(t, insp, "re-added", queues)
+		}
+	})
+	// Poll queue completion instead of repeatedly listing thousands of destination
+	// objects while the fake S3 backend is also serving the migration workers.
+	// Eight listing pages and 8000 copies need a workload-specific timeout on CI.
+	r.Eventually(func() bool {
+		rep, err := e.PolicyClient.GetReplication(ctx, id)
+		return err == nil && rep.IsInitDone
+	}, max(e.WaitLong, 80*time.Second), 100*time.Millisecond, "re-added replication must finish migration")
+	r.Equal(n, countObjs(e.F1Client, bucket), "re-added replication must copy all objects")
 }
 
 // asynq releases a canceled task without waiting for its handler, so up to Concurrency

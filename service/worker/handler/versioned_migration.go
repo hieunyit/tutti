@@ -225,18 +225,19 @@ func (r *VersionedMigrationSvc) migrateVersions(ctx context.Context, replication
 		if migratedObjectVersionInfo.Version == "" {
 			shouldClearDestination = true
 		} else {
-			versionIdx, err := work.Find(ctx, versionedObjectID, migratedObjectVersionInfo)
+			versionIdx, err := work.FindVersion(ctx, versionedObjectID, migratedObjectVersionInfo)
 			if errors.Is(err, dom.ErrNotFound) {
 				shouldClearDestination = true
 			} else if err != nil {
 				return fmt.Errorf("unable to get object version index: %w", err)
+			} else {
+				firstVersionToMigrateIdx = uint64(versionIdx) + 1
 			}
-
-			firstVersionToMigrateIdx = uint64(versionIdx) + 1
 		}
 	}
 
 	if shouldClearDestination {
+		firstVersionToMigrateIdx = 0
 		if err := r.copySvc.ClearDestination(ctx, replicationID.User, toFile, true); err != nil {
 			return fmt.Errorf("unable to delete destination object: %w", err)
 		}

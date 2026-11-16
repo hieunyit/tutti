@@ -3,14 +3,16 @@ package api
 import (
 	"context"
 	"errors"
-	"github.com/hieunyit/tutti/pkg/systemsettings"
+	"net/url"
 	"testing"
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/policy"
+	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/pkg/tasks"
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,6 +20,36 @@ type reviewWebhookCreds struct{ objstore.CredsService }
 
 func (reviewWebhookCreds) Storages() map[string]dom.StorageType {
 	return map[string]dom.StorageType{"main": dom.S3, "swift": dom.Swift}
+}
+
+type webhookCaptureReplication struct {
+	objects []dom.Object
+}
+
+func (r *webhookCaptureReplication) Replicate(_ context.Context, _ string, task tasks.ReplicationTask) error {
+	r.objects = append(r.objects, task.(*tasks.ObjectSyncPayload).Object)
+	return nil
+}
+
+func TestS3WebhookDecodesObjectKeyExactlyOnce(t *testing.T) {
+	for _, event := range []string{"s3:ObjectCreated:Put", "s3:ObjectRemoved:Delete"} {
+		for _, key := range []string{"plain", "reports/red flower+1.jpg", "literal%2Fname", "thư mục/ảnh %.jpg"} {
+			t.Run(event+"/"+key, func(t *testing.T) {
+				repl := &webhookCaptureReplication{}
+				h := &webhookHandlers{s3ReplSvc: repl}
+				logger := zerolog.Nop()
+				record := &pb.S3EventRecord{EventName: event, S3: &pb.S3EventPayload{Object: &pb.S3ObjectInfo{Key: url.QueryEscape(key)}}}
+				require.NoError(t, h.processS3Record(t.Context(), &logger, "main", "bucket", record))
+				require.Equal(t, []dom.Object{{Bucket: "bucket", Name: key}}, repl.objects)
+			})
+		}
+	}
+	repl := &webhookCaptureReplication{}
+	h := &webhookHandlers{s3ReplSvc: repl}
+	logger := zerolog.Nop()
+	record := &pb.S3EventRecord{EventName: "ObjectCreated:Put", S3: &pb.S3EventPayload{Object: &pb.S3ObjectInfo{Key: "broken%2"}}}
+	require.ErrorIs(t, h.processS3Record(t.Context(), &logger, "main", "bucket", record), dom.ErrInvalidArg)
+	require.Empty(t, repl.objects, "malformed keys must not reach the replication queue")
 }
 
 type reviewWebhookPolicy struct{ policy.Service }

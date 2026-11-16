@@ -253,38 +253,41 @@ func (s *versionSvc) UpdateBucketTagsIfGreater(ctx context.Context, replID entit
 	return s.setDestIfGreater(ctx, replID, keys, dest, version)
 }
 
-// luaDelKeysWithPrefix - server side scan and delete keys with given key prefix
-//
-// Input:
-// KEYS[1] -> Key prefix pattern (e.g. "v:user1:*")
-// --
-// ARGV[1] -> COUNT for SCAN (optional, default 1000)
-//
-// Output:
-// Returns 0 when done
-var luaDelKeysWithPrefix = redis.NewScript(`
-local pattern = KEYS[1]
-local cursor = 0
-local count = tonumber(ARGV[1]) or 1000
-repeat
-    local scan_result = redis.call('SCAN', cursor, 'MATCH', pattern, 'COUNT', count)
-    cursor = tonumber(scan_result[1])
-    local keys = scan_result[2]
-    if #keys > 0 then
-        redis.call('UNLINK', unpack(keys))
-    end
-until cursor == 0
-return 0`)
-
 func (s *versionSvc) Cleanup(ctx context.Context, replID entity.UniversalReplicationID) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	pattern := redisReplicationMATCH(replID)
 	if !strings.HasSuffix(pattern, "*") {
 		// exact match - single key deletion
-		return s.client.Del(ctx, pattern).Err()
+		return s.client.Unlink(ctx, pattern).Err()
 	}
-	// wildcard match - server-side scan and delete
-	_, err := luaDelKeysWithPrefix.Run(ctx, s.client, []string{pattern}, 1000).Result()
-	return err
+	// The API holds the replication's mutation lock and stops its queues before
+	// cleanup. Scan from the client so other Redis requests run between batches.
+	const batchSize = 1000
+	var cursor uint64
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		keys, next, err := s.client.Scan(ctx, cursor, pattern, batchSize).Result()
+		if err != nil {
+			return err
+		}
+		// SCAN's COUNT is a hint, so bound UNLINK independently as well.
+		for start := 0; start < len(keys); start += batchSize {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := s.client.Unlink(ctx, keys[start:min(start+batchSize, len(keys))]...).Err(); err != nil {
+				return err
+			}
+		}
+		cursor = next
+		if cursor == 0 {
+			return nil
+		}
+	}
 }
 
 func (s *versionSvc) getObjVersion(ctx context.Context, replID entity.UniversalReplicationID, object dom.Object, kind versionKind) (Version, error) {

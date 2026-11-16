@@ -1,6 +1,6 @@
 module github.com/hieunyit/tutti/tools/bench
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/boltdb/bolt v1.3.1
@@ -43,7 +43,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.12.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
@@ -92,6 +92,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede => ./../..
+replace (
+	github.com/hibiken/asynq => ../../third_party/asynq
+	github.com/hieunyit/tutti v0.0.0-20230613144403-9f72f3d28ede => ../..
+)
 
 tool github.com/dkorunic/betteralign/cmd/betteralign

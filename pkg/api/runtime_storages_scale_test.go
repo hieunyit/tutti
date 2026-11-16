@@ -4,6 +4,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/objstore"
+	"github.com/hieunyit/tutti/pkg/ratelimit"
 	"github.com/hieunyit/tutti/pkg/s3"
 	"github.com/hieunyit/tutti/pkg/testutil"
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
@@ -72,6 +74,67 @@ func TestListRuntimeStoragesUserCount(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, one.Users, 8)
 	require.EqualValues(t, 8, one.UserCount)
+}
+
+type rateCountingStorages struct {
+	RuntimeStorages
+	calls int
+}
+
+func (c *rateCountingStorages) RateLimits() map[string]ratelimit.RateLimit {
+	c.calls++
+	return map[string]ratelimit.RateLimit{"st001": {Enabled: true, RPM: 42}}
+}
+
+func TestListRuntimeStoragesBatchMetadata(t *testing.T) {
+	h, names := scaleHandlers(t, 4, 0, 0)
+	c := &rateCountingStorages{RuntimeStorages: h.runtimeStorages}
+	h.runtimeStorages = c
+	batchCalls, singleCalls := 0, 0
+	h.runtimeRefs = func(context.Context, string) ([]string, error) {
+		singleCalls++
+		return []string{"single"}, nil
+	}
+	refs := map[string][]string{names[1]: {"bucket routing user/bucket"}}
+	h.runtimeRefsBatch = func(context.Context) (map[string][]string, error) {
+		batchCalls++
+		return refs, nil
+	}
+	for _, includeUsers := range []bool{true, false} {
+		list, err := h.ListRuntimeStorages(t.Context(), &pb.ListRuntimeStoragesRequest{IncludeUsers: &includeUsers})
+		require.NoError(t, err)
+		for _, storage := range list.Storages {
+			require.Equal(t, refs[storage.Name], storage.References)
+			if storage.Name == names[1] {
+				require.True(t, storage.RateLimit.Enabled)
+				require.EqualValues(t, 42, storage.RateLimit.Rpm)
+			}
+		}
+	}
+	require.Equal(t, 2, c.calls, "clone rates once per list")
+	require.Equal(t, 2, batchCalls, "scan references once per list")
+	require.Zero(t, singleCalls)
+
+	// An empty batch result is complete; it must not trigger one scan per storage.
+	refs = nil
+	list, err := h.ListRuntimeStorages(t.Context(), nil)
+	require.NoError(t, err)
+	require.Empty(t, list.Storages[1].References)
+	require.Zero(t, singleCalls)
+
+	// Existing callers without the batch option keep their single-storage hook.
+	h.runtimeRefsBatch = nil
+	list, err = h.ListRuntimeStorages(t.Context(), nil)
+	require.NoError(t, err)
+	require.Equal(t, len(names), singleCalls)
+	for _, storage := range list.Storages {
+		require.Equal(t, []string{"single"}, storage.References)
+	}
+
+	scanErr := errors.New("reference scan unavailable")
+	h.runtimeRefsBatch = func(context.Context) (map[string][]string, error) { return nil, scanErr }
+	_, err = h.ListRuntimeStorages(t.Context(), nil)
+	require.ErrorIs(t, err, scanErr)
 }
 
 // BenchmarkListRuntimeStorages100x200: "before" is the per-storage path the list used (ListOverrideUsers scans the

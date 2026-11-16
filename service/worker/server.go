@@ -763,6 +763,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 				}
 			}),
 			api.WithConsoleUsers(authSvc), api.WithRuntimeStorages(credsSvc, api.RuntimeStorageReferences(policySvc, credsSvc, confRedis, appRedis)),
+			api.WithRuntimeStorageReferencesBatch(api.RuntimeStorageReferenceIndex(policySvc, credsSvc, confRedis, appRedis)),
 			api.WithStorageLocker(storageLocker), api.WithControlPlane(cpStore, conf.ControlPlane))
 
 		webhookOnSeparatePorts := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort > 0

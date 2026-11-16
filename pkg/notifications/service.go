@@ -125,19 +125,21 @@ func UserIDFromNotificationID(id string) (string, error) {
 		return "", fmt.Errorf("%w: notification id should start from 'tutti-': %s", dom.ErrInternal, id)
 	}
 	id = strings.TrimPrefix(id, "tutti-")
-	// Empty user (storage-level replication): "tutti-" + "" + "-" + bucket. A real user that starts with a
-	// dash is escaped to "--", so a single leading dash is unambiguous.
-	if len(id) >= 2 && id[0] == '-' && id[1] != '-' {
-		return "", nil
-	}
-	if len(id) < 5 {
-		return "", fmt.Errorf("%w: unable to extract user from notification id: %s", dom.ErrInternal, id)
-	}
-
-	for i := 1; i < len(id)-1; i++ {
-		if id[i] == '-' && id[i-1] != '-' && id[i+1] != '-' {
+	// Consume escaped pairs before looking for the delimiter. A user ending in
+	// '-' produces three consecutive dashes: an escaped dash and the delimiter.
+	// This also preserves existing IDs, including empty and leading-dash users.
+	for i := 0; i < len(id); i++ {
+		if id[i] != '-' {
+			continue
+		}
+		if i+1 < len(id) && id[i+1] == '-' {
+			i++
+			continue
+		}
+		if i+1 < len(id) {
 			return strings.ReplaceAll(id[:i], "--", "-"), nil
 		}
+		break
 	}
 	return "", fmt.Errorf("%w: unable to extract user from notification id: %s", dom.ErrInternal, id)
 }

@@ -38,7 +38,7 @@ vi.mock('@/components/tutti/storages/StorageOverviewTab.vue', () => ({
   default: { template: '<i />' },
 }));
 vi.mock('@/services/RuntimeStorageService', () => ({
-  RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn() },
+  RuntimeStorageService: { list: vi.fn(), listSummary: vi.fn(), get: vi.fn() },
 }));
 
 let wrapper: VueWrapper | undefined;

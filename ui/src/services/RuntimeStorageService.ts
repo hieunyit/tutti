@@ -22,6 +22,12 @@ export abstract class RuntimeStorageService {
     return (await apiClient.get<RuntimeStorageList>(url(), { signal })).data;
   }
 
+  static async get(name: string): Promise<RuntimeStorage> {
+    return (
+      await apiClient.get<RuntimeStorage>(url(`/${encodeURIComponent(name)}`))
+    ).data;
+  }
+
   /**
    * Light form: `GET /tutti/storages?includeUsers=false`, every storage has a
    * numeric `userCount` and no `users`. An old backend ignores the query and

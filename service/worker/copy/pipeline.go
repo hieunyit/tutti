@@ -57,7 +57,9 @@ func legacyPartSize(size int64, configured uint64) uint64 {
 
 // pipelineBuffer is the memory reserved against the buffer budget for one pipeline copy.
 func pipelineBuffer(size, partSize int64, threads int) int64 {
-	return min(int64(threads+1)*partSize, size)
+	// Even the last, partial part occupies a full size-class buffer in the pool.
+	parts := (size + partSize - 1) / partSize
+	return min(int64(threads)+1, parts) * partSize
 }
 
 // ---- buffer pool ----

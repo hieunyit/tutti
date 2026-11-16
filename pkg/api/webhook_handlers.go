@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -251,6 +252,12 @@ func (h *webhookHandlers) processS3Record(evtCtx context.Context, logger *zerolo
 	}
 	if objectKey == "" {
 		return fmt.Errorf("%w: object key is required", dom.ErrInvalidArg)
+	}
+	// S3 notifications encode keys as application/x-www-form-urlencoded,
+	// including '+' for spaces. Decode exactly once at the webhook boundary.
+	objectKey, err := url.QueryUnescape(objectKey)
+	if err != nil {
+		return fmt.Errorf("%w: invalid encoded object key: %v", dom.ErrInvalidArg, err)
 	}
 
 	var task tasks.ReplicationTask

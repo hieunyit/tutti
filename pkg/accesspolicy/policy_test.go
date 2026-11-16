@@ -68,6 +68,15 @@ func TestAuthorize(t *testing.T) {
 	require.False(t, allowed(wo, s3.ListObjects, "b"))
 	require.False(t, allowed(wo, s3.ListBuckets, ""))
 	require.False(t, allowed(wo, s3.PutBucketPolicy, "b"))
+	require.False(t, allowed(wo, s3.PutObjectAcl, "b"))
+	require.False(t, allowed(ro, s3.PutObjectAcl, "b"))
+	require.True(t, allowed(rw, s3.PutObjectAcl, "logs"))
+	for _, method := range []s3.Method{s3.CopyObject, s3.UploadPartCopy} {
+		req := Request{Method: method, Bucket: "logs", CopySourceBucket: "photos-1"}
+		require.ErrorIs(t, wo.Authorize(req), dom.ErrAuth)
+		require.ErrorIs(t, ro.Authorize(req), dom.ErrAuth)
+		require.NoError(t, rw.Authorize(req))
+	}
 
 	require.True(t, allowed(rw, s3.PutObject, "photos-2024"))
 	require.True(t, allowed(rw, s3.GetObject, "logs"))

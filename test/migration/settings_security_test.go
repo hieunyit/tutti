@@ -2,6 +2,11 @@ package migration
 
 import (
 	"bytes"
+	"io"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/hieunyit/tutti/pkg/auth"
 	"github.com/hieunyit/tutti/pkg/systemsettings"
 	"github.com/hieunyit/tutti/service/proxy"
@@ -9,10 +14,6 @@ import (
 	"github.com/hieunyit/tutti/test/app"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
-	"io"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func TestSettingsSecurity_DisabledWebhookMustRejectRequestsBeforeAndAfterToggle(t *testing.T) {
@@ -21,12 +22,19 @@ func TestSettingsSecurity_DisabledWebhookMustRejectRequestsBeforeAndAfterToggle(
 	settings.Webhook.Enabled = false
 	systemsettings.ApplySettings(settings)
 	t.Cleanup(func() { systemsettings.ApplySettings(prior) })
-	e := app.SetupEmbedded(t, workerConf, proxyConf)
+	wc := *workerConf
+	apiConf := *wc.Api
+	wc.Api = &apiConf
+	wc.Api.Webhook.Token = "settings-security-webhook-token"
+	e := app.SetupEmbedded(t, &wc, proxyConf)
 	client := &http.Client{Timeout: 3 * time.Second}
 	call := func(method, path, body string) (int, string) {
 		req, err := http.NewRequestWithContext(t.Context(), method, e.UrlHttpApi+path, bytes.NewBufferString(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
+		if path == "/webhook/main/s3-notifications" {
+			req.Header.Set(auth.WebhookTokenHeader, wc.Api.Webhook.Token)
+		}
 		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
@@ -37,7 +45,7 @@ func TestSettingsSecurity_DisabledWebhookMustRejectRequestsBeforeAndAfterToggle(
 	require.False(t, workerConf.Api.Webhook.Enabled)
 	code, b := call("POST", "/webhook/main/s3-notifications", `{"Records":[]}`)
 	if code >= 200 && code < 300 {
-		t.Errorf("disabled webhook accepted anonymous request before enable: HTTP %d %s", code, b)
+		t.Errorf("disabled webhook accepted authenticated request before enable: HTTP %d %s", code, b)
 	}
 	code, b = call("PUT", "/tutti/system-settings", `{"webhook":{"enabled":true}}`)
 	require.Equal(t, 200, code, b)
@@ -49,7 +57,7 @@ func TestSettingsSecurity_DisabledWebhookMustRejectRequestsBeforeAndAfterToggle(
 	require.Eventually(t, func() bool { return !systemsettings.Current().Webhook.Enabled }, 3*time.Second, 20*time.Millisecond)
 	code, b = call("POST", "/webhook/main/s3-notifications", `{"Records":[]}`)
 	if code >= 200 && code < 300 {
-		t.Errorf("disabled webhook still accepted anonymous request after disable: HTTP %d %s", code, b)
+		t.Errorf("disabled webhook still accepted authenticated request after disable: HTTP %d %s", code, b)
 	}
 }
 

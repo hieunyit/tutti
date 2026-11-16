@@ -42,6 +42,13 @@ type RuntimeStorages interface {
 
 type StorageReferences func(context.Context, string) ([]string, error)
 
+// StorageReferencesBatch loads the references of all storages in one pass.
+type StorageReferencesBatch func(context.Context) (map[string][]string, error)
+
+func WithRuntimeStorageReferencesBatch(refs StorageReferencesBatch) ResilienceOption {
+	return func(h *resilienceHandlers) { h.runtimeRefsBatch = refs }
+}
+
 func WithRuntimeStorages(creds RuntimeStorages, refs StorageReferences) ResilienceOption {
 	return func(h *resilienceHandlers) { h.runtimeStorages = creds; h.runtimeRefs = refs }
 }
@@ -87,7 +94,13 @@ func (h *resilienceHandlers) runtimeStoragePb(ctx context.Context, name string) 
 	return h.runtimeStoragePbWithTests(ctx, name, tests)
 }
 func (h *resilienceHandlers) runtimeStoragePbWithTests(ctx context.Context, name string, tests map[string]string) (*pb.RuntimeStorage, error) {
-	return h.runtimeStoragePbBulk(ctx, name, tests, nil, true, -1)
+	return h.runtimeStoragePbBulk(ctx, name, runtimeStorageData{tests: tests, rates: h.runtimeStorages.RateLimits()}, nil, true, -1)
+}
+
+type runtimeStorageData struct {
+	tests      map[string]string
+	rates      map[string]ratelimit.RateLimit
+	references map[string][]string // nil means references have not been loaded
 }
 
 // overrideUserIndex is implemented by the credentials service: bulk, single-pass reads of the user->storage mapping.
@@ -98,13 +111,13 @@ type overrideUserIndex interface {
 
 // runtimeStoragePbBulk builds one storage. users is the precomputed users of the storage (nil: ask the service),
 // withUsers embeds them, count >= 0 is the precomputed user count (otherwise derived from the users).
-func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name string, tests map[string]string, users []string, withUsers bool, count int) (*pb.RuntimeStorage, error) {
+func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name string, data runtimeStorageData, users []string, withUsers bool, count int) (*pb.RuntimeStorage, error) {
 	c := h.runtimeStorages
 	a, err := c.GetS3Address(name)
 	if err != nil {
 		return nil, err
 	}
-	rate := c.RateLimits()[name]
+	rate := data.rates[name]
 	out := &pb.RuntimeStorage{Name: name, Address: a.Address, Provider: string(a.Provider), DefaultRegion: a.DefaultRegion, IsSecure: a.IsSecure, HttpTimeout: durationpb.New(a.HttpTimeout), HealthCheckInterval: durationpb.New(a.HealthCheckInterval), RateLimit: &pb.RuntimeStorageRateLimit{Enabled: rate.Enabled, Rpm: int32(rate.RPM), IncludeMetadataApi: rate.IncludeMetadataAPI}, Source: c.StorageSource(name), IsMain: c.MainStorage() == name}
 	if m, ok := c.GetManaged(name); ok {
 		out.CreatedAt = timestamppb.New(m.CreatedAt)
@@ -116,7 +129,7 @@ func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name stri
 	}
 	out.ConnectionAccount = h.connectionInfoPb(c, name)
 	out.LegacyCredentials = !out.ConnectionAccount.Configured
-	out.LastTest = testResultFromJSON(tests[name])
+	out.LastTest = testResultFromJSON(data.tests[name])
 	if withUsers {
 		if users == nil {
 			users = c.ListOverrideUsers(name)
@@ -135,7 +148,9 @@ func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name stri
 		count = len(c.ListOverrideUsers(name))
 	}
 	out.UserCount = uint32(count)
-	if h.runtimeRefs != nil {
+	if data.references != nil {
+		out.References = data.references[name]
+	} else if h.runtimeRefs != nil {
 		out.References, err = h.runtimeRefs(ctx, name)
 		if err != nil {
 			return nil, err
@@ -143,6 +158,7 @@ func (h *resilienceHandlers) runtimeStoragePbBulk(ctx context.Context, name stri
 	}
 	return out, nil
 }
+
 // ListRuntimeStorages lists the S3 storages. includeUsers (default true) embeds every user of every storage; with
 // includeUsers=false each storage carries only userCount. The user->storage mapping is read in one pass for the whole
 // list, never once per storage.
@@ -162,6 +178,16 @@ func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, req *pb.Li
 	tests, err := c.StorageTests(ctx)
 	if err != nil {
 		return nil, err
+	}
+	data := runtimeStorageData{tests: tests, rates: c.RateLimits()}
+	if h.runtimeRefsBatch != nil && len(names) > 0 {
+		data.references, err = h.runtimeRefsBatch(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if data.references == nil {
+			data.references = map[string][]string{}
+		}
 	}
 	withUsers := req == nil || req.IncludeUsers == nil || *req.IncludeUsers
 	idx, bulk := c.(overrideUserIndex)
@@ -187,7 +213,7 @@ func (h *resilienceHandlers) ListRuntimeStorages(ctx context.Context, req *pb.Li
 				count = counts[n]
 			}
 		}
-		s, err := h.runtimeStoragePbBulk(ctx, n, tests, users, withUsers, count)
+		s, err := h.runtimeStoragePbBulk(ctx, n, data, users, withUsers, count)
 		if err != nil {
 			return nil, err
 		}

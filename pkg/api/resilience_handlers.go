@@ -88,18 +88,19 @@ func WithProxyAccounts(sealer func() (proxyaccount.Sealer, error), userExists fu
 var _ pb.ResilienceServer = &resilienceHandlers{}
 
 type resilienceHandlers struct {
-	runtimeStorages RuntimeStorages
-	runtimeRefs     StorageReferences
-	storageLocker   *StorageLocker
-	redis           redis.Cmdable
-	store           *failover.Store
-	policies        *accesspolicy.Store
-	accounts        *proxyaccount.Store
-	s3users         *s3users.Manager
-	s3usersRefs     func(events *failover.Store) s3users.References
-	auth            *auth.Service
-	cpStore         controlplane.Store
-	cpConfig        controlplane.Config
+	runtimeStorages  RuntimeStorages
+	runtimeRefs      StorageReferences
+	runtimeRefsBatch StorageReferencesBatch
+	storageLocker    *StorageLocker
+	redis            redis.Cmdable
+	store            *failover.Store
+	policies         *accesspolicy.Store
+	accounts         *proxyaccount.Store
+	s3users          *s3users.Manager
+	s3usersRefs      func(events *failover.Store) s3users.References
+	auth             *auth.Service
+	cpStore          controlplane.Store
+	cpConfig         controlplane.Config
 	// sealer is the one given to WithProxyAccounts (nil if not configured).
 	sealer func() (proxyaccount.Sealer, error)
 	// userExists reports whether the storage user has credentials. Nil disables the check.

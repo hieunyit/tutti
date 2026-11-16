@@ -6,9 +6,31 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/redis/go-redis/v9"
 )
+
+// FindVersion locates a migration checkpoint without comparing listing-only
+// timestamps, which cannot be recovered from the destination object's metadata.
+// The caller holds the object lock, so the snapshot stays stable between pages.
+func (s *ObjectVersionInfoStore) FindVersion(ctx context.Context, id entity.VersionedObjectID, checkpoint entity.ObjectVersionInfo) (int64, error) {
+	const pageSize = 1000
+	for start := uint64(0); ; start += pageSize {
+		page, err := s.GetPage(ctx, id, NewPager(start, pageSize))
+		if err != nil {
+			return 0, err
+		}
+		for i, version := range page {
+			if version.Version == checkpoint.Version && version.Size == checkpoint.Size && version.DeleteMarker == checkpoint.DeleteMarker {
+				return int64(start) + int64(i), nil
+			}
+		}
+		if len(page) < pageSize {
+			return 0, dom.ErrNotFound
+		}
+	}
+}
 
 // ForReplication isolates work and cleanup between destinations and generations.
 // Legacy source-only lists are deliberately not reused: a pending legacy copy

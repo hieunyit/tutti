@@ -61,31 +61,17 @@ func NewProxyClient(client redis.UniversalClient) Proxy {
 }
 
 func (c *ProxyClient) GetCredentials(ctx context.Context) (*pb.GetProxyCredentialsResponse, error) {
-	replyChanName := xid.New().String()
-	ps := c.client.Subscribe(ctx, replyChanName)
-	defer func() {
-		_ = ps.Close()
-		_ = ps.Unsubscribe(context.Background(), replyChanName)
-	}()
-	resCh := make(chan any, 1)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
-	go func() {
-		defer close(resCh)
-		select {
-		case <-ctx.Done():
-			resCh <- ctx.Err()
-			return
-		case msg := <-ps.Channel():
-			var res pb.GetProxyCredentialsResponse
-			err := proto.Unmarshal([]byte(msg.Payload), &res)
-			if err != nil {
-				resCh <- err
-				return
-			}
-			resCh <- &res
-		}
-	}()
+	replyChanName := xid.New().String()
+	ps := c.client.Subscribe(ctx, replyChanName)
+	defer ps.Close()
+	// Subscribe queues the command; only its acknowledgement proves the reply
+	// channel is ready. Otherwise a fast proxy can publish before we are listening.
+	if err := awaitSubscription(ctx, ps); err != nil {
+		return nil, err
+	}
+	messages := ps.Channel()
 	received, err := c.client.Publish(ctx, proxyCreds, replyChanName).Result()
 	if err != nil {
 		return nil, err
@@ -93,35 +79,36 @@ func (c *ProxyClient) GetCredentials(ctx context.Context) (*pb.GetProxyCredentia
 	if received == 0 {
 		return nil, fmt.Errorf("%w: proxy is not listening", dom.ErrNotImplemented)
 	}
-	var res any
 	select {
-	case res = <-resCh:
+	case msg, ok := <-messages:
+		if !ok {
+			return nil, fmt.Errorf("%w: proxy reply channel closed", dom.ErrUnavailable)
+		}
+		var res pb.GetProxyCredentialsResponse
+		if err := proto.Unmarshal([]byte(msg.Payload), &res); err != nil {
+			return nil, err
+		}
+		return &res, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	}
-
-	switch resp := res.(type) {
-	case error:
-		return nil, resp
-	case *pb.GetProxyCredentialsResponse:
-		return resp, nil
-	default:
-		return nil, fmt.Errorf("%w: unknown response type %T", dom.ErrInternal, resp)
 	}
 }
 
 func ProxyServe(ctx context.Context, client redis.UniversalClient, proxy Proxy) error {
 	ps := client.Subscribe(ctx, proxyCreds)
-	defer func() {
-		_ = ps.Close()
-		_ = ps.Unsubscribe(context.Background(), proxyCreds)
-	}()
+	defer ps.Close()
+	if err := awaitSubscription(ctx, ps); err != nil {
+		return err
+	}
 	messages := ps.Channel()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case msg := <-messages:
+		case msg, ok := <-messages:
+			if !ok {
+				return fmt.Errorf("%w: proxy request channel closed", dom.ErrUnavailable)
+			}
 			if msg.Payload == "" {
 				zerolog.Ctx(ctx).Warn().Msg("request reply proxy server: empty payload for proxy creds pubSub received")
 				continue
@@ -146,4 +133,16 @@ func ProxyServe(ctx context.Context, client redis.UniversalClient, proxy Proxy) 
 			}
 		}
 	}
+}
+
+// Receive uses socket deadlines, so cancellation without a deadline must also
+// close the subscription while waiting for Redis to acknowledge it.
+func awaitSubscription(ctx context.Context, ps *redis.PubSub) error {
+	stop := context.AfterFunc(ctx, func() { _ = ps.Close() })
+	defer stop()
+	_, err := ps.Receive(ctx)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return err
 }

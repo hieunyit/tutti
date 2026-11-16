@@ -122,7 +122,7 @@ const (
 	ClassWrite
 	// ClassExists is an existence check (HeadBucket/HeadObject), allowed with any permission.
 	ClassExists
-	// ClassManage is bucket management and needs read-write.
+	// ClassManage covers bucket management and object ACL changes, requiring read-write.
 	ClassManage
 )
 
@@ -152,9 +152,10 @@ func init() {
 	set(ClassWrite,
 		s3.PutObject, s3.DeleteObject, s3.DeleteObjects, s3.CopyObject, s3.RestoreObject,
 		s3.CreateMultipartUpload, s3.UploadPart, s3.CompleteMultipartUpload, s3.AbortMultipartUpload, s3.UploadPartCopy,
-		s3.PutObjectTagging, s3.DeleteObjectTagging, s3.PutObjectAcl, s3.PutObjectRetention, s3.PutObjectLegalHold,
+		s3.PutObjectTagging, s3.DeleteObjectTagging, s3.PutObjectRetention, s3.PutObjectLegalHold,
 	)
 	set(ClassManage,
+		s3.PutObjectAcl,
 		s3.CreateBucket, s3.DeleteBucket,
 		s3.PutBucketTagging, s3.DeleteBucketTagging,
 		s3.DeleteBucketLifecycle, s3.PutBucketLifecycle,
@@ -209,7 +210,7 @@ func (p Policy) Authorize(r Request) error {
 		}
 	case ClassManage:
 		if p.Permission != ReadWrite {
-			return fmt.Errorf("%w: bucket management requires read-write access", dom.ErrAuth)
+			return fmt.Errorf("%w: management requires read-write access", dom.ErrAuth)
 		}
 	case ClassExists:
 	}
@@ -217,6 +218,10 @@ func (p Policy) Authorize(r Request) error {
 		return fmt.Errorf("%w: access to bucket %q is not allowed", dom.ErrAuth, r.Bucket)
 	}
 	if r.Method == s3.CopyObject || r.Method == s3.UploadPartCopy {
+		// Server-side copies read existing data using the storage credentials.
+		if p.Permission == WriteOnly {
+			return fmt.Errorf("%w: copying an object requires read access to the source", dom.ErrAuth)
+		}
 		if r.CopySourceInvalid {
 			return fmt.Errorf("%w: unable to parse copy source", dom.ErrAuth)
 		}
