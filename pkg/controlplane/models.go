@@ -206,6 +206,9 @@ type ReplicationStatus struct {
 	EventSource string
 	// Name is the optional display label of the replication (not part of its identity).
 	Name string
+	// Since is the optional cutoff of the initial copy: source objects last modified before it are skipped.
+	// Nil copies everything. Not part of the replication identity.
+	Since *time.Time
 }
 
 // AuditEntry is one row of the audit log.

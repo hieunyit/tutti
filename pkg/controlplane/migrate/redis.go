@@ -431,5 +431,13 @@ func parseStatus(h map[string]string) (controlplane.ReplicationStatus, error) {
 	st.AgentURL = h["agent_url"]
 	st.EventSource = h["event_source"]
 	st.Name = h["name"]
+	if v := h["since"]; v != "" {
+		t, err := time.Parse(time.RFC3339Nano, v)
+		if err != nil {
+			return st, fmt.Errorf("since: %w", err)
+		}
+		t = t.UTC()
+		st.Since = &t
+	}
 	return st, nil
 }

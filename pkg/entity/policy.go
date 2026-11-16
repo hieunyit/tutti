@@ -50,6 +50,9 @@ type ReplicationOptions struct {
 	EventSource dom.EventSource
 	// Name is an optional display label, validated with NormalizeReplicationName.
 	Name string
+	// Since is the optional cutoff of the initial copy (source objects last modified before it are skipped).
+	// Nil copies everything. Validated with NormalizeReplicationSince.
+	Since *time.Time
 }
 
 func (p UserReplicationPolicy) LookupID() string {
@@ -105,6 +108,8 @@ type ReplicationStatus struct {
 	EventSource string `redis:"event_source,omitempty"`
 	// Name is an optional display label. It is not part of the replication identity.
 	Name string `redis:"name,omitempty"`
+	// Since is the optional cutoff of the initial copy. It is not part of the replication identity.
+	Since *time.Time `redis:"since,omitempty"`
 
 	IsArchived bool `redis:"archived"`
 	// FailoverPending identifies a pause owned by an unfinished automatic failover.
@@ -117,6 +122,7 @@ func StatusFromOptions(opts ReplicationOptions) ReplicationStatus {
 		AgentURL:    opts.AgentURL,
 		EventSource: string(opts.EventSource),
 		Name:        opts.Name,
+		Since:       opts.Since,
 	}
 }
 

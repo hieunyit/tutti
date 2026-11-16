@@ -56,6 +56,7 @@ func toCPStatus(st entity.ReplicationStatus) controlplane.ReplicationStatus {
 		AgentURL:    st.AgentURL,
 		EventSource: st.EventSource,
 		Name:        st.Name,
+		Since:       st.Since,
 	}
 }
 
@@ -67,6 +68,7 @@ func fromCPStatus(st controlplane.ReplicationStatus, failoverPending bool) entit
 		AgentURL:        st.AgentURL,
 		EventSource:     st.EventSource,
 		Name:            st.Name,
+		Since:           st.Since,
 		FailoverPending: failoverPending,
 	}
 }
@@ -80,6 +82,9 @@ type ReplicationSvc interface {
 	RenameReplication(ctx context.Context, id entity.UniversalReplicationID, name string) error
 	GetReplicationPolicyInfoExtended(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatusExtended, error)
 	GetReplicationGeneration(ctx context.Context, id entity.UniversalReplicationID) (int64, error)
+	// GetReplicationSince returns the cutoff of the initial copy of the replication (nil: copy everything).
+	// It reads only the status, no queue statistics.
+	GetReplicationSince(ctx context.Context, id entity.UniversalReplicationID) (*time.Time, error)
 	// GetReplicationActivity returns the running copies and recent copy events of a replication (best effort
 	// runtime data from the queue Redis; empty when unavailable). Unknown replications yield dom.ErrNotFound.
 	GetReplicationActivity(ctx context.Context, id entity.UniversalReplicationID, after string, limit int) (store.ActivitySnapshot, error)
@@ -226,6 +231,30 @@ func (r *policySvc) GetReplicationGeneration(ctx context.Context, id entity.Univ
 		zerolog.Ctx(ctx).Warn().Err(err).Msg("replication: PostgreSQL Generation failed, falling back to Redis")
 	}
 	return r.replicationGenerationStore.Get(ctx, id)
+}
+
+func (r *policySvc) GetReplicationSince(ctx context.Context, id entity.UniversalReplicationID) (*time.Time, error) {
+	if err := id.Validate(); err != nil {
+		return nil, fmt.Errorf("get replication since: unable to validate replication id: %w", err)
+	}
+	if r.cp != nil {
+		st, err := r.cp.Repos().Replications.GetStatus(ctx, toCPReplicationID(id))
+		if err == nil {
+			return st.Since, nil
+		}
+		if !controlplane.IsUnavailable(err) {
+			return nil, err
+		}
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("replication: PostgreSQL GetStatus failed, falling back to Redis")
+	}
+	tx := r.bucketReplicationStatusStore.TxExecutor()
+	res := r.getReplicationStatusInTx(ctx, tx, id)
+	_ = tx.Exec(ctx)
+	st, err := res.Get()
+	if err != nil {
+		return nil, err
+	}
+	return st.Since, nil
 }
 
 func (r *policySvc) getReplicationStatusInTx(ctx context.Context, tx store.Executor[redis.Pipeliner], policy entity.UniversalReplicationID) store.OperationResult[entity.ReplicationStatus] {

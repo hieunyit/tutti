@@ -17,6 +17,7 @@ package entity
 import (
 	"encoding/json"
 	"sort"
+	"time"
 )
 
 type DiffSettings struct {
@@ -221,6 +222,8 @@ type ObjectVersionInfo struct {
 	Version      string
 	Size         uint64
 	DeleteMarker bool
+	// LastModified of the version on the listed storage (zero when unknown). Used by the replication "since" cutoff.
+	LastModified time.Time `json:",omitzero"`
 }
 
 type DiffFixID struct {
