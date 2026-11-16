@@ -46,6 +46,8 @@ export interface TuttiAddReplicationState {
   name: string;
   /** which objects to copy: all, the last N days or hours, or since a date */
   since: SinceChoice;
+  /** rescan the source every N minutes; 0 = off */
+  rescanMinutes: number;
   isSubmitting: boolean;
 }
 
@@ -69,6 +71,7 @@ export function getInitialState(): TuttiAddReplicationState {
     selectedBuckets: [],
     name: '',
     since: ReplicationSinceHelper.defaultChoice(),
+    rescanMinutes: 0,
     isSubmitting: false,
   };
 }

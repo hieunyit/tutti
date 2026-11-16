@@ -168,3 +168,27 @@ describe('createReplication since', () => {
     expect(store.since).toMatchObject({ mode: 'recent', amount: 7 });
   });
 });
+
+describe('createReplication rescan', () => {
+  it('sends rescanInterval only when chosen, next to since', async () => {
+    add.mockResolvedValue(undefined as never);
+    const store = await readyStore();
+
+    store.selectedBuckets = ['b1'];
+    store.rescanMinutes = 60;
+    await store.createReplication();
+
+    expect(add.mock.calls[0]?.[0].opts).toEqual({ rescanInterval: '3600s' });
+  });
+
+  it('keeps the choice after a failed create', async () => {
+    add.mockRejectedValue(rejection('x'));
+    const store = await readyStore();
+
+    store.selectedBuckets = ['b1'];
+    store.rescanMinutes = 30;
+    await store.createReplication();
+
+    expect(store.rescanMinutes).toBe(30);
+  });
+});

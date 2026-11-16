@@ -106,6 +106,22 @@ export function useReplicationDetail(id: Ref<TuttiReplicationId | null>) {
     await fetchOnce();
   }
 
+  /** "Sync now"; rejects with the server error */
+  async function syncNow() {
+    if (!id.value) return;
+
+    await TuttiCoreService.rescanReplication(id.value);
+    await fetchOnce();
+  }
+
+  /** seconds, 0 = off; rejects with the server error */
+  async function setRescanInterval(seconds: number) {
+    if (!id.value) return;
+
+    await TuttiCoreService.updateRescanInterval(id.value, seconds);
+    await fetchOnce();
+  }
+
   watch(
     id,
     (next, prev) => {
@@ -118,5 +134,15 @@ export function useReplicationDetail(id: Ref<TuttiReplicationId | null>) {
     void polling.stop();
   });
 
-  return { replication, loading, error, missing, load, rename, setPaused };
+  return {
+    replication,
+    loading,
+    error,
+    missing,
+    load,
+    rename,
+    setPaused,
+    syncNow,
+    setRescanInterval,
+  };
 }

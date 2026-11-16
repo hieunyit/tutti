@@ -133,7 +133,11 @@
         title: t('colFlow'),
         key: 'flow',
         width: 100,
-        render: (row) => (row.flow === 'live' ? t('flowLive') : t('flowInit')),
+        render: (row) => {
+          if (row.flow === 'live') return t('flowLive');
+
+          return row.flow === 'rescan' ? t('flowRescan') : t('flowInit');
+        },
       },
     ];
 

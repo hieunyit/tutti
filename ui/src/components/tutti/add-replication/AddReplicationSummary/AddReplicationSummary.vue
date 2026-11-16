@@ -23,6 +23,9 @@
   import { storeToRefs } from 'pinia';
   import i18nAddReplication from '../i18nAddReplication';
   import ReplicationSinceField from '../ReplicationSinceField.vue';
+  import ReplicationRescanField from '../ReplicationRescanField.vue';
+  import i18nReplicationRescan from '@/components/tutti/replications/i18nReplicationRescan';
+  import { ReplicationRescanHelper } from '@/utils/helpers/ReplicationRescanHelper';
   import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
   import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
@@ -30,7 +33,11 @@
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
 
   const { t, locale } = useI18n({
-    messages: mergeMessages(i18nAddReplication, i18nReplicationSince),
+    messages: mergeMessages(
+      i18nAddReplication,
+      i18nReplicationSince,
+      i18nReplicationRescan,
+    ),
   });
   const {
     selectedFromStorage,
@@ -39,6 +46,7 @@
     isForAllBuckets,
     name,
     since,
+    rescanMinutes,
   } = storeToRefs(useTuttiAddReplicationStore());
 
   const buckets = computed(() => [...selectedBuckets.value].sort());
@@ -57,6 +65,17 @@
           ),
         });
   });
+  const rescanText = computed(() =>
+    rescanMinutes.value > 0
+      ? t('reviewRescanEvery', {
+          interval: ReplicationRescanHelper.formatSeconds(
+            rescanMinutes.value * 60,
+            t('unitMin'),
+            t('unitHour'),
+          ),
+        })
+      : t('reviewRescanOff'),
+  );
 </script>
 
 <template>
@@ -88,9 +107,14 @@
         <dt>{{ t('reviewObjects') }}</dt>
         <dd>{{ objectsText }}</dd>
       </div>
+      <div class="review__row">
+        <dt>{{ t('reviewRescan') }}</dt>
+        <dd>{{ rescanText }}</dd>
+      </div>
     </dl>
 
     <ReplicationSinceField v-model="since" />
+    <ReplicationRescanField v-model="rescanMinutes" />
     <ReplicationNameField v-model="name" />
 
     <p class="review__note">{{ t('reviewNote') }}</p>

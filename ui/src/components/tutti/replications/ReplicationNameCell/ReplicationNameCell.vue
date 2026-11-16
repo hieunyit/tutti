@@ -27,6 +27,7 @@
   import type { RouteLocationRaw } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
+  import ReplicationRescanLine from '@/components/tutti/replications/ReplicationRescanLine.vue';
   import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
   import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
@@ -206,6 +207,7 @@
         :title="sinceTitle"
         >{{ sinceText }}</span
       >
+      <ReplicationRescanLine :replication="replication" />
     </template>
   </div>
 </template>

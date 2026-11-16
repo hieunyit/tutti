@@ -37,6 +37,7 @@
   import i18nReplicationActivity from '@/components/tutti/replications/activity/i18nReplicationActivity';
   import ReplicationRenameDialog from '@/components/tutti/replications/ReplicationRenameDialog/ReplicationRenameDialog.vue';
   import ReplicationSummary from '@/components/tutti/replications/ReplicationSummary.vue';
+  import i18nReplicationRescan from '@/components/tutti/replications/i18nReplicationRescan';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
   import { mergeMessages } from '@/utils/helpers/mergeMessages';
@@ -48,7 +49,11 @@
   import { RouteName } from '@/utils/types/router';
 
   const { t } = useI18n({
-    messages: mergeMessages(i18nReplications, i18nReplicationActivity),
+    messages: mergeMessages(
+      i18nReplications,
+      i18nReplicationActivity,
+      i18nReplicationRescan,
+    ),
   });
   const route = useRoute();
   const router = useRouter();
@@ -136,7 +141,11 @@
       </EmptyBlock>
     </template>
     <template v-if="replication">
-      <ReplicationSummary :replication="replication" />
+      <ReplicationSummary
+        :replication="replication"
+        :sync="detail.syncNow"
+        :change-interval="detail.setRescanInterval"
+      />
       <SectionCard
         :title="t('inProgressTitle')"
         :meta="t('inProgressCount', { n: activity.inFlight.value.length })"

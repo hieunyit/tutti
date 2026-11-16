@@ -23,6 +23,7 @@
   import { useI18n } from 'vue-i18n';
   import { NProgress } from 'naive-ui';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
+  import ReplicationRescanRow from '@/components/tutti/replications/ReplicationRescanRow.vue';
   import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
   import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
   import i18nReplicationInit from '@/components/tutti/replications/i18nReplicationInit';
@@ -33,7 +34,12 @@
   import { mergeMessages } from '@/utils/helpers/mergeMessages';
   import type { TuttiReplication } from '@/utils/types/tuttiCore';
 
-  const props = defineProps<{ replication: TuttiReplication }>();
+  const props = defineProps<{
+    replication: TuttiReplication;
+    /** "Sync now" and interval change of the Rescan row; without them the row is hidden */
+    sync?: () => Promise<void>;
+    changeInterval?: (seconds: number) => Promise<void>;
+  }>();
 
   const { t, locale } = useI18n({
     messages: mergeMessages(
@@ -126,6 +132,12 @@
       <dt>{{ t('detailSince') }}</dt>
       <dd>{{ sinceText }}</dd>
     </div>
+    <ReplicationRescanRow
+      v-if="sync && changeInterval"
+      :replication="replication"
+      :sync="sync"
+      :change-interval="changeInterval"
+    />
     <div class="replication-summary__row">
       <dt>{{ t('createdAt') }}</dt>
       <dd>{{ formatDateTime(replication.createdAt) }}</dd>

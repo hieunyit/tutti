@@ -51,6 +51,7 @@
     all: boolean;
     name: string;
     since?: SinceChoice;
+    rescanMinutes?: number;
   }
 
   const { t } = useI18n({ messages: i18nAddReplication });
@@ -66,6 +67,7 @@
     isForAllBuckets,
     name,
     since,
+    rescanMinutes,
     isSubmitting,
     bucketsRequestOptions,
     createError,
@@ -89,6 +91,7 @@
       all: false,
       name: '',
       since: ReplicationSinceHelper.defaultChoice(),
+      rescanMinutes: 0,
     }),
     snapshot: () => ({
       from: selectedFromStorage.value?.name ?? null,
@@ -97,6 +100,7 @@
       all: isForAllBuckets.value,
       name: name.value,
       since: { ...since.value },
+      rescanMinutes: rescanMinutes.value,
     }),
     apply: (draft) => {
       const from = storages.value.find((s) => s.name === draft.from);
@@ -111,6 +115,7 @@
       since.value = draft.since
         ? { ...ReplicationSinceHelper.defaultChoice(), ...draft.since }
         : ReplicationSinceHelper.defaultChoice();
+      rescanMinutes.value = draft.rescanMinutes ?? 0;
 
       if (from && to && draft.buckets.length) {
         // marks the bucket list as requested, so opening step 2 keeps the choice

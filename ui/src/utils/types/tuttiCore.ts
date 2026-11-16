@@ -189,6 +189,17 @@ export interface TuttiReplication {
   name?: string;
   /** RFC3339 cutoff of the initial copy; absent when the whole source is copied */
   since?: string;
+  /** Duration string like "3600s"; absent when the periodic rescan is off */
+  rescanInterval?: string;
+  /** RFC3339 start time of the last completed rescan */
+  lastRescanAt?: string;
+  /** RFC3339; absent when off, paused or the initial copy is not done */
+  nextRescanAt?: string;
+  rescanRunning?: boolean;
+  /** int64 as string: objects copied by the last completed rescan */
+  lastRescanObjects?: string;
+  /** empty when the last scan was fine */
+  lastRescanError?: string;
 }
 
 export interface TuttiReplicationListResponse {
@@ -199,6 +210,14 @@ export interface TuttiAddReplicationOpts {
   agentUrl?: string;
   /** RFC3339 cutoff: only objects modified at or after it are copied */
   since?: string;
+  /** Duration string like "3600s": re-list the source this often; omitted = off */
+  rescanInterval?: string;
+}
+
+export interface TuttiUpdateRescanIntervalRequest {
+  id: TuttiReplicationId;
+  /** "0s" turns the periodic rescan off */
+  rescanInterval: string;
 }
 
 export interface TuttiAddReplicationsRequest {

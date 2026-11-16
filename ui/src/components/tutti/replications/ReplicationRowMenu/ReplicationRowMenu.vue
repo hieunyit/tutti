@@ -18,7 +18,7 @@
    * The one place for the actions of a row (pause or resume, delete): a
    * single "More" menu, write-gated. Actions come from useRowActions.
    */
-  import { computed } from 'vue';
+  import { computed, h } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { NButton, NDropdown } from 'naive-ui';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -36,7 +36,10 @@
   const options = computed(() =>
     props.actions.map((action) => ({
       key: action.key,
-      label: action.label,
+      // a disabled action says why on hover
+      label: action.disabledReason
+        ? () => h('span', { title: action.disabledReason }, action.label)
+        : action.label,
       disabled: action.busy || action.disabled,
     })),
   );

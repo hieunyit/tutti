@@ -20,6 +20,7 @@ import { DedupeKey, dedupe, invalidate } from '@/utils/helpers/dedupe';
 import type {
   TuttiAddReplicationsRequest,
   TuttiRenameReplicationRequest,
+  TuttiUpdateRescanIntervalRequest,
   TuttiBucketListRequest,
   TuttiBucketListResponse,
   TuttiCompareBucketRequest,
@@ -179,6 +180,30 @@ export abstract class TuttiCoreService {
   ): Promise<void> {
     await apiClient.put(
       ApiHelper.getTuttiAPIUrl('/replication/pause'),
+      payload,
+    );
+  }
+
+  /** "Sync now": one rescan of the source, rejects when it cannot start */
+  static async rescanReplication(payload: TuttiReplicationId): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getTuttiAPIUrl('/replication/rescan'),
+      payload,
+    );
+  }
+
+  /** seconds: 0 turns the periodic rescan off */
+  static async updateRescanInterval(
+    id: TuttiReplicationId,
+    seconds: number,
+  ): Promise<void> {
+    const payload: TuttiUpdateRescanIntervalRequest = {
+      id,
+      rescanInterval: `${seconds}s`,
+    };
+
+    await apiClient.put(
+      ApiHelper.getTuttiAPIUrl('/replication/rescan-interval'),
       payload,
     );
   }

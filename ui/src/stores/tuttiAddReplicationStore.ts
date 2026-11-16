@@ -29,6 +29,7 @@ import { RouteName } from '@/utils/types/router';
 import { ErrorHelper } from '@/utils/helpers/ErrorHelper';
 import { ReplicationNameHelper } from '@/utils/helpers/ReplicationNameHelper';
 import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
+import { ReplicationRescanHelper } from '@/utils/helpers/ReplicationRescanHelper';
 import {
   getInitialState,
   type TuttiAddReplicationState,
@@ -176,6 +177,9 @@ export const useTuttiAddReplicationStore = defineStore(
       const name = ReplicationNameHelper.normalize(state.name);
       // relative values count back from this click, not from when they were typed
       const since = ReplicationSinceHelper.resolve(state.since);
+      const rescanInterval = ReplicationRescanHelper.toDuration(
+        state.rescanMinutes,
+      );
 
       if (
         ReplicationNameHelper.getProblem(name) ||
@@ -214,7 +218,14 @@ export const useTuttiAddReplicationStore = defineStore(
           await TuttiCoreService.addReplication({
             id: replicationId,
             ...(name ? { name } : {}),
-            ...(since ? { opts: { since } } : {}),
+            ...(since || rescanInterval
+              ? {
+                  opts: {
+                    ...(since ? { since } : {}),
+                    ...(rescanInterval ? { rescanInterval } : {}),
+                  },
+                }
+              : {}),
           });
           successList.push(replicationId);
         } catch (error: unknown) {

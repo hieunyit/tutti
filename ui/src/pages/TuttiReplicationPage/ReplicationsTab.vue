@@ -33,6 +33,8 @@
   import ReplicationRowMenu from '@/components/tutti/replications/ReplicationRowMenu/ReplicationRowMenu.vue';
   import ReplicationStatusCell from '@/components/tutti/replications/ReplicationStatusCell/ReplicationStatusCell.vue';
   import ReplicationsFilters from '@/components/tutti/replications/ReplicationsFilters/ReplicationsFilters.vue';
+  import i18nReplicationRescan from '@/components/tutti/replications/i18nReplicationRescan';
+  import { useSyncNow } from '@/utils/composables/useSyncNow';
   import i18nReplicationName from '@/components/tutti/replications/i18nReplicationName';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import { useNarrowScreen } from '@/components/tutti/storages/useNarrowScreen';
@@ -66,8 +68,10 @@
       i18nReplications,
       i18nReplicationName,
       i18nReplicationHub,
+      i18nReplicationRescan,
     ),
   });
+  const sync = useSyncNow();
   const narrow = useNarrowScreen();
   const store = useTuttiReplicationsStore();
   const {
@@ -152,6 +156,13 @@
             await store.resumeReplications([row]);
           },
           disabled: (row) => !row.isPaused,
+        },
+        {
+          key: 'sync',
+          label: t('syncNow'),
+          run: (row) => sync.syncNow(row.id),
+          disabled: (row) => sync.blockedReason(row) !== '',
+          disabledReason: (row) => sync.blockedReason(row),
         },
         {
           key: 'delete',
