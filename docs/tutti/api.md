@@ -300,6 +300,26 @@ Semantics:
 - The cutoff cannot be changed after creation (there is no update call). To move it, delete the replication and create it again with the new value: objects already at the destination are skipped, so only the missing ones are copied.
 - With the PostgreSQL control plane it is stored in `replication_status.since` (nullable, migration `0005_replication_since.sql`) and projected to the Redis status hash field `since`.
 
+**Periodic rescan (`opts.rescanInterval`, `PUT /replication/rescan`, `PUT /replication/rescan-interval`).** Tutti only sees objects that go through its proxy. When something writes directly into the source S3, set a rescan interval: the worker then lists the source bucket again every N and copies the objects that are newer than the last successful scan and missing at the destination. Works with any S3 source; nothing changes on the writer side. See [Pick up files written directly to the source](./operations.md#pick-up-files-written-directly-to-the-source) for the semantics and limits.
+
+- `POST /replication/add` accepts `opts.rescanInterval`, a protobuf Duration whose JSON form is a string such as `"3600s"`. Unset or `0` means off (the default). Allowed range is 15 minutes to 24 hours, anything else (including negative values) is `400`. The source storage must be S3. It is not part of the replication id, the scope lock or the overlap rule.
+- `PUT /replication/rescan-interval` with `{"id":{...},"rescanInterval":"900s"}` changes it later; unset or `"0s"` turns it off, same validation. Turning it on for a replication that had it off also requests one catch-up scan of the whole source (or from `since`), because objects written directly in the meantime are unknown.
+- `PUT /replication/rescan` with the replication id as body ("Sync now") starts a scan immediately, whether or not the interval is set. It fails with gRPC `FailedPrecondition` (HTTP `400` through the gateway, reason in `details`) when a scan is already running, the replication is paused or its initial copy is not finished, and with `NotFound` for an unknown replication.
+- Both calls need an administrator (they are not on the viewer allow-list). With the PostgreSQL control plane they are audited as `RESCAN_INTERVAL` and `RESCAN`.
+- `get`, `list` and the stream return `rescanInterval` (absent when off), `lastRescanAt` (START time of the last completed scan), `nextRescanAt` (absent when rescan is off, the replication is paused, its initial copy is not done or a scan is running), `rescanRunning`, `lastRescanObjects` (objects the last completed scan actually copied; int64 values are JSON strings) and `lastRescanError` (empty when the last scan succeeded). A scan never changes `isInitDone`, `initObjListed`, `initObjDone` or the init byte counters.
+- With the PostgreSQL control plane the interval is stored in `replication_status.rescan_seconds` (nullable integer seconds, migration `0006_replication_rescan.sql`) and projected to the Redis status hash field `rescan_seconds`. Scan state is Redis runtime data (below), not policy data.
+- Copies of a scan appear in `POST /replication/activity` with `flow` `"rescan"`.
+- Prometheus (worker): `tutti_rescan_started_total`, `tutti_rescan_scans_total{result="success|failed_copies|aborted"}`, `tutti_rescan_objects_copied_total`, `tutti_rescan_last_duration_seconds`.
+
+```bash
+curl -X PUT http://localhost:9671/replication/rescan-interval -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":{"fromStorage":"minio1","toStorage":"minio2","fromBucket":"b","toBucket":"b"},"rescanInterval":"3600s"}'
+curl -X PUT http://localhost:9671/replication/rescan -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fromStorage":"minio1","toStorage":"minio2","fromBucket":"b","toBucket":"b"}'
+```
+
 **Overlap rule and 409.** Creating a replication, creating a group and updating a group all use the same rule:
 
 | Case | Example | Result |

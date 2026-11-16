@@ -274,7 +274,25 @@ tuttictl repl set-rescan -f main -t follower -u admin -b photos --every 3h     #
 
 `tuttictl repl` shows the interval in the `RESCAN` column and the start of the last scan in `LAST_SCAN`.
 
-Limits: files deleted at the source are not removed from the destination, and every scan lists the whole source bucket, so on very large buckets choose a longer interval.
+### How it works
+
+Events versus rescan: replication normally copies what the proxy (or a webhook / S3 notification) reports as it happens. A rescan does not need events: the worker lists the source bucket and copies what is missing. It complements events (both can run together, a per-key lock keeps a rescan copy and a live event copy of the same key apart) and is the only way to replicate writers that bypass the proxy.
+
+- **Scheduler.** Every worker process runs a loop that wakes every 30 seconds and looks at the replications with an interval set that are not paused and whose initial copy is done. A scan is due `interval` after the START of the previous scan (a failed scan is retried after at most 15 minutes). The first scan runs about two minutes after the worker first sees the finished initial copy. "Sync now" starts a scan at once and moves the next one to `interval` later.
+- **One scan per replication, cluster wide.** A scan is owned through an atomic Redis state (`p:repl_rescan:{<id>:<generation>}` in the queue Redis database, like the initial copy byte counters), so several workers never scan the same replication twice. The ownership is a lease that every listed page, finished copy and scheduler tick over a non-empty scan queue renews; if a worker dies, the lease expires after 30 minutes and the next scheduled scan takes over. Pausing the replication pauses the scan queues and stops scheduling; resuming continues. Deleting the replication removes the scan state and queues; a re-created replication starts clean.
+- **What a scan lists.** The whole source bucket (S3 has no server-side date filter), in pages of up to 1000 objects with continuation keys; a long stretch of objects older than the cutoff is walked in slices of 20,000 keys. For a user-level replication every source bucket the user may use is listed. Only objects whose `LastModified` is at or after the scan cutoff become copy tasks; the others are skipped without a request. On versioned buckets the cutoff applies per version.
+- **Cutoff.** `max(since, watermark - 10 minutes)`. The watermark is the START time of the last scan that listed the whole bucket and copied every object successfully; the 10 minute overlap absorbs clock skew between the source and the worker and uploads that finished after the previous listing started. The first scan of a replication that had rescan from the start looks back to its creation time minus 10 minutes (the initial copy covers older objects). A catch-up scan (interval turned on later) starts from `since` or the beginning. When unsure the scan reads more, never less: objects already at the destination are skipped by the usual ETag / source-ETag check, so over-scanning only costs requests.
+- **Failures.** A listing error is retried; if it keeps failing the scan ends with `lastRescanError` set and the watermark does not move, so the next scan covers the same period. If a copy exhausts its retries the scan still finishes (`lastRescanError` says how many copies failed) but the watermark stays at the last fully successful scan, so the next scan retries those objects even when they are older than the overlap window. An interval change, restart or pause never loses the watermark.
+- **Same rules as the initial copy.** Per-key lock, rate limits, bandwidth limit, buffer budget, large-object stream cap and the queue backlog watermarks apply. Scan copies use their own queues (`rescan_list_obj:<id>` and `rescan_copy_obj:<id>`, lower priority than live events and the initial copy), so they never appear in the initial copy counters (`initObjListed`, `initObjDone`, bytes, ETA), never flip a finished replication back to "Initial copy", and the scan has its own activity flow (`rescan`). Objects overwritten directly at the source are copied again (a scan ignores the proxy version counter, which direct writes never bump).
+- **Observability.** Worker log lines `rescan: started` and `rescan: finished` (objects copied, duration, cutoff); Prometheus counters `tutti_rescan_*` (see the [API](./api.md)).
+
+### Limits
+
+- Files deleted or renamed at the source are not detected: a rescan only copies, destination-only objects are never deleted. Use the proxy or a diff-fix for deletes.
+- Every scan lists the whole source bucket, so a bucket with tens of millions of objects takes a long time and many LIST requests per scan; choose a longer interval there (the minimum is 15 minutes, the maximum 24 hours).
+- An object that is written to the source, replicated, and then overwritten with a `LastModified` that goes backwards (a writer with a wrong clock) is only picked up by a scan whose cutoff reaches back that far.
+- A scan only covers objects, not bucket settings. For user-level replications a bucket created directly at the source after the initial copy is listed too, but its destination bucket must already exist (create it, or let the proxy create it).
+- Swift sources are not supported (`400`).
 
 ## See also
 
