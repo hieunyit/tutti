@@ -15,8 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/meta"
+	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/pkg/tasks"
+	"github.com/hieunyit/tutti/pkg/testutil"
+	"github.com/hieunyit/tutti/service/worker/syncer"
 )
 
 type fakeSyncer struct {
@@ -114,6 +119,46 @@ func TestServeSync_AllSucceed(t *testing.T) {
 	r.Equal("storage-ok", rec.Body.String())
 	r.Equal("2/2", rec.Header().Get(ReplicasHeader))
 	r.Equal(1, fs.callsTo("f1"))
+}
+
+func TestServeSync_IntentionalPolicySkipsSatisfyQuorum(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status entity.ReplicationStatus
+	}{
+		{"ignore", entity.ReplicationStatus{DeletePropagation: "ignore"}},
+		{"delete prefix filter", entity.ReplicationStatus{DeletePropagation: "sync", DeleteExcludePrefixes: []string{"protected/"}}},
+		{"replication pattern filter", entity.ReplicationStatus{DeletePropagation: "sync", ExcludePatterns: []string{"protected/*"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rc := testutil.SetupRedis(t)
+			sync := syncer.New(meta.NewVersionService(rc), store.NewObjectLocker(rc, 0), nil, nil)
+			sync.SetPolicyResolver(func(context.Context, entity.UniversalReplicationID) (entity.ReplicationStatus, error) {
+				return tc.status, nil
+			})
+			rt := &cannedRouter{tasks: []tasks.ReplicationTask{&tasks.ObjectSyncPayload{
+				Object: dom.Object{Bucket: "b", Name: "protected/o"}, Deleted: true,
+			}}}
+			h := serve(rt, &failingReplSvc{}, false, ReplicationOptions{}, SyncOptions{Enabled: true, Syncer: sync})
+			ctx := xctx.SetReplications(t.Context(), []entity.UniversalReplicationID{replID("f1")})
+			ctx = xctx.SetRoutingPolicy(ctx, "main")
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/b/protected/o", nil).WithContext(ctx))
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, "2/2", rec.Header().Get(ReplicasHeader))
+		})
+	}
+}
+
+func TestServeSync_DeferredDeleteRemainsQueuedAndFailsRequiredQuorum(t *testing.T) {
+	service := &failingReplSvc{}
+	deferDelete := syncerFunc(func(context.Context, tasks.ObjectSyncPayload) error {
+		return &syncer.DeleteDeferredError{Deadline: time.Now().Add(time.Hour)}
+	})
+	opts := SyncOptions{Enabled: true, Syncer: deferDelete, Timeout: time.Second}
+	rec, _ := runSyncServe(t, service, opts, []string{"f1"}, 1)
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.EqualValues(t, 1, service.calls.Load())
 }
 
 func TestServeSync_OneOfTwoFails_QuorumAll_503(t *testing.T) {

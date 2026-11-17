@@ -20,6 +20,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
 
 // ParseBucketAndObject extracts bucket and object from a request.
@@ -39,7 +41,11 @@ func ParseBucketAndObjectForHost(r *http.Request, endpointAddress string) (bucke
 	parts := strings.SplitN(path, "/", 2)
 	bucket = parts[0]
 	if bucket == "" {
-		bucket = r.Header.Get("x-amz-bucket")
+		if hb := r.Header.Get("x-amz-bucket"); hb != "" {
+			if err := s3utils.CheckValidBucketNameStrict(hb); err == nil {
+				bucket = hb
+			}
+		}
 	}
 
 	if len(parts) == 2 {

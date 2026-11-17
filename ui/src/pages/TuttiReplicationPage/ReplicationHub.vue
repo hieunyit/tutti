@@ -76,11 +76,16 @@
     :active-tab="activeTab"
     @update:active-tab="activeTab = $event"
   >
-    <template
-      v-if="!listEmpty"
-      #actions
-    >
-      <WriteGate>
+    <template #actions>
+      <RouterLink :to="{ name: RouteName.TUTTI_LIFECYCLE }">
+        <NButton
+          quaternary
+          tag="span"
+        >
+          Lifecycle Rules
+        </NButton>
+      </RouterLink>
+      <WriteGate v-if="!listEmpty">
         <RouterLink :to="{ name: addAction.to }">
           <NButton
             type="primary"

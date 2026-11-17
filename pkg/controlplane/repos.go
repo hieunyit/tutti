@@ -154,6 +154,10 @@ type Replications interface {
 	SetName(ctx context.Context, id ReplicationID, name string) error
 	// SetRescanInterval changes only the rescan interval in seconds (0 turns it off). ErrNotFound if absent.
 	SetRescanInterval(ctx context.Context, id ReplicationID, seconds int64) error
+	// SetDeletePropagation updates delete propagation policy. ErrNotFound if absent.
+	SetDeletePropagation(ctx context.Context, id ReplicationID, mode string, includePrefixes, excludePrefixes []string, delaySeconds int64) error
+	// SetFilters updates include/exclude patterns. ErrNotFound if absent.
+	SetFilters(ctx context.Context, id ReplicationID, includePatterns, excludePatterns []string) error
 	// ListStatuses returns all statuses; user filters the bucket-level ones and user-level ones when non-empty.
 	ListStatuses(ctx context.Context, user string) (map[ReplicationID]ReplicationStatus, error)
 	// BucketReplicationExistsForUser reports whether the user has a bucket-level replication.
@@ -177,6 +181,39 @@ type Audit interface {
 	Record(ctx context.Context, action, objectType, objectID string, details any) error
 }
 
+// DeleteEvents manages delete propagation events and audit logs.
+type DeleteEvents interface {
+	Create(ctx context.Context, e DeleteEvent) (int64, error)
+	UpdateStatus(ctx context.Context, id int64, status, lastError string) error
+	List(ctx context.Context, f DeleteEventFilter) ([]DeleteEvent, int64, error)
+	EnqueueRetry(ctx context.Context, id int64, retryCount int32, enqueue func() error) (bool, error)
+	RecordAudit(ctx context.Context, a DeleteAuditEntry) error
+}
+
+// LifecycleStore manages object lifecycle rules and execution audit logs.
+type LifecycleStore interface {
+	CreateRule(ctx context.Context, r LifecycleRule) (LifecycleRule, error)
+	GetRule(ctx context.Context, id int64) (LifecycleRule, error)
+	ListRules(ctx context.Context, storageName, bucket string) ([]LifecycleRule, error)
+	UpdateRule(ctx context.Context, r LifecycleRule) (LifecycleRule, error)
+	DeleteRule(ctx context.Context, id int64) error
+	SetRuleEnabled(ctx context.Context, id int64, enabled bool) error
+	UpdateRuleRun(ctx context.Context, id int64, nextRunAt, lastRunAt time.Time, stats LifecycleRunStats) error
+	ListDueRules(ctx context.Context, now time.Time) ([]LifecycleRule, error)
+	ClaimRule(ctx context.Context, id int64, now time.Time, lease time.Duration) (bool, error)
+	RecordAudit(ctx context.Context, a LifecycleAuditEntry) error
+	RecordAudits(ctx context.Context, entries []LifecycleAuditEntry) error
+	ListAuditLogs(ctx context.Context, ruleID int64, limit, offset int64) ([]LifecycleAuditEntry, int64, error)
+}
+
+// LifecycleLeaseStore provides fenced execution leases independent of scheduling.
+// A token must be unique to each execution. Implementations use their own clock.
+type LifecycleLeaseStore interface {
+	AcquireLifecycleLease(ctx context.Context, id int64, token string, lease time.Duration, dueOnly bool) (bool, error)
+	RenewLifecycleLease(ctx context.Context, id int64, token string, lease time.Duration) (bool, error)
+	CompleteLifecycleLease(ctx context.Context, id int64, token string, nextRunAt, lastRunAt time.Time, stats LifecycleRunStats) (bool, error)
+}
+
 // Repos groups all repositories. Inside Store.Tx they share one transaction.
 type Repos struct {
 	Storages           Storages
@@ -192,6 +229,8 @@ type Repos struct {
 	ProtectionGroups   ProtectionGroups
 	StorageTests       StorageTests
 	SystemSettings     SystemSettingsStore
+	DeleteEvents       DeleteEvents
+	Lifecycle          LifecycleStore
 	Audit              Audit
 }
 

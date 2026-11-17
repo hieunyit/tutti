@@ -7,3 +7,5 @@ Only production Go sources and module/license files are included; original upstr
 Archived/completed redrive through Inspector.RunTask is quota-checked atomically. RunAllArchivedTasks moves at most the remaining capacity and returns the moved count; excess archived tasks remain for a later retry. Scheduled/retry/aggregating-to-pending transfers keep existing outstanding work and do not require a new slot.
 
 Inspector.RedisClient exposes the existing queue connection so Tutti admission/readiness code does not use reflection or unsafe to read private fields. The accessor does not transfer ownership.
+
+The processor reschedules errors classified as non-failures by Config.IsFailure even when the task has no retries left. Deferred delete propagation uses this behavior to wait for its deadline without spending an attempt.

@@ -22,6 +22,7 @@
    */
   import { NButton } from 'naive-ui';
   import { computed, ref } from 'vue';
+  import { useNotification } from '@clyso/clyso-ui-kit';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import WriteGate from '@/components/auth/WriteGate.vue';
@@ -37,6 +38,7 @@
   import i18nReplicationActivity from '@/components/tutti/replications/activity/i18nReplicationActivity';
   import ReplicationRenameDialog from '@/components/tutti/replications/ReplicationRenameDialog/ReplicationRenameDialog.vue';
   import ReplicationSummary from '@/components/tutti/replications/ReplicationSummary.vue';
+  import ReplicationPoliciesCard from '@/components/tutti/replications/ReplicationPoliciesCard.vue';
   import i18nReplicationRescan from '@/components/tutti/replications/i18nReplicationRescan';
   import i18nReplications from '@/components/tutti/replications/i18nReplications';
   import { getReplicationStatus } from '@/components/tutti/replications/replicationStatus';
@@ -60,13 +62,39 @@
 
   const id = computed(() => ReplicationDetailHelper.fromQuery(route.query));
   const detail = useReplicationDetail(id);
+  const replication = detail.replication;
   const activity = useReplicationActivity(id);
   const now = useNow(1000);
   const renaming = ref(false);
+  const pausing = ref(false);
+  const { createNotification } = useNotification();
+
+  async function handleTogglePause() {
+    if (!replication.value) return;
+
+    const willPause = !replication.value.isPaused;
+
+    pausing.value = true;
+
+    try {
+      await detail.setPaused(willPause);
+
+      createNotification({
+        type: 'success',
+        title: willPause ? t('pauseSuccessTitle') : t('resumeSuccessTitle'),
+      });
+    } catch (err: unknown) {
+      createNotification({
+        type: 'error',
+        title: willPause ? t('pauseErrorTitle') : t('resumeErrorTitle'),
+        content: err instanceof Error ? err.message : t('errorText'),
+      });
+    } finally {
+      pausing.value = false;
+    }
+  }
 
   void activity.start();
-
-  const replication = detail.replication;
 
   const title = computed(() =>
     replication.value
@@ -123,9 +151,11 @@
     <template #actions>
       <WriteGate v-if="replication">
         <NButton @click="renaming = true">{{ t('rename') }}</NButton>
-        <NButton @click="detail.setPaused(!replication.isPaused)">{{
-          replication.isPaused ? t('resume') : t('pause')
-        }}</NButton>
+        <NButton
+          :loading="pausing"
+          :disabled="pausing"
+          @click="handleTogglePause"
+        >{{ replication.isPaused ? t('resume') : t('pause') }}</NButton>
       </WriteGate>
     </template>
     <template #empty>
@@ -145,6 +175,10 @@
         :replication="replication"
         :sync="detail.syncNow"
         :change-interval="detail.setRescanInterval"
+      />
+      <ReplicationPoliciesCard
+        :replication="replication"
+        :reload="detail.refresh"
       />
       <SectionCard
         :title="t('inProgressTitle')"

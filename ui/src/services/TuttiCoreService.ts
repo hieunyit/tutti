@@ -328,4 +328,41 @@ export abstract class TuttiCoreService {
 
     return data;
   }
+
+  static async updateDeletePropagation(
+    payload: import('@/utils/types/tuttiCore').UpdateDeletePropagationRequest,
+  ): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getTuttiAPIUrl('/replication/delete-propagation'),
+      payload,
+    );
+  }
+
+  static async updateReplicationFilters(
+    payload: import('@/utils/types/tuttiCore').UpdateReplicationFiltersRequest,
+  ): Promise<void> {
+    await apiClient.put(
+      ApiHelper.getTuttiAPIUrl('/replication/filters'),
+      payload,
+    );
+  }
+
+  static async listDeleteEvents(
+    payload: import('@/utils/types/tuttiCore').ListDeleteEventsRequest,
+  ): Promise<import('@/utils/types/tuttiCore').ListDeleteEventsResponse> {
+    const { data } = await apiClient.post<
+      import('@/utils/types/tuttiCore').ListDeleteEventsResponse
+    >(ApiHelper.getTuttiAPIUrl('/replication/delete-events'), payload);
+
+    return data;
+  }
+
+  static async retryFailedDeletes(
+    payload: import('@/utils/types/tuttiCore').RetryFailedDeletesRequest,
+  ): Promise<void> {
+    await apiClient.post(
+      ApiHelper.getTuttiAPIUrl('/replication/delete-events/retry'),
+      payload,
+    );
+  }
 }

@@ -190,8 +190,10 @@ type ObjectSyncPayload struct {
 	replicationID
 
 	//FromVersion int64
-	ObjSize int64
-	Deleted bool
+	ObjSize               int64
+	Deleted               bool
+	DeleteEventID         int64 `json:"deleteEventId,omitempty"`
+	DeleteEventRetryCount int32 `json:"deleteEventRetryCount,omitempty"`
 }
 
 type BucketDeletePayload struct {

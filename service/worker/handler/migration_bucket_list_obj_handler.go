@@ -194,10 +194,14 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 	if err != nil {
 		return err
 	}
+	replFilter, err := s.replicationFilter(ctx, replicationID)
+	if err != nil {
+		return err
+	}
 
 	fromClient, err := s.clients.AsS3(ctx, p.ID.FromStorage(), p.ID.User())
 	if err != nil {
-		return fmt.Errorf("migration bucket list obj: unable to get %q s3 client: %w: %w", p.ID.FromStorage(), err, asynq.SkipRetry)
+		return fmt.Errorf("migration bucket list obj: unable to get %q s3 client: %w", p.ID.FromStorage(), err)
 	}
 
 	migrationID := entity.NewMigrationObjectIDFromUniversalReplicationID(p.ID, p.Bucket, p.Prefix)
@@ -301,6 +305,9 @@ func (s *svc) HandleMigrationBucketListObj(ctx context.Context, t *asynq.Task) e
 		scanned++
 		lastScanned = object.Key
 		if !keepSince(object.LastModified, since) {
+			continue
+		}
+		if replFilter != nil && !replFilter.ShouldSync(object.Key) {
 			continue
 		}
 		isDir := object.Size == 0 && strings.HasSuffix(object.Key, "/")

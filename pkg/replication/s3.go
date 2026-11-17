@@ -20,12 +20,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog"
 
+	"github.com/hieunyit/tutti/pkg/controlplane"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/filter"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/policy"
 	"github.com/hieunyit/tutti/pkg/s3"
@@ -75,6 +79,13 @@ func (s *s3Svc) Replicate(ctx context.Context, routedTo string, task tasks.Repli
 		Bucket:  xctx.GetBucket(ctx),
 	}
 	for _, replID := range replications {
+		if objTask, ok := task.(*tasks.ObjectSyncPayload); ok {
+			if err := s.replicateObject(ctx, replID, destination, *objTask, skipTasks); err != nil {
+				return err
+			}
+			continue
+		}
+
 		// 2. increment versions in source storage
 		switch t := task.(type) {
 		case *tasks.BucketCreatePayload:
@@ -97,17 +108,6 @@ func (s *s3Svc) Replicate(ctx context.Context, routedTo string, task tasks.Repli
 			}
 		case *tasks.BucketSyncTagsPayload:
 			_, err = s.versionSvc.IncrementBucketTags(ctx, replID, t.Bucket, destination)
-			if err != nil {
-				return err
-			}
-		case *tasks.ObjectSyncPayload:
-			// During zero-downtime switch use Increment even for deletes
-			// to keep version non-empty so old events see From <= To and skip.
-			if t.Deleted && !skipTasks {
-				err = s.versionSvc.DeleteObjAll(ctx, replID, t.Object)
-			} else {
-				_, err = s.versionSvc.IncrementObj(ctx, replID, t.Object, destination)
-			}
 			if err != nil {
 				return err
 			}
@@ -134,6 +134,89 @@ func (s *s3Svc) Replicate(ctx context.Context, routedTo string, task tasks.Repli
 		}
 	}
 
+	return nil
+}
+
+func (s *s3Svc) replicateObject(ctx context.Context, id entity.UniversalReplicationID, dest meta.Destination, task tasks.ObjectSyncPayload, skipTasks bool) error {
+	if skipTasks {
+		// Keep versions non-empty during a zero-downtime switch, even for a delete.
+		_, err := s.versionSvc.IncrementObj(ctx, id, task.Object, dest)
+		return err
+	}
+	var delay time.Duration
+	if s.policySvc != nil {
+		ext, err := s.policySvc.GetReplicationPolicyInfoExtended(ctx, id)
+		if err != nil {
+			return fmt.Errorf("resolve replication policy: %w", err)
+		}
+		if st := ext.ReplicationStatus; st != nil {
+			delay = time.Duration(st.DeleteDelaySeconds) * time.Second
+			f := filter.New(st.IncludePatterns, st.ExcludePatterns)
+			if !f.ShouldSync(task.Object.Name) {
+				zerolog.Ctx(ctx).Debug().Str("key", task.Object.Name).Msg("skip replication: filtered out by pattern")
+				return nil
+			}
+		}
+	}
+	generation := xctx.GetReplicationGeneration(ctx, id)
+	task.SetReplicationID(id, generation)
+	if !task.Deleted {
+		if _, err := s.versionSvc.IncrementObj(ctx, id, task.Object, dest); err != nil {
+			return err
+		}
+		return s.queueSvc.EnqueueTask(ctx, &task)
+	}
+
+	sourceTime := time.Now()
+	deadline, err := s.versionSvc.DeleteObjWithDeadline(ctx, id, task.Object, sourceTime.Add(delay))
+	if err != nil {
+		return err
+	}
+	var events controlplane.DeleteEvents
+	if s.policySvc != nil {
+		if cp := s.policySvc.ControlPlane(); cp != nil {
+			events = cp.Repos().DeleteEvents
+		}
+	}
+	if events != nil {
+		task.DeleteEventID, err = events.Create(ctx, controlplane.DeleteEvent{
+			ReplicationID:   id.AsString(),
+			Generation:      generation,
+			Bucket:          task.Object.Bucket,
+			ObjectKey:       task.Object.Name,
+			VersionID:       task.Object.Version,
+			DeletionType:    "hard",
+			SourceTimestamp: sourceTime,
+			Status:          "pending",
+		})
+		if err != nil {
+			return fmt.Errorf("create delete event: %w", err)
+		}
+	}
+	var opts []asynq.Option
+	if time.Now().Before(deadline) {
+		opts = append(opts, asynq.ProcessAt(deadline.Truncate(time.Second).Add(time.Second)))
+	}
+	if err := s.queueSvc.EnqueueTask(ctx, &task, opts...); err != nil {
+		if events != nil {
+			auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			_, bucket := id.FromToBuckets(task.Object.Bucket)
+			auditErr := events.RecordAudit(auditCtx, controlplane.DeleteAuditEntry{
+				DeleteEventID:      task.DeleteEventID,
+				ReplicationID:      id.AsString(),
+				Bucket:             bucket,
+				ObjectKey:          task.Object.Name,
+				DestinationStorage: id.ToStorage(),
+				Action:             "failed",
+				Metadata:           map[string]any{"error": err.Error()},
+			})
+			if auditErr != nil {
+				zerolog.Ctx(ctx).Error().Err(auditErr).Int64("delete_event_id", task.DeleteEventID).Msg("record delete enqueue failure")
+			}
+		}
+		return fmt.Errorf("unable to fan out replication task to %+v: %w", id, err)
+	}
 	return nil
 }
 

@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tutti-worker-config
+  namespace: tutti
+data:
+  worker.yaml: |
+    version: 1
+    appId: "tutti-worker"
+    redis:
+      address: "redis:6379"
+      password: "${REDIS_PASSWORD}"
+      db: 0
+    controlPlane:
+      backend: postgres
+      postgres:
+        enabled: true
+        dsn: "${POSTGRES_DSN}"
+        autoMigrate: true
+    storage:
+      dynamicCredentials:
+        enabled: true
+        masterPassword: "${MASTER_PASSWORD}"
+    api:
+      enabled: true
+      httpPort: 9671
+      grpcPort: 9670
+      auth:
+        enabled: true
+        jwtSecret: "${JWT_SECRET}"
+        allowManagedUsers: true
+    log:
+      level: info
+      format: json
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tutti-proxy-config
+  namespace: tutti
+data:
+  proxy.yaml: |
+    version: 1
+    appId: "tutti-proxy"
+    proxy:
+      port: 9669
+      cors:
+        enabled: true
+    redis:
+      address: "redis:6379"
+      password: "${REDIS_PASSWORD}"
+      db: 0
+    controlPlane:
+      backend: postgres
+      postgres:
+        enabled: true
+        dsn: "${POSTGRES_DSN}"
+    storage:
+      dynamicCredentials:
+        enabled: true
+        masterPassword: "${MASTER_PASSWORD}"
+    health:
+      failureThreshold: 3
+      openDuration: "30s"
+    replication:
+      onEventError: fail
+      eventRetryBudget: "2s"
+      sync:
+        enabled: true
+        writeQuorum: 2
+        timeout: "15s"
+    auth:
+      requireSignedContentType: false
+    log:
+      level: info
+      format: json

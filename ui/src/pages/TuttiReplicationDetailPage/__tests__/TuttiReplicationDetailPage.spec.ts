@@ -29,6 +29,7 @@ import { RouteName } from '@/utils/types/router';
 
 vi.mock('@clyso/clyso-ui-kit', () => ({
   I18nLocale: { EN: 'en', DE: 'de' },
+  useNotification: () => ({ createNotification: vi.fn(), removeNotification: vi.fn() }),
 }));
 vi.mock('@/utils/helpers/DateTimeHelper', () => ({
   formatDateTime: (value: unknown) => String(value ?? '-'),
@@ -43,6 +44,10 @@ vi.mock('@/services/TuttiCoreService', () => ({
     renameReplication: vi.fn(),
     pauseBucketReplication: vi.fn(),
     resumeBucketReplication: vi.fn(),
+    updateDeletePropagation: vi.fn(),
+    updateReplicationFilters: vi.fn(),
+    listDeleteEvents: vi.fn().mockResolvedValue({ events: [], total: '0' }),
+    retryFailedDeletes: vi.fn(),
   },
 }));
 

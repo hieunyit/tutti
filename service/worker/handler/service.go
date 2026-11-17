@@ -18,13 +18,17 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/hieunyit/tutti/pkg/accesspolicy"
 	"time"
+
+	"github.com/hieunyit/tutti/pkg/accesspolicy"
 
 	"github.com/hibiken/asynq"
 
+	"github.com/hieunyit/tutti/pkg/dom"
 	"github.com/hieunyit/tutti/pkg/entity"
+	"github.com/hieunyit/tutti/pkg/filter"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/objstore"
 	"github.com/hieunyit/tutti/pkg/ratelimit"
@@ -84,10 +88,37 @@ type svc struct {
 	syncer                  *syncer.ObjectSyncer
 	scope                   *accesspolicy.Scope
 	sinceFor                func(ctx context.Context, id entity.UniversalReplicationID) (*time.Time, error)
+	filterFor               func(ctx context.Context, id entity.UniversalReplicationID) (*filter.Filter, error)
 }
 
 // SetBucketScope restricts the buckets listed for user-level replication of users on a shared connection account.
 func (s *svc) SetBucketScope(scope *accesspolicy.Scope) { s.scope = scope }
+
+func (s *svc) SetPolicyResolver(pr syncer.PolicyResolver) {
+	s.syncer.SetPolicyResolver(pr)
+}
+
+func (s *svc) SetDeleteAuditRecorder(ar syncer.DeleteAuditRecorder) {
+	s.syncer.SetDeleteAuditRecorder(ar)
+}
+
+func (s *svc) SetFilterResolver(f func(ctx context.Context, id entity.UniversalReplicationID) (*filter.Filter, error)) {
+	s.filterFor = f
+}
+
+func (s *svc) replicationFilter(ctx context.Context, id entity.UniversalReplicationID) (*filter.Filter, error) {
+	if s.filterFor == nil {
+		return nil, nil
+	}
+	f, err := s.filterFor(ctx, id)
+	if err != nil {
+		if errors.Is(err, dom.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to read replication filter: %w", err)
+	}
+	return f, nil
+}
 
 func New(conf *Config, credsSvc objstore.CredsService, clients objstore.Clients, versionSvc meta.VersionService,
 	copySvc copy.CopySvc, queueSvc tasks.QueueService,

@@ -211,6 +211,14 @@ type ReplicationStatus struct {
 	Since *time.Time
 	// RescanSeconds is the interval of the periodic source rescan in seconds (0 = off).
 	RescanSeconds int64
+	// Delete propagation policy
+	DeletePropagation     string
+	DeleteIncludePrefixes []string
+	DeleteExcludePrefixes []string
+	DeleteDelaySeconds    int64
+	// Filter patterns (glob)
+	IncludePatterns []string
+	ExcludePatterns []string
 }
 
 // AuditEntry is one row of the audit log.
@@ -296,4 +304,75 @@ type SystemLockSettings struct {
 type SystemWebhookSettings struct {
 	Enabled bool   `json:"enabled"`
 	BaseURL string `json:"baseUrl"`
+}
+
+// DeleteEvent is a tracked delete event for replication.
+type DeleteEvent struct {
+	Generation      int64     `json:"generation"`
+	ID              int64     `json:"id"`
+	ReplicationID   string    `json:"replicationId"`
+	Bucket          string    `json:"bucket"`
+	ObjectKey       string    `json:"objectKey"`
+	VersionID       string    `json:"versionId,omitempty"`
+	DeletionType    string    `json:"deletionType"` // 'hard', 'marker'
+	SourceTimestamp time.Time `json:"sourceTimestamp"`
+	Status          string    `json:"status"` // 'pending', 'success', 'failed', 'skipped'
+	RetryCount      int32     `json:"retryCount"`
+	LastError       string    `json:"lastError,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type DeleteEventFilter struct {
+	ReplicationID string
+	Status        string
+	Limit         int32
+	Offset        int64
+	BeforeID      int64
+}
+
+type DeleteAuditEntry struct {
+	DeleteEventID         int64          `json:"deleteEventId,omitempty"`
+	DeleteEventRetryCount int32          `json:"-"`
+	ID                    int64          `json:"id"`
+	ReplicationID         string         `json:"replicationId"`
+	Bucket                string         `json:"bucket"`
+	ObjectKey             string         `json:"objectKey"`
+	Action                string         `json:"action"` // 'deleted', 'marker_created', 'skipped', 'failed'
+	DestinationStorage    string         `json:"destinationStorage"`
+	Timestamp             time.Time      `json:"timestamp"`
+	Metadata              map[string]any `json:"metadata,omitempty"`
+}
+
+// LifecycleRule configures TTL-based auto deletion.
+type LifecycleRule struct {
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	StorageName    string             `json:"storageName"`
+	Bucket         string             `json:"bucket"`
+	Prefix         string             `json:"prefix"`
+	ExpirationDays int32              `json:"expirationDays"`
+	Schedule       string             `json:"schedule"`
+	Enabled        bool               `json:"enabled"`
+	NextRunAt      *time.Time         `json:"nextRunAt,omitempty"`
+	LastRunAt      *time.Time         `json:"lastRunAt,omitempty"`
+	LastRunStats   *LifecycleRunStats `json:"lastRunStats,omitempty"`
+	CreatedAt      time.Time          `json:"createdAt"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+}
+
+type LifecycleRunStats struct {
+	DeletedCount int64 `json:"deletedCount"`
+	BytesFreed   int64 `json:"bytesFreed"`
+	DurationMs   int64 `json:"durationMs"`
+}
+
+type LifecycleAuditEntry struct {
+	ID           int64     `json:"id"`
+	RuleID       int64     `json:"ruleId"`
+	Bucket       string    `json:"bucket"`
+	ObjectKey    string    `json:"objectKey"`
+	SizeBytes    int64     `json:"sizeBytes"`
+	LastModified time.Time `json:"lastModified"`
+	DeletedAt    time.Time `json:"deletedAt"`
 }

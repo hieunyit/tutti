@@ -30,6 +30,7 @@ type Service interface {
 	ReplicationSvc
 	ReplicationSwitchSvc
 	ScopeSvc
+	ControlPlane() controlplane.Store
 }
 
 func NewService(client redis.UniversalClient, queueSVC tasks.QueueService, mainStorage string) *policySvc {

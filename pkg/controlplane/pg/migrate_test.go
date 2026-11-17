@@ -31,8 +31,8 @@ func TestMigrateUpFromEmpty(t *testing.T) {
 	require.NoError(t, err)
 	latest, err := pg.LatestVersion()
 	require.NoError(t, err)
-	require.Equal(t, []int{1, 2, 3, 4, 5, 6}, applied)
-	require.Equal(t, 6, latest)
+	require.Equal(t, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, applied)
+	require.Equal(t, 12, latest)
 
 	v, err = pg.SchemaVersion(ctx, s.Pool())
 	require.NoError(t, err)
@@ -40,7 +40,8 @@ func TestMigrateUpFromEmpty(t *testing.T) {
 
 	for _, table := range []string{"audit_log", "outbox", "storages", "s3_identities", "dynamic_credentials", "proxy_accounts", "access_policies",
 		"console_users", "routes", "route_blocks", "replication_policies", "replication_status", "replication_generations",
-		"failover_policies", "failover_events", "protection_groups", "storage_tests", "schema_migrations", "system_settings"} {
+		"failover_policies", "failover_events", "protection_groups", "storage_tests", "schema_migrations", "system_settings",
+		"delete_events", "delete_audit_log", "lifecycle_rules", "lifecycle_audit_log"} {
 		var ok bool
 		require.NoError(t, s.Pool().QueryRow(ctx, `SELECT to_regclass($1) IS NOT NULL`, table).Scan(&ok))
 		require.True(t, ok, table)
@@ -86,5 +87,5 @@ func TestMigrateConcurrent(t *testing.T) {
 		require.NoError(t, errs[i])
 		sum += total[i]
 	}
-	require.Equal(t, 6, sum, "exactly one migrator applies each migration (versions 1 to 6)")
+	require.Equal(t, 12, sum, "exactly one migrator applies each migration (versions 1 to 12)")
 }

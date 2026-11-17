@@ -103,9 +103,21 @@ func TestSync_SourceMissingIsSkipped(t *testing.T) {
 func TestSync_EmptyVersionsTakesDeletePath(t *testing.T) {
 	r := require.New(t)
 	s, fc, cl, _, p := setup(t)
+	p.Deleted = true
 	err := s.Sync(t.Context(), p)
 	r.Error(err)
 	r.False(errors.Is(err, asynq.SkipRetry), "unclassified client failures must retain retry")
+	r.Equal(1, cl.calls)
+	r.Empty(fc.calls)
+}
+
+func TestSync_OldPutTaskWhenSourceMissingSkipsWithoutDelete(t *testing.T) {
+	r := require.New(t)
+	s, fc, cl, _, p := setup(t)
+	p.Deleted = false // PUT task
+	// cl.calls will fail with client error because failClients returns error, so it tests that client is probed
+	err := s.Sync(t.Context(), p)
+	r.Error(err) // client error on stat
 	r.Equal(1, cl.calls)
 	r.Empty(fc.calls)
 }

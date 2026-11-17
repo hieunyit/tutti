@@ -70,6 +70,10 @@ var viewerMethods = map[string]struct{}{
 	"/tutti.Policy/StreamReplication":               {},
 	"/tutti.Policy/GetSwitchStatus":                 {},
 	"/tutti.Policy/ListRoutings":                    {},
+	"/tutti.Policy/ListDeleteEvents":                {},
+	"/tutti.Lifecycle/ListRules":                    {},
+	"/tutti.Lifecycle/GetRule":                      {},
+	"/tutti.Lifecycle/ListAuditLogs":                {},
 	"/tutti.Resilience/GetProxyStatus":              {},
 	"/tutti.Resilience/GetStatsHistory":             {},
 	"/tutti.Resilience/GetWorkerStats":              {},
@@ -110,14 +114,21 @@ func Allowed(role, method string) bool {
 	return false
 }
 
-// AllowedRequest is Allowed plus request-dependent rules: AvailableBuckets without a user lists every bucket of
-// the storage connection accounts (and the owners of covered buckets), so it is admin-only.
+// AllowedRequest is Allowed plus request-dependent rules:
+//   - AvailableBuckets without a user lists every bucket of the storage connection accounts (and the owners of covered
+//     buckets), so it is admin-only.
+//   - ListDeleteEvents without a replication_id lists global delete events across all replications, so it is admin-only.
 func AllowedRequest(role, method string, req any) bool {
 	if !Allowed(role, method) {
 		return false
 	}
 	if method == "/tutti.Policy/AvailableBuckets" && role != RoleAdmin && !isPublic(method) {
 		if r, ok := req.(*pb.AvailableBucketsRequest); ok && r.GetUser() == "" {
+			return false
+		}
+	}
+	if method == "/tutti.Policy/ListDeleteEvents" && role != RoleAdmin && !isPublic(method) {
+		if r, ok := req.(*pb.ListDeleteEventsRequest); ok && r.GetReplicationId() == "" {
 			return false
 		}
 	}
@@ -189,7 +200,10 @@ func (s *Service) UnaryInterceptor() grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 		if sess, ok := FromContext(ctx); ok && sess != nil && !AllowedRequest(sess.Role, info.FullMethod, req) {
-			return nil, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s without a user", sess.Role, info.FullMethod)
+			if info.FullMethod == "/tutti.Policy/AvailableBuckets" {
+				return nil, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s without a user", sess.Role, info.FullMethod)
+			}
+			return nil, status.Errorf(codes.PermissionDenied, "role %q is not allowed to call %s without required scoping parameters", sess.Role, info.FullMethod)
 		}
 		return handler(ctx, req)
 	}

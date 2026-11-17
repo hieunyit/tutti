@@ -79,6 +79,58 @@ func (EventSource) EnumDescriptor() ([]byte, []int) {
 	return file_tutti_policy_proto_rawDescGZIP(), []int{0}
 }
 
+type DeletePropagationMode int32
+
+const (
+	DeletePropagationMode_DELETE_PROPAGATION_UNSPECIFIED DeletePropagationMode = 0
+	DeletePropagationMode_DELETE_PROPAGATION_IGNORE      DeletePropagationMode = 1
+	DeletePropagationMode_DELETE_PROPAGATION_SYNC        DeletePropagationMode = 2
+	DeletePropagationMode_DELETE_PROPAGATION_MARKER_ONLY DeletePropagationMode = 3
+)
+
+// Enum value maps for DeletePropagationMode.
+var (
+	DeletePropagationMode_name = map[int32]string{
+		0: "DELETE_PROPAGATION_UNSPECIFIED",
+		1: "DELETE_PROPAGATION_IGNORE",
+		2: "DELETE_PROPAGATION_SYNC",
+		3: "DELETE_PROPAGATION_MARKER_ONLY",
+	}
+	DeletePropagationMode_value = map[string]int32{
+		"DELETE_PROPAGATION_UNSPECIFIED": 0,
+		"DELETE_PROPAGATION_IGNORE":      1,
+		"DELETE_PROPAGATION_SYNC":        2,
+		"DELETE_PROPAGATION_MARKER_ONLY": 3,
+	}
+)
+
+func (x DeletePropagationMode) Enum() *DeletePropagationMode {
+	p := new(DeletePropagationMode)
+	*p = x
+	return p
+}
+
+func (x DeletePropagationMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DeletePropagationMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_tutti_policy_proto_enumTypes[1].Descriptor()
+}
+
+func (DeletePropagationMode) Type() protoreflect.EnumType {
+	return &file_tutti_policy_proto_enumTypes[1]
+}
+
+func (x DeletePropagationMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DeletePropagationMode.Descriptor instead.
+func (DeletePropagationMode) EnumDescriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{1}
+}
+
 type ReplicationSwitch_Status int32
 
 const (
@@ -137,11 +189,11 @@ func (x ReplicationSwitch_Status) String() string {
 }
 
 func (ReplicationSwitch_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_tutti_policy_proto_enumTypes[1].Descriptor()
+	return file_tutti_policy_proto_enumTypes[2].Descriptor()
 }
 
 func (ReplicationSwitch_Status) Type() protoreflect.EnumType {
-	return &file_tutti_policy_proto_enumTypes[1]
+	return &file_tutti_policy_proto_enumTypes[2]
 }
 
 func (x ReplicationSwitch_Status) Number() protoreflect.EnumNumber {
@@ -810,8 +862,14 @@ type ReplicationOpts struct {
 	// Tutti. Unset or 0 turns it off. Allowed range 15m..24h, else InvalidArg.
 	// JSON form is a string like "3600s".
 	RescanInterval *durationpb.Duration `protobuf:"bytes,4,opt,name=rescan_interval,json=rescanInterval,proto3" json:"rescan_interval,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Delete propagation policy.
+	DeletePropagation *DeletePropagationPolicy `protobuf:"bytes,5,opt,name=delete_propagation,json=deletePropagation,proto3" json:"delete_propagation,omitempty"`
+	// Patterns of object keys to include (glob format). Empty includes all not excluded.
+	IncludePatterns []string `protobuf:"bytes,6,rep,name=include_patterns,json=includePatterns,proto3" json:"include_patterns,omitempty"`
+	// Patterns of object keys to exclude (glob format). Exclude patterns take precedence.
+	ExcludePatterns []string `protobuf:"bytes,7,rep,name=exclude_patterns,json=excludePatterns,proto3" json:"exclude_patterns,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ReplicationOpts) Reset() {
@@ -861,6 +919,27 @@ func (x *ReplicationOpts) GetSince() *timestamppb.Timestamp {
 func (x *ReplicationOpts) GetRescanInterval() *durationpb.Duration {
 	if x != nil {
 		return x.RescanInterval
+	}
+	return nil
+}
+
+func (x *ReplicationOpts) GetDeletePropagation() *DeletePropagationPolicy {
+	if x != nil {
+		return x.DeletePropagation
+	}
+	return nil
+}
+
+func (x *ReplicationOpts) GetIncludePatterns() []string {
+	if x != nil {
+		return x.IncludePatterns
+	}
+	return nil
+}
+
+func (x *ReplicationOpts) GetExcludePatterns() []string {
+	if x != nil {
+		return x.ExcludePatterns
 	}
 	return nil
 }
@@ -1065,6 +1144,12 @@ type Replication struct {
 	LastRescanObjects int64 `protobuf:"varint,28,opt,name=last_rescan_objects,json=lastRescanObjects,proto3" json:"last_rescan_objects,omitempty"`
 	// Error of the last rescan attempt; empty when it succeeded.
 	LastRescanError string `protobuf:"bytes,29,opt,name=last_rescan_error,json=lastRescanError,proto3" json:"last_rescan_error,omitempty"`
+	// Delete propagation policy.
+	DeletePropagation *DeletePropagationPolicy `protobuf:"bytes,30,opt,name=delete_propagation,json=deletePropagation,proto3" json:"delete_propagation,omitempty"`
+	// Patterns of object keys to include (glob format). Empty includes all not excluded.
+	IncludePatterns []string `protobuf:"bytes,31,rep,name=include_patterns,json=includePatterns,proto3" json:"include_patterns,omitempty"`
+	// Patterns of object keys to exclude (glob format). Exclude patterns take precedence.
+	ExcludePatterns []string `protobuf:"bytes,32,rep,name=exclude_patterns,json=excludePatterns,proto3" json:"exclude_patterns,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1300,6 +1385,27 @@ func (x *Replication) GetLastRescanError() string {
 		return x.LastRescanError
 	}
 	return ""
+}
+
+func (x *Replication) GetDeletePropagation() *DeletePropagationPolicy {
+	if x != nil {
+		return x.DeletePropagation
+	}
+	return nil
+}
+
+func (x *Replication) GetIncludePatterns() []string {
+	if x != nil {
+		return x.IncludePatterns
+	}
+	return nil
+}
+
+func (x *Replication) GetExcludePatterns() []string {
+	if x != nil {
+		return x.ExcludePatterns
+	}
+	return nil
 }
 
 // Request list of bucket available for replication for given user and from/to
@@ -2550,6 +2656,482 @@ func (x *TestProxyResponse) GetReplications() []*ReplicationID {
 	return nil
 }
 
+type DeletePropagationPolicy struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Mode              DeletePropagationMode  `protobuf:"varint,1,opt,name=mode,proto3,enum=tutti.DeletePropagationMode" json:"mode,omitempty"`
+	IncludePrefixes   []string               `protobuf:"bytes,2,rep,name=include_prefixes,json=includePrefixes,proto3" json:"include_prefixes,omitempty"`
+	ExcludePrefixes   []string               `protobuf:"bytes,3,rep,name=exclude_prefixes,json=excludePrefixes,proto3" json:"exclude_prefixes,omitempty"`
+	DelayBeforeDelete *durationpb.Duration   `protobuf:"bytes,4,opt,name=delay_before_delete,json=delayBeforeDelete,proto3" json:"delay_before_delete,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DeletePropagationPolicy) Reset() {
+	*x = DeletePropagationPolicy{}
+	mi := &file_tutti_policy_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePropagationPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePropagationPolicy) ProtoMessage() {}
+
+func (x *DeletePropagationPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePropagationPolicy.ProtoReflect.Descriptor instead.
+func (*DeletePropagationPolicy) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *DeletePropagationPolicy) GetMode() DeletePropagationMode {
+	if x != nil {
+		return x.Mode
+	}
+	return DeletePropagationMode_DELETE_PROPAGATION_UNSPECIFIED
+}
+
+func (x *DeletePropagationPolicy) GetIncludePrefixes() []string {
+	if x != nil {
+		return x.IncludePrefixes
+	}
+	return nil
+}
+
+func (x *DeletePropagationPolicy) GetExcludePrefixes() []string {
+	if x != nil {
+		return x.ExcludePrefixes
+	}
+	return nil
+}
+
+func (x *DeletePropagationPolicy) GetDelayBeforeDelete() *durationpb.Duration {
+	if x != nil {
+		return x.DelayBeforeDelete
+	}
+	return nil
+}
+
+type ListDeleteEventsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReplicationId string                 `protobuf:"bytes,1,opt,name=replication_id,json=replicationId,proto3" json:"replication_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int64                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDeleteEventsRequest) Reset() {
+	*x = ListDeleteEventsRequest{}
+	mi := &file_tutti_policy_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDeleteEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDeleteEventsRequest) ProtoMessage() {}
+
+func (x *ListDeleteEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDeleteEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListDeleteEventsRequest) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ListDeleteEventsRequest) GetReplicationId() string {
+	if x != nil {
+		return x.ReplicationId
+	}
+	return ""
+}
+
+func (x *ListDeleteEventsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListDeleteEventsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListDeleteEventsRequest) GetOffset() int64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type DeleteEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReplicationId   string                 `protobuf:"bytes,2,opt,name=replication_id,json=replicationId,proto3" json:"replication_id,omitempty"`
+	Bucket          string                 `protobuf:"bytes,3,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	ObjectKey       string                 `protobuf:"bytes,4,opt,name=object_key,json=objectKey,proto3" json:"object_key,omitempty"`
+	VersionId       string                 `protobuf:"bytes,5,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	DeletionType    string                 `protobuf:"bytes,6,opt,name=deletion_type,json=deletionType,proto3" json:"deletion_type,omitempty"`
+	Status          string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	RetryCount      int32                  `protobuf:"varint,8,opt,name=retry_count,json=retryCount,proto3" json:"retry_count,omitempty"`
+	LastError       string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	SourceTimestamp *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=source_timestamp,json=sourceTimestamp,proto3" json:"source_timestamp,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DeleteEvent) Reset() {
+	*x = DeleteEvent{}
+	mi := &file_tutti_policy_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteEvent) ProtoMessage() {}
+
+func (x *DeleteEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteEvent.ProtoReflect.Descriptor instead.
+func (*DeleteEvent) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *DeleteEvent) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *DeleteEvent) GetReplicationId() string {
+	if x != nil {
+		return x.ReplicationId
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetBucket() string {
+	if x != nil {
+		return x.Bucket
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetObjectKey() string {
+	if x != nil {
+		return x.ObjectKey
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetDeletionType() string {
+	if x != nil {
+		return x.DeletionType
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetRetryCount() int32 {
+	if x != nil {
+		return x.RetryCount
+	}
+	return 0
+}
+
+func (x *DeleteEvent) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+func (x *DeleteEvent) GetSourceTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SourceTimestamp
+	}
+	return nil
+}
+
+func (x *DeleteEvent) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *DeleteEvent) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type ListDeleteEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*DeleteEvent         `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDeleteEventsResponse) Reset() {
+	*x = ListDeleteEventsResponse{}
+	mi := &file_tutti_policy_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDeleteEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDeleteEventsResponse) ProtoMessage() {}
+
+func (x *ListDeleteEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDeleteEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListDeleteEventsResponse) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListDeleteEventsResponse) GetEvents() []*DeleteEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *ListDeleteEventsResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type RetryFailedDeletesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReplicationId string                 `protobuf:"bytes,1,opt,name=replication_id,json=replicationId,proto3" json:"replication_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryFailedDeletesRequest) Reset() {
+	*x = RetryFailedDeletesRequest{}
+	mi := &file_tutti_policy_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryFailedDeletesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryFailedDeletesRequest) ProtoMessage() {}
+
+func (x *RetryFailedDeletesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryFailedDeletesRequest.ProtoReflect.Descriptor instead.
+func (*RetryFailedDeletesRequest) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *RetryFailedDeletesRequest) GetReplicationId() string {
+	if x != nil {
+		return x.ReplicationId
+	}
+	return ""
+}
+
+type UpdateDeletePropagationRequest struct {
+	state             protoimpl.MessageState   `protogen:"open.v1"`
+	Id                *ReplicationID           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	DeletePropagation *DeletePropagationPolicy `protobuf:"bytes,2,opt,name=delete_propagation,json=deletePropagation,proto3" json:"delete_propagation,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *UpdateDeletePropagationRequest) Reset() {
+	*x = UpdateDeletePropagationRequest{}
+	mi := &file_tutti_policy_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateDeletePropagationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateDeletePropagationRequest) ProtoMessage() {}
+
+func (x *UpdateDeletePropagationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateDeletePropagationRequest.ProtoReflect.Descriptor instead.
+func (*UpdateDeletePropagationRequest) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *UpdateDeletePropagationRequest) GetId() *ReplicationID {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *UpdateDeletePropagationRequest) GetDeletePropagation() *DeletePropagationPolicy {
+	if x != nil {
+		return x.DeletePropagation
+	}
+	return nil
+}
+
+type UpdateReplicationFiltersRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              *ReplicationID         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	IncludePatterns []string               `protobuf:"bytes,2,rep,name=include_patterns,json=includePatterns,proto3" json:"include_patterns,omitempty"`
+	ExcludePatterns []string               `protobuf:"bytes,3,rep,name=exclude_patterns,json=excludePatterns,proto3" json:"exclude_patterns,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateReplicationFiltersRequest) Reset() {
+	*x = UpdateReplicationFiltersRequest{}
+	mi := &file_tutti_policy_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateReplicationFiltersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateReplicationFiltersRequest) ProtoMessage() {}
+
+func (x *UpdateReplicationFiltersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tutti_policy_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateReplicationFiltersRequest.ProtoReflect.Descriptor instead.
+func (*UpdateReplicationFiltersRequest) Descriptor() ([]byte, []int) {
+	return file_tutti_policy_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *UpdateReplicationFiltersRequest) GetId() *ReplicationID {
+	if x != nil {
+		return x.Id
+	}
+	return nil
+}
+
+func (x *UpdateReplicationFiltersRequest) GetIncludePatterns() []string {
+	if x != nil {
+		return x.IncludePatterns
+	}
+	return nil
+}
+
+func (x *UpdateReplicationFiltersRequest) GetExcludePatterns() []string {
+	if x != nil {
+		return x.ExcludePatterns
+	}
+	return nil
+}
+
 type ListReplicationsRequest_Filter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// If set, filters replications by exact user.
@@ -2578,7 +3160,7 @@ type ListReplicationsRequest_Filter struct {
 
 func (x *ListReplicationsRequest_Filter) Reset() {
 	*x = ListReplicationsRequest_Filter{}
-	mi := &file_tutti_policy_proto_msgTypes[30]
+	mi := &file_tutti_policy_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2590,7 +3172,7 @@ func (x *ListReplicationsRequest_Filter) String() string {
 func (*ListReplicationsRequest_Filter) ProtoMessage() {}
 
 func (x *ListReplicationsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_policy_proto_msgTypes[30]
+	mi := &file_tutti_policy_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2692,7 +3274,7 @@ type RoutingsRequest_Filter struct {
 
 func (x *RoutingsRequest_Filter) Reset() {
 	*x = RoutingsRequest_Filter{}
-	mi := &file_tutti_policy_proto_msgTypes[31]
+	mi := &file_tutti_policy_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2704,7 +3286,7 @@ func (x *RoutingsRequest_Filter) String() string {
 func (*RoutingsRequest_Filter) ProtoMessage() {}
 
 func (x *RoutingsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_tutti_policy_proto_msgTypes[31]
+	mi := &file_tutti_policy_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2811,11 +3393,14 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\aattempt\x18\n" +
 	" \x01(\x05R\aattempt\x12\x12\n" +
 	"\x04flow\x18\v \x01(\tR\x04flow\x12\x14\n" +
-	"\x05error\x18\f \x01(\tR\x05error\"\xc4\x01\n" +
+	"\x05error\x18\f \x01(\tR\x05error\"\xe9\x02\n" +
 	"\x0fReplicationOpts\x125\n" +
 	"\fevent_source\x18\x02 \x01(\x0e2\x12.tutti.EventSourceR\veventSource\x120\n" +
 	"\x05since\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x12B\n" +
-	"\x0frescan_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x0erescanIntervalJ\x04\b\x01\x10\x02\"\x95\x06\n" +
+	"\x0frescan_interval\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x0erescanInterval\x12M\n" +
+	"\x12delete_propagation\x18\x05 \x01(\v2\x1e.tutti.DeletePropagationPolicyR\x11deletePropagation\x12)\n" +
+	"\x10include_patterns\x18\x06 \x03(\tR\x0fincludePatterns\x12)\n" +
+	"\x10exclude_patterns\x18\a \x03(\tR\x0fexcludePatternsJ\x04\b\x01\x10\x02\"\x95\x06\n" +
 	"\x17ListReplicationsRequest\x124\n" +
 	"\x16hide_user_replications\x18\x01 \x01(\bR\x14hideUserReplications\x128\n" +
 	"\x18hide_bucket_replications\x18\x02 \x01(\bR\x16hideBucketReplications\x12(\n" +
@@ -2851,8 +3436,7 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\r_event_sourceJ\x04\b\n" +
 	"\x10\v\"R\n" +
 	"\x18ListReplicationsResponse\x126\n" +
-	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xaf\n" +
-	"\n" +
+	"\freplications\x18\x01 \x03(\v2\x12.tutti.ReplicationR\freplications\"\xd4\v\n" +
 	"\vReplication\x12$\n" +
 	"\x02id\x18\x01 \x01(\v2\x14.tutti.ReplicationIDR\x02id\x12*\n" +
 	"\x04opts\x18\x02 \x01(\v2\x16.tutti.ReplicationOptsR\x04opts\x129\n" +
@@ -2891,7 +3475,10 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\x0enext_rescan_at\x18\x1a \x01(\v2\x1a.google.protobuf.TimestampR\fnextRescanAt\x12%\n" +
 	"\x0erescan_running\x18\x1b \x01(\bR\rrescanRunning\x12.\n" +
 	"\x13last_rescan_objects\x18\x1c \x01(\x03R\x11lastRescanObjects\x12*\n" +
-	"\x11last_rescan_error\x18\x1d \x01(\tR\x0flastRescanErrorB\x0e\n" +
+	"\x11last_rescan_error\x18\x1d \x01(\tR\x0flastRescanError\x12M\n" +
+	"\x12delete_propagation\x18\x1e \x01(\v2\x1e.tutti.DeletePropagationPolicyR\x11deletePropagation\x12)\n" +
+	"\x10include_patterns\x18\x1f \x03(\tR\x0fincludePatterns\x12)\n" +
+	"\x10exclude_patterns\x18  \x03(\tR\x0fexcludePatternsB\x0e\n" +
 	"\f_switch_info\"\x98\x01\n" +
 	"\x17AvailableBucketsRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12!\n" +
@@ -3017,11 +3604,58 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\x10route_to_storage\x18\x01 \x01(\tR\x0erouteToStorage\x12\x1d\n" +
 	"\n" +
 	"is_blocked\x18\x02 \x01(\bR\tisBlocked\x128\n" +
-	"\freplications\x18\x03 \x03(\v2\x14.tutti.ReplicationIDR\freplications*a\n" +
+	"\freplications\x18\x03 \x03(\v2\x14.tutti.ReplicationIDR\freplications\"\xec\x01\n" +
+	"\x17DeletePropagationPolicy\x120\n" +
+	"\x04mode\x18\x01 \x01(\x0e2\x1c.tutti.DeletePropagationModeR\x04mode\x12)\n" +
+	"\x10include_prefixes\x18\x02 \x03(\tR\x0fincludePrefixes\x12)\n" +
+	"\x10exclude_prefixes\x18\x03 \x03(\tR\x0fexcludePrefixes\x12I\n" +
+	"\x13delay_before_delete\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\x11delayBeforeDelete\"\x86\x01\n" +
+	"\x17ListDeleteEventsRequest\x12%\n" +
+	"\x0ereplication_id\x18\x01 \x01(\tR\rreplicationId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x03R\x06offset\"\xd4\x03\n" +
+	"\vDeleteEvent\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12%\n" +
+	"\x0ereplication_id\x18\x02 \x01(\tR\rreplicationId\x12\x16\n" +
+	"\x06bucket\x18\x03 \x01(\tR\x06bucket\x12\x1d\n" +
+	"\n" +
+	"object_key\x18\x04 \x01(\tR\tobjectKey\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x05 \x01(\tR\tversionId\x12#\n" +
+	"\rdeletion_type\x18\x06 \x01(\tR\fdeletionType\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\x12\x1f\n" +
+	"\vretry_count\x18\b \x01(\x05R\n" +
+	"retryCount\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\t \x01(\tR\tlastError\x12E\n" +
+	"\x10source_timestamp\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x0fsourceTimestamp\x129\n" +
+	"\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\\\n" +
+	"\x18ListDeleteEventsResponse\x12*\n" +
+	"\x06events\x18\x01 \x03(\v2\x12.tutti.DeleteEventR\x06events\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"B\n" +
+	"\x19RetryFailedDeletesRequest\x12%\n" +
+	"\x0ereplication_id\x18\x01 \x01(\tR\rreplicationId\"\x95\x01\n" +
+	"\x1eUpdateDeletePropagationRequest\x12$\n" +
+	"\x02id\x18\x01 \x01(\v2\x14.tutti.ReplicationIDR\x02id\x12M\n" +
+	"\x12delete_propagation\x18\x02 \x01(\v2\x1e.tutti.DeletePropagationPolicyR\x11deletePropagation\"\x9d\x01\n" +
+	"\x1fUpdateReplicationFiltersRequest\x12$\n" +
+	"\x02id\x18\x01 \x01(\v2\x14.tutti.ReplicationIDR\x02id\x12)\n" +
+	"\x10include_patterns\x18\x02 \x03(\tR\x0fincludePatterns\x12)\n" +
+	"\x10exclude_patterns\x18\x03 \x03(\tR\x0fexcludePatterns*a\n" +
 	"\vEventSource\x12\x16\n" +
 	"\x12EVENT_SOURCE_PROXY\x10\x00\x12 \n" +
 	"\x1cEVENT_SOURCE_S3_NOTIFICATION\x10\x01\x12\x18\n" +
-	"\x14EVENT_SOURCE_WEBHOOK\x10\x022\x82\r\n" +
+	"\x14EVENT_SOURCE_WEBHOOK\x10\x02*\x9b\x01\n" +
+	"\x15DeletePropagationMode\x12\"\n" +
+	"\x1eDELETE_PROPAGATION_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19DELETE_PROPAGATION_IGNORE\x10\x01\x12\x1b\n" +
+	"\x17DELETE_PROPAGATION_SYNC\x10\x02\x12\"\n" +
+	"\x1eDELETE_PROPAGATION_MARKER_ONLY\x10\x032\xdd\x0f\n" +
 	"\x06Policy\x12S\n" +
 	"\x10AvailableBuckets\x12\x1e.tutti.AvailableBucketsRequest\x1a\x1f.tutti.AvailableBucketsResponse\x12F\n" +
 	"\x0eAddReplication\x12\x1c.tutti.AddReplicationRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
@@ -3034,7 +3668,11 @@ const file_tutti_policy_proto_rawDesc = "" +
 	"\x11DeleteReplication\x12\x14.tutti.ReplicationID\x1a\x16.google.protobuf.Empty\x12T\n" +
 	"\x15UpdateReplicationName\x12#.tutti.UpdateReplicationNameRequest\x1a\x16.google.protobuf.Empty\x12A\n" +
 	"\x11RescanReplication\x12\x14.tutti.ReplicationID\x1a\x16.google.protobuf.Empty\x12h\n" +
-	"\x1fUpdateReplicationRescanInterval\x12-.tutti.UpdateReplicationRescanIntervalRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
+	"\x1fUpdateReplicationRescanInterval\x12-.tutti.UpdateReplicationRescanIntervalRequest\x1a\x16.google.protobuf.Empty\x12S\n" +
+	"\x10ListDeleteEvents\x12\x1e.tutti.ListDeleteEventsRequest\x1a\x1f.tutti.ListDeleteEventsResponse\x12N\n" +
+	"\x12RetryFailedDeletes\x12 .tutti.RetryFailedDeletesRequest\x1a\x16.google.protobuf.Empty\x12X\n" +
+	"\x17UpdateDeletePropagation\x12%.tutti.UpdateDeletePropagationRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
+	"\x18UpdateReplicationFilters\x12&.tutti.UpdateReplicationFiltersRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
 	"\x16SwitchWithZeroDowntime\x12 .tutti.SwitchZeroDowntimeRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
 	"\x12SwitchWithDowntime\x12\x1c.tutti.SwitchDowntimeRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\fDeleteSwitch\x12\x14.tutti.ReplicationID\x1a\x16.google.protobuf.Empty\x12A\n" +
@@ -3060,145 +3698,172 @@ func file_tutti_policy_proto_rawDescGZIP() []byte {
 	return file_tutti_policy_proto_rawDescData
 }
 
-var file_tutti_policy_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_tutti_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_tutti_policy_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_tutti_policy_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_tutti_policy_proto_goTypes = []any{
 	(EventSource)(0),                               // 0: tutti.EventSource
-	(ReplicationSwitch_Status)(0),                  // 1: tutti.ReplicationSwitch.Status
-	(*ReplicationID)(nil),                          // 2: tutti.ReplicationID
-	(*AddReplicationRequest)(nil),                  // 3: tutti.AddReplicationRequest
-	(*UpdateReplicationNameRequest)(nil),           // 4: tutti.UpdateReplicationNameRequest
-	(*UpdateReplicationRescanIntervalRequest)(nil), // 5: tutti.UpdateReplicationRescanIntervalRequest
-	(*GetReplicationActivityRequest)(nil),          // 6: tutti.GetReplicationActivityRequest
-	(*GetReplicationActivityResponse)(nil),         // 7: tutti.GetReplicationActivityResponse
-	(*ReplicationInFlight)(nil),                    // 8: tutti.ReplicationInFlight
-	(*ReplicationActivityEvent)(nil),               // 9: tutti.ReplicationActivityEvent
-	(*ReplicationOpts)(nil),                        // 10: tutti.ReplicationOpts
-	(*ListReplicationsRequest)(nil),                // 11: tutti.ListReplicationsRequest
-	(*ListReplicationsResponse)(nil),               // 12: tutti.ListReplicationsResponse
-	(*Replication)(nil),                            // 13: tutti.Replication
-	(*AvailableBucketsRequest)(nil),                // 14: tutti.AvailableBucketsRequest
-	(*AvailableBucketsResponse)(nil),               // 15: tutti.AvailableBucketsResponse
-	(*CoveredBucket)(nil),                          // 16: tutti.CoveredBucket
-	(*CompareBucketRequest)(nil),                   // 17: tutti.CompareBucketRequest
-	(*CompareBucketResponse)(nil),                  // 18: tutti.CompareBucketResponse
-	(*SwitchZeroDowntimeRequest)(nil),              // 19: tutti.SwitchZeroDowntimeRequest
-	(*SwitchDowntimeRequest)(nil),                  // 20: tutti.SwitchDowntimeRequest
-	(*SwitchDowntimeOpts)(nil),                     // 21: tutti.SwitchDowntimeOpts
-	(*ReplicationSwitch)(nil),                      // 22: tutti.ReplicationSwitch
-	(*RoutingsRequest)(nil),                        // 23: tutti.RoutingsRequest
-	(*RoutingsResponse)(nil),                       // 24: tutti.RoutingsResponse
-	(*UserRouting)(nil),                            // 25: tutti.UserRouting
-	(*BucketRouting)(nil),                          // 26: tutti.BucketRouting
-	(*AddRoutingRequest)(nil),                      // 27: tutti.AddRoutingRequest
-	(*UpdateRoutingRequest)(nil),                   // 28: tutti.UpdateRoutingRequest
-	(*RoutingID)(nil),                              // 29: tutti.RoutingID
-	(*TestProxyRequest)(nil),                       // 30: tutti.TestProxyRequest
-	(*TestProxyResponse)(nil),                      // 31: tutti.TestProxyResponse
-	(*ListReplicationsRequest_Filter)(nil),         // 32: tutti.ListReplicationsRequest.Filter
-	(*RoutingsRequest_Filter)(nil),                 // 33: tutti.RoutingsRequest.Filter
-	(*durationpb.Duration)(nil),                    // 34: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil),                  // 35: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                          // 36: google.protobuf.Empty
+	(DeletePropagationMode)(0),                     // 1: tutti.DeletePropagationMode
+	(ReplicationSwitch_Status)(0),                  // 2: tutti.ReplicationSwitch.Status
+	(*ReplicationID)(nil),                          // 3: tutti.ReplicationID
+	(*AddReplicationRequest)(nil),                  // 4: tutti.AddReplicationRequest
+	(*UpdateReplicationNameRequest)(nil),           // 5: tutti.UpdateReplicationNameRequest
+	(*UpdateReplicationRescanIntervalRequest)(nil), // 6: tutti.UpdateReplicationRescanIntervalRequest
+	(*GetReplicationActivityRequest)(nil),          // 7: tutti.GetReplicationActivityRequest
+	(*GetReplicationActivityResponse)(nil),         // 8: tutti.GetReplicationActivityResponse
+	(*ReplicationInFlight)(nil),                    // 9: tutti.ReplicationInFlight
+	(*ReplicationActivityEvent)(nil),               // 10: tutti.ReplicationActivityEvent
+	(*ReplicationOpts)(nil),                        // 11: tutti.ReplicationOpts
+	(*ListReplicationsRequest)(nil),                // 12: tutti.ListReplicationsRequest
+	(*ListReplicationsResponse)(nil),               // 13: tutti.ListReplicationsResponse
+	(*Replication)(nil),                            // 14: tutti.Replication
+	(*AvailableBucketsRequest)(nil),                // 15: tutti.AvailableBucketsRequest
+	(*AvailableBucketsResponse)(nil),               // 16: tutti.AvailableBucketsResponse
+	(*CoveredBucket)(nil),                          // 17: tutti.CoveredBucket
+	(*CompareBucketRequest)(nil),                   // 18: tutti.CompareBucketRequest
+	(*CompareBucketResponse)(nil),                  // 19: tutti.CompareBucketResponse
+	(*SwitchZeroDowntimeRequest)(nil),              // 20: tutti.SwitchZeroDowntimeRequest
+	(*SwitchDowntimeRequest)(nil),                  // 21: tutti.SwitchDowntimeRequest
+	(*SwitchDowntimeOpts)(nil),                     // 22: tutti.SwitchDowntimeOpts
+	(*ReplicationSwitch)(nil),                      // 23: tutti.ReplicationSwitch
+	(*RoutingsRequest)(nil),                        // 24: tutti.RoutingsRequest
+	(*RoutingsResponse)(nil),                       // 25: tutti.RoutingsResponse
+	(*UserRouting)(nil),                            // 26: tutti.UserRouting
+	(*BucketRouting)(nil),                          // 27: tutti.BucketRouting
+	(*AddRoutingRequest)(nil),                      // 28: tutti.AddRoutingRequest
+	(*UpdateRoutingRequest)(nil),                   // 29: tutti.UpdateRoutingRequest
+	(*RoutingID)(nil),                              // 30: tutti.RoutingID
+	(*TestProxyRequest)(nil),                       // 31: tutti.TestProxyRequest
+	(*TestProxyResponse)(nil),                      // 32: tutti.TestProxyResponse
+	(*DeletePropagationPolicy)(nil),                // 33: tutti.DeletePropagationPolicy
+	(*ListDeleteEventsRequest)(nil),                // 34: tutti.ListDeleteEventsRequest
+	(*DeleteEvent)(nil),                            // 35: tutti.DeleteEvent
+	(*ListDeleteEventsResponse)(nil),               // 36: tutti.ListDeleteEventsResponse
+	(*RetryFailedDeletesRequest)(nil),              // 37: tutti.RetryFailedDeletesRequest
+	(*UpdateDeletePropagationRequest)(nil),         // 38: tutti.UpdateDeletePropagationRequest
+	(*UpdateReplicationFiltersRequest)(nil),        // 39: tutti.UpdateReplicationFiltersRequest
+	(*ListReplicationsRequest_Filter)(nil),         // 40: tutti.ListReplicationsRequest.Filter
+	(*RoutingsRequest_Filter)(nil),                 // 41: tutti.RoutingsRequest.Filter
+	(*durationpb.Duration)(nil),                    // 42: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil),                  // 43: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                          // 44: google.protobuf.Empty
 }
 var file_tutti_policy_proto_depIdxs = []int32{
-	2,  // 0: tutti.AddReplicationRequest.id:type_name -> tutti.ReplicationID
-	10, // 1: tutti.AddReplicationRequest.opts:type_name -> tutti.ReplicationOpts
-	2,  // 2: tutti.UpdateReplicationNameRequest.id:type_name -> tutti.ReplicationID
-	2,  // 3: tutti.UpdateReplicationRescanIntervalRequest.id:type_name -> tutti.ReplicationID
-	34, // 4: tutti.UpdateReplicationRescanIntervalRequest.rescan_interval:type_name -> google.protobuf.Duration
-	2,  // 5: tutti.GetReplicationActivityRequest.id:type_name -> tutti.ReplicationID
-	8,  // 6: tutti.GetReplicationActivityResponse.in_flight:type_name -> tutti.ReplicationInFlight
-	9,  // 7: tutti.GetReplicationActivityResponse.events:type_name -> tutti.ReplicationActivityEvent
-	35, // 8: tutti.GetReplicationActivityResponse.server_time:type_name -> google.protobuf.Timestamp
-	35, // 9: tutti.ReplicationInFlight.started_at:type_name -> google.protobuf.Timestamp
-	35, // 10: tutti.ReplicationActivityEvent.time:type_name -> google.protobuf.Timestamp
+	3,  // 0: tutti.AddReplicationRequest.id:type_name -> tutti.ReplicationID
+	11, // 1: tutti.AddReplicationRequest.opts:type_name -> tutti.ReplicationOpts
+	3,  // 2: tutti.UpdateReplicationNameRequest.id:type_name -> tutti.ReplicationID
+	3,  // 3: tutti.UpdateReplicationRescanIntervalRequest.id:type_name -> tutti.ReplicationID
+	42, // 4: tutti.UpdateReplicationRescanIntervalRequest.rescan_interval:type_name -> google.protobuf.Duration
+	3,  // 5: tutti.GetReplicationActivityRequest.id:type_name -> tutti.ReplicationID
+	9,  // 6: tutti.GetReplicationActivityResponse.in_flight:type_name -> tutti.ReplicationInFlight
+	10, // 7: tutti.GetReplicationActivityResponse.events:type_name -> tutti.ReplicationActivityEvent
+	43, // 8: tutti.GetReplicationActivityResponse.server_time:type_name -> google.protobuf.Timestamp
+	43, // 9: tutti.ReplicationInFlight.started_at:type_name -> google.protobuf.Timestamp
+	43, // 10: tutti.ReplicationActivityEvent.time:type_name -> google.protobuf.Timestamp
 	0,  // 11: tutti.ReplicationOpts.event_source:type_name -> tutti.EventSource
-	35, // 12: tutti.ReplicationOpts.since:type_name -> google.protobuf.Timestamp
-	34, // 13: tutti.ReplicationOpts.rescan_interval:type_name -> google.protobuf.Duration
-	32, // 14: tutti.ListReplicationsRequest.filter:type_name -> tutti.ListReplicationsRequest.Filter
-	13, // 15: tutti.ListReplicationsResponse.replications:type_name -> tutti.Replication
-	2,  // 16: tutti.Replication.id:type_name -> tutti.ReplicationID
-	10, // 17: tutti.Replication.opts:type_name -> tutti.ReplicationOpts
-	35, // 18: tutti.Replication.created_at:type_name -> google.protobuf.Timestamp
-	34, // 19: tutti.Replication.event_lag:type_name -> google.protobuf.Duration
-	35, // 20: tutti.Replication.archived_at:type_name -> google.protobuf.Timestamp
-	22, // 21: tutti.Replication.switch_info:type_name -> tutti.ReplicationSwitch
-	0,  // 22: tutti.Replication.event_source:type_name -> tutti.EventSource
-	35, // 23: tutti.Replication.since:type_name -> google.protobuf.Timestamp
-	34, // 24: tutti.Replication.rescan_interval:type_name -> google.protobuf.Duration
-	35, // 25: tutti.Replication.last_rescan_at:type_name -> google.protobuf.Timestamp
-	35, // 26: tutti.Replication.next_rescan_at:type_name -> google.protobuf.Timestamp
-	16, // 27: tutti.AvailableBucketsResponse.covered_buckets:type_name -> tutti.CoveredBucket
-	2,  // 28: tutti.CompareBucketRequest.target:type_name -> tutti.ReplicationID
-	2,  // 29: tutti.SwitchZeroDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
-	34, // 30: tutti.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
-	2,  // 31: tutti.SwitchDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
-	21, // 32: tutti.SwitchDowntimeRequest.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
-	35, // 33: tutti.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
-	34, // 34: tutti.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
-	1,  // 35: tutti.ReplicationSwitch.last_status:type_name -> tutti.ReplicationSwitch.Status
-	34, // 36: tutti.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
-	21, // 37: tutti.ReplicationSwitch.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
-	35, // 38: tutti.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
-	35, // 39: tutti.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
-	2,  // 40: tutti.ReplicationSwitch.replication_id:type_name -> tutti.ReplicationID
-	33, // 41: tutti.RoutingsRequest.filter:type_name -> tutti.RoutingsRequest.Filter
-	25, // 42: tutti.RoutingsResponse.user_routings:type_name -> tutti.UserRouting
-	26, // 43: tutti.RoutingsResponse.bucket_routings:type_name -> tutti.BucketRouting
-	2,  // 44: tutti.TestProxyResponse.replications:type_name -> tutti.ReplicationID
-	0,  // 45: tutti.ListReplicationsRequest.Filter.event_source:type_name -> tutti.EventSource
-	14, // 46: tutti.Policy.AvailableBuckets:input_type -> tutti.AvailableBucketsRequest
-	3,  // 47: tutti.Policy.AddReplication:input_type -> tutti.AddReplicationRequest
-	2,  // 48: tutti.Policy.GetReplication:input_type -> tutti.ReplicationID
-	6,  // 49: tutti.Policy.GetReplicationActivity:input_type -> tutti.GetReplicationActivityRequest
-	11, // 50: tutti.Policy.ListReplications:input_type -> tutti.ListReplicationsRequest
-	2,  // 51: tutti.Policy.StreamReplication:input_type -> tutti.ReplicationID
-	2,  // 52: tutti.Policy.PauseReplication:input_type -> tutti.ReplicationID
-	2,  // 53: tutti.Policy.ResumeReplication:input_type -> tutti.ReplicationID
-	2,  // 54: tutti.Policy.DeleteReplication:input_type -> tutti.ReplicationID
-	4,  // 55: tutti.Policy.UpdateReplicationName:input_type -> tutti.UpdateReplicationNameRequest
-	2,  // 56: tutti.Policy.RescanReplication:input_type -> tutti.ReplicationID
-	5,  // 57: tutti.Policy.UpdateReplicationRescanInterval:input_type -> tutti.UpdateReplicationRescanIntervalRequest
-	19, // 58: tutti.Policy.SwitchWithZeroDowntime:input_type -> tutti.SwitchZeroDowntimeRequest
-	20, // 59: tutti.Policy.SwitchWithDowntime:input_type -> tutti.SwitchDowntimeRequest
-	2,  // 60: tutti.Policy.DeleteSwitch:input_type -> tutti.ReplicationID
-	2,  // 61: tutti.Policy.GetSwitchStatus:input_type -> tutti.ReplicationID
-	23, // 62: tutti.Policy.ListRoutings:input_type -> tutti.RoutingsRequest
-	27, // 63: tutti.Policy.AddRouting:input_type -> tutti.AddRoutingRequest
-	28, // 64: tutti.Policy.UpdateRouting:input_type -> tutti.UpdateRoutingRequest
-	29, // 65: tutti.Policy.DeleteRouting:input_type -> tutti.RoutingID
-	29, // 66: tutti.Policy.BlockRouting:input_type -> tutti.RoutingID
-	29, // 67: tutti.Policy.UnblockRouting:input_type -> tutti.RoutingID
-	30, // 68: tutti.Policy.TestProxy:input_type -> tutti.TestProxyRequest
-	15, // 69: tutti.Policy.AvailableBuckets:output_type -> tutti.AvailableBucketsResponse
-	36, // 70: tutti.Policy.AddReplication:output_type -> google.protobuf.Empty
-	13, // 71: tutti.Policy.GetReplication:output_type -> tutti.Replication
-	7,  // 72: tutti.Policy.GetReplicationActivity:output_type -> tutti.GetReplicationActivityResponse
-	12, // 73: tutti.Policy.ListReplications:output_type -> tutti.ListReplicationsResponse
-	13, // 74: tutti.Policy.StreamReplication:output_type -> tutti.Replication
-	36, // 75: tutti.Policy.PauseReplication:output_type -> google.protobuf.Empty
-	36, // 76: tutti.Policy.ResumeReplication:output_type -> google.protobuf.Empty
-	36, // 77: tutti.Policy.DeleteReplication:output_type -> google.protobuf.Empty
-	36, // 78: tutti.Policy.UpdateReplicationName:output_type -> google.protobuf.Empty
-	36, // 79: tutti.Policy.RescanReplication:output_type -> google.protobuf.Empty
-	36, // 80: tutti.Policy.UpdateReplicationRescanInterval:output_type -> google.protobuf.Empty
-	36, // 81: tutti.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
-	36, // 82: tutti.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
-	36, // 83: tutti.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
-	22, // 84: tutti.Policy.GetSwitchStatus:output_type -> tutti.ReplicationSwitch
-	24, // 85: tutti.Policy.ListRoutings:output_type -> tutti.RoutingsResponse
-	36, // 86: tutti.Policy.AddRouting:output_type -> google.protobuf.Empty
-	36, // 87: tutti.Policy.UpdateRouting:output_type -> google.protobuf.Empty
-	36, // 88: tutti.Policy.DeleteRouting:output_type -> google.protobuf.Empty
-	36, // 89: tutti.Policy.BlockRouting:output_type -> google.protobuf.Empty
-	36, // 90: tutti.Policy.UnblockRouting:output_type -> google.protobuf.Empty
-	31, // 91: tutti.Policy.TestProxy:output_type -> tutti.TestProxyResponse
-	69, // [69:92] is the sub-list for method output_type
-	46, // [46:69] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	43, // 12: tutti.ReplicationOpts.since:type_name -> google.protobuf.Timestamp
+	42, // 13: tutti.ReplicationOpts.rescan_interval:type_name -> google.protobuf.Duration
+	33, // 14: tutti.ReplicationOpts.delete_propagation:type_name -> tutti.DeletePropagationPolicy
+	40, // 15: tutti.ListReplicationsRequest.filter:type_name -> tutti.ListReplicationsRequest.Filter
+	14, // 16: tutti.ListReplicationsResponse.replications:type_name -> tutti.Replication
+	3,  // 17: tutti.Replication.id:type_name -> tutti.ReplicationID
+	11, // 18: tutti.Replication.opts:type_name -> tutti.ReplicationOpts
+	43, // 19: tutti.Replication.created_at:type_name -> google.protobuf.Timestamp
+	42, // 20: tutti.Replication.event_lag:type_name -> google.protobuf.Duration
+	43, // 21: tutti.Replication.archived_at:type_name -> google.protobuf.Timestamp
+	23, // 22: tutti.Replication.switch_info:type_name -> tutti.ReplicationSwitch
+	0,  // 23: tutti.Replication.event_source:type_name -> tutti.EventSource
+	43, // 24: tutti.Replication.since:type_name -> google.protobuf.Timestamp
+	42, // 25: tutti.Replication.rescan_interval:type_name -> google.protobuf.Duration
+	43, // 26: tutti.Replication.last_rescan_at:type_name -> google.protobuf.Timestamp
+	43, // 27: tutti.Replication.next_rescan_at:type_name -> google.protobuf.Timestamp
+	33, // 28: tutti.Replication.delete_propagation:type_name -> tutti.DeletePropagationPolicy
+	17, // 29: tutti.AvailableBucketsResponse.covered_buckets:type_name -> tutti.CoveredBucket
+	3,  // 30: tutti.CompareBucketRequest.target:type_name -> tutti.ReplicationID
+	3,  // 31: tutti.SwitchZeroDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
+	42, // 32: tutti.SwitchZeroDowntimeRequest.multipart_ttl:type_name -> google.protobuf.Duration
+	3,  // 33: tutti.SwitchDowntimeRequest.replication_id:type_name -> tutti.ReplicationID
+	22, // 34: tutti.SwitchDowntimeRequest.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
+	43, // 35: tutti.SwitchDowntimeOpts.start_at:type_name -> google.protobuf.Timestamp
+	42, // 36: tutti.SwitchDowntimeOpts.max_duration:type_name -> google.protobuf.Duration
+	2,  // 37: tutti.ReplicationSwitch.last_status:type_name -> tutti.ReplicationSwitch.Status
+	42, // 38: tutti.ReplicationSwitch.multipart_ttl:type_name -> google.protobuf.Duration
+	22, // 39: tutti.ReplicationSwitch.downtime_opts:type_name -> tutti.SwitchDowntimeOpts
+	43, // 40: tutti.ReplicationSwitch.last_started_at:type_name -> google.protobuf.Timestamp
+	43, // 41: tutti.ReplicationSwitch.done_at:type_name -> google.protobuf.Timestamp
+	3,  // 42: tutti.ReplicationSwitch.replication_id:type_name -> tutti.ReplicationID
+	41, // 43: tutti.RoutingsRequest.filter:type_name -> tutti.RoutingsRequest.Filter
+	26, // 44: tutti.RoutingsResponse.user_routings:type_name -> tutti.UserRouting
+	27, // 45: tutti.RoutingsResponse.bucket_routings:type_name -> tutti.BucketRouting
+	3,  // 46: tutti.TestProxyResponse.replications:type_name -> tutti.ReplicationID
+	1,  // 47: tutti.DeletePropagationPolicy.mode:type_name -> tutti.DeletePropagationMode
+	42, // 48: tutti.DeletePropagationPolicy.delay_before_delete:type_name -> google.protobuf.Duration
+	43, // 49: tutti.DeleteEvent.source_timestamp:type_name -> google.protobuf.Timestamp
+	43, // 50: tutti.DeleteEvent.created_at:type_name -> google.protobuf.Timestamp
+	43, // 51: tutti.DeleteEvent.updated_at:type_name -> google.protobuf.Timestamp
+	35, // 52: tutti.ListDeleteEventsResponse.events:type_name -> tutti.DeleteEvent
+	3,  // 53: tutti.UpdateDeletePropagationRequest.id:type_name -> tutti.ReplicationID
+	33, // 54: tutti.UpdateDeletePropagationRequest.delete_propagation:type_name -> tutti.DeletePropagationPolicy
+	3,  // 55: tutti.UpdateReplicationFiltersRequest.id:type_name -> tutti.ReplicationID
+	0,  // 56: tutti.ListReplicationsRequest.Filter.event_source:type_name -> tutti.EventSource
+	15, // 57: tutti.Policy.AvailableBuckets:input_type -> tutti.AvailableBucketsRequest
+	4,  // 58: tutti.Policy.AddReplication:input_type -> tutti.AddReplicationRequest
+	3,  // 59: tutti.Policy.GetReplication:input_type -> tutti.ReplicationID
+	7,  // 60: tutti.Policy.GetReplicationActivity:input_type -> tutti.GetReplicationActivityRequest
+	12, // 61: tutti.Policy.ListReplications:input_type -> tutti.ListReplicationsRequest
+	3,  // 62: tutti.Policy.StreamReplication:input_type -> tutti.ReplicationID
+	3,  // 63: tutti.Policy.PauseReplication:input_type -> tutti.ReplicationID
+	3,  // 64: tutti.Policy.ResumeReplication:input_type -> tutti.ReplicationID
+	3,  // 65: tutti.Policy.DeleteReplication:input_type -> tutti.ReplicationID
+	5,  // 66: tutti.Policy.UpdateReplicationName:input_type -> tutti.UpdateReplicationNameRequest
+	3,  // 67: tutti.Policy.RescanReplication:input_type -> tutti.ReplicationID
+	6,  // 68: tutti.Policy.UpdateReplicationRescanInterval:input_type -> tutti.UpdateReplicationRescanIntervalRequest
+	34, // 69: tutti.Policy.ListDeleteEvents:input_type -> tutti.ListDeleteEventsRequest
+	37, // 70: tutti.Policy.RetryFailedDeletes:input_type -> tutti.RetryFailedDeletesRequest
+	38, // 71: tutti.Policy.UpdateDeletePropagation:input_type -> tutti.UpdateDeletePropagationRequest
+	39, // 72: tutti.Policy.UpdateReplicationFilters:input_type -> tutti.UpdateReplicationFiltersRequest
+	20, // 73: tutti.Policy.SwitchWithZeroDowntime:input_type -> tutti.SwitchZeroDowntimeRequest
+	21, // 74: tutti.Policy.SwitchWithDowntime:input_type -> tutti.SwitchDowntimeRequest
+	3,  // 75: tutti.Policy.DeleteSwitch:input_type -> tutti.ReplicationID
+	3,  // 76: tutti.Policy.GetSwitchStatus:input_type -> tutti.ReplicationID
+	24, // 77: tutti.Policy.ListRoutings:input_type -> tutti.RoutingsRequest
+	28, // 78: tutti.Policy.AddRouting:input_type -> tutti.AddRoutingRequest
+	29, // 79: tutti.Policy.UpdateRouting:input_type -> tutti.UpdateRoutingRequest
+	30, // 80: tutti.Policy.DeleteRouting:input_type -> tutti.RoutingID
+	30, // 81: tutti.Policy.BlockRouting:input_type -> tutti.RoutingID
+	30, // 82: tutti.Policy.UnblockRouting:input_type -> tutti.RoutingID
+	31, // 83: tutti.Policy.TestProxy:input_type -> tutti.TestProxyRequest
+	16, // 84: tutti.Policy.AvailableBuckets:output_type -> tutti.AvailableBucketsResponse
+	44, // 85: tutti.Policy.AddReplication:output_type -> google.protobuf.Empty
+	14, // 86: tutti.Policy.GetReplication:output_type -> tutti.Replication
+	8,  // 87: tutti.Policy.GetReplicationActivity:output_type -> tutti.GetReplicationActivityResponse
+	13, // 88: tutti.Policy.ListReplications:output_type -> tutti.ListReplicationsResponse
+	14, // 89: tutti.Policy.StreamReplication:output_type -> tutti.Replication
+	44, // 90: tutti.Policy.PauseReplication:output_type -> google.protobuf.Empty
+	44, // 91: tutti.Policy.ResumeReplication:output_type -> google.protobuf.Empty
+	44, // 92: tutti.Policy.DeleteReplication:output_type -> google.protobuf.Empty
+	44, // 93: tutti.Policy.UpdateReplicationName:output_type -> google.protobuf.Empty
+	44, // 94: tutti.Policy.RescanReplication:output_type -> google.protobuf.Empty
+	44, // 95: tutti.Policy.UpdateReplicationRescanInterval:output_type -> google.protobuf.Empty
+	36, // 96: tutti.Policy.ListDeleteEvents:output_type -> tutti.ListDeleteEventsResponse
+	44, // 97: tutti.Policy.RetryFailedDeletes:output_type -> google.protobuf.Empty
+	44, // 98: tutti.Policy.UpdateDeletePropagation:output_type -> google.protobuf.Empty
+	44, // 99: tutti.Policy.UpdateReplicationFilters:output_type -> google.protobuf.Empty
+	44, // 100: tutti.Policy.SwitchWithZeroDowntime:output_type -> google.protobuf.Empty
+	44, // 101: tutti.Policy.SwitchWithDowntime:output_type -> google.protobuf.Empty
+	44, // 102: tutti.Policy.DeleteSwitch:output_type -> google.protobuf.Empty
+	23, // 103: tutti.Policy.GetSwitchStatus:output_type -> tutti.ReplicationSwitch
+	25, // 104: tutti.Policy.ListRoutings:output_type -> tutti.RoutingsResponse
+	44, // 105: tutti.Policy.AddRouting:output_type -> google.protobuf.Empty
+	44, // 106: tutti.Policy.UpdateRouting:output_type -> google.protobuf.Empty
+	44, // 107: tutti.Policy.DeleteRouting:output_type -> google.protobuf.Empty
+	44, // 108: tutti.Policy.BlockRouting:output_type -> google.protobuf.Empty
+	44, // 109: tutti.Policy.UnblockRouting:output_type -> google.protobuf.Empty
+	32, // 110: tutti.Policy.TestProxy:output_type -> tutti.TestProxyResponse
+	84, // [84:111] is the sub-list for method output_type
+	57, // [57:84] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_tutti_policy_proto_init() }
@@ -3216,15 +3881,15 @@ func file_tutti_policy_proto_init() {
 	file_tutti_policy_proto_msgTypes[25].OneofWrappers = []any{}
 	file_tutti_policy_proto_msgTypes[26].OneofWrappers = []any{}
 	file_tutti_policy_proto_msgTypes[27].OneofWrappers = []any{}
-	file_tutti_policy_proto_msgTypes[30].OneofWrappers = []any{}
-	file_tutti_policy_proto_msgTypes[31].OneofWrappers = []any{}
+	file_tutti_policy_proto_msgTypes[37].OneofWrappers = []any{}
+	file_tutti_policy_proto_msgTypes[38].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tutti_policy_proto_rawDesc), len(file_tutti_policy_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   32,
+			NumEnums:      3,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

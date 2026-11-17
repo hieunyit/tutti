@@ -10,8 +10,9 @@ Apply manifests in numerical order:
 # 1. Namespace
 kubectl apply -f 00-namespace.yaml
 
-# 2. Secrets and ConfigMaps (edit passwords before applying!)
-kubectl apply -f 01-secrets-configmap.yaml
+# 2. Generate unique credentials, then apply ConfigMaps
+sh create-secrets.sh
+kubectl apply -f 01-configmaps.yaml
 
 # 3. PostgreSQL Database (StatefulSet)
 kubectl apply -f 02-postgres.yaml
@@ -28,6 +29,15 @@ kubectl apply -f 05-proxy.yaml
 # 7. Tutti Web UI (Vue 3 Management Console)
 kubectl apply -f 06-web-ui.yaml
 ```
+
+`create-secrets.sh` requires Python 3 and kubectl. It sends freshly generated
+credentials directly to Kubernetes without writing them into Git or command
+arguments. It uses `kubectl create`, so an existing `tutti-secrets` is preserved
+and the command fails rather than rotating passwords, the encryption master key,
+or the JWT signing key. Skip this step when upgrading an existing installation.
+Back up the secret securely; losing or changing the master key can make stored
+credentials unreadable. If you previously deployed credentials from the removed
+`01-secrets-configmap.yaml`, replace them using a planned credential/key rotation.
 
 ## Verifying Deployment
 ```bash

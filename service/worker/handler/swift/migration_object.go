@@ -47,8 +47,10 @@ func (s *svc) HandleSwiftObjectMigration(ctx context.Context, t *asynq.Task) (er
 		return err
 	}
 
-	// acquire lock for object update
-	lock, err := s.objectLocker.Lock(ctx, entity.NewObjectLockID(p.ID.FromStorage(), p.Bucket, p.ObjName))
+	// acquire lock for object update on destination
+	_, toBucket := p.ID.FromToBuckets(p.Bucket)
+	objectLockID := entity.NewObjectLockID(p.ID.ToStorage(), toBucket, p.ObjName)
+	lock, err := s.objectLocker.Lock(ctx, objectLockID)
 	if err != nil {
 		return err
 	}

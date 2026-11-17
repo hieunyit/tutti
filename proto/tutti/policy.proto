@@ -52,6 +52,18 @@ service Policy {
   // ReplicationOpts.rescan_interval). Unset or 0 turns it off.
   rpc UpdateReplicationRescanInterval(UpdateReplicationRescanIntervalRequest)
       returns (google.protobuf.Empty);
+  // Lists delete events for given replication.
+  rpc ListDeleteEvents(ListDeleteEventsRequest)
+      returns (ListDeleteEventsResponse);
+  // Retries failed delete events for given replication.
+  rpc RetryFailedDeletes(RetryFailedDeletesRequest)
+      returns (google.protobuf.Empty);
+  // Updates the delete propagation policy of a replication.
+  rpc UpdateDeletePropagation(UpdateDeletePropagationRequest)
+      returns (google.protobuf.Empty);
+  // Updates the advanced replication include/exclude glob filter patterns.
+  rpc UpdateReplicationFilters(UpdateReplicationFiltersRequest)
+      returns (google.protobuf.Empty);
 
   // Switches source<->destination replication targets without downtime.
   // Zero-downtime switch will take effect immediately on tutti proxy:
@@ -272,6 +284,12 @@ message ReplicationOpts {
   // Tutti. Unset or 0 turns it off. Allowed range 15m..24h, else InvalidArg.
   // JSON form is a string like "3600s".
   google.protobuf.Duration rescan_interval = 4;
+  // Delete propagation policy.
+  DeletePropagationPolicy delete_propagation = 5;
+  // Patterns of object keys to include (glob format). Empty includes all not excluded.
+  repeated string include_patterns = 6;
+  // Patterns of object keys to exclude (glob format). Exclude patterns take precedence.
+  repeated string exclude_patterns = 7;
 
   // TODO: implement for https://github.com/clyso/chorus/issues/141
   // message OriginToMeta {
@@ -423,6 +441,12 @@ message Replication {
   int64 last_rescan_objects = 28;
   // Error of the last rescan attempt; empty when it succeeded.
   string last_rescan_error = 29;
+  // Delete propagation policy.
+  DeletePropagationPolicy delete_propagation = 30;
+  // Patterns of object keys to include (glob format). Empty includes all not excluded.
+  repeated string include_patterns = 31;
+  // Patterns of object keys to exclude (glob format). Exclude patterns take precedence.
+  repeated string exclude_patterns = 32;
 }
 
 // Request list of bucket available for replication for given user and from/to
@@ -683,4 +707,60 @@ message TestProxyResponse {
   bool is_blocked = 2;
   // list of applicable replications for given user and bucket.
   repeated ReplicationID replications = 3;
+}
+
+enum DeletePropagationMode {
+  DELETE_PROPAGATION_UNSPECIFIED = 0;
+  DELETE_PROPAGATION_IGNORE = 1;
+  DELETE_PROPAGATION_SYNC = 2;
+  DELETE_PROPAGATION_MARKER_ONLY = 3;
+}
+
+message DeletePropagationPolicy {
+  DeletePropagationMode mode = 1;
+  repeated string include_prefixes = 2;
+  repeated string exclude_prefixes = 3;
+  google.protobuf.Duration delay_before_delete = 4;
+}
+
+message ListDeleteEventsRequest {
+  string replication_id = 1;
+  string status = 2;
+  int32 limit = 3;
+  int64 offset = 4;
+}
+
+message DeleteEvent {
+  int64 id = 1;
+  string replication_id = 2;
+  string bucket = 3;
+  string object_key = 4;
+  string version_id = 5;
+  string deletion_type = 6;
+  string status = 7;
+  int32 retry_count = 8;
+  string last_error = 9;
+  google.protobuf.Timestamp source_timestamp = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message ListDeleteEventsResponse {
+  repeated DeleteEvent events = 1;
+  int64 total = 2;
+}
+
+message RetryFailedDeletesRequest {
+  string replication_id = 1;
+}
+
+message UpdateDeletePropagationRequest {
+  ReplicationID id = 1;
+  DeletePropagationPolicy delete_propagation = 2;
+}
+
+message UpdateReplicationFiltersRequest {
+  ReplicationID id = 1;
+  repeated string include_patterns = 2;
+  repeated string exclude_patterns = 3;
 }

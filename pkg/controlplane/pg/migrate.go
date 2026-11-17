@@ -73,13 +73,31 @@ func LatestVersion() (int, error) {
 // Migrate applies all pending migrations, each in its own transaction, in version order. Safe to run concurrently
 // from several processes (serialized by an advisory lock) and to repeat. It fails if an applied migration file changed
 // or the database is newer than this build. It returns the versions applied by this call.
+func ensureSchemaMigrationsTable(ctx context.Context, pool *pgxpool.Pool) error {
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, migrationLockID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+		version bigint PRIMARY KEY, name text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// Migrate applies all pending migrations, each in its own transaction, in version order. Safe to run concurrently
+// from several processes (serialized by an advisory lock) and to repeat. It fails if an applied migration file changed
+// or the database is newer than this build. It returns the versions applied by this call.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) ([]int, error) {
 	ms, err := loadMigrations()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
-		version bigint PRIMARY KEY, name text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
+	if err := ensureSchemaMigrationsTable(ctx, pool); err != nil {
 		return nil, fmt.Errorf("create schema_migrations: %w", err)
 	}
 	var applied []int

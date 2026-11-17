@@ -12,6 +12,9 @@
       "name": "Diff"
     },
     {
+      "name": "Lifecycle"
+    },
+    {
       "name": "Policy",
       "description": "Manages tutti routing/replication policies"
     },
@@ -286,6 +289,309 @@
         ]
       }
     },
+    "/lifecycle/audit-logs": {
+      "get": {
+        "operationId": "Lifecycle_ListAuditLogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiListLifecycleAuditLogsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ruleId",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules": {
+      "get": {
+        "operationId": "Lifecycle_ListRules",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiListLifecycleRulesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "storageName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      },
+      "post": {
+        "operationId": "Lifecycle_CreateRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiLifecycleRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiCreateLifecycleRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      },
+      "put": {
+        "operationId": "Lifecycle_UpdateRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiLifecycleRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiUpdateLifecycleRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules/delete": {
+      "put": {
+        "operationId": "Lifecycle_DeleteRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiDeleteLifecycleRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules/disable": {
+      "put": {
+        "operationId": "Lifecycle_DisableRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiDisableLifecycleRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules/dry-run": {
+      "post": {
+        "operationId": "Lifecycle_DryRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiLifecycleDryRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiLifecycleDryRunRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules/enable": {
+      "put": {
+        "operationId": "Lifecycle_EnableRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiEnableLifecycleRuleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
+    "/lifecycle/rules/{id}": {
+      "get": {
+        "operationId": "Lifecycle_GetRule",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiLifecycleRule"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Lifecycle"
+        ]
+      }
+    },
     "/proxy": {
       "get": {
         "summary": "Returns connection details for proxy s3 endpoint",
@@ -438,6 +744,141 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/tuttiReplicationID"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
+    "/replication/delete-events": {
+      "post": {
+        "summary": "Lists delete events for given replication.",
+        "operationId": "Policy_ListDeleteEvents",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/tuttiListDeleteEventsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiListDeleteEventsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
+    "/replication/delete-events/retry": {
+      "post": {
+        "summary": "Retries failed delete events for given replication.",
+        "operationId": "Policy_RetryFailedDeletes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiRetryFailedDeletesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
+    "/replication/delete-propagation": {
+      "put": {
+        "summary": "Updates the delete propagation policy of a replication.",
+        "operationId": "Policy_UpdateDeletePropagation",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiUpdateDeletePropagationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Policy"
+        ]
+      }
+    },
+    "/replication/filters": {
+      "put": {
+        "summary": "Updates the advanced replication include/exclude glob filter patterns.",
+        "operationId": "Policy_UpdateReplicationFilters",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/tuttiUpdateReplicationFiltersRequest"
             }
           }
         ],
@@ -3293,6 +3734,33 @@
         }
       }
     },
+    "tuttiCreateLifecycleRuleRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "storageName": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "expirationDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
     "tuttiCreateProtectionGroupRequest": {
       "type": "object",
       "properties": {
@@ -3403,6 +3871,94 @@
           "type": "string"
         },
         "secretKey": {
+          "type": "string"
+        }
+      }
+    },
+    "tuttiDeleteEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "replicationId": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "objectKey": {
+          "type": "string"
+        },
+        "versionId": {
+          "type": "string"
+        },
+        "deletionType": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "retryCount": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "lastError": {
+          "type": "string"
+        },
+        "sourceTimestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "tuttiDeleteLifecycleRuleRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "tuttiDeletePropagationMode": {
+      "type": "string",
+      "enum": [
+        "DELETE_PROPAGATION_UNSPECIFIED",
+        "DELETE_PROPAGATION_IGNORE",
+        "DELETE_PROPAGATION_SYNC",
+        "DELETE_PROPAGATION_MARKER_ONLY"
+      ],
+      "default": "DELETE_PROPAGATION_UNSPECIFIED"
+    },
+    "tuttiDeletePropagationPolicy": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "$ref": "#/definitions/tuttiDeletePropagationMode"
+        },
+        "includePrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludePrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delayBeforeDelete": {
           "type": "string"
         }
       }
@@ -3546,6 +4102,15 @@
         }
       }
     },
+    "tuttiDisableLifecycleRuleRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "tuttiDynamicAccountsStatus": {
       "type": "object",
       "properties": {
@@ -3559,6 +4124,15 @@
         }
       },
       "description": "DynamicAccountsStatus tells whether runtime-managed proxy accounts can be created."
+    },
+    "tuttiEnableLifecycleRuleRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     },
     "tuttiEventSource": {
       "type": "string",
@@ -4029,6 +4603,180 @@
       },
       "description": "LatencyHistogram is a fixed-bucket histogram of full request durations."
     },
+    "tuttiLifecycleAuditLogEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "ruleId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "objectKey": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": "string",
+          "format": "int64"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "tuttiLifecycleDryRunRequest": {
+      "type": "object",
+      "properties": {
+        "storageName": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "expirationDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "sampleSize": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "tuttiLifecycleDryRunResponse": {
+      "type": "object",
+      "properties": {
+        "estimatedDeletedCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "estimatedBytesFreed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sampleObjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tuttiLifecycleRule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "storageName": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "expirationDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "nextRunAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastRunAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastRunStats": {
+          "$ref": "#/definitions/tuttiLifecycleRunStats"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "tuttiLifecycleRunStats": {
+      "type": "object",
+      "properties": {
+        "deletedCount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "bytesFreed": {
+          "type": "string",
+          "format": "int64"
+        },
+        "durationMs": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "tuttiListDeleteEventsRequest": {
+      "type": "object",
+      "properties": {
+        "replicationId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "offset": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "tuttiListDeleteEventsResponse": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/tuttiDeleteEvent"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "tuttiListDiffChecksResponse": {
       "type": "object",
       "properties": {
@@ -4037,6 +4785,34 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/tuttiDiffCheck"
+          }
+        }
+      }
+    },
+    "tuttiListLifecycleAuditLogsResponse": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/tuttiLifecycleAuditLogEntry"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "tuttiListLifecycleRulesResponse": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/tuttiLifecycleRule"
           }
         }
       }
@@ -4866,6 +5642,24 @@
         "lastRescanError": {
           "type": "string",
           "description": "Error of the last rescan attempt; empty when it succeeded."
+        },
+        "deletePropagation": {
+          "$ref": "#/definitions/tuttiDeletePropagationPolicy",
+          "description": "Delete propagation policy."
+        },
+        "includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns of object keys to include (glob format). Empty includes all not excluded."
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns of object keys to exclude (glob format). Exclude patterns take precedence."
         }
       },
       "description": "Represents specification and status of user-level or bucket-level\nreplication."
@@ -4997,6 +5791,24 @@
         "rescanInterval": {
           "type": "string",
           "description": "OPTIONAL: periodically re-list the source bucket and copy objects that are\nmissing at the destination (like a recurring rclone copy --max-age). Use it\nwhen something writes to the source bucket directly, so no event reaches\nTutti. Unset or 0 turns it off. Allowed range 15m..24h, else InvalidArg.\nJSON form is a string like \"3600s\"."
+        },
+        "deletePropagation": {
+          "$ref": "#/definitions/tuttiDeletePropagationPolicy",
+          "description": "Delete propagation policy."
+        },
+        "includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns of object keys to include (glob format). Empty includes all not excluded."
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns of object keys to exclude (glob format). Exclude patterns take precedence."
         }
       },
       "description": "Additional replication options for bucket and user-level replications."
@@ -5090,6 +5902,14 @@
       "type": "object",
       "properties": {
         "generatedPassword": {
+          "type": "string"
+        }
+      }
+    },
+    "tuttiRetryFailedDeletesRequest": {
+      "type": "object",
+      "properties": {
+        "replicationId": {
           "type": "string"
         }
       }
@@ -6497,6 +7317,62 @@
         "disabled": {
           "type": "boolean",
           "description": "Unset keeps the current state."
+        }
+      }
+    },
+    "tuttiUpdateDeletePropagationRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/tuttiReplicationID"
+        },
+        "deletePropagation": {
+          "$ref": "#/definitions/tuttiDeletePropagationPolicy"
+        }
+      }
+    },
+    "tuttiUpdateLifecycleRuleRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "expirationDays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tuttiUpdateReplicationFiltersRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/tuttiReplicationID"
+        },
+        "includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

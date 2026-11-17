@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/url"
 	"regexp"
 	"sort"
@@ -102,6 +103,12 @@ func (m ManagedStorage) Normalize() (ManagedStorage, error) {
 	u, err := url.Parse(m.Address.Address)
 	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 		return m, fmt.Errorf("%w: storage address must be an HTTP(S) endpoint without credentials, path, query or fragment", dom.ErrInvalidArg)
+	}
+	host := u.Hostname()
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || host == "169.254.169.254" || host == "fd00:ec2::254" {
+			return m, fmt.Errorf("%w: storage address cannot target link-local or cloud metadata endpoints (%s)", dom.ErrInvalidArg, host)
+		}
 	}
 	m.Address.Address = strings.TrimSuffix(m.Address.Address, "/")
 	if m.Address.HttpTimeout < 0 {

@@ -1,195 +1,260 @@
 # Tutti
 
+<div align="center">
+
 ![banner](./docs/media/banner.png)
 
-Tutti is a fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH), the vendor-agnostic tool for backup, migration and routing of S3 and OpenStack Swift object storage, extended with resilience features ported from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4): it accepts the streaming uploads of `mc`/`minio-go`, never silently loses a replication event, can replicate synchronously with a write quorum, fails fast on dead storages with per-storage circuit breakers, and can automatically fail routing over to a replica. Everything is opt-in or upstream-compatible by default, and all Chorus features (replication, live migration, routing, diff check, `tuttictl`, Web UI) are retained.
+**Enterprise-Grade S3 & OpenStack Swift Storage Replication, Routing, and Lifecycle Engine**
 
-## What Tutti adds to Tutti
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Vue 3](https://img.shields.io/badge/Vue.js-3.5-4FC08D?style=flat&logo=vuedotjs)](https://vuejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat&logo=postgresql)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-Asynq-DC382D?style=flat&logo=redis)](https://redis.io/)
+[![Security Review](https://img.shields.io/badge/Security_Review-Documented-blue?style=flat&logo=shield)](./docs/audit/2026-11-17-comprehensive-security-and-bugfix-report.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
-| Feature | Config key | Default | Why |
-|---|---|---|---|
-| Streaming (`aws-chunked`) uploads decoded and verified at the proxy | built in | on | `mc`, `minio-go` and SDKs upload with signed streaming payloads; upstream rejected them. Tampered chunks are rejected and no object is created. |
-| Content-Type need not be signed | `auth.requireSignedContentType` | `false` | AWS SigV4 only requires `host` and `x-amz-*` to be signed; `true` restores the strict check. |
-| Replication events never silently dropped | `replication.onEventError`, `replication.eventRetryBudget` | `fail`, `2s` | If the event cannot be recorded (Redis OOM/read-only) the client gets `503` and a retry records it, instead of a replica silently diverging. |
-| Synchronous replication with write quorum | `replication.sync.{enabled,writeQuorum,timeout,onQuorumFailure}` | off, `0` (all), `30s`, `fail` | A successful PUT confirms the configured number of copies; `X-Tutti-Replicas` reports the copies confirmed before the response. |
-| Circuit breakers and health checks | `health.{failureThreshold,openDuration}`, `storage.<name>.healthCheckInterval` | `3`, `30s`, `10s` | Requests to a dead storage fail in milliseconds instead of waiting for `httpTimeout`. |
-| Automatic failover | `failover.{enabled,checkInterval,after,maxEventLag}` + per-storage policies in Redis | off, `10s`, `60s`, `0` | Re-route users/buckets to an operator-approved, healthy replica when the main storage stays down. Failback is manual. |
-| Resilience API, `tuttictl proxies` / `tuttictl failover`, UI pages `/health` and `/failover` | n/a | n/a | See live breaker state and manage failover policies and events. |
+[Quick Start](#-quick-start) • [Core Features](#-core-capabilities) • [Architecture](#-architecture) • [Security & Hardening](#-security--concurrency-hardening) • [API & Documentation](#-documentation)
 
-## Tutti documentation
+</div>
 
-- [Deployment Guide (Docker, K8s, VM)](./docs/tutti/deployment-guide.md): Complete setup and configuration instructions for Docker Compose, Kubernetes, and Linux VMs.
-- [Management & Resilience REST/gRPC API Reference](./docs/tutti/api.md): Complete API specifications with request/response schemas and curl examples.
-- [Configuration reference](./docs/tutti/configuration.md)
-- [Operations guide](./docs/tutti/operations.md): payload handling, 503 semantics, sync replication, breakers, failover and failback, multi-instance
-- [Control-Plane Database & PostgreSQL Migration](./docs/tutti/control-plane-db.md)
-- [Protection Groups](./docs/tutti/protection-groups.md)
-- [Storage Accounts & Live Connection Testing](./docs/tutti/storage-accounts.md)
-- [Changelog](./CHANGELOG.md)
+---
 
-## What Tutti provides
+## 📖 Overview
 
-Tutti enables:
- - Faster data transfers between storages using multiple machines.
- - Resumable transfers with checkpointing on failure.
- - Syncing of existing buckets, objects, and metadata (e.g., ACLs) from source to destination.
- - Real-time capture and propagation of bucket/object changes.
- - User-level and bucket-level replication policies.
- - Routing of S3 requests to different storages based on user-defined rules.
- - Diff check to verify data integrity between storages.
- - Reduce downtime up to zero for switching to different storage provider.
+**Tutti** is a vendor-agnostic, distributed storage replication and proxy engine designed for massive-scale object data management across Amazon S3, MinIO, Ceph, and OpenStack Swift.
 
-Listed features can be configured per S3 user and per bucket with [management CLI](./tools/tuttictl), [REST](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/clyso/chorus/refs/heads/main/proto/gen/openapi/chorus/chorus.swagger.json)/[gRPC](./proto/chorus/chorus.proto) API, or [WebUI](./ui/). The Tutti additions to the API are in [proto/chorus/tutti.proto](./proto/chorus/tutti.proto).
+Originating as an enhanced fork of [Chorus](https://github.com/clyso/chorus) (Clyso GmbH) with resilience extensions from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4), Tutti has evolved into a robust cloud-native platform featuring **S3-compliant Lifecycle management**, **intelligent deletion sync policies**, **high-performance pattern filtering**, and **hardened multi-tenant access controls**.
 
-## Components
-[Tutti S3 Proxy](./service/proxy) service responsible for routing S3 requests and capturing data change events.
-[Tutti Worker](./service/worker) service does actual data replication. Worker also hosts management API and webhook endpoints, so it is a central and the only required component to start.
-Communication between Proxy and Worker is done over work queue.
-[Asynq](https://github.com/hibiken/asynq) with [Redis](https://github.com/redis/redis) is used as a work queue.
+Tutti enables live migrations with zero-downtime, continuous active-passive and active-active replication, real-time S3 proxy routing with circuit-breaking, and granular object retention.
 
-![diagram.png](./docs/media/diagram.png)
+---
 
-For more details, see:
-- [Proxy](./service/proxy)
-- [Worker](./service/worker)
-- [Management CLI](./tools/tuttictl)
-- [Web UI](./ui)
-- [Standalone](./service/standalone) - all-in-one binary. Local playground with zero dependencies.
+## 🚀 Core Capabilities
 
-## Documentation
+### 🥇 1. Deletion Propagation Policy & Delete Marker Sync
+Tutti gives operators complete control over how deletions on the source storage propagate to downstream replicas:
+- **`sync`**: Exact hard deletion on the destination storage upon source removal.
+- **`marker-only`**: Creates an S3 Delete Marker on versioned destination buckets, preserving object history while reflecting deletion.
+- **`ignore`**: Retains destination objects indefinitely when deleted at the source (backup/archive mode).
+- **Prefix Scoping & Delay**: Configure `includePrefixes`, `excludePrefixes`, and `delayBeforeDelete` (soft-delete grace period up to 90 days).
+- **Automatic Audit Logging**: Every delete operation, skip, or failure is recorded in PostgreSQL with destination latency and retry state.
+- **Safety Guard**: Prior to destination deletion, Tutti probes source storage metadata via `StatObject` to prevent accidental deletion if the object still exists.
 
-- Upstream Chorus documentation: [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview).
-- Project [Blog](https://docs.clyso.com/blog/tags/chorus/).
+### 🥈 2. Advanced Pattern Filtering Engine
+Synchronize only the objects that matter with glob wildcard filtering:
+- Supports wildcard globs (`*.jpg`, `logs/*`, `backup-*-2026-*.sql`, `data/**`).
+- **Linear $O(N)$ Evaluation**: Evaluated without regex backtracking, completely immune to Regular Expression Denial of Service (ReDoS).
+- Seamlessly applied across live replication, versioned migrations, and periodic source rescan jobs.
 
-## Quick start
+### 🥉 3. Full-Featured S3 Lifecycle Rules Engine
+Automate storage cost optimization and compliance retention:
+- **AWS S3 Compliant Scheduling**: Calculates object expiration aligned to midnight 00:00:00 UTC of the day following `(LastModified + expirationDays)`.
+- **Flexible Cron Schedules**: Supports standard 5-field cron syntax (e.g. `0 2 * * *` for 02:00 AM UTC).
+- **Dry-Run Simulation**: Estimate eligible object count and reclaimable bytes before applying policies.
+- **Non-blocking Distributed Execution**: Utilizes PostgreSQL `FOR UPDATE SKIP LOCKED` and dynamic lease renewal heartbeats to coordinate multiple worker nodes without deadlock.
+- **Safety Floor**: Hardened with zero-value checks (`lastModified.IsZero()`) to prevent premature deletion of objects with missing metadata.
 
-The Tutti features are enabled in the proxy config; see the [configuration reference](./docs/tutti/configuration.md) for a ready-to-use example per feature. Start from the upstream examples below and add the `replication`, `health` and `failover` sections to the proxy config.
+Automatic expiration requires enabled bucket versioning and immutable, non-null version IDs.
+Keys with older live versions are retained rather than exposing an older value. Unversioned
+or suspended buckets fail safely without deleting data; Dry Run remains available.
+See [lifecycle operations](./docs/tutti/lifecycle-operations.md) for upgrade and recovery steps.
 
-For a hands-on introduction, use the [docker-compose](./docker-compose) example. It includes a step-by-step README and sample configurations—ideal if you’re familiar with Docker and S3.
+### ⚡ 4. High-Performance S3 Proxy & Streaming
+- **`aws-chunked` Streaming**: Decodes and verifies chunk-signature hashes on the fly without loading entire payloads into memory.
+- **AWS Signature V4 & V2 Compatibility**: Re-signs forwarded requests cleanly using internal storage credentials.
+- **Virtual-Host & Path-Style Routing**: Supports both `http://bucket.s3.domain.com` and `http://s3.domain.com/bucket`.
+- **Per-Storage Circuit Breakers**: Fails fast (sub-millisecond) on dead storages instead of holding client threads.
+- **Automatic Failover**: Reroutes users and buckets to healthy replicas when primary storage degrades.
 
-First sign-in (web UI at http://localhost:8080, user `admin`):
-```shell
-cd docker-compose
-cp .env.example .env     # optional: set TUTTI_BOOTSTRAP_ADMIN_PASSWORD (min 12 characters)
-docker compose up --build
-# if you left it empty, read the generated password (printed once):
-docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
-# lost it? reset:
-docker compose exec worker /bin/tutti admin reset-password
+---
+
+## 🏛️ Architecture
+
 ```
-See [First login and password recovery](./docs/tutti/operations.md#first-login-and-password-recovery).
+                                  ┌──────────────────────────┐
+                                  │      Client / S3 SDK     │
+                                  │   (AWS CLI, Boto3, UI)   │
+                                  └─────────────┬────────────┘
+                                                │ S3 Requests / REST / gRPC
+                                                ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   TUTTI S3 PROXY                                       │
+│  - SigV4 / SigV2 Signature Verification & Re-signing                                   │
+│  - Virtual-Host & Path Routing                                                         │
+│  - Circuit Breakers & Dynamic Health Probing                                           │
+│  - Synchronous Write Quorum & Event Capture                                            │
+└───────────────────────────────┬──────────────────────────────┬─────────────────────────┘
+                                │                              │
+                     Direct I/O │                              │ Push Replication Tasks
+                                ▼                              ▼
+┌──────────────────────────────────────────────┐   ┌─────────────────────────────────────┐
+│             STORAGE CLUSTERS                 │   │             REDIS QUEUE             │
+│   Source (MinIO)  ──►  Destination (Ceph/S3) │   │   - Asynq Task Queue                │
+│                                              │   │   - Distributed Locks (ObjectLockID)│
+└───────────────────────▲──────────────────────┘   └──────────────────┬──────────────────┘
+                        │                                             │
+                        │ Replicate / Sync / Expire                   │ Pull Tasks
+                        │                                             ▼
+┌───────────────────────┴────────────────────────────────────────────────────────────────┐
+│                                   TUTTI WORKER                                         │
+│  - Asynq Task Workers & Multipart Streaming Copy Engine                                │
+│  - S3 / Swift Object Syncer (Delete Propagation, Pattern Filter)                       │
+│  - Periodic Rescan & Checkpointing Engine                                              │
+│  - Lifecycle Scheduler (UTC Midnight Expiration, Dry-Run, Audit Logs)                  │
+│  - Management API (gRPC / HTTP Gateway) with RBAC & Fail-Closed Token Interceptor      │
+└───────────────────────────────────────────────┬────────────────────────────────────────┘
+                                                │
+                                                ▼ State & Metadata
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              POSTGRESQL CONTROL PLANE                                  │
+│  - Migrations 0001 - 0010 (Idempotent schema with performance indexes)                 │
+│  - Policies, Delete Events, Lifecycle Rules, Audit Trail (FOR UPDATE SKIP LOCKED)      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
-If using containers is not an option, try to run [standalone](./service/standalone) binary. It bundles all docker-compose services into one executable, letting you follow the same steps without containers.
+---
 
-## Installation
+## 🔒 Security & Concurrency Hardening
 
-### From source
+Tutti has undergone exhaustive adversarial penetration testing and concurrency audits. Key defenses include:
 
-Requires [Go language](https://go.dev/doc/install). Clone and build with:
-```shell
+- **Fail-Closed Webhook Gateway**: Endpoints reject unauthenticated notifications on shared management ports unless an explicit secret token is provided.
+- **BOLA / IDOR Protection**: Read-only `Viewer` roles are strictly scoped and blocked from querying global cluster delete logs.
+- **Unified Distributed Locking**: All S3 and Swift syncer handlers lock uniformly on `(DestinationStorage, toBucket, objectKey)`, preventing split-brain concurrent writes.
+- **Heartbeat Lock Renewal**: Ongoing multi-gigabyte transfers continuously refresh Redis lock TTLs every 2 seconds via `lock.DoCtx`, eliminating lock starvation.
+- **Anti-SSRF & IMDS Shielding**: Endpoint validation in `ManagedStorage.Normalize()` automatically rejects link-local addresses and cloud metadata services (`169.254.169.254`, `fd00:ec2::254`).
+- **Strict Bucket Sanitization**: Request parser verifies bucket names against strict RFC naming standards (`CheckValidBucketNameStrict`), defeating WAF-evasion and header confusion attacks.
+- **DoS / Memory Exhaustion Guard**: Webhook batch requests are capped at 1,000 records per call, preventing out-of-memory crashes.
+
+### Cross-origin management UI
+
+When the UI and management API use different origins, configure the worker with
+an exact origin allowlist, including scheme and port when needed:
+
+```yaml
+api:
+  corsAllowedOrigins:
+    - https://console.example.com
+```
+
+With an empty list, only localhost and private IP browser origins are permitted
+for development. DNS names beginning with a private IP prefix are not trusted.
+
+---
+
+## ⚡ Quick Start
+
+### 1. Using Docker Compose (Recommended for Testing)
+
+The fastest way to test Tutti with MinIO and Redis locally:
+
+```bash
+# Clone the repository
 git clone https://github.com/hieunyit/tutti.git && cd tutti
 
-# Run worker
-go run ./cmd/worker
+# Configure environment
+cd docker-compose
+cp .env.example .env
 
-# Build worker binary
-go build ./cmd/worker
-./worker
+# Build and start services
+docker compose up --build -d
 
-# Run with custom config
-go run ./cmd/worker -config <path-to-worker.yaml>
-go run ./cmd/proxy -config <path-to-proxy.yaml>
+# Check initial admin credentials
+docker compose logs worker | grep -A6 'INITIAL ADMIN PASSWORD'
 ```
 
-Or install globally:
-```shell
-# Ensure $GOPATH/bin is in $PATH
-export PATH=$PATH:$GOPATH/bin
+Access the Web Console at **http://localhost:8080** (User: `admin`).
 
-# Install binaries
-go install github.com/hieunyit/tutti/cmd/worker@latest
-go install github.com/hieunyit/tutti/cmd/proxy@latest
-go install github.com/hieunyit/tutti/cmd/tutti@latest
+### 2. Running From Source
 
-# Run with config
-worker -config <path-to-worker.yaml>
+Requirements: **Go 1.24+**, **Node.js 20+**, **PostgreSQL 15+**, **Redis 7+**.
+
+```bash
+# 1. Build backend binaries
+go build -o build/tutti ./cmd/tutti
+go build -o build/worker ./cmd/worker
+go build -o build/proxy ./cmd/proxy
+
+# 2. Run database migrations and worker
+./build/worker -config ./service/worker/config.yaml
+
+# 3. Build and run Web UI
+cd ui
+npm install
+npm run build
 ```
 
-### Prebuilt Binaries
-Download binaries for Linux, Windows, and macOS from the GitHub releases page of this repository (upstream Chorus releases: [clyso/chorus](https://github.com/clyso/chorus/releases)).
+---
 
-### Docker
+## 💻 Management Tools
 
-Tutti images: `ghcr.io/hieunyit/tutti/proxy`, `ghcr.io/hieunyit/tutti/worker`, `ghcr.io/hieunyit/tutti/web-ui`.
+Tutti provides three complementary management interfaces:
 
-Upstream Chorus images (they do not contain the Tutti changes; build Tutti images from the [Dockerfile](./Dockerfile)):
-- `harbor.clyso.com/chorus/proxy`
-- `harbor.clyso.com/chorus/worker`
-- `harbor.clyso.com/chorus/web-ui`
+### Web Console (`ui/`)
+Modern, responsive single-page application built with Vue 3, Naive UI, and Pinia:
+- **Replications View**: Visual status, throughput graphs, in-flight transfer monitoring, and zero-downtime switch triggers.
+- **Replication Policies Card**: Inline configuration of Delete Propagation modes and include/exclude prefix and wildcard filters.
+- **Lifecycle Manager**: Create and inspect rule schedules, view audit trails in a side drawer, and simulate expiration with the **Dry Run Modal**.
+- **Role-Based Views**: WriteGate guards all destructive and operational actions behind `RoleAdmin`.
 
-Example:
-```shell
-docker run -v /path/to/worker.yaml:/bin/config/config.yaml harbor.clyso.com/chorus/worker
+### CLI Tool (`tuttictl`)
+Full-featured command-line utility for automation and scripting:
+```bash
+# Check replication status
+tuttictl replication list
+
+# Set delete propagation policy
+tuttictl replication set-delete-policy --id "main:backup:bucket1:bucket2" --mode sync --delay 24h
+
+# Trigger dry-run lifecycle evaluation
+tuttictl lifecycle dry-run --storage main --bucket uploads --days 30
 ```
 
-Built from [Dockerfile](./Dockerfile) and [ui/Dockerfile](./ui/Dockerfile).
+### gRPC & REST Gateway
+All control-plane functions are exposed via gRPC (`proto/tutti/`) and mapped to RESTful JSON endpoints via `grpc-gateway`:
+- OpenAPI 3.0 / Swagger schema available at `proto/gen/openapi/tutti/tutti.swagger.json`.
 
-See also [docker-compose](./docker-compose) example.
+---
 
-### Kubernetes
-Deploy with Helm:
-```shell
-helm install <release name> oci://ghcr.io/hieunyit/tutti/tutti
-```
-The chart source is located in [deploy/tutti](./deploy/tutti).
+## 🧪 Testing & Verification
 
-See Helm example values in [deploy/tutti/examples/](./deploy/tutti/examples/).
+Tutti maintains strict code quality and verification standards:
 
-Proxy and worker expose Prometheus metrics - see [exposed metrics](./deploy/tutti/README.md#exposed-metrics).
+```bash
+# Static analysis and linting
+go vet ./...
+npm run lint:types --prefix ui
+npm run lint:eslint --prefix ui
 
-## Develop
+# Concurrency race detector & unit tests
+go test -race ./pkg/...
+go test -race ./service/...
 
-Tutti is written in Go—no other dependencies are required to build, run, or test.
+# Frontend unit testing
+npm run test:unit --prefix ui
 
-Want to contribute? See our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Test
-[Test](./test) package contains e2e tests for replications between S3 storages.
-It starts:
-- 3 embedded [gofakes3](https://github.com/johannesboyne/gofakes3) S3 storages
-- embedded Redis [miniredis](https://github.com/alicebob/miniredis)
-- Tutti Worker and Proxy services
-
-All listed tools are written in go so test can be run without external dependencies just by:
-```shell
-go test ./test/...
+# Production frontend bundle
+npm run build --prefix ui
 ```
 
-Tests emulate real-world scenarios like:
-- replication of existing buckets and objects with metadata
-- capturing and syncing live bucket/object changes during migration
-- switching between S3 endpoints with and without downtime
-- access S3 with Tutti Proxy
-- data migration integrity check
+---
 
-### Add APIs
-Tutti worker [implements gRPC server](./pkg/api/) defined in [proto/tutti/core.proto](./proto/tutti/core.proto). It also provides REST API which is automatically generated from the proto file with [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway). GRPC<->REST mappings are defined in [proto/http.yaml](./proto/http.yaml).
+## 📚 Documentation
 
-Steps to add new API:
-1. Add new service or endpoint definition to [proto/tutti/core.proto](./proto/tutti/core.proto)
-2. Add corresponding mapping to [proto/http.yaml](./proto/http.yaml)
-3. Run `make proto-gen` to generate go client, server, and openapi definitions to [proto/gen](./proto/gen) directory.
-4. Implement new service or endpoint in [pkg/api](./pkg/api/)
-5. Support new API in [tuttictl](./tools/tuttictl) and [WebUI](./ui) clients.
+Detailed architecture and operations guides are located in [`docs/`](./docs/):
+- [Deployment Guide (Docker, K8s, VM)](./docs/tutti/deployment-guide.md)
+- [Management REST & gRPC API Reference](./docs/tutti/api.md)
+- [Operations & Troubleshooting Guide](./docs/tutti/operations.md)
+- [PostgreSQL Control Plane & Migrations](./docs/tutti/control-plane-db.md)
+- [Protection Groups Architecture](./docs/tutti/protection-groups.md)
+- [Security & Concurrency Audit Report](./docs/audit/2026-11-17-comprehensive-security-and-bugfix-report.md)
 
-## Relationship to Tutti
+---
 
-Tutti is a fork of [Chorus](https://github.com/clyso/chorus) by Clyso GmbH. Component names (the `tutti` all-in-one binary, `tuttictl`, the `tutti.*` protobuf package, Redis key prefixes and Prometheus metric names) were renamed from their Chorus equivalents, so Tutti is no longer wire compatible with an upstream Chorus deployment. Upstream documentation at [docs.clyso.com](https://docs.clyso.com/docs/products/chorus/overview) applies to everything Tutti does not change; the differences are listed in [Upgrading from Chorus](./docs/tutti/upgrading-from-chorus.md).
+## 📜 License & Attribution
 
-## License
+- **Backend (`pkg/`, `service/`, `cmd/`)**: [Apache License 2.0](./LICENSE). Originally based on Chorus (© Clyso GmbH).
+- **Web UI (`ui/`)**: GNU AGPL-3.0 (© Clyso GmbH, with Tutti modifications).
+- **Resilience Extensions**: Derived from ReplicaT4 (MIT License, © Diego Barreiro Perez).
 
-- Backend (everything outside `ui/`): [Apache License 2.0](./LICENSE). Original code © Clyso GmbH.
-- Web UI (`ui/`): GNU AGPL-3.0, © Clyso GmbH, with Tutti modifications.
-- Parts derived from [ReplicaT4](https://github.com/barreeeiroo/ReplicaT4): MIT, © 2025 Diego Barreiro Perez.
-
-See [NOTICE](./NOTICE) for details.
+See [NOTICE](./NOTICE) for complete copyright and license disclosures.

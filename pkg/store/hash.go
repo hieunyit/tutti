@@ -49,10 +49,28 @@ func (r *RedisIDKeyHash[ID, V]) SetOp(ctx context.Context, id ID, value V) Opera
 	}
 
 	cmd := r.client.HSet(ctx, key, value)
+	var extraCmd *redis.IntCmd
+	if encoder, ok := any(value).(interface{ RedisExtraFields() map[string]any }); ok {
+		if extra := encoder.RedisExtraFields(); len(extra) > 0 {
+			extraCmd = r.client.HSet(ctx, key, extra)
+		}
+	}
+	var clearCmd *redis.IntCmd
+	if replacer, ok := any(value).(interface{ RedisClearFields() []string }); ok {
+		if fields := replacer.RedisClearFields(); len(fields) > 0 {
+			clearCmd = r.client.HDel(ctx, key, fields...)
+		}
+	}
 
 	collectFunc := func() error {
 		if err := cmd.Err(); err != nil {
 			return fmt.Errorf("unable to set value in hash: %w", err)
+		}
+		if extraCmd != nil && extraCmd.Err() != nil {
+			return fmt.Errorf("unable to set extra hash fields: %w", extraCmd.Err())
+		}
+		if clearCmd != nil && clearCmd.Err() != nil {
+			return fmt.Errorf("unable to clear omitted hash fields: %w", clearCmd.Err())
 		}
 		return nil
 	}
@@ -109,6 +127,12 @@ func (r *RedisIDKeyHash[ID, V]) GetOp(ctx context.Context, id ID) OperationResul
 		if err := cmd.Scan(&value); err != nil {
 			var noVal V
 			return noVal, fmt.Errorf("unable to scan hash map: %w", err)
+		}
+		if decoder, ok := any(&value).(interface{ DecodeRedisExtraFields(map[string]string) error }); ok {
+			if err := decoder.DecodeRedisExtraFields(cmd.Val()); err != nil {
+				var noVal V
+				return noVal, fmt.Errorf("unable to decode hash fields: %w", err)
+			}
 		}
 		return value, nil
 	}

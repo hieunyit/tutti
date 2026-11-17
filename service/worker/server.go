@@ -38,9 +38,12 @@ import (
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	"github.com/hieunyit/tutti/pkg/controlplane/pg"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
+	"github.com/hieunyit/tutti/pkg/filter"
 	"github.com/hieunyit/tutti/pkg/hostres"
+	"github.com/hieunyit/tutti/pkg/lifecycle"
 	"github.com/hieunyit/tutti/pkg/log"
 	"github.com/hieunyit/tutti/pkg/meta"
 	"github.com/hieunyit/tutti/pkg/metrics"
@@ -66,6 +69,7 @@ import (
 	"github.com/hieunyit/tutti/service/worker/copy"
 	"github.com/hieunyit/tutti/service/worker/handler"
 	swift_worker "github.com/hieunyit/tutti/service/worker/handler/swift"
+	"github.com/hieunyit/tutti/service/worker/syncer"
 )
 
 func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
@@ -326,6 +330,31 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 	workerSvc.SetBucketScope(bucketScope)
 	workerSvc.SetSinceResolver(policySvc.GetReplicationSince)
+	workerSvc.SetPolicyResolver(func(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatus, error) {
+		ext, err := policySvc.GetReplicationPolicyInfoExtended(ctx, id)
+		if err != nil {
+			return entity.ReplicationStatus{}, err
+		}
+		if ext.ReplicationStatus != nil {
+			return *ext.ReplicationStatus, nil
+		}
+		return entity.ReplicationStatus{}, nil
+	})
+	var deleteAuditRecorder func(context.Context, controlplane.DeleteAuditEntry) error
+	if cpStore != nil {
+		deleteAuditRecorder = cpStore.Repos().DeleteEvents.RecordAudit
+		workerSvc.SetDeleteAuditRecorder(deleteAuditRecorder)
+	}
+	workerSvc.SetFilterResolver(func(ctx context.Context, id entity.UniversalReplicationID) (*filter.Filter, error) {
+		ext, err := policySvc.GetReplicationPolicyInfoExtended(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if ext.ReplicationStatus != nil && (len(ext.ReplicationStatus.IncludePatterns) > 0 || len(ext.ReplicationStatus.ExcludePatterns) > 0) {
+			return filter.New(ext.ReplicationStatus.IncludePatterns, ext.ReplicationStatus.ExcludePatterns), nil
+		}
+		return nil, nil
+	})
 
 	stdLogger := log.NewStdLogger()
 	redis.SetLogger(stdLogger)
@@ -347,8 +376,15 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		taskID, _ := asynq.GetTaskID(ctx)
 		queue, _ := asynq.GetQueueName(ctx)
 		taskLogger := zerolog.Ctx(ctx).With().Str("task_type", task.Type()).Str("task_id", taskID).Str("task_queue", queue).Int("task_max_retry", maxRetry).Int("task_retried", retried).Logger()
-		if retried >= maxRetry {
+		if terminalTaskError(ctx, err) {
+			if auditErr := recordFailedDeleteTask(ctx, deleteAuditRecorder, task, err); auditErr != nil {
+				taskLogger.Error().Err(auditErr).Msg("record failed delete task")
+			}
 			taskLogger.Error().RawJSON("task_payload", task.Payload()).Err(err).Msg("process task failed. task will be dropped")
+			return
+		}
+		if errors.Is(err, syncer.ErrDeleteDeferred) {
+			taskLogger.Debug().Err(err).Msg("delete propagation is scheduled for later")
 			return
 		}
 		var rlErr *dom.ErrRateLimitExceeded
@@ -358,11 +394,6 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		}
 		taskLogger.Warn().Err(err).Msg("process task failed. task will be retried")
 	})
-
-	isFailureFunc := func(err error) bool {
-		var rlErr *dom.ErrRateLimitExceeded
-		return !errors.As(err, &rlErr)
-	}
 
 	bulkPercent := systemsettings.EffectiveBulkPercent()
 	if totalConcurrency > 1 {
@@ -382,7 +413,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			asynq.Config{
 				ShutdownTimeout:            conf.ShutdownTimeout,
 				Concurrency:                1,
-				IsFailure:                  isFailureFunc,
+				IsFailure:                  isTaskFailure,
 				RetryDelayFunc:             retryDelayFunc(defaultRetry),
 				ErrorHandler:               errorHandler,
 				Logger:                     stdLogger,
@@ -403,7 +434,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			asynq.Config{
 				ShutdownTimeout:            conf.ShutdownTimeout,
 				Concurrency:                liveConcurrency,
-				IsFailure:                  isFailureFunc,
+				IsFailure:                  isTaskFailure,
 				RetryDelayFunc:             retryDelayFunc(defaultRetry),
 				ErrorHandler:               errorHandler,
 				Logger:                     stdLogger,
@@ -422,7 +453,7 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			asynq.Config{
 				ShutdownTimeout:            conf.ShutdownTimeout,
 				Concurrency:                bulkConcurrency,
-				IsFailure:                  isFailureFunc,
+				IsFailure:                  isTaskFailure,
 				RetryDelayFunc:             retryDelayFunc(defaultRetry),
 				ErrorHandler:               errorHandler,
 				Logger:                     stdLogger,
@@ -450,7 +481,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	defer leaseStop()
 	go groupLease.Run(leaseCtx)
 	mux.Use(groupStore.WorkerMiddleware(groupLease))
-	mux.Use(tasks.DropStaleReplicationTasks(policySvc.GetReplicationGeneration))
+	mux.Use(tasks.DropStaleReplicationTasks(policySvc.GetReplicationGeneration, func(ctx context.Context, p tasks.ObjectSyncPayload) error {
+		return syncer.RecordDeleteAudit(ctx, deleteAuditRecorder, p, "skipped", map[string]any{"reason": "replication generation changed"})
+	}))
 	// common workers
 	switchWorker := handler.NewSwitchSvc(conf.Worker, policySvc, clientRegistry, replicationStatusLocker)
 	switchWorker.SetBucketScope(bucketScope)
@@ -731,8 +764,10 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}
 		}
 		// webhook not enabled at boot but possibly enabled at runtime via dynamic settings: never serve it unauthenticated.
+		// Furthermore, when webhooks share the main management API port (conf.Api.Webhook.GrpcPort <= 0) without a token,
+		// fail closed to prevent unauthenticated clients on the management API from injecting forged events.
 		var webhookTokenOpts []auth.WebhookOption
-		if !conf.Api.Webhook.Enabled {
+		if !conf.Api.Webhook.Enabled || (webhookSharesMainPort && conf.Api.Webhook.Token == "") {
 			webhookTokenOpts = append(webhookTokenOpts, auth.WebhookRequireToken())
 		}
 		webhookTokenUnary, webhookTokenStream := auth.WebhookTokenInterceptors(conf.Api.Webhook.Token, webhookTokenOpts...)
@@ -768,6 +803,20 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 
 		webhookOnSeparatePorts := conf.Api.Webhook.Enabled && conf.Api.Webhook.GrpcPort > 0
 
+		var lifecycleHandler pb.LifecycleServer
+		if cpStore != nil {
+			lifecycleService := lifecycle.NewService(cpStore.Repos().Lifecycle, clientRegistry, credsSvc)
+			lifecycleHandler = api.LifecycleHandlers(lifecycleService)
+			lifecycleScheduler := lifecycle.NewScheduler(lifecycleService, cpStore.Repos().Lifecycle, logger)
+			err = server.Add("lifecycle_scheduler", func(ctx context.Context) error {
+				lifecycleScheduler.Run(ctx)
+				return nil
+			}, func(context.Context) error { return nil })
+			if err != nil {
+				return err
+			}
+		}
+
 		swiftReplSvc := replication.NewSwift(queueSvc, policySvc)
 		s3ReplSvc := replication.NewS3(queueSvc, versionSvc, policySvc)
 		webhookHandler := api.WebhookHandlers(credsSvc, policySvc, swiftReplSvc, s3ReplSvc)
@@ -778,6 +827,9 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			pb.RegisterDiffServer(srv, diffHandler)
 			pb.RegisterPolicyServer(srv, policyHandler)
 			pb.RegisterResilienceServer(srv, resilienceHandler)
+			if lifecycleHandler != nil {
+				pb.RegisterLifecycleServer(srv, lifecycleHandler)
+			}
 			if !webhookOnSeparatePorts {
 				pb.RegisterWebhookServer(srv, webhookHandler)
 			}
@@ -810,6 +862,11 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 			}
 			if err := pb.RegisterProtectionGroupsHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
 				return err
+			}
+			if lifecycleHandler != nil {
+				if err := pb.RegisterLifecycleHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
+					return err
+				}
 			}
 			if !webhookOnSeparatePorts {
 				if err := pb.RegisterWebhookHandlerFromEndpoint(ctx, mux, endpoint, opts); err != nil {
@@ -881,8 +938,18 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 	return server.Start(ctx)
 }
 
+func isTaskFailure(err error) bool {
+	var rlErr *dom.ErrRateLimitExceeded
+	return !errors.As(err, &rlErr) && !errors.Is(err, syncer.ErrDeleteDeferred)
+}
+
 func retryDelayFunc(fallback asynq.RetryDelayFunc) asynq.RetryDelayFunc {
 	return func(n int, err error, task *asynq.Task) time.Duration {
+		var deferred *syncer.DeleteDeferredError
+		if errors.As(err, &deferred) {
+			// Asynq schedules with second precision.
+			return max(0, time.Until(deferred.Deadline.Truncate(time.Second).Add(time.Second)))
+		}
 		var rlErr *dom.ErrRateLimitExceeded
 		if errors.As(err, &rlErr) {
 			return rlErr.RetryIn

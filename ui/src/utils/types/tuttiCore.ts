@@ -200,6 +200,14 @@ export interface TuttiReplication {
   lastRescanObjects?: string;
   /** empty when the last scan was fine */
   lastRescanError?: string;
+  /** delete propagation policy (nested object from protobuf) or legacy mode string */
+  deletePropagation?: DeletePropagationPolicy | string;
+  deleteIncludePrefixes?: string[];
+  deleteExcludePrefixes?: string[];
+  deleteDelaySeconds?: number;
+  /** advanced include/exclude glob patterns */
+  includePatterns?: string[];
+  excludePatterns?: string[];
 }
 
 export interface TuttiReplicationListResponse {
@@ -419,4 +427,74 @@ export interface DiffReportDetailRequest {
 
 export interface DiffReportDetailResponse {
   check: DiffReport;
+}
+
+export enum DeletePropagationMode {
+  UNSPECIFIED = 0,
+  IGNORE = 1,
+  SYNC = 2,
+  MARKER_ONLY = 3,
+}
+
+export type DeletePropagationModeStr =
+  | 'DELETE_PROPAGATION_UNSPECIFIED'
+  | 'DELETE_PROPAGATION_IGNORE'
+  | 'DELETE_PROPAGATION_SYNC'
+  | 'DELETE_PROPAGATION_MARKER_ONLY'
+  | 'ignore'
+  | 'sync'
+  | 'marker-only';
+
+export interface DeletePropagationPolicy {
+  mode: DeletePropagationModeStr | DeletePropagationMode | string | number;
+  includePrefixes?: string[];
+  excludePrefixes?: string[];
+  /** Protobuf duration format is a string ending in "s" (e.g. "60s") */
+  delayBeforeDelete?: string | { seconds?: string; nanos?: number };
+}
+
+export interface UpdateDeletePropagationRequest {
+  id: TuttiReplicationId;
+  deletePropagation: {
+    mode: DeletePropagationModeStr | DeletePropagationMode | string | number;
+    includePrefixes?: string[];
+    excludePrefixes?: string[];
+    delayBeforeDelete?: string | { seconds?: string; nanos?: number };
+  };
+}
+
+export interface UpdateReplicationFiltersRequest {
+  id: TuttiReplicationId;
+  includePatterns?: string[];
+  excludePatterns?: string[];
+}
+
+export interface DeleteEvent {
+  id: string;
+  replicationId: string;
+  bucket: string;
+  objectKey: string;
+  versionId?: string;
+  deletionType: string;
+  sourceTimestamp: string;
+  status: string;
+  retryCount: number;
+  lastError?: string;
+  createdAt: string;
+}
+
+export interface ListDeleteEventsRequest {
+  replicationId?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListDeleteEventsResponse {
+  events?: DeleteEvent[];
+  total: string;
+}
+
+export interface RetryFailedDeletesRequest {
+  replicationId?: string;
 }

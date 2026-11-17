@@ -54,6 +54,13 @@ func (s *svc) HandleObjectVersionList(ctx context.Context, t *asynq.Task) error 
 	if err != nil {
 		return err
 	}
+	replFilter, err := s.replicationFilter(ctx, listVersionsPayload.ID)
+	if err != nil {
+		return err
+	}
+	if listVersionsPayload.Prefix != "" && replFilter != nil && !replFilter.ShouldSync(listVersionsPayload.Prefix) {
+		return nil
+	}
 	if err := s.versionedSvc.ListVersionsSince(ctx, objectVersionID, replicationID, since, listVersionsPayload.Generation); err != nil {
 		return fmt.Errorf("unable to list obejct versions: %w", err)
 	}
@@ -101,6 +108,13 @@ func (s *svc) HandleVersionedObjectMigration(ctx context.Context, t *asynq.Task)
 	since, err := s.replicationSince(ctx, migratePayload.ID)
 	if err != nil {
 		return err
+	}
+	replFilter, err := s.replicationFilter(ctx, migratePayload.ID)
+	if err != nil {
+		return err
+	}
+	if migratePayload.Prefix != "" && replFilter != nil && !replFilter.ShouldSync(migratePayload.Prefix) {
+		return nil
 	}
 	if err = s.versionedSvc.MigrateVersionsSince(ctx, replicationID, migratePayload.Prefix, since, migratePayload.Generation); err != nil {
 		err = fmt.Errorf("unable to migrate object version: %w", err)

@@ -95,7 +95,7 @@ type EmbeddedEnv struct {
 	TaskClient *asynq.Client
 
 	PolicyClient pb.PolicyClient
-	TuttiClient pb.TuttiClient
+	TuttiClient  pb.TuttiClient
 	DiffClient   pb.DiffClient
 
 	UrlHttpApi string
@@ -112,6 +112,8 @@ func (e *EmbeddedEnv) CreateMainFollowerUserReplications(t testing.TB) {
 	r := require.New(t)
 
 	_, err := e.PolicyClient.AddReplication(ctx, &pb.AddReplicationRequest{
+		// CRUD fixtures explicitly opt into deletes; new policies default to ignore.
+		Opts: &pb.ReplicationOpts{DeletePropagation: &pb.DeletePropagationPolicy{Mode: pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC}},
 		Id: &pb.ReplicationID{
 			User:        user,
 			FromStorage: "main",
@@ -120,6 +122,7 @@ func (e *EmbeddedEnv) CreateMainFollowerUserReplications(t testing.TB) {
 	})
 	r.NoError(err)
 	_, err = e.PolicyClient.AddReplication(ctx, &pb.AddReplicationRequest{
+		Opts: &pb.ReplicationOpts{DeletePropagation: &pb.DeletePropagationPolicy{Mode: pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC}},
 		Id: &pb.ReplicationID{
 			User:        user,
 			FromStorage: "main",

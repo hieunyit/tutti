@@ -12,6 +12,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/store"
 	"github.com/hieunyit/tutti/service/worker/copy"
+	"github.com/hieunyit/tutti/service/worker/syncer"
 )
 
 // Replication activity feed (in-flight copies and the event log shown in the UI detail view).
@@ -116,6 +117,9 @@ func (t *activityTracker) finish(ctx context.Context, err error, out *copy.Outco
 	ev := store.ActivityEvent{Key: t.key, VersionID: t.ver, Size: t.size, Flow: t.flow, Attempt: t.attempt}
 	d := time.Since(t.start)
 	switch {
+	case errors.Is(err, syncer.ErrDeleteDeferred):
+		t.untrack(ctx)
+		return
 	case err != nil:
 		retried, _ := asynq.GetRetryCount(ctx)
 		maxRetry, _ := asynq.GetMaxRetry(ctx)

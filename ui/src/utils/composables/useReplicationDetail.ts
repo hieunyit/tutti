@@ -140,6 +140,7 @@ export function useReplicationDetail(id: Ref<TuttiReplicationId | null>) {
     error,
     missing,
     load,
+    refresh: fetchOnce,
     rename,
     setPaused,
     syncNow,

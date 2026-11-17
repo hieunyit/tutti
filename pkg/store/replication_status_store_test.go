@@ -11,6 +11,40 @@ import (
 	"github.com/hieunyit/tutti/pkg/testutil"
 )
 
+func TestRecreateReplicationStatusClearsOldFilters(t *testing.T) {
+	c := testutil.SetupRedis(t)
+	ctx := t.Context()
+	s := NewUserReplicationStatusStore(c)
+	id := entity.NewUserReplicationPolicy("user", "from", "to")
+	require.NoError(t, s.AddOp(ctx, id, entity.ReplicationStatus{
+		IncludePatterns: []string{"old/*"}, ExcludePatterns: []string{"old/secret/*"},
+		DeleteIncludePrefixes: []string{"old/"}, DeleteExcludePrefixes: []string{"old/secret/"},
+	}).Get())
+	require.NoError(t, s.ArchieveOp(ctx, id).Get())
+	key, err := s.status.MakeKey(id)
+	require.NoError(t, err)
+	require.NoError(t, c.HSet(ctx, key, "unrelated", "keep").Err())
+	tx := s.TxExecutor()
+	added := s.WithExecutor(tx).AddOp(ctx, id, entity.ReplicationStatus{
+		ExcludePatterns: []string{"new/secret/*"}, DeleteIncludePrefixes: []string{},
+	})
+	require.NoError(t, tx.Exec(ctx))
+	require.NoError(t, added.Get())
+	got, err := s.GetOp(ctx, id).Get()
+	require.NoError(t, err)
+	require.False(t, got.IsArchived)
+	require.Empty(t, got.IncludePatterns)
+	require.Equal(t, []string{"new/secret/*"}, got.ExcludePatterns)
+	require.Empty(t, got.DeleteIncludePrefixes)
+	require.Empty(t, got.DeleteExcludePrefixes)
+	fields, err := c.HGetAll(ctx, key).Result()
+	require.NoError(t, err)
+	require.NotContains(t, fields, "include_patterns")
+	require.NotContains(t, fields, "delete_include_prefixes")
+	require.NotContains(t, fields, "delete_exclude_prefixes")
+	require.Equal(t, "keep", fields["unrelated"])
+}
+
 func TestBucketReplicationStatusStore(t *testing.T) {
 	r := require.New(t)
 	c := testutil.SetupRedis(t)

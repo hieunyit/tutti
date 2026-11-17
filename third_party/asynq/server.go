@@ -125,7 +125,7 @@ type Config struct {
 	// Predicate function to determine whether the error returned from Handler is a failure.
 	// If the function returns false, Server will not increment the retried counter for the task,
 	// and Server won't record the queue stats (processed and failed stats) to avoid skewing the error
-	// rate of the queue.
+	// rate of the queue. The task is rescheduled regardless of its current retry count.
 	//
 	// By default, if the given error is non-nil the function returns true.
 	IsFailure func(error) bool

@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package tutti;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hieunyit/tutti/proto/tutti;pb";
+
+service Lifecycle {
+  rpc CreateRule(CreateLifecycleRuleRequest) returns (LifecycleRule);
+  rpc ListRules(ListLifecycleRulesRequest) returns (ListLifecycleRulesResponse);
+  rpc GetRule(GetLifecycleRuleRequest) returns (LifecycleRule);
+  rpc UpdateRule(UpdateLifecycleRuleRequest) returns (LifecycleRule);
+  rpc DeleteRule(DeleteLifecycleRuleRequest) returns (google.protobuf.Empty);
+  rpc EnableRule(EnableLifecycleRuleRequest) returns (google.protobuf.Empty);
+  rpc DisableRule(DisableLifecycleRuleRequest) returns (google.protobuf.Empty);
+  rpc DryRun(LifecycleDryRunRequest) returns (LifecycleDryRunResponse);
+  rpc ListAuditLogs(ListLifecycleAuditLogsRequest) returns (ListLifecycleAuditLogsResponse);
+}
+
+message LifecycleRule {
+  int64 id = 1;
+  string name = 2;
+  string storage_name = 3;
+  string bucket = 4;
+  string prefix = 5;
+  int32 expiration_days = 6;
+  string schedule = 7;
+  bool enabled = 8;
+  google.protobuf.Timestamp next_run_at = 9;
+  google.protobuf.Timestamp last_run_at = 10;
+  LifecycleRunStats last_run_stats = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message LifecycleRunStats {
+  int64 deleted_count = 1;
+  int64 bytes_freed = 2;
+  int64 duration_ms = 3;
+}
+
+message CreateLifecycleRuleRequest {
+  string name = 1;
+  string storage_name = 2;
+  string bucket = 3;
+  string prefix = 4;
+  int32 expiration_days = 5;
+  string schedule = 6;
+  bool enabled = 7;
+}
+
+message ListLifecycleRulesRequest {
+  string storage_name = 1;
+  string bucket = 2;
+}
+
+message ListLifecycleRulesResponse {
+  repeated LifecycleRule rules = 1;
+}
+
+message GetLifecycleRuleRequest {
+  int64 id = 1;
+}
+
+message UpdateLifecycleRuleRequest {
+  int64 id = 1;
+  string name = 2;
+  string prefix = 3;
+  int32 expiration_days = 4;
+  string schedule = 5;
+  bool enabled = 6;
+}
+
+message DeleteLifecycleRuleRequest {
+  int64 id = 1;
+}
+
+message EnableLifecycleRuleRequest {
+  int64 id = 1;
+}
+
+message DisableLifecycleRuleRequest {
+  int64 id = 1;
+}
+
+message LifecycleDryRunRequest {
+  string storage_name = 1;
+  string bucket = 2;
+  string prefix = 3;
+  int32 expiration_days = 4;
+  int32 sample_size = 5;
+}
+
+message LifecycleDryRunResponse {
+  int64 estimated_deleted_count = 1;
+  int64 estimated_bytes_freed = 2;
+  repeated string sample_objects = 3;
+}
+
+message ListLifecycleAuditLogsRequest {
+  int64 rule_id = 1;
+  int32 limit = 2;
+  int64 offset = 3;
+}
+
+message LifecycleAuditLogEntry {
+  int64 id = 1;
+  int64 rule_id = 2;
+  string bucket = 3;
+  string object_key = 4;
+  int64 size_bytes = 5;
+  google.protobuf.Timestamp last_modified = 6;
+  google.protobuf.Timestamp deleted_at = 7;
+}
+
+message ListLifecycleAuditLogsResponse {
+  repeated LifecycleAuditLogEntry entries = 1;
+  int64 total = 2;
+}

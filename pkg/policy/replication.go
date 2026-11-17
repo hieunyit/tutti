@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
@@ -50,29 +51,49 @@ func toCPReplicationID(id entity.UniversalReplicationID) controlplane.Replicatio
 }
 
 func toCPStatus(st entity.ReplicationStatus) controlplane.ReplicationStatus {
+	delProp := st.DeletePropagation
+	if delProp == "" {
+		delProp = "ignore"
+	}
 	return controlplane.ReplicationStatus{
-		CreatedAt:     st.CreatedAt,
-		Archived:      st.IsArchived,
-		ArchivedAt:    st.ArchivedAt,
-		AgentURL:      st.AgentURL,
-		EventSource:   st.EventSource,
-		Name:          st.Name,
-		Since:         st.Since,
-		RescanSeconds: st.RescanSeconds,
+		CreatedAt:             st.CreatedAt,
+		Archived:              st.IsArchived,
+		ArchivedAt:            st.ArchivedAt,
+		AgentURL:              st.AgentURL,
+		EventSource:           st.EventSource,
+		Name:                  st.Name,
+		Since:                 st.Since,
+		RescanSeconds:         st.RescanSeconds,
+		DeletePropagation:     delProp,
+		DeleteIncludePrefixes: st.DeleteIncludePrefixes,
+		DeleteExcludePrefixes: st.DeleteExcludePrefixes,
+		DeleteDelaySeconds:    st.DeleteDelaySeconds,
+		IncludePatterns:       st.IncludePatterns,
+		ExcludePatterns:       st.ExcludePatterns,
 	}
 }
 
 func fromCPStatus(st controlplane.ReplicationStatus, failoverPending bool) entity.ReplicationStatus {
+	delProp := st.DeletePropagation
+	if delProp == "" {
+		delProp = "ignore"
+	}
 	return entity.ReplicationStatus{
-		CreatedAt:       st.CreatedAt,
-		IsArchived:      st.Archived,
-		ArchivedAt:      st.ArchivedAt,
-		AgentURL:        st.AgentURL,
-		EventSource:     st.EventSource,
-		Name:            st.Name,
-		Since:           st.Since,
-		RescanSeconds:   st.RescanSeconds,
-		FailoverPending: failoverPending,
+		CreatedAt:             st.CreatedAt,
+		IsArchived:            st.Archived,
+		ArchivedAt:            st.ArchivedAt,
+		AgentURL:              st.AgentURL,
+		EventSource:           st.EventSource,
+		Name:                  st.Name,
+		Since:                 st.Since,
+		RescanSeconds:         st.RescanSeconds,
+		FailoverPending:       failoverPending,
+		DeletePropagation:     delProp,
+		DeleteIncludePrefixes: st.DeleteIncludePrefixes,
+		DeleteExcludePrefixes: st.DeleteExcludePrefixes,
+		DeleteDelaySeconds:    st.DeleteDelaySeconds,
+		IncludePatterns:       st.IncludePatterns,
+		ExcludePatterns:       st.ExcludePatterns,
 	}
 }
 
@@ -112,6 +133,12 @@ type ReplicationSvc interface {
 	AddBucketReplicationPolicy(ctx context.Context, id entity.BucketReplicationPolicy, opts entity.ReplicationOptions) (int64, error)
 	ListBucketReplicationsInfo(ctx context.Context, user string) (map[entity.BucketReplicationPolicy]entity.ReplicationStatusExtended, error)
 	DeleteBucketReplication(ctx context.Context, id entity.BucketReplicationPolicy) error
+
+	// Delete propagation & filtering
+	UpdateDeletePropagation(ctx context.Context, id entity.UniversalReplicationID, mode string, includePrefixes, excludePrefixes []string, delay time.Duration) error
+	UpdateReplicationFilters(ctx context.Context, id entity.UniversalReplicationID, includePatterns, excludePatterns []string) error
+	ListDeleteEvents(ctx context.Context, replicationID, status string, limit int32, offset int64) ([]controlplane.DeleteEvent, int64, error)
+	RetryFailedDeletes(ctx context.Context, replicationID string) (int64, error)
 }
 
 var _ ReplicationSvc = (*policySvc)(nil)
@@ -1227,5 +1254,132 @@ func (r *policySvc) createReplicationPolicyInTx(ctx context.Context, tx store.Ex
 	} else {
 		// should never happen
 		panic(fmt.Sprintf("unknown policy type %s", policy.AsString()))
+	}
+}
+
+func (r *policySvc) UpdateDeletePropagation(ctx context.Context, id entity.UniversalReplicationID, mode string, includePrefixes, excludePrefixes []string, delay time.Duration) error {
+	if mode == "" {
+		mode = "ignore"
+	}
+	delaySec := int64(delay / time.Second)
+	if r.cp != nil {
+		return controlplane.WrapWriteError(r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			return repos.Replications.SetDeletePropagation(ctx, toCPReplicationID(id), mode, includePrefixes, excludePrefixes, delaySec)
+		}))
+	}
+	fields := (entity.ReplicationStatus{DeleteIncludePrefixes: includePrefixes, DeleteExcludePrefixes: excludePrefixes}).RedisExtraFields()
+	for _, key := range []string{"delete_include_prefixes", "delete_exclude_prefixes"} {
+		if _, ok := fields[key]; !ok {
+			fields[key] = "[]"
+		}
+	}
+	fields["delete_propagation"] = mode
+	fields["delete_delay_seconds"] = delaySec
+	return r.setRedisPolicyFields(ctx, id, fields)
+}
+
+func (r *policySvc) UpdateReplicationFilters(ctx context.Context, id entity.UniversalReplicationID, includePatterns, excludePatterns []string) error {
+	if r.cp != nil {
+		return controlplane.WrapWriteError(r.cp.Tx(ctx, func(repos controlplane.Repos) error {
+			return repos.Replications.SetFilters(ctx, toCPReplicationID(id), includePatterns, excludePatterns)
+		}))
+	}
+	fields := (entity.ReplicationStatus{IncludePatterns: includePatterns, ExcludePatterns: excludePatterns}).RedisExtraFields()
+	for _, key := range []string{"include_patterns", "exclude_patterns"} {
+		if _, ok := fields[key]; !ok {
+			fields[key] = "[]"
+		}
+	}
+	return r.setRedisPolicyFields(ctx, id, fields)
+}
+
+func (r *policySvc) setRedisPolicyFields(ctx context.Context, id entity.UniversalReplicationID, fields map[string]any) error {
+	if err := id.Validate(); err != nil {
+		return err
+	}
+	if userID, ok := id.AsUserID(); ok {
+		return r.userReplicationStatusStore.SetPolicyFields(ctx, userID, fields)
+	}
+	bucketID, ok := id.AsBucketID()
+	if !ok {
+		return fmt.Errorf("%w: invalid replication ID", dom.ErrInvalidArg)
+	}
+	return r.bucketReplicationStatusStore.SetPolicyFields(ctx, bucketID, fields)
+}
+
+func (r *policySvc) ListDeleteEvents(ctx context.Context, replicationID, status string, limit int32, offset int64) ([]controlplane.DeleteEvent, int64, error) {
+	if r.cp == nil {
+		return nil, 0, nil
+	}
+	return r.cp.Repos().DeleteEvents.List(ctx, controlplane.DeleteEventFilter{
+		ReplicationID: replicationID,
+		Status:        status,
+		Limit:         limit,
+		Offset:        offset,
+	})
+}
+
+func (r *policySvc) RetryFailedDeletes(ctx context.Context, replicationID string) (int64, error) {
+	if r.cp == nil {
+		return 0, fmt.Errorf("%w: delete event retry requires a control plane", dom.ErrInvalidArg)
+	}
+	id, err := entity.UniversalIDFromString(replicationID)
+	if err != nil {
+		return 0, fmt.Errorf("%w: invalid replication_id: %w", dom.ErrInvalidArg, err)
+	}
+	if err := id.Validate(); err != nil {
+		return 0, err
+	}
+	repos := r.cp.Repos()
+	generation, err := repos.Replications.Generation(ctx, toCPReplicationID(id))
+	if err != nil {
+		return 0, err
+	}
+
+	var count int64
+	var replayErr error
+	f := controlplane.DeleteEventFilter{ReplicationID: replicationID, Status: "failed", Limit: 100}
+	for {
+		events, _, err := repos.DeleteEvents.List(ctx, f)
+		if err != nil {
+			return count, errors.Join(replayErr, err)
+		}
+		for _, event := range events {
+			if event.Generation < 0 || event.Generation != generation {
+				if replayErr == nil {
+					reason := "replication generation changed"
+					if event.Generation < 0 {
+						reason = "original replication generation is unavailable"
+					}
+					replayErr = fmt.Errorf("%w: cannot retry delete event %d: %s", dom.ErrFailedPrecondition, event.ID, reason)
+				}
+				continue
+			}
+			payload := &tasks.ObjectSyncPayload{
+				Object:                dom.Object{Bucket: event.Bucket, Name: event.ObjectKey, Version: event.VersionID},
+				Deleted:               true,
+				DeleteEventID:         event.ID,
+				DeleteEventRetryCount: event.RetryCount,
+			}
+			payload.SetReplicationID(id, event.Generation)
+			taskID := asynq.TaskID(fmt.Sprintf("delete-retry-%d-%d", event.ID, event.RetryCount))
+			claimed, err := repos.DeleteEvents.EnqueueRetry(ctx, event.ID, event.RetryCount, func() error {
+				err := r.queueSvc.EnqueueTask(ctx, payload, taskID)
+				if errors.Is(err, asynq.ErrTaskIDConflict) {
+					return nil
+				}
+				return err
+			})
+			if err != nil {
+				return count, errors.Join(replayErr, fmt.Errorf("enqueue delete retry %d: %w", event.ID, err))
+			}
+			if claimed {
+				count++
+			}
+		}
+		if len(events) < int(f.Limit) {
+			return count, replayErr
+		}
+		f.BeforeID = events[len(events)-1].ID
 	}
 }

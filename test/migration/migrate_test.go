@@ -596,7 +596,8 @@ func Test_User_migration(t *testing.T) {
 
 	// create replication for user
 	_, err = e.PolicyClient.AddReplication(tstCtx, &pb.AddReplicationRequest{
-		Id: id,
+		Opts: &pb.ReplicationOpts{DeletePropagation: &pb.DeletePropagationPolicy{Mode: pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC}},
+		Id:   id,
 	})
 	r.NoError(err)
 	// get replication from list

@@ -73,6 +73,8 @@ type VersionService interface {
 	IncrementObj(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, dest Destination) (int, error)
 	UpdateIfGreater(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, dest Destination, version int) error
 	DeleteObjAll(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object) error
+	DeleteObjWithDeadline(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, deadline time.Time) (time.Time, error)
+	GetOrSetDeleteDeadline(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, deadline time.Time) (time.Time, error)
 
 	GetACL(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object) (Version, error)
 	IncrementACL(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, dest Destination) (int, error)
@@ -115,7 +117,17 @@ func (s *versionSvc) IncrementObj(ctx context.Context, replID entity.UniversalRe
 	if err != nil {
 		return 0, err
 	}
-	return s.incrementDest(ctx, replID, keys, dest)
+	if err := dest.Validate(); err != nil {
+		return 0, err
+	}
+	isFrom, err := dest.IsFrom(replID)
+	if err != nil {
+		return 0, err
+	}
+	if isFrom {
+		return s.incObjectSourceVersion(ctx, keys)
+	}
+	return s.incVersion(ctx, keys.hashKey, keys.toField, keys.fromField)
 }
 
 func (s *versionSvc) UpdateIfGreater(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object, dest Destination, version int) error {
@@ -127,22 +139,74 @@ func (s *versionSvc) UpdateIfGreater(ctx context.Context, replID entity.Universa
 }
 
 func (s *versionSvc) DeleteObjAll(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object) error {
-	key, fields, err := allRedisObjKeys(replID, obj)
+	_, err := s.DeleteObjWithDeadline(ctx, replID, obj, time.Time{})
+	return err
+}
+
+const extendDeleteDeadline = `
+local previous = redis.call('HGET', KEYS[1], ARGV[1])
+if previous and tonumber(previous) >= tonumber(ARGV[2]) then return previous end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+return ARGV[2]`
+
+// DeleteObjWithDeadline records the deadline alongside version deletion.
+// A new delete event cannot shorten an existing delay.
+func (s *versionSvc) DeleteObjWithDeadline(ctx context.Context, id entity.UniversalReplicationID, obj dom.Object, deadline time.Time) (time.Time, error) {
+	key, fields, err := allRedisObjKeys(id, obj)
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
+	rk := toRedisKeys(id, obj.Bucket, objectID(obj), payload)
+	deadlineField := "deadline:" + rk.fromField[2:]
 	now := time.Now().Unix()
-	pipe := s.client.Pipeline()
+	pipe := s.client.TxPipeline()
 	pipe.HDel(ctx, key, fields...)
 	for _, kind := range kinds {
-		rk, err := toRedisObjKeys(replID, obj, kind)
-		if err == nil {
-			tsField := "ts:" + rk.fromField[2:]
-			pipe.HSet(ctx, key, tsField, now)
-		}
+		k := toRedisKeys(id, obj.Bucket, objectID(obj), kind)
+		pipe.HSet(ctx, key, "ts:"+k.fromField[2:], now)
 	}
-	_, err = pipe.Exec(ctx)
-	return err
+	if deadline.IsZero() {
+		_, err := pipe.Exec(ctx)
+		return time.Time{}, err
+	}
+	saved := pipe.Eval(ctx, extendDeleteDeadline, []string{key}, deadlineField, deadline.UnixMilli())
+	if _, err := pipe.Exec(ctx); err != nil {
+		return time.Time{}, err
+	}
+	n, err := saved.Int64()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.UnixMilli(n), nil
+}
+
+var getOrSetDeleteDeadline = redis.NewScript(`
+local deadline = redis.call('HGET', KEYS[1], ARGV[1])
+if deadline then return deadline end
+if ARGV[3] == '' then return false end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[3], ARGV[2], ARGV[4])
+return ARGV[3]`)
+
+// GetOrSetDeleteDeadline also protects legacy missing metadata for which no delete event was recorded.
+func (s *versionSvc) GetOrSetDeleteDeadline(ctx context.Context, id entity.UniversalReplicationID, obj dom.Object, deadline time.Time) (time.Time, error) {
+	rk, err := toRedisObjKeys(id, obj, payload)
+	if err != nil {
+		return time.Time{}, err
+	}
+	proposed := ""
+	if !deadline.IsZero() {
+		proposed = strconv.FormatInt(deadline.UnixMilli(), 10)
+	}
+	suffix := rk.fromField[2:]
+	n, err := getOrSetDeleteDeadline.Run(ctx, s.client, []string{rk.hashKey},
+		"deadline:"+suffix, "ts:"+suffix, proposed, time.Now().Unix()).Int64()
+	if err == redis.Nil {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.UnixMilli(n), nil
 }
 
 func (s *versionSvc) GetACL(ctx context.Context, replID entity.UniversalReplicationID, obj dom.Object) (Version, error) {
@@ -371,7 +435,16 @@ max_ver = max_ver + 1
 redis.call('HSET', KEYS[1], ARGV[1], max_ver, sequence, max_ver)
 local ts = 'ts:' .. string.sub(ARGV[1], 3)
 redis.call('HDEL', KEYS[1], ts)
+if ARGV[3] == 'source-object' then redis.call('HDEL', KEYS[1], 'deadline:' .. string.sub(ARGV[1], 3)) end
 return max_ver`)
+
+func (s *versionSvc) incObjectSourceVersion(ctx context.Context, keys redisKeys) (int, error) {
+	result, err := luaHIncVersion.Run(ctx, s.client, []string{keys.hashKey}, keys.fromField, keys.toField, "source-object").Int64()
+	if err != nil {
+		return 0, err
+	}
+	return int(result), nil
+}
 
 func (s *versionSvc) incVersion(ctx context.Context, key, a, b string) (int, error) {
 	result, err := luaHIncVersion.Run(ctx, s.client, []string{key}, a, b).Result()
@@ -461,13 +534,28 @@ func (s *versionSvc) setIfGreater(ctx context.Context, key, a, b string, version
 	return nil
 }
 
-// GCObjectTombstones scans Redis for version metadata hashes and prunes sequence/tombstone fields
-// whose deletion timestamp is older than maxAge.
+var pruneObjectTombstones = redis.NewScript(`
+local count = 0
+for i = 2, #ARGV, 2 do
+	local timestampField = ARGV[i]
+	local suffix = string.sub(timestampField, 4)
+	local deadlineField = 'deadline:' .. suffix
+	local deadline = redis.call('HGET', KEYS[1], deadlineField)
+	if redis.call('HGET', KEYS[1], timestampField) == ARGV[i+1]
+		and (not deadline or tonumber(deadline) <= tonumber(ARGV[1])) then
+		redis.call('HDEL', KEYS[1], timestampField, 's:' .. suffix, deadlineField)
+		count = count + 1
+	end
+end
+return count`)
+
+// GCObjectTombstones prunes version metadata after the retention window has
+// elapsed since both the deletion and its propagation deadline.
 func (s *versionSvc) GCObjectTombstones(ctx context.Context, maxAge time.Duration) (int, error) {
 	if maxAge <= 0 {
 		maxAge = 24 * time.Hour
 	}
-	cutoff := time.Now().Unix() - int64(maxAge.Seconds())
+	cutoff := time.Now().Add(-maxAge)
 
 	var totalPruned int
 	var cursor uint64
@@ -483,19 +571,19 @@ func (s *versionSvc) GCObjectTombstones(ctx context.Context, maxAge time.Duratio
 				if err != nil {
 					break
 				}
-				var toDelete []string
+				candidates := []any{cutoff.UnixMilli()}
 				for i := 0; i < len(fields); i += 2 {
-					tsField := fields[i]
-					tsValStr := fields[i+1]
-					tsVal, err := strconv.ParseInt(tsValStr, 10, 64)
-					if err == nil && tsVal <= cutoff {
-						seqField := "s:" + tsField[3:]
-						toDelete = append(toDelete, tsField, seqField)
+					tsVal, err := strconv.ParseInt(fields[i+1], 10, 64)
+					if err == nil && tsVal <= cutoff.Unix() {
+						candidates = append(candidates, fields[i], fields[i+1])
 					}
 				}
-				if len(toDelete) > 0 {
-					_ = s.client.HDel(ctx, key, toDelete...).Err()
-					totalPruned += len(toDelete) / 2
+				if len(candidates) > 1 {
+					n, err := pruneObjectTombstones.Run(ctx, s.client, []string{key}, candidates...).Int()
+					if err != nil {
+						return totalPruned, err
+					}
+					totalPruned += n
 				}
 				hcursor = nextHCursor
 				if hcursor == 0 {

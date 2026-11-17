@@ -29,9 +29,12 @@ type Config struct {
 	GrpcPort              int           `yaml:"grpcPort"`
 	HttpPort              int           `yaml:"httpPort"`
 	MaxConcurrentRequests int           `yaml:"maxConcurrentRequests"`
-	Enabled               bool          `yaml:"enabled"`
-	Secure                bool          `yaml:"secure"`
-	Auth                  auth.Config   `yaml:"auth"`
+	// CORSAllowedOrigins is an exact allowlist for cross-origin management UIs.
+	// Empty permits localhost and private IP origins for local development.
+	CORSAllowedOrigins []string    `yaml:"corsAllowedOrigins"`
+	Enabled            bool        `yaml:"enabled"`
+	Secure             bool        `yaml:"secure"`
+	Auth               auth.Config `yaml:"auth"`
 }
 
 type WebhookConfig struct {

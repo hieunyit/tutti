@@ -68,6 +68,18 @@ http:
     - selector: tutti.Policy.UpdateReplicationRescanInterval
       put: /replication/rescan-interval
       body: "*"
+    - selector: tutti.Policy.ListDeleteEvents
+      post: /replication/delete-events
+      body: "*"
+    - selector: tutti.Policy.RetryFailedDeletes
+      post: /replication/delete-events/retry
+      body: "*"
+    - selector: tutti.Policy.UpdateDeletePropagation
+      put: /replication/delete-propagation
+      body: "*"
+    - selector: tutti.Policy.UpdateReplicationFilters
+      put: /replication/filters
+      body: "*"
     - selector: tutti.Policy.SwitchWithZeroDowntime
       post: /replication/switch/zero-downtime
       body: "*"
@@ -253,4 +265,29 @@ http:
     - selector: tutti.Resilience.UpdateSystemSettings
       put: /tutti/system-settings
       body: "*"
+      # Lifecycle service:
+    - selector: tutti.Lifecycle.CreateRule
+      post: /lifecycle/rules
+      body: "*"
+    - selector: tutti.Lifecycle.ListRules
+      get: /lifecycle/rules
+    - selector: tutti.Lifecycle.GetRule
+      get: /lifecycle/rules/{id}
+    - selector: tutti.Lifecycle.UpdateRule
+      put: /lifecycle/rules
+      body: "*"
+    - selector: tutti.Lifecycle.DeleteRule
+      put: /lifecycle/rules/delete
+      body: "*"
+    - selector: tutti.Lifecycle.EnableRule
+      put: /lifecycle/rules/enable
+      body: "*"
+    - selector: tutti.Lifecycle.DisableRule
+      put: /lifecycle/rules/disable
+      body: "*"
+    - selector: tutti.Lifecycle.DryRun
+      post: /lifecycle/rules/dry-run
+      body: "*"
+    - selector: tutti.Lifecycle.ListAuditLogs
+      get: /lifecycle/audit-logs
 

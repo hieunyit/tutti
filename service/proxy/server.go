@@ -35,6 +35,7 @@ import (
 	"github.com/hieunyit/tutti/pkg/config"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
 	"github.com/hieunyit/tutti/pkg/dom"
+	"github.com/hieunyit/tutti/pkg/entity"
 	"github.com/hieunyit/tutti/pkg/failover"
 	"github.com/hieunyit/tutti/pkg/features"
 	"github.com/hieunyit/tutti/pkg/health"
@@ -300,10 +301,21 @@ func Start(ctx context.Context, app dom.AppInfo, conf *Config) error {
 		objectLocker := store.NewObjectLocker(lockRedis, syncLockOverlap)
 		// the copy service only reports in-progress bytes through the worker metrics: reuse the S3 metrics service
 		copySvc := copy.NewS3CopySvc(credsSvc, clientRegistry, metricsSvc)
+		syncObj := syncer.New(verSvc, objectLocker, copySvc, clientRegistry)
+		syncObj.SetPolicyResolver(func(ctx context.Context, id entity.UniversalReplicationID) (entity.ReplicationStatus, error) {
+			ext, err := policySvc.GetReplicationPolicyInfoExtended(ctx, id)
+			if err != nil {
+				return entity.ReplicationStatus{}, err
+			}
+			if ext.ReplicationStatus != nil {
+				return *ext.ReplicationStatus, nil
+			}
+			return entity.ReplicationStatus{}, nil
+		})
 		proxyConfig.Sync = router.SyncOptions{
 			Health:          healthReg,
 			Enabled:         initEff.Replication.Sync.Enabled,
-			Syncer:          syncer.New(verSvc, objectLocker, copySvc, clientRegistry),
+			Syncer:          syncObj,
 			WriteQuorum:     initEff.Replication.Sync.WriteQuorum,
 			Timeout:         initEff.Replication.Sync.Timeout,
 			OnQuorumFailure: initEff.Replication.Sync.OnQuorumFailure,

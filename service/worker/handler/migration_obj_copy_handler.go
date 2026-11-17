@@ -66,6 +66,15 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 	logger := zerolog.Ctx(ctx)
 	fromBucket, toBucket := p.ID.FromToBuckets(p.Bucket)
 
+	replFilter, err := s.replicationFilter(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	if replFilter != nil && !replFilter.ShouldSync(p.Obj.Name) {
+		logger.Debug().Str("key", p.Obj.Name).Msg("migration obj copy: skipped by replication filter")
+		return nil
+	}
+
 	// Large objects share a per-destination-storage stream cap. The slot is taken before anything else (no lock
 	// or rate-limit token is held while waiting) and never blocks: when all slots are busy the task goes back to
 	// the retry set with a short delay (not counted as a failure), so no worker slot is parked and live events
@@ -123,7 +132,7 @@ func (s *svc) handleMigrationObjCopy(ctx context.Context, t *asynq.Task) (err er
 		Version: p.Obj.VersionID,
 	}
 
-	objectLockID := entity.NewVersionedObjectLockID(p.ID.ToStorage(), toBucket, p.Obj.Name, p.Obj.VersionID)
+	objectLockID := entity.NewObjectLockID(p.ID.ToStorage(), toBucket, p.Obj.Name)
 	lock, err := s.objectLocker.Lock(ctx, objectLockID)
 	if err != nil {
 		return err

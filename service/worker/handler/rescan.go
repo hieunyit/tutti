@@ -120,7 +120,7 @@ func (s *svc) HandleRescanUserListBuckets(ctx context.Context, t *asynq.Task) (e
 	}
 	fromClient, err := s.clients.AsS3(ctx, p.ID.FromStorage(), p.ID.User())
 	if err != nil {
-		return fmt.Errorf("rescan: unable to get %q s3 client: %w: %w", p.ID.FromStorage(), err, asynq.SkipRetry)
+		return fmt.Errorf("rescan: unable to get %q s3 client: %w", p.ID.FromStorage(), err)
 	}
 	buckets, err := fromClient.S3().ListBuckets(ctx)
 	if err != nil {
@@ -206,7 +206,7 @@ func (s *svc) HandleRescanListObjects(ctx context.Context, t *asynq.Task) (err e
 
 	fromClient, err := s.clients.AsS3(ctx, p.ID.FromStorage(), p.ID.User())
 	if err != nil {
-		return fmt.Errorf("rescan: unable to get %q s3 client: %w: %w", p.ID.FromStorage(), err, asynq.SkipRetry)
+		return fmt.Errorf("rescan: unable to get %q s3 client: %w", p.ID.FromStorage(), err)
 	}
 	fromBucket, _ := p.ID.FromToBuckets(p.Bucket)
 	versioning, err := fromClient.S3().GetBucketVersioning(ctx, fromBucket)
@@ -215,6 +215,10 @@ func (s *svc) HandleRescanListObjects(ctx context.Context, t *asynq.Task) (err e
 	}
 	versioned := versioning.Enabled() && features.Versioning(ctx)
 	cutoff := cutoffPtr(p.RescanRun)
+	replFilter, err := s.replicationFilter(ctx, p.ID)
+	if err != nil {
+		return err
+	}
 
 	listCtx, cancelList := context.WithCancel(ctx)
 	defer cancelList()
@@ -279,6 +283,9 @@ func (s *svc) HandleRescanListObjects(ctx context.Context, t *asynq.Task) (err e
 		}
 		scanned++
 		lastScanned = object.Key
+		if replFilter != nil && !replFilter.ShouldSync(object.Key) {
+			continue
+		}
 		if !keepSince(object.LastModified, cutoff) {
 			continue
 		}
@@ -396,6 +403,14 @@ func (s *svc) HandleRescanListVersions(ctx context.Context, t *asynq.Task) (err 
 			s.rescanSettle(ctx, p.ID, p.Generation, p.RunID, err, false)
 		}
 	}()
+	replFilter, err := s.replicationFilter(ctx, p.ID)
+	if err != nil {
+		return fmt.Errorf("rescan list versions: unable to get replication filter: %w", err)
+	}
+	if !replFilter.ShouldSync(p.Prefix) {
+		zerolog.Ctx(ctx).Debug().Str("key", p.Prefix).Msg("rescan list versions: skipped by filter")
+		return nil
+	}
 	fromBucket, toBucket := p.ID.FromToBuckets(p.Bucket)
 	objectVersionID := entity.NewVersionedObjectID(p.ID.FromStorage(), fromBucket, p.Prefix)
 	replicationID := entity.NewBucketReplicationPolicy(p.ID.User(), p.ID.FromStorage(), fromBucket, p.ID.ToStorage(), toBucket)
@@ -420,6 +435,14 @@ func (s *svc) HandleRescanVersionedObject(ctx context.Context, t *asynq.Task) (e
 	}
 	var out copy.Outcome
 	defer func() { s.rescanSettle(ctx, p.ID, p.Generation, p.RunID, err, out.Copied > 0) }()
+	replFilter, err := s.replicationFilter(ctx, p.ID)
+	if err != nil {
+		return fmt.Errorf("rescan versioned object: unable to get replication filter: %w", err)
+	}
+	if !replFilter.ShouldSync(p.Prefix) {
+		zerolog.Ctx(ctx).Debug().Str("key", p.Prefix).Msg("rescan versioned object: skipped by filter")
+		return nil
+	}
 	ctx = log.WithBucket(ctx, p.Bucket)
 	ctx = log.WithUser(ctx, p.ID.User())
 	logger := zerolog.Ctx(ctx)

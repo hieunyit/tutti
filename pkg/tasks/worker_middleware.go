@@ -27,7 +27,7 @@ import (
 
 // DropStaleReplicationTasks recognizes replication tasks by queue, not by task type:
 // diff fix reuses replication task types with IDs that are not replication policies.
-func DropStaleReplicationTasks(currentGeneration func(ctx context.Context, id entity.UniversalReplicationID) (int64, error)) asynq.MiddlewareFunc {
+func DropStaleReplicationTasks(currentGeneration func(ctx context.Context, id entity.UniversalReplicationID) (int64, error), onStaleDelete ...func(context.Context, ObjectSyncPayload) error) asynq.MiddlewareFunc {
 	return func(next asynq.Handler) asynq.Handler {
 		return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
 			queue, _ := asynq.GetQueueName(ctx)
@@ -47,6 +47,15 @@ func DropStaleReplicationTasks(currentGeneration func(ctx context.Context, id en
 					Int64("task_generation", task.Generation).
 					Int64("replication_generation", generation).
 					Msg("drop task of deleted replication")
+				if len(onStaleDelete) > 0 && t.Type() == TypeObjectSync {
+					var object ObjectSyncPayload
+					if err := json.Unmarshal(t.Payload(), &object); err != nil {
+						return fmt.Errorf("unable to unmarshal object sync task payload: %w: %w", err, asynq.SkipRetry)
+					}
+					if object.Deleted && object.DeleteEventID != 0 {
+						return onStaleDelete[0](ctx, object)
+					}
+				}
 				return nil
 			}
 			return next.ProcessTask(ctx, t)

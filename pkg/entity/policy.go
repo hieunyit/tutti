@@ -15,8 +15,10 @@
 package entity
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hieunyit/tutti/pkg/dom"
@@ -55,6 +57,14 @@ type ReplicationOptions struct {
 	Since *time.Time
 	// RescanInterval is the optional periodic source rescan interval (0 = off). Validated with NormalizeRescanInterval.
 	RescanInterval time.Duration
+	// DeletePropagation: "ignore" | "sync" | "marker-only"
+	DeletePropagation     string
+	DeleteIncludePrefixes []string
+	DeleteExcludePrefixes []string
+	DeleteDelaySeconds    int64
+	// Filter patterns (glob)
+	IncludePatterns []string
+	ExcludePatterns []string
 }
 
 func (p UserReplicationPolicy) LookupID() string {
@@ -66,6 +76,11 @@ func (p UserReplicationPolicy) RoutingID() string {
 }
 
 func (p UserReplicationPolicy) Validate() error {
+	for _, f := range []string{p.User, p.FromStorage, p.ToStorage} {
+		if strings.Contains(f, ":") {
+			return fmt.Errorf("%w: field %q cannot contain colons", dom.ErrInvalidArg, f)
+		}
+	}
 	if p.FromStorage == "" {
 		return fmt.Errorf("%w: from storage is required", dom.ErrInvalidArg)
 	}
@@ -115,19 +130,84 @@ type ReplicationStatus struct {
 	// RescanSeconds is the interval of the periodic source rescan in seconds (0 = off).
 	RescanSeconds int64 `redis:"rescan_seconds,omitempty"`
 
+	// Delete propagation policy
+	DeletePropagation     string   `redis:"delete_propagation,omitempty"`
+	DeleteIncludePrefixes []string `redis:"-"`
+	DeleteExcludePrefixes []string `redis:"-"`
+	DeleteDelaySeconds    int64    `redis:"delete_delay_seconds,omitempty"`
+
+	// Advanced filtering
+	IncludePatterns []string `redis:"-"`
+	ExcludePatterns []string `redis:"-"`
+
 	IsArchived bool `redis:"archived"`
 	// FailoverPending identifies a pause owned by an unfinished automatic failover.
 	FailoverPending bool `redis:"failover_pending"`
 }
 
+func (s *ReplicationStatus) redisFilterFields() map[string]*[]string {
+	return map[string]*[]string{
+		"delete_include_prefixes": &s.DeleteIncludePrefixes, "delete_exclude_prefixes": &s.DeleteExcludePrefixes,
+		"include_patterns": &s.IncludePatterns, "exclude_patterns": &s.ExcludePatterns,
+	}
+}
+
+// RedisExtraFields encodes arrays in the same format as the PostgreSQL projector.
+func (s ReplicationStatus) RedisExtraFields() map[string]any {
+	fields := map[string]any{}
+	for k, v := range s.redisFilterFields() {
+		if len(*v) > 0 {
+			b, _ := json.Marshal(*v)
+			fields[k] = string(b)
+		}
+	}
+	return fields
+}
+
+// RedisClearFields returns the omitted arrays to remove when replacing a status.
+func (s ReplicationStatus) RedisClearFields() []string {
+	var fields []string
+	for k, v := range s.redisFilterFields() {
+		if len(*v) == 0 {
+			fields = append(fields, k)
+		}
+	}
+	return fields
+}
+
+// DecodeRedisExtraFields rejects corrupted arrays instead of dropping protective filters.
+func (s *ReplicationStatus) DecodeRedisExtraFields(fields map[string]string) error {
+	for k, dst := range s.redisFilterFields() {
+		if raw, ok := fields[k]; ok {
+			if err := json.Unmarshal([]byte(raw), dst); err != nil {
+				return fmt.Errorf("invalid %s: %w", k, err)
+			}
+			if *dst == nil {
+				return fmt.Errorf("invalid %s: expected array", k)
+			}
+		}
+	}
+	return nil
+}
+
 func StatusFromOptions(opts ReplicationOptions) ReplicationStatus {
 	// TODO: add other replication options here, like copy origin timestamp, etc.
+	delProp := opts.DeletePropagation
+	if delProp == "" {
+		delProp = "ignore"
+	}
 	return ReplicationStatus{
-		AgentURL:      opts.AgentURL,
-		EventSource:   string(opts.EventSource),
-		Name:          opts.Name,
-		Since:         opts.Since,
-		RescanSeconds: int64(opts.RescanInterval / time.Second),
+		AgentURL:              opts.AgentURL,
+		EventSource:           string(opts.EventSource),
+		Name:                  opts.Name,
+		Since:                 opts.Since,
+		RescanSeconds:         int64(opts.RescanInterval / time.Second),
+		DeletePropagation:     delProp,
+		DeleteIncludePrefixes: opts.DeleteIncludePrefixes,
+		DeleteExcludePrefixes: opts.DeleteExcludePrefixes,
+		DeleteDelaySeconds:    opts.DeleteDelaySeconds,
+		IncludePatterns:       opts.IncludePatterns,
+		ExcludePatterns:       opts.ExcludePatterns,
 	}
 }
 
@@ -241,6 +321,11 @@ func (p BucketReplicationPolicy) RoutingID() BucketRoutingPolicyID {
 }
 
 func (p BucketReplicationPolicy) Validate() error {
+	for _, f := range []string{p.User, p.FromStorage, p.ToStorage, p.FromBucket, p.ToBucket} {
+		if strings.Contains(f, ":") {
+			return fmt.Errorf("%w: field %q cannot contain colons", dom.ErrInvalidArg, f)
+		}
+	}
 	errs := make([]error, 0)
 	if p.FromStorage == "" {
 		err := fmt.Errorf("%w: from storage is required", dom.ErrInvalidArg)

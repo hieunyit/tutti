@@ -25,3 +25,21 @@ func TestAvailableBucketsWithoutUserIsAdminOnly(t *testing.T) {
 	require.True(t, AllowedRequest(RoleAdmin, m, named))
 	require.False(t, AllowedRequest(RoleViewer, "/tutti.Resilience/ListAuditLog", named))
 }
+
+// ListDeleteEvents without a replication_id lists global delete events: admin-only.
+// Viewers may only query delete events scoped to a specific replication.
+func TestListDeleteEventsWithoutReplicationIDIsAdminOnly(t *testing.T) {
+	const m = "/tutti.Policy/ListDeleteEvents"
+	empty := &pb.ListDeleteEventsRequest{}
+	scoped := &pb.ListDeleteEventsRequest{ReplicationId: "rep-1"}
+	require.True(t, AllowedRequest(RoleAdmin, m, empty))
+	require.False(t, AllowedRequest(RoleViewer, m, empty))
+	require.True(t, AllowedRequest(RoleViewer, m, scoped))
+	require.True(t, AllowedRequest(RoleAdmin, m, scoped))
+}
+
+// DryRun scans underlying S3 storage objects using backend credentials: admin-only.
+func TestLifecycleDryRunIsAdminOnly(t *testing.T) {
+	require.True(t, Allowed(RoleAdmin, "/tutti.Lifecycle/DryRun"))
+	require.False(t, Allowed(RoleViewer, "/tutti.Lifecycle/DryRun"))
+}

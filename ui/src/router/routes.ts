@@ -33,6 +33,8 @@ const TuttiStorageDetailPage = () =>
   import('@/pages/TuttiStorageDetailsPage/TuttiStorageDetailsPage.vue');
 const TuttiRoutingPage = () =>
   import('@/pages/TuttiRoutingPage/TuttiRoutingPage.vue');
+const TuttiLifecyclePage = () =>
+  import('@/pages/TuttiLifecyclePage/TuttiLifecyclePage.vue');
 const TuttiAddRoutingPolicyPage = () =>
   import('@/pages/TuttiAddRoutingPolicyPage/TuttiAddRoutingPolicyPage.vue');
 const TuttiAddDiffReportPage = () =>
@@ -165,6 +167,15 @@ export const routes: RouteRecordRaw[] = [
         },
         name: RouteName.TUTTI_ADD_REPLICATION,
         component: TuttiAddReplicationPage,
+      },
+      {
+        path: 'lifecycle',
+        meta: {
+          navGroup: 'replicate',
+          navSection: RouteName.TUTTI_REPLICATION,
+        },
+        name: RouteName.TUTTI_LIFECYCLE,
+        component: TuttiLifecyclePage,
       },
       {
         path: 'routing',

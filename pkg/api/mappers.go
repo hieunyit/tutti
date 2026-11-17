@@ -72,7 +72,50 @@ func replicationToPb(id entity.UniversalReplicationID, value entity.ReplicationS
 		RescanRunning:     value.Rescan.Running,
 		LastRescanObjects: value.Rescan.LastObjects,
 		LastRescanError:   value.Rescan.LastError,
+
+		DeletePropagation: deletePropagationToPb(value.ReplicationStatus),
+		IncludePatterns:   includePatternsFromStatus(value.ReplicationStatus),
+		ExcludePatterns:   excludePatternsFromStatus(value.ReplicationStatus),
 	}
+}
+
+func deletePropagationToPb(s *entity.ReplicationStatus) *pb.DeletePropagationPolicy {
+	if s == nil {
+		return &pb.DeletePropagationPolicy{Mode: pb.DeletePropagationMode_DELETE_PROPAGATION_IGNORE}
+	}
+	var mode pb.DeletePropagationMode
+	switch s.DeletePropagation {
+	case "sync":
+		mode = pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC
+	case "marker-only":
+		mode = pb.DeletePropagationMode_DELETE_PROPAGATION_MARKER_ONLY
+	default:
+		mode = pb.DeletePropagationMode_DELETE_PROPAGATION_IGNORE
+	}
+	var delay *durationpb.Duration
+	if s.DeleteDelaySeconds > 0 {
+		delay = durationpb.New(time.Duration(s.DeleteDelaySeconds) * time.Second)
+	}
+	return &pb.DeletePropagationPolicy{
+		Mode:              mode,
+		IncludePrefixes:   s.DeleteIncludePrefixes,
+		ExcludePrefixes:   s.DeleteExcludePrefixes,
+		DelayBeforeDelete: delay,
+	}
+}
+
+func includePatternsFromStatus(s *entity.ReplicationStatus) []string {
+	if s == nil || s.IncludePatterns == nil {
+		return []string{}
+	}
+	return s.IncludePatterns
+}
+
+func excludePatternsFromStatus(s *entity.ReplicationStatus) []string {
+	if s == nil || s.ExcludePatterns == nil {
+		return []string{}
+	}
+	return s.ExcludePatterns
 }
 
 // rescanIntervalToPb returns nil when rescan is off.

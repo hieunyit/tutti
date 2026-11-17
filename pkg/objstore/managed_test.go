@@ -64,7 +64,16 @@ func TestManagedStoragesPropagationAndProtection(t *testing.T) {
 	}, 5*time.Second, 20*time.Millisecond)
 }
 func TestManagedStorageEndpointValidation(t *testing.T) {
-	for _, address := range []string{"http://user:secret@host:9000", "http:///", "http://host/bucket", "http://host?secret=x", "http://host/#secret"} {
+	for _, address := range []string{
+		"http://user:secret@host:9000",
+		"http:///",
+		"http://host/bucket",
+		"http://host?secret=x",
+		"http://host/#secret",
+		"http://169.254.169.254",
+		"http://169.254.1.1",
+		"http://[fd00:ec2::254]",
+	} {
 		_, err := (ManagedStorage{Name: "archive", Address: s3.StorageAddress{Address: address, Provider: s3.ProviderMinIO}}).Normalize()
 		require.Error(t, err, address)
 	}

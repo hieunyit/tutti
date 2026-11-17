@@ -329,11 +329,17 @@ func (p *processor) handleFailedMessage(ctx context.Context, l *base.Lease, msg 
 	case errors.Is(err, RevokeTask):
 		p.logger.Warnf("revoke task id=%s", msg.ID)
 		p.markAsDone(l, msg)
-	case msg.Retried >= msg.Retry || errors.Is(err, SkipRetry):
+	case errors.Is(err, SkipRetry):
 		p.logger.Warnf("Retry exhausted for task id=%s", msg.ID)
 		p.archive(l, msg, err)
 	default:
-		p.retry(l, msg, err, p.isFailureFunc(err))
+		isFailure := p.isFailureFunc(err)
+		if isFailure && msg.Retried >= msg.Retry {
+			p.logger.Warnf("Retry exhausted for task id=%s", msg.ID)
+			p.archive(l, msg, err)
+			return
+		}
+		p.retry(l, msg, err, isFailure)
 	}
 }
 

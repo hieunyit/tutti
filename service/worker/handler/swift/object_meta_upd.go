@@ -51,7 +51,9 @@ func (s *svc) HandleObjectMetaUpdate(ctx context.Context, t *asynq.Task) (err er
 		return err
 	}
 
-	lock, err := s.objectLocker.Lock(ctx, entity.NewObjectLockID(p.ID.FromStorage(), p.Bucket, p.Object))
+	_, toBucket := p.ID.FromToBuckets(p.Bucket)
+	objectLockID := entity.NewObjectLockID(p.ID.ToStorage(), toBucket, p.Object)
+	lock, err := s.objectLocker.Lock(ctx, objectLockID)
 	if err != nil {
 		return err
 	}

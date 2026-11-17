@@ -21,7 +21,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -64,7 +67,7 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 	}
 
 	withCors := cors.New(cors.Options{
-		AllowOriginFunc:  func(origin string) bool { return true },
+		AllowOriginFunc:  managementOriginAllowed(conf.CORSAllowedOrigins),
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"ACCEPT", "Authorization", "Content-Type", "X-CSRF-Token", auth.WebhookTokenHeader},
 		ExposedHeaders:   []string{"Link"},
@@ -95,6 +98,28 @@ func GRPCGateway(ctx context.Context, conf *Config, register RegisterHandlersFun
 		return nil
 	}
 	return
+}
+
+func managementOriginAllowed(origins []string) func(string) bool {
+	allowed := make(map[string]struct{}, len(origins))
+	for _, origin := range origins {
+		allowed[strings.TrimSpace(origin)] = struct{}{}
+	}
+	return func(origin string) bool {
+		u, err := url.Parse(origin)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+			return false
+		}
+		if len(origins) > 0 {
+			_, ok := allowed[origin]
+			return ok
+		}
+		if u.Hostname() == "localhost" {
+			return true
+		}
+		ip, err := netip.ParseAddr(u.Hostname())
+		return err == nil && (ip.IsLoopback() || ip.IsPrivate())
+	}
 }
 
 // Probes expose process/readiness status only, never management inventory.

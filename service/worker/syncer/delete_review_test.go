@@ -77,7 +77,8 @@ func reviewDeleteWithSourceStatus(t *testing.T, sourceStatus int, shouldDelete b
 	p.Object.Bucket = "bucket"
 	p.SetReplicationID(entity.UniversalFromBucketReplication(entity.BucketReplicationPolicy{User: "u", FromStorage: "main", FromBucket: "bucket", ToStorage: "follower", ToBucket: "bucket"}), 0)
 	s.clients = reviewClients{client: client}
-	err = s.Sync(t.Context(), p) // empty version metadata selects the real delete path
+	p.Deleted = true
+	err = s.Sync(t.Context(), p)
 	require.Positive(t, sourceHeads.Load(), "test must reach backend source existence check")
 	t.Logf("Sync error=%v; backend DELETE requests=%d", err, deletes.Load())
 	if shouldDelete {

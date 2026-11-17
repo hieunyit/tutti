@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hieunyit/tutti/pkg/accesspolicy"
+	"github.com/hieunyit/tutti/pkg/auth"
 	"sort"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hieunyit/tutti/pkg/controlplane"
 	xctx "github.com/hieunyit/tutti/pkg/ctx"
@@ -248,7 +250,47 @@ func (h *policyHandlers) validateAddReplication(ctx context.Context, uid entity.
 	if err != nil {
 		return entity.ReplicationOptions{}, err
 	}
-	opts := entity.ReplicationOptions{EventSource: pbToEventSource(eventSource), Name: name, Since: since, RescanInterval: rescanInterval}
+	delProp := "ignore"
+	var delInc, delExc []string
+	var delDelaySec int64
+	if dp := req.GetOpts().GetDeletePropagation(); dp != nil {
+		switch dp.GetMode() {
+		case pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC:
+			delProp = "sync"
+		case pb.DeletePropagationMode_DELETE_PROPAGATION_MARKER_ONLY:
+			delProp = "marker-only"
+		default:
+			delProp = "ignore"
+		}
+		delInc = dp.GetIncludePrefixes()
+		delExc = dp.GetExcludePrefixes()
+		if dp.GetDelayBeforeDelete() != nil {
+			if err := dp.GetDelayBeforeDelete().CheckValid(); err != nil {
+				return entity.ReplicationOptions{}, fmt.Errorf("%w: invalid delay duration: %v", dom.ErrInvalidArg, err)
+			}
+			d := dp.GetDelayBeforeDelete().AsDuration()
+			const maxDeleteDelay = 90 * 24 * time.Hour
+			if d < 0 || d > maxDeleteDelay {
+				return entity.ReplicationOptions{}, fmt.Errorf("%w: delay_before_delete must be between 0 and 90 days", dom.ErrInvalidArg)
+			}
+			delDelaySec = int64(d / time.Second)
+		}
+	}
+	incPatterns := req.GetOpts().GetIncludePatterns()
+	excPatterns := req.GetOpts().GetExcludePatterns()
+
+	opts := entity.ReplicationOptions{
+		EventSource:           pbToEventSource(eventSource),
+		Name:                  name,
+		Since:                 since,
+		RescanInterval:        rescanInterval,
+		DeletePropagation:     delProp,
+		DeleteIncludePrefixes: delInc,
+		DeleteExcludePrefixes: delExc,
+		DeleteDelaySeconds:    delDelaySec,
+		IncludePatterns:       incPatterns,
+		ExcludePatterns:       excPatterns,
+	}
 	if userRepl, ok := uid.AsUserID(); ok {
 		if eventSource == pb.EventSource_EVENT_SOURCE_S3_NOTIFICATION {
 			return opts, fmt.Errorf("%w: s3_notification event source is not supported for user-level replication", dom.ErrInvalidArg)
@@ -402,6 +444,14 @@ func (h *policyHandlers) addBucketReplication(ctx context.Context, replicationID
 }
 
 func (h *policyHandlers) AvailableBuckets(ctx context.Context, req *pb.AvailableBucketsRequest) (*pb.AvailableBucketsResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("%w: request is required", dom.ErrInvalidArg)
+	}
+	if sess, ok := auth.FromContext(ctx); ok && sess != nil && sess.Role != auth.RoleAdmin {
+		if req.User != sess.Username {
+			return nil, fmt.Errorf("%w: cannot list buckets for other users", dom.ErrAuth)
+		}
+	}
 	// validate request: an empty user means storage-level (connection account of both storages)
 	if err := h.credsSvc.HasUser(req.FromStorage, req.User); err != nil {
 		return nil, err
@@ -1246,4 +1296,126 @@ func (h *policyHandlers) TestProxy(ctx context.Context, req *pb.TestProxyRequest
 		result.Replications = append(result.Replications, replicationIDToPb(repl))
 	}
 	return result, nil
+}
+
+func (h *policyHandlers) ListDeleteEvents(ctx context.Context, req *pb.ListDeleteEventsRequest) (*pb.ListDeleteEventsResponse, error) {
+	limit := req.GetLimit()
+	offset := req.GetOffset()
+	if offset < 0 {
+		return nil, fmt.Errorf("%w: offset cannot be negative", dom.ErrInvalidArg)
+	}
+	if limit <= 0 {
+		limit = 50
+	} else if limit > 500 {
+		limit = 500
+	}
+	if replID := req.GetReplicationId(); replID != "" {
+		uid, err := entity.UniversalIDFromString(replID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid replication_id: %w", dom.ErrInvalidArg, err)
+		}
+		if _, err := h.policySvc.GetReplicationPolicyInfoExtended(ctx, uid); err != nil {
+			return nil, err
+		}
+	}
+	events, total, err := h.policySvc.ListDeleteEvents(ctx, req.GetReplicationId(), req.GetStatus(), limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	res := &pb.ListDeleteEventsResponse{
+		Total:  total,
+		Events: make([]*pb.DeleteEvent, 0, len(events)),
+	}
+	for _, e := range events {
+		res.Events = append(res.Events, &pb.DeleteEvent{
+			Id:              e.ID,
+			ReplicationId:   e.ReplicationID,
+			Bucket:          e.Bucket,
+			ObjectKey:       e.ObjectKey,
+			VersionId:       e.VersionID,
+			DeletionType:    e.DeletionType,
+			Status:          e.Status,
+			RetryCount:      e.RetryCount,
+			LastError:        e.LastError,
+			SourceTimestamp: timestamppb.New(e.SourceTimestamp),
+			CreatedAt:       timestamppb.New(e.CreatedAt),
+			UpdatedAt:       timestamppb.New(e.UpdatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (h *policyHandlers) RetryFailedDeletes(ctx context.Context, req *pb.RetryFailedDeletesRequest) (*emptypb.Empty, error) {
+	if replID := req.GetReplicationId(); replID != "" {
+		uid, err := entity.UniversalIDFromString(replID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid replication_id: %w", dom.ErrInvalidArg, err)
+		}
+		if _, err := h.policySvc.GetReplicationPolicyInfoExtended(ctx, uid); err != nil {
+			return nil, err
+		}
+	}
+	_, err := h.policySvc.RetryFailedDeletes(ctx, req.GetReplicationId())
+	if err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (h *policyHandlers) UpdateDeletePropagation(ctx context.Context, req *pb.UpdateDeletePropagationRequest) (*emptypb.Empty, error) {
+	uid, err := pbToReplicationID(req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	var mode string
+	var inc, exc []string
+	var delay time.Duration
+	if dp := req.GetDeletePropagation(); dp != nil {
+		switch dp.GetMode() {
+		case pb.DeletePropagationMode_DELETE_PROPAGATION_SYNC:
+			mode = "sync"
+		case pb.DeletePropagationMode_DELETE_PROPAGATION_MARKER_ONLY:
+			mode = "marker-only"
+		default:
+			mode = "ignore"
+		}
+		inc = dp.GetIncludePrefixes()
+		exc = dp.GetExcludePrefixes()
+		if dp.GetDelayBeforeDelete() != nil {
+			if err := dp.GetDelayBeforeDelete().CheckValid(); err != nil {
+				return nil, fmt.Errorf("%w: invalid delay duration: %v", dom.ErrInvalidArg, err)
+			}
+			delay = dp.GetDelayBeforeDelete().AsDuration()
+			const maxDeleteDelay = 90 * 24 * time.Hour
+			if delay < 0 || delay > maxDeleteDelay {
+				return nil, fmt.Errorf("%w: delay_before_delete must be between 0 and 90 days", dom.ErrInvalidArg)
+			}
+		}
+	}
+	if err := h.policySvc.UpdateDeletePropagation(ctx, uid, mode, inc, exc, delay); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (h *policyHandlers) UpdateReplicationFilters(ctx context.Context, req *pb.UpdateReplicationFiltersRequest) (*emptypb.Empty, error) {
+	if req == nil {
+		return nil, fmt.Errorf("%w: request is required", dom.ErrInvalidArg)
+	}
+	if len(req.GetIncludePatterns()) > 100 || len(req.GetExcludePatterns()) > 100 {
+		return nil, fmt.Errorf("%w: maximum 100 include and 100 exclude patterns allowed", dom.ErrInvalidArg)
+	}
+	for _, p := range append(req.GetIncludePatterns(), req.GetExcludePatterns()...) {
+		if len(p) > 256 {
+			return nil, fmt.Errorf("%w: filter pattern exceeds maximum length of 256 bytes", dom.ErrInvalidArg)
+		}
+	}
+	uid, err := pbToReplicationID(req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if err := h.policySvc.UpdateReplicationFilters(ctx, uid, req.GetIncludePatterns(), req.GetExcludePatterns()); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }

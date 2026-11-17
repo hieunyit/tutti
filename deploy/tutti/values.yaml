@@ -329,6 +329,10 @@ worker:
       enabled: true
       grpcPort: 9670
       httpPort: 9671
+      # Exact browser origins when the UI and API use different domains.
+      # An empty list permits localhost and private IP origins for development.
+      # corsAllowedOrigins: ["https://console.example.com"]
+      corsAllowedOrigins: []
 
       webhook:
         # Enable webhook endpoints for S3 notifications and Swift events.

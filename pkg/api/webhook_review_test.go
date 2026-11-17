@@ -87,3 +87,32 @@ func TestReviewWebhookMustNotACKWhenReplicationQueueUnavailable(t *testing.T) {
 		})
 	}
 }
+
+func TestWebhookBatchLimitExceeded(t *testing.T) {
+	old := systemsettings.Current()
+	enabled := old
+	enabled.Webhook.Enabled = true
+	systemsettings.ApplySettings(enabled)
+	t.Cleanup(func() { systemsettings.ApplySettings(old) })
+
+	h := WebhookHandlers(reviewWebhookCreds{}, reviewWebhookPolicy{}, nil, nil)
+	oversizedRecords := make([]*pb.S3EventRecord, MaxWebhookBatchSize+1)
+	for i := range oversizedRecords {
+		oversizedRecords[i] = &pb.S3EventRecord{}
+	}
+	_, err := h.S3Notifications(t.Context(), &pb.S3NotificationRequest{
+		Storage: "main",
+		Records: oversizedRecords,
+	})
+	require.Error(t, err)
+
+	oversizedEvents := make([]*pb.SwiftEvent, MaxWebhookBatchSize+1)
+	for i := range oversizedEvents {
+		oversizedEvents[i] = &pb.SwiftEvent{}
+	}
+	_, err = h.SwiftEvents(t.Context(), &pb.SwiftEventsRequest{
+		Storage: "swift",
+		Events:  oversizedEvents,
+	})
+	require.Error(t, err)
+}

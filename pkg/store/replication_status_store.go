@@ -368,3 +368,32 @@ func setStatusRescan[ID any](ctx context.Context, h *RedisIDKeyHash[ID, entity.R
 	_, err := h.DelField(ctx, id, "rescan_seconds")
 	return err
 }
+
+// SetPolicyFields updates related policy fields atomically, without creating a missing status.
+func (r *BucketReplicationStatusStore) SetPolicyFields(ctx context.Context, id entity.BucketReplicationPolicy, fields map[string]any) error {
+	return setPolicyFields(ctx, r.status, id, fields)
+}
+func (r *UserReplicationStatusStore) SetPolicyFields(ctx context.Context, id entity.UserReplicationPolicy, fields map[string]any) error {
+	return setPolicyFields(ctx, r.status, id, fields)
+}
+
+var setPolicyFieldsScript = redis.NewScript(`if redis.call('exists', KEYS[1]) == 0 then return 0 end; redis.call('hset', KEYS[1], unpack(ARGV)); return 1`)
+
+func setPolicyFields[ID any](ctx context.Context, h *RedisIDKeyHash[ID, entity.ReplicationStatus], id ID, fields map[string]any) error {
+	key, err := h.MakeKey(id)
+	if err != nil {
+		return err
+	}
+	args := make([]any, 0, len(fields)*2)
+	for k, v := range fields {
+		args = append(args, k, v)
+	}
+	result, err := setPolicyFieldsScript.Run(ctx, h.client, []string{key}, args...).Int64()
+	if err != nil {
+		return err
+	}
+	if result == 0 {
+		return dom.ErrNotFound
+	}
+	return nil
+}

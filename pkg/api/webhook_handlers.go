@@ -39,6 +39,10 @@ import (
 	pb "github.com/hieunyit/tutti/proto/gen/go/tutti"
 )
 
+// MaxWebhookBatchSize limits the maximum number of event records accepted in a single webhook request
+// to prevent memory exhaustion and queue starvation (DoS).
+const MaxWebhookBatchSize = 1000
+
 func WebhookHandlers(
 	credsSvc objstore.CredsService,
 	policySvc policy.Service,
@@ -65,6 +69,9 @@ type webhookHandlers struct {
 func (h *webhookHandlers) SwiftEvents(ctx context.Context, req *pb.SwiftEventsRequest) (*emptypb.Empty, error) {
 	if !systemsettings.Current().Webhook.Enabled {
 		return nil, status.Error(codes.Unavailable, "webhook is disabled")
+	}
+	if len(req.Events) > MaxWebhookBatchSize {
+		return nil, status.Errorf(codes.InvalidArgument, "too many events in webhook request: maximum %d", MaxWebhookBatchSize)
 	}
 	logger := zerolog.Ctx(ctx)
 
@@ -175,6 +182,9 @@ func swiftEventToTask(evt *pb.SwiftEvent) (tasks.ReplicationTask, error) {
 func (h *webhookHandlers) S3Notifications(ctx context.Context, req *pb.S3NotificationRequest) (*emptypb.Empty, error) {
 	if !systemsettings.Current().Webhook.Enabled {
 		return nil, status.Error(codes.Unavailable, "webhook is disabled")
+	}
+	if len(req.Records) > MaxWebhookBatchSize {
+		return nil, status.Errorf(codes.InvalidArgument, "too many records in webhook request: maximum %d", MaxWebhookBatchSize)
 	}
 	logger := zerolog.Ctx(ctx)
 

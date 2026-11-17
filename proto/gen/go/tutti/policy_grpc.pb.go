@@ -32,6 +32,10 @@ const (
 	Policy_UpdateReplicationName_FullMethodName           = "/tutti.Policy/UpdateReplicationName"
 	Policy_RescanReplication_FullMethodName               = "/tutti.Policy/RescanReplication"
 	Policy_UpdateReplicationRescanInterval_FullMethodName = "/tutti.Policy/UpdateReplicationRescanInterval"
+	Policy_ListDeleteEvents_FullMethodName                = "/tutti.Policy/ListDeleteEvents"
+	Policy_RetryFailedDeletes_FullMethodName              = "/tutti.Policy/RetryFailedDeletes"
+	Policy_UpdateDeletePropagation_FullMethodName         = "/tutti.Policy/UpdateDeletePropagation"
+	Policy_UpdateReplicationFilters_FullMethodName        = "/tutti.Policy/UpdateReplicationFilters"
 	Policy_SwitchWithZeroDowntime_FullMethodName          = "/tutti.Policy/SwitchWithZeroDowntime"
 	Policy_SwitchWithDowntime_FullMethodName              = "/tutti.Policy/SwitchWithDowntime"
 	Policy_DeleteSwitch_FullMethodName                    = "/tutti.Policy/DeleteSwitch"
@@ -81,6 +85,14 @@ type PolicyClient interface {
 	// Changes how often the source is rescanned (see
 	// ReplicationOpts.rescan_interval). Unset or 0 turns it off.
 	UpdateReplicationRescanInterval(ctx context.Context, in *UpdateReplicationRescanIntervalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Lists delete events for given replication.
+	ListDeleteEvents(ctx context.Context, in *ListDeleteEventsRequest, opts ...grpc.CallOption) (*ListDeleteEventsResponse, error)
+	// Retries failed delete events for given replication.
+	RetryFailedDeletes(ctx context.Context, in *RetryFailedDeletesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Updates the delete propagation policy of a replication.
+	UpdateDeletePropagation(ctx context.Context, in *UpdateDeletePropagationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Updates the advanced replication include/exclude glob filter patterns.
+	UpdateReplicationFilters(ctx context.Context, in *UpdateReplicationFiltersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -288,6 +300,46 @@ func (c *policyClient) UpdateReplicationRescanInterval(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *policyClient) ListDeleteEvents(ctx context.Context, in *ListDeleteEventsRequest, opts ...grpc.CallOption) (*ListDeleteEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDeleteEventsResponse)
+	err := c.cc.Invoke(ctx, Policy_ListDeleteEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *policyClient) RetryFailedDeletes(ctx context.Context, in *RetryFailedDeletesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_RetryFailedDeletes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *policyClient) UpdateDeletePropagation(ctx context.Context, in *UpdateDeletePropagationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_UpdateDeletePropagation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *policyClient) UpdateReplicationFilters(ctx context.Context, in *UpdateReplicationFiltersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Policy_UpdateReplicationFilters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *policyClient) SwitchWithZeroDowntime(ctx context.Context, in *SwitchZeroDowntimeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -434,6 +486,14 @@ type PolicyServer interface {
 	// Changes how often the source is rescanned (see
 	// ReplicationOpts.rescan_interval). Unset or 0 turns it off.
 	UpdateReplicationRescanInterval(context.Context, *UpdateReplicationRescanIntervalRequest) (*emptypb.Empty, error)
+	// Lists delete events for given replication.
+	ListDeleteEvents(context.Context, *ListDeleteEventsRequest) (*ListDeleteEventsResponse, error)
+	// Retries failed delete events for given replication.
+	RetryFailedDeletes(context.Context, *RetryFailedDeletesRequest) (*emptypb.Empty, error)
+	// Updates the delete propagation policy of a replication.
+	UpdateDeletePropagation(context.Context, *UpdateDeletePropagationRequest) (*emptypb.Empty, error)
+	// Updates the advanced replication include/exclude glob filter patterns.
+	UpdateReplicationFilters(context.Context, *UpdateReplicationFiltersRequest) (*emptypb.Empty, error)
 	// Switches source<->destination replication targets without downtime.
 	// Zero-downtime switch will take effect immediately on tutti proxy:
 	// - all writes will be now routed to replication destination
@@ -546,6 +606,18 @@ func (UnimplementedPolicyServer) RescanReplication(context.Context, *Replication
 }
 func (UnimplementedPolicyServer) UpdateReplicationRescanInterval(context.Context, *UpdateReplicationRescanIntervalRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateReplicationRescanInterval not implemented")
+}
+func (UnimplementedPolicyServer) ListDeleteEvents(context.Context, *ListDeleteEventsRequest) (*ListDeleteEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDeleteEvents not implemented")
+}
+func (UnimplementedPolicyServer) RetryFailedDeletes(context.Context, *RetryFailedDeletesRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetryFailedDeletes not implemented")
+}
+func (UnimplementedPolicyServer) UpdateDeletePropagation(context.Context, *UpdateDeletePropagationRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateDeletePropagation not implemented")
+}
+func (UnimplementedPolicyServer) UpdateReplicationFilters(context.Context, *UpdateReplicationFiltersRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateReplicationFilters not implemented")
 }
 func (UnimplementedPolicyServer) SwitchWithZeroDowntime(context.Context, *SwitchZeroDowntimeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SwitchWithZeroDowntime not implemented")
@@ -809,6 +881,78 @@ func _Policy_UpdateReplicationRescanInterval_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Policy_ListDeleteEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDeleteEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).ListDeleteEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_ListDeleteEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).ListDeleteEvents(ctx, req.(*ListDeleteEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_RetryFailedDeletes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryFailedDeletesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).RetryFailedDeletes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_RetryFailedDeletes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).RetryFailedDeletes(ctx, req.(*RetryFailedDeletesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_UpdateDeletePropagation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateDeletePropagationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).UpdateDeletePropagation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_UpdateDeletePropagation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).UpdateDeletePropagation(ctx, req.(*UpdateDeletePropagationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Policy_UpdateReplicationFilters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateReplicationFiltersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyServer).UpdateReplicationFilters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Policy_UpdateReplicationFilters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyServer).UpdateReplicationFilters(ctx, req.(*UpdateReplicationFiltersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Policy_SwitchWithZeroDowntime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SwitchZeroDowntimeRequest)
 	if err := dec(in); err != nil {
@@ -1057,6 +1201,22 @@ var Policy_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateReplicationRescanInterval",
 			Handler:    _Policy_UpdateReplicationRescanInterval_Handler,
+		},
+		{
+			MethodName: "ListDeleteEvents",
+			Handler:    _Policy_ListDeleteEvents_Handler,
+		},
+		{
+			MethodName: "RetryFailedDeletes",
+			Handler:    _Policy_RetryFailedDeletes_Handler,
+		},
+		{
+			MethodName: "UpdateDeletePropagation",
+			Handler:    _Policy_UpdateDeletePropagation_Handler,
+		},
+		{
+			MethodName: "UpdateReplicationFilters",
+			Handler:    _Policy_UpdateReplicationFilters_Handler,
 		},
 		{
 			MethodName: "SwitchWithZeroDowntime",
