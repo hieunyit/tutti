@@ -499,6 +499,7 @@ const eventColumns: DataTableColumns<DeleteEvent> = [
     grid-template-columns: 1fr;
   }
 }
+
 .policy-block {
   background: var(--n-color);
   padding: 16px;

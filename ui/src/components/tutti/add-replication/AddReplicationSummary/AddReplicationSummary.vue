@@ -24,6 +24,7 @@
   import i18nAddReplication from '../i18nAddReplication';
   import ReplicationSinceField from '../ReplicationSinceField.vue';
   import ReplicationRescanField from '../ReplicationRescanField.vue';
+  import ReplicationPoliciesField from '../ReplicationPoliciesField.vue';
   import i18nReplicationRescan from '@/components/tutti/replications/i18nReplicationRescan';
   import { ReplicationRescanHelper } from '@/utils/helpers/ReplicationRescanHelper';
   import i18nReplicationSince from '@/components/tutti/replications/i18nReplicationSince';
@@ -31,6 +32,7 @@
   import { ReplicationSinceHelper } from '@/utils/helpers/ReplicationSinceHelper';
   import ReplicationNameField from '@/components/tutti/replications/ReplicationNameField/ReplicationNameField.vue';
   import { useTuttiAddReplicationStore } from '@/stores/tuttiAddReplicationStore';
+  import { DeletePropagationMode } from '@/utils/types/tuttiCore';
 
   const { t, locale } = useI18n({
     messages: mergeMessages(
@@ -47,9 +49,41 @@
     name,
     since,
     rescanMinutes,
+    deleteMode,
+    deleteIncludePrefixes,
+    deleteExcludePrefixes,
+    deleteDelaySeconds,
+    includePatterns,
+    excludePatterns,
   } = storeToRefs(useTuttiAddReplicationStore());
 
   const buckets = computed(() => [...selectedBuckets.value].sort());
+  const deletePolicyText = computed(() => {
+    const delay =
+      deleteDelaySeconds.value > 0
+        ? ` (${deleteDelaySeconds.value}s delay)`
+        : '';
+
+    if (deleteMode.value === DeletePropagationMode.SYNC) {
+      return `Sync${delay}`;
+    }
+
+    if (deleteMode.value === DeletePropagationMode.MARKER_ONLY) {
+      return `Marker-Only${delay}`;
+    }
+
+    return 'Ignore (do not sync deletes)';
+  });
+  const patternsText = computed(() => {
+    const inc = includePatterns.value.length;
+    const exc = excludePatterns.value.length;
+
+    if (inc === 0 && exc === 0) {
+      return 'All objects';
+    }
+
+    return `${inc} include, ${exc} exclude`;
+  });
   const objectsText = computed(() => {
     const moment =
       ReplicationSinceHelper.getProblem(since.value) === null
@@ -111,11 +145,27 @@
         <dt>{{ t('reviewRescan') }}</dt>
         <dd>{{ rescanText }}</dd>
       </div>
+      <div class="review__row">
+        <dt>Delete policy</dt>
+        <dd>{{ deletePolicyText }}</dd>
+      </div>
+      <div class="review__row">
+        <dt>Pattern filters</dt>
+        <dd>{{ patternsText }}</dd>
+      </div>
     </dl>
 
     <ReplicationSinceField v-model="since" />
     <ReplicationRescanField v-model="rescanMinutes" />
     <ReplicationNameField v-model="name" />
+    <ReplicationPoliciesField
+      v-model:delete-mode="deleteMode"
+      v-model:delete-delay-seconds="deleteDelaySeconds"
+      v-model:delete-include-prefixes="deleteIncludePrefixes"
+      v-model:delete-exclude-prefixes="deleteExcludePrefixes"
+      v-model:include-patterns="includePatterns"
+      v-model:exclude-patterns="excludePatterns"
+    />
 
     <p class="review__note">{{ t('reviewNote') }}</p>
   </div>

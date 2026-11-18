@@ -21,6 +21,7 @@ export const REPLICATION_NAME_MAX_LENGTH = 64;
 export type ReplicationNameProblem = 'tooLong' | 'controlChars';
 
 /** C0/C1 control characters, like the server check (unicode.IsControl) */
+// oxlint-disable-next-line eslint(no-control-regex)
 const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/;
 
 /**

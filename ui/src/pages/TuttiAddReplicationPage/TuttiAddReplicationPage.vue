@@ -41,6 +41,7 @@
     type SinceChoice,
   } from '@/utils/helpers/ReplicationSinceHelper';
   import { useStoreDraft } from '@/utils/composables/useStoreDraft';
+  import { DeletePropagationMode } from '@/utils/types/tuttiCore';
 
   const DRAFT_KEY = 'add-replication';
 
@@ -52,6 +53,12 @@
     name: string;
     since?: SinceChoice;
     rescanMinutes?: number;
+    deleteMode?: DeletePropagationMode;
+    deleteIncludePrefixes?: string[];
+    deleteExcludePrefixes?: string[];
+    deleteDelaySeconds?: number;
+    includePatterns?: string[];
+    excludePatterns?: string[];
   }
 
   const { t } = useI18n({ messages: i18nAddReplication });
@@ -68,6 +75,12 @@
     name,
     since,
     rescanMinutes,
+    deleteMode,
+    deleteIncludePrefixes,
+    deleteExcludePrefixes,
+    deleteDelaySeconds,
+    includePatterns,
+    excludePatterns,
     isSubmitting,
     bucketsRequestOptions,
     createError,
@@ -92,6 +105,12 @@
       name: '',
       since: ReplicationSinceHelper.defaultChoice(),
       rescanMinutes: 0,
+      deleteMode: DeletePropagationMode.IGNORE,
+      deleteIncludePrefixes: [],
+      deleteExcludePrefixes: [],
+      deleteDelaySeconds: 0,
+      includePatterns: [],
+      excludePatterns: [],
     }),
     snapshot: () => ({
       from: selectedFromStorage.value?.name ?? null,
@@ -101,6 +120,12 @@
       name: name.value,
       since: { ...since.value },
       rescanMinutes: rescanMinutes.value,
+      deleteMode: deleteMode.value,
+      deleteIncludePrefixes: [...deleteIncludePrefixes.value],
+      deleteExcludePrefixes: [...deleteExcludePrefixes.value],
+      deleteDelaySeconds: deleteDelaySeconds.value,
+      includePatterns: [...includePatterns.value],
+      excludePatterns: [...excludePatterns.value],
     }),
     apply: (draft) => {
       const from = storages.value.find((s) => s.name === draft.from);
@@ -116,6 +141,20 @@
         ? { ...ReplicationSinceHelper.defaultChoice(), ...draft.since }
         : ReplicationSinceHelper.defaultChoice();
       rescanMinutes.value = draft.rescanMinutes ?? 0;
+      deleteMode.value = draft.deleteMode ?? DeletePropagationMode.IGNORE;
+      deleteIncludePrefixes.value = draft.deleteIncludePrefixes
+        ? [...draft.deleteIncludePrefixes]
+        : [];
+      deleteExcludePrefixes.value = draft.deleteExcludePrefixes
+        ? [...draft.deleteExcludePrefixes]
+        : [];
+      deleteDelaySeconds.value = draft.deleteDelaySeconds ?? 0;
+      includePatterns.value = draft.includePatterns
+        ? [...draft.includePatterns]
+        : [];
+      excludePatterns.value = draft.excludePatterns
+        ? [...draft.excludePatterns]
+        : [];
 
       if (from && to && draft.buckets.length) {
         // marks the bucket list as requested, so opening step 2 keeps the choice

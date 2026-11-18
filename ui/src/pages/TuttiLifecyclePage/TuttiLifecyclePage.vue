@@ -595,7 +595,7 @@ const columns: DataTableColumns<LifecycleRule> = [
         style="text-align: center; padding: 32px"
       >
         <NSpin size="large" />
-        <div style="margin-top: 12px; color: gray">
+        <div style="margin-top: 12px; color: #888888">
           Scanning bucket objects...
         </div>
       </div>
@@ -651,12 +651,12 @@ const columns: DataTableColumns<LifecycleRule> = [
         </div>
         <div
           v-else-if="auditLogs.length === 0"
-          style="text-align: center; padding: 32px; color: gray"
+          style="text-align: center; padding: 32px; color: #888888"
         >
           No deletion records found for this rule.
         </div>
         <div v-else>
-          <div style="margin-bottom: 12px; color: gray; font-size: 12px">
+          <div style="margin-bottom: 12px; color: #888888; font-size: 12px">
             Showing {{ auditLogs.length }} recent deletions
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 12px">

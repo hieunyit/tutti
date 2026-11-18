@@ -18,6 +18,7 @@ import {
   type TuttiCoveredBucket,
   type TuttiBucketListRequest,
   type TuttiStorage,
+  DeletePropagationMode,
 } from '@/utils/types/tuttiCore';
 import {
   ReplicationSinceHelper,
@@ -48,6 +49,14 @@ export interface TuttiAddReplicationState {
   since: SinceChoice;
   /** rescan the source every N minutes; 0 = off */
   rescanMinutes: number;
+  /** delete propagation mode */
+  deleteMode: DeletePropagationMode;
+  deleteIncludePrefixes: string[];
+  deleteExcludePrefixes: string[];
+  deleteDelaySeconds: number;
+  /** pattern filters (glob) */
+  includePatterns: string[];
+  excludePatterns: string[];
   isSubmitting: boolean;
 }
 
@@ -72,6 +81,12 @@ export function getInitialState(): TuttiAddReplicationState {
     name: '',
     since: ReplicationSinceHelper.defaultChoice(),
     rescanMinutes: 0,
+    deleteMode: DeletePropagationMode.IGNORE,
+    deleteIncludePrefixes: [],
+    deleteExcludePrefixes: [],
+    deleteDelaySeconds: 0,
+    includePatterns: [],
+    excludePatterns: [],
     isSubmitting: false,
   };
 }

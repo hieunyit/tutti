@@ -220,6 +220,9 @@ export interface TuttiAddReplicationOpts {
   since?: string;
   /** Duration string like "3600s": re-list the source this often; omitted = off */
   rescanInterval?: string;
+  deletePropagation?: DeletePropagationPolicy;
+  includePatterns?: string[];
+  excludePatterns?: string[];
 }
 
 export interface TuttiUpdateRescanIntervalRequest {

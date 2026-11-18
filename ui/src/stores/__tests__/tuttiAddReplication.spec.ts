@@ -18,6 +18,7 @@ import { AxiosError } from 'axios';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTuttiAddReplicationStore } from '../tuttiAddReplicationStore';
+import { DeletePropagationMode } from '@/utils/types/tuttiCore';
 import { TuttiService } from '@/services/TuttiService';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
 
@@ -362,6 +363,58 @@ describe('tuttiAddReplicationStore', () => {
 
       expect(await store.createReplication()).toBe(false);
       expect(tuttiCore.addReplication).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('policies (delete propagation & pattern filtering)', () => {
+    async function ready() {
+      const store = useTuttiAddReplicationStore();
+
+      await store.initAddReplicationPage();
+      store.isForAllBuckets = true;
+
+      return store;
+    }
+
+    it('submits deletePropagation and pattern filters in opts when configured', async () => {
+      const store = await ready();
+
+      store.deleteMode = DeletePropagationMode.SYNC;
+      store.deleteDelaySeconds = 300;
+      store.deleteIncludePrefixes = ['prod/'];
+      store.deleteExcludePrefixes = ['prod/temp/'];
+      store.includePatterns = ['*.jpg', '*.png'];
+      store.excludePatterns = ['*-draft.*'];
+
+      await store.createReplication();
+
+      expect(tuttiCore.addReplication).toHaveBeenCalledWith({
+        id: { fromStorage: 'main', toStorage: 'backup' },
+        opts: {
+          deletePropagation: {
+            mode: DeletePropagationMode.SYNC,
+            delayBeforeDelete: '300s',
+            includePrefixes: ['prod/'],
+            excludePrefixes: ['prod/temp/'],
+          },
+          includePatterns: ['*.jpg', '*.png'],
+          excludePatterns: ['*-draft.*'],
+        },
+      });
+    });
+
+    it('omits policy opts when keeping default ignore mode and empty patterns', async () => {
+      const store = await ready();
+
+      store.deleteMode = DeletePropagationMode.IGNORE;
+      store.includePatterns = [];
+      store.excludePatterns = [];
+
+      await store.createReplication();
+
+      expect(tuttiCore.addReplication).toHaveBeenCalledWith({
+        id: { fromStorage: 'main', toStorage: 'backup' },
+      });
     });
   });
 });

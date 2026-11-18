@@ -22,6 +22,7 @@ import { useStoreI18n } from '@/i18n/useStoreI18n';
 import {
   type TuttiCoveredBucket,
   type TuttiReplicationId,
+  DeletePropagationMode,
 } from '@/utils/types/tuttiCore';
 import { TuttiCoreService } from '@/services/TuttiCoreService';
 import i18nAddReplication from '@/components/tutti/add-replication/i18nAddReplication';
@@ -211,6 +212,17 @@ export const useTuttiAddReplicationStore = defineStore(
             toBucket: bucket,
           }));
 
+      const hasDeletePolicy =
+        state.deleteMode !== DeletePropagationMode.IGNORE ||
+        state.deleteDelaySeconds > 0 ||
+        state.deleteIncludePrefixes.length > 0 ||
+        state.deleteExcludePrefixes.length > 0;
+      const hasIncludePatterns = state.includePatterns.length > 0;
+      const hasExcludePatterns = state.excludePatterns.length > 0;
+      const hasPolicies =
+        hasDeletePolicy || hasIncludePatterns || hasExcludePatterns;
+      const delaySec = Math.max(0, Number(state.deleteDelaySeconds) || 0);
+
       // One at a time: every request takes the same two storage locks (10 s acquire timeout), so parallel
       // requests would make the later ones fail with "storage is being modified; retry".
       for (const replicationId of replicationIds) {
@@ -218,11 +230,27 @@ export const useTuttiAddReplicationStore = defineStore(
           await TuttiCoreService.addReplication({
             id: replicationId,
             ...(name ? { name } : {}),
-            ...(since || rescanInterval
+            ...(since || rescanInterval || hasPolicies
               ? {
                   opts: {
                     ...(since ? { since } : {}),
                     ...(rescanInterval ? { rescanInterval } : {}),
+                    ...(hasDeletePolicy
+                      ? {
+                          deletePropagation: {
+                            mode: state.deleteMode,
+                            includePrefixes: state.deleteIncludePrefixes,
+                            excludePrefixes: state.deleteExcludePrefixes,
+                            delayBeforeDelete: `${delaySec}s`,
+                          },
+                        }
+                      : {}),
+                    ...(hasIncludePatterns
+                      ? { includePatterns: state.includePatterns }
+                      : {}),
+                    ...(hasExcludePatterns
+                      ? { excludePatterns: state.excludePatterns }
+                      : {}),
                   },
                 }
               : {}),
