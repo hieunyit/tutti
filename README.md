@@ -242,12 +242,19 @@ npm run build --prefix ui
 ## 📚 Documentation
 
 Detailed architecture and operations guides are located in [`docs/`](./docs/):
+- [Architecture & Sequence Flows (C4 Model)](./docs/architecture/ARCHITECTURE.md)
+- [Dependency Management & Fork Analysis](./DEPENDENCIES.md)
+- [Performance Tuning & Scalability Guide](./docs/tutti/performance-tuning.md)
+- [Integration & E2E Testing Guide](./docs/tutti/integration-testing.md)
+- [Grafana Monitoring Dashboards](./deploy/monitoring/README.md)
 - [Deployment Guide (Docker, K8s, VM)](./docs/tutti/deployment-guide.md)
 - [Management REST & gRPC API Reference](./docs/tutti/api.md)
 - [Operations & Troubleshooting Guide](./docs/tutti/operations.md)
+- [Lifecycle Operations & Safe Upgrades](./docs/tutti/lifecycle-operations.md)
 - [PostgreSQL Control Plane & Migrations](./docs/tutti/control-plane-db.md)
 - [Protection Groups Architecture](./docs/tutti/protection-groups.md)
 - [Security & Concurrency Audit Report](./docs/audit/2026-11-17-comprehensive-security-and-bugfix-report.md)
+- [Core Features Remediation Report](./docs/audit/2026-11-18-core-features-remediation.md)
 
 ---
 
